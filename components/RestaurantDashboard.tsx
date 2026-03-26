@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Upload } from 'lucide-react';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { DocumentProcessor } from './DocumentProcessor';
+import type { ProcessedDocument } from '../types';
 
 export function RestaurantDashboard() {
   const { employees, addEmployee, deleteEmployee } = useEmployee();
@@ -15,6 +17,8 @@ export function RestaurantDashboard() {
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [showAddIncome, setShowAddIncome] = useState(false);
   const [showAddExpense, setShowAddExpense] = useState(false);
+  const [showDocuments, setShowDocuments] = useState(false);
+  const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
 
   const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -197,6 +201,15 @@ export function RestaurantDashboard() {
         </div>
 
         {/* Income & Expense Sections - Stack on mobile */}
+        <div className="mb-6">
+          <button
+            onClick={() => setShowDocuments(true)}
+            className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-3 bg-ypsom-deep text-white text-sm font-bold uppercase rounded hover:bg-ypsom-deep/90"
+          >
+            <Upload className="w-5 h-5" /> {language === 'en' ? 'Upload Documents' : 'Télécharger des documents'}
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* Income Section */}
           <div className="bg-white p-4 md:p-6 rounded-lg border border-gray-200">
@@ -262,6 +275,25 @@ export function RestaurantDashboard() {
       {showAddEmployee && <AddEmployeeModal onClose={() => setShowAddEmployee(false)} onAdd={addEmployee} t={t} />}
       {showAddIncome && <AddIncomeModal onClose={() => setShowAddIncome(false)} onAdd={addIncome} t={t} />}
       {showAddExpense && <AddExpenseModal onClose={() => setShowAddExpense(false)} onAdd={addExpense} t={t} />}
+      
+      {/* Document Upload Modal */}
+      {showDocuments && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+              <h3 className="text-lg font-black text-ypsom-deep uppercase">
+                {language === 'en' ? 'Upload & Process Documents' : 'Télécharger et traiter des documents'}
+              </h3>
+              <button onClick={() => setShowDocuments(false)} className="p-2 hover:bg-gray-100 rounded">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <DocumentProcessor documents={documents} setDocuments={setDocuments} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
