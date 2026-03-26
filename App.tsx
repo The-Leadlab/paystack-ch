@@ -2,6 +2,7 @@ import React from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { EmployeeProvider } from './context/EmployeeContext';
 import { FinanceProvider } from './context/FinanceContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { Login } from './components/Login';
 import { RestaurantDashboard } from './components/RestaurantDashboard';
 import { FirebaseMissing } from './components/FirebaseMissing';
@@ -31,11 +32,13 @@ function AppContent() {
   }
 
   return (
-    <EmployeeProvider>
-      <FinanceProvider>
-        <RestaurantDashboard />
-      </FinanceProvider>
-    </EmployeeProvider>
+    <LanguageProvider>
+      <EmployeeProvider>
+        <FinanceProvider>
+          <RestaurantDashboard />
+        </FinanceProvider>
+      </EmployeeProvider>
+    </LanguageProvider>
   );
 }
 
