@@ -51,15 +51,32 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
+    if (!db) {
+      setError('Firebase Firestore is not configured.');
+      setClients([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const q = query(
-        collection(db, CLIENTS_COLLECTION),
-        where('userId', '==', uid),
-        orderBy('createdAt', 'desc')
-      );
-      const snapshot = await getDocs(q);
+      let snapshot;
+      try {
+        // Requires composite index on (userId ASC, createdAt DESC)
+        const q = query(
+          collection(db, CLIENTS_COLLECTION),
+          where('userId', '==', uid),
+          orderBy('createdAt', 'desc')
+        );
+        snapshot = await getDocs(q);
+      } catch {
+        // Fallback: query without orderBy in case the index isn't deployed yet
+        const q = query(
+          collection(db, CLIENTS_COLLECTION),
+          where('userId', '==', uid)
+        );
+        snapshot = await getDocs(q);
+      }
       const list: Client[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data() as { userId: string; name: string; createdAt: Timestamp };
@@ -67,6 +84,7 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
       });
       setClients(list);
     } catch (err) {
+      console.error('fetchClients error:', err);
       setError(err instanceof Error ? err.message : String(err));
       setClients([]);
     } finally {
@@ -79,15 +97,11 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
   }, [fetchClients]);
 
   useEffect(() => {
-    if (clients.length === 0) {
-      setCurrentClientState(null);
-      return;
-    }
+    if (clients.length === 0) return; // don't wipe currentClient on empty fetch
     const savedId = localStorage.getItem(CURRENT_CLIENT_KEY);
     if (savedId) {
       const found = clients.find((c) => c.id === savedId);
       if (found) setCurrentClient(found);
-      else setCurrentClientState(null);
     }
   }, [clients]);
 
@@ -104,6 +118,10 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
     async (name: string): Promise<Client | null> => {
       const uid = user?.uid;
       if (!uid) return null;
+      if (!db) {
+        setError('Firebase Firestore is not configured.');
+        return null;
+      }
       const trimmed = name.trim();
       if (!trimmed) return null;
       try {
