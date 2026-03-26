@@ -4,13 +4,13 @@ import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? 'cafe-la-place.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ?? '',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? '',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID ?? '',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? 'AIzaSyCTo9cQ0Xa4690GQpPDWZ_oskZu9S41M6I',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? 'cafe-la-place.web.app',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? 'cafe-la-place',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ?? 'cafe-la-place.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? '212199909940',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID ?? '1:212199909940:web:dddac3b3ab42dd23103861',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID ?? 'G-0BP43Y28RN',
 };
 
 export const firebaseReady = Boolean(
