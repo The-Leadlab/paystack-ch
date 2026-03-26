@@ -1,0 +1,78 @@
+mutation CreateSeedData @transaction @auth(level: USER, insecureReason: "This is a seed mutation and only intended for development purposes.") {
+  user_insertMany(data: [
+    {
+      id: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+      username: "user1",
+      email: "user1@example.com",
+      fullName: "User One",
+      role: "admin",
+      createdAt: "2023-01-01T00:00:00Z"
+    },
+    {
+      id: "f1e2d3c4-b5a6-0987-6543-210fedcba987",
+      username: "user2",
+      email: "user2@example.com",
+      fullName: "User Two",
+      role: "member",
+      createdAt: "2023-01-02T00:00:00Z"
+    }
+  ])
+  transactionCategory_insertMany(data: [
+    {
+      id: "12345678-abcd-efgh-ijkl-mnopqrstuvwx",
+      name: "Groceries",
+      type: "Expense",
+      createdAt: "2023-01-03T00:00:00Z",
+      description: "Daily food and household items"
+    },
+    {
+      id: "fedcba98-7654-3210-fedc-ba9876543210",
+      name: "Salary",
+      type: "Income",
+      createdAt: "2023-01-04T00:00:00Z",
+      description: "Monthly salary"
+    }
+  ])
+  transaction_insertMany(data: [
+    {
+      id: "87654321-fedc-ba98-7654-3210fedcba98",
+      userId: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+      categoryId: "12345678-abcd-efgh-ijkl-mnopqrstuvwx",
+      amount: 55.75,
+      type: "Expense",
+      transactionDate: "2023-01-05",
+      createdAt: "2023-01-05T10:30:00Z",
+      description: "Weekly grocery shopping"
+    },
+    {
+      id: "10293847-56ba-78cd-90ef-1234567890ab",
+      userId: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+      categoryId: "fedcba98-7654-3210-fedc-ba9876543210",
+      amount: 2500.00,
+      type: "Income",
+      transactionDate: "2023-01-06",
+      createdAt: "2023-01-06T09:00:00Z",
+      description: "January Salary"
+    }
+  ])
+  budget_insertMany(data: [
+    {
+      id: "alpha123-beta456-gamma789-delta012",
+      categoryId: "12345678-abcd-efgh-ijkl-mnopqrstuvwx",
+      month: 1,
+      year: 2023,
+      budgetedAmount: 300.00,
+      createdAt: "2023-01-07T00:00:00Z",
+      notes: "Monthly grocery budget"
+    },
+    {
+      id: "epsilon345-zeta678-eta901-theta234",
+      categoryId: "fedcba98-7654-3210-fedc-ba9876543210",
+      month: 1,
+      year: 2023,
+      budgetedAmount: 2500.00,
+      createdAt: "2023-01-07T00:00:00Z",
+      notes: "Expected income for January"
+    }
+  ])
+}

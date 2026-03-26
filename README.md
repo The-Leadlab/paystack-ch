@@ -19,8 +19,9 @@ View your app in AI Studio: https://ai.studio/apps/drive/15QnuoLKENugMr5sZ_laPkA
 
 2. **Environment variables**  
    Copy [.env.example](.env.example) to `.env.local` and fill in:
-   - `GEMINI_API_KEY` – for document AI ([Google AI](https://ai.google.dev/))
-   - Firebase config – see [Firebase setup](#firebase-setup) below
+   - `VITE_GEMINI_API_KEY` – for document AI ([Google AI](https://ai.google.dev/))
+   - Firebase config – see [Firebase setup](#firebase-setup) below  
+   On **Netlify**, add the same keys under Site settings → Environment variables, then redeploy.
 
 3. **Firebase setup**  
    See [Firebase setup](#firebase-setup) to create a project and get auth + Firestore working.
@@ -41,6 +42,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/15QnuoLKENugMr5sZ_laPkA
    - `VITE_FIREBASE_STORAGE_BUCKET`
    - `VITE_FIREBASE_MESSAGING_SENDER_ID`
    - `VITE_FIREBASE_APP_ID`
+   - `VITE_FIREBASE_MEASUREMENT_ID` (optional, for Analytics)
 4. **Authentication** – In Firebase Console → Build → Authentication → Get started → Sign-in method → Enable **Email/Password**.
 5. **Firestore** – In Build → Firestore Database → Create database → Start in **test mode** (or production with rules below).  
    The app creates the `clients` collection automatically. If the first query asks for an index, click the link in the browser console to create it (Firestore will open the correct index page).

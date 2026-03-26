@@ -5,6 +5,37 @@ export interface Client {
   created_at: string;
 }
 
+export interface Employee {
+  id: string;
+  restaurant_id: string; // links to the restaurant owner
+  name: string;
+  position?: string;
+  monthly_salary?: number;
+  social_contributions?: number; // employer contributions
+  created_at: string;
+}
+
+export interface Income {
+  id: string;
+  restaurant_id: string;
+  date: string;
+  type: 'SALES' | 'RESERVATION';
+  amount: number;
+  description?: string;
+  created_at: string;
+}
+
+export interface Expense {
+  id: string;
+  restaurant_id: string;
+  date: string;
+  category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER';
+  amount: number;
+  description: string;
+  employee_id?: string; // if category is PAYROLL
+  created_at: string;
+}
+
 export enum DocumentType {
   BANK_STATEMENT = 'Bank Statement',
   PAY_SLIP = 'Pay Slip',

@@ -1,0 +1,58 @@
+query ListAllTransactions @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users.") {
+  transactions {
+    id
+    amount
+    type
+    transactionDate
+    description
+    createdAt
+    user {
+      id
+      username
+      fullName
+    }
+    category {
+      id
+      name
+      type
+    }
+  }
+}
+
+mutation CreateNewTransaction($amount: Float!, $type: String!, $transactionDate: Date!, $description: String, $categoryId: UUID) @auth(level: USER) {
+  transaction_insert(data: {
+    amount: $amount,
+    type: $type,
+    transactionDate: $transactionDate,
+    description: $description,
+    userId_expr: "auth.uid",
+    categoryId: $categoryId
+  }) {
+    id
+  }
+}
+
+query GetBudgetByCategoryAndMonth($month: Int!, $year: Int!, $categoryName: String!) @auth(level: USER) {
+  budgets(where: {
+    month: { eq: $month },
+    year: { eq: $year },
+    category: { name: { eq: $categoryName } }
+  }) {
+    id
+    budgetedAmount
+    notes
+    category {
+      name
+      type
+    }
+  }
+}
+
+mutation UpdateTransactionDescription($id: UUID!, $description: String!) @auth(level: USER) {
+  transaction_update(
+    key: { id: $id },
+    data: { description: $description }
+  ) {
+    id
+  }
+}

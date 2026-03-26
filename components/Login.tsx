@@ -3,7 +3,7 @@ import { ShieldCheck, Mail, Lock, LogIn, UserPlus, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export function Login() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithGoogle } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -11,6 +11,7 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +29,18 @@ export function Login() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setError(null);
+    setMessage(null);
+    setGoogleLoading(true);
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) setError(error.message);
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -55,6 +68,17 @@ export function Login() {
               {isSignUp ? 'Create account' : 'Sign in'}
             </h1>
           </div>
+
+          {!isSignUp && (
+            <button
+              type="button"
+              onClick={handleGoogle}
+              disabled={googleLoading || loading}
+              className="w-full flex items-center justify-center gap-2 py-2.5 border border-ypsom-alice bg-white text-ypsom-deep font-black text-[10px] uppercase tracking-widest rounded-sm hover:bg-gray-50 disabled:opacity-60 transition-colors mb-4"
+            >
+              {googleLoading ? '…' : 'Continuer avec Google'}
+            </button>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
