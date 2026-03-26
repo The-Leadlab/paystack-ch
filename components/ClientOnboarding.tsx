@@ -7,15 +7,24 @@ export function ClientOnboarding() {
   const { clients, currentClient, setCurrentClient, addClient, loading, error } = useClient();
   const [newName, setNewName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = newName.trim();
     if (!name) return;
     setSubmitting(true);
+    setLocalError(null);
     try {
-      await addClient(name);
-      setNewName('');
+      const result = await addClient(name);
+      if (!result) {
+        setLocalError(error || 'Failed to add client. Check Firestore rules or console for details.');
+      } else {
+        setNewName('');
+        setCurrentClient(result);
+      }
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
     }
@@ -60,8 +69,8 @@ export function ClientOnboarding() {
             </h1>
           </div>
 
-          {error && (
-            <p className="text-xs text-red-600 font-medium mb-4">{error}</p>
+          {(error || localError) && (
+            <p className="text-xs text-red-600 font-medium mb-4">{localError || error}</p>
           )}
 
           <form onSubmit={handleAddClient} className="mb-6">
