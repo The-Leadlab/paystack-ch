@@ -43,10 +43,9 @@ export function RestaurantDashboard() {
         }
       }
     } else if (docType === 'Pay Slip') {
-      // Add as payroll expense
-      if (data.paySlip?.netPay) {
-        await addExpense(date, 'PAYROLL', data.paySlip.netPay, `Payslip: ${data.paySlip.employee?.name || fileName}`);
-      }
+      // Payslips are tracked through employee records, not as separate expenses
+      // This prevents double-counting in the balance calculation
+      console.log('Payslip processed:', data.paySlip?.employee?.name);
     } else if (amount > 0) {
       // For invoices/receipts, categorize as expense
       const category = data.expenseCategory?.toLowerCase().includes('supplier') ? 'SUPPLIERS' : 
