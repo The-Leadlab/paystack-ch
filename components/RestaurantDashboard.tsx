@@ -6,8 +6,10 @@ import { useSession } from '../context/SessionContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useDocuments } from '../context/DocumentContext';
+import { usePOS } from '../context/POSContext';
 import { DocumentProcessor } from './DocumentProcessor';
-import type { FinancialData, ProcessedDocument } from '../types';
+import { POSManager } from './POSManager';
+import type { FinancialData, ProcessedDocument, POSReading } from '../types';
 
 type Tab = 'dashboard' | 'revenue' | 'reports' | 'documents';
 
@@ -490,7 +492,7 @@ export function RestaurantDashboard() {
               t={t}
             />
           )}
-          {activeTab === 'revenue' && <RevenuePlaceholder />}
+          {activeTab === 'revenue' && <POSManager />}
           {activeTab === 'reports' && <ReportsPlaceholder />}
           {activeTab === 'documents' && <DocumentsTab />}
         </div>
@@ -685,96 +687,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
   );
 }
 
-// Revenue Tab Component - Full Implementation
-function RevenuePlaceholder() {
-  const [selectedMonth, setSelectedMonth] = React.useState('');
-  
-  return (
-    <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <div className="bg-cdlp-black border border-cdlp-border p-3 md:p-4 rounded-lg shadow-card">
-          <div className="mb-2">
-            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">Gross Revenue</span>
-          </div>
-          <p className="text-lg md:text-2xl font-black text-emerald-500">0.00</p>
-          <p className="text-xs text-cdlp-muted">CHF</p>
-        </div>
-
-        <div className="bg-cdlp-black border border-cdlp-border p-3 md:p-4 rounded-lg shadow-card">
-          <div className="mb-2">
-            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">Net Revenue</span>
-          </div>
-          <p className="text-lg md:text-2xl font-black text-emerald-400">0.00</p>
-          <p className="text-xs text-cdlp-muted">CHF</p>
-        </div>
-
-        <div className="bg-cdlp-black border border-cdlp-border p-3 md:p-4 rounded-lg shadow-card">
-          <div className="mb-2">
-            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">Total Tax</span>
-          </div>
-          <p className="text-lg md:text-2xl font-black text-cdlp-gold">0.00</p>
-          <p className="text-xs text-cdlp-muted">CHF</p>
-        </div>
-
-        <div className="bg-cdlp-black border border-cdlp-border p-3 md:p-4 rounded-lg shadow-card">
-          <div className="mb-2">
-            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">Tips</span>
-          </div>
-          <p className="text-lg md:text-2xl font-black text-cdlp-gold-light">0.00</p>
-          <p className="text-xs text-cdlp-muted">CHF</p>
-        </div>
-      </div>
-
-      {/* Payment Methods */}
-      <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-4 md:p-6">
-        <h2 className="text-sm md:text-base font-black text-cdlp-gold uppercase mb-4">Payment Methods</h2>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <p className="text-xs text-cdlp-muted uppercase mb-1">Cash</p>
-            <p className="text-lg font-black text-white">0.00 CHF</p>
-          </div>
-          <div>
-            <p className="text-xs text-cdlp-muted uppercase mb-1">Card</p>
-            <p className="text-lg font-black text-white">0.00 CHF</p>
-          </div>
-          <div>
-            <p className="text-xs text-cdlp-muted uppercase mb-1">Other</p>
-            <p className="text-lg font-black text-white">0.00 CHF</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter by Month */}
-      <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-4">
-        <div className="flex items-center gap-3">
-          <label className="text-xs font-bold uppercase text-cdlp-muted">Filter by Month</label>
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
-          >
-            <option value="">---------- All ----------</option>
-          </select>
-        </div>
-      </div>
-
-      {/* POS Reports List */}
-      <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-4 md:p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Receipt className="w-5 h-5 text-cdlp-gold" />
-          <h2 className="text-sm md:text-base font-black text-cdlp-gold uppercase">POS Revenue Reports (0)</h2>
-        </div>
-        <div className="text-center py-12">
-          <Receipt className="w-16 h-16 text-cdlp-gold/30 mx-auto mb-4" />
-          <p className="text-cdlp-muted text-sm">No POS revenue reports found</p>
-          <p className="text-cdlp-muted/70 text-xs mt-2">Upload Z-readings to track daily revenue</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
+// Revenue Tab Component - Full POS/Z-Reading Management
 // Reports Tab Component - Full Implementation
 function ReportsPlaceholder() {
   const { income, expenses } = useFinance();

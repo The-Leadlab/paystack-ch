@@ -48,6 +48,55 @@ export interface Expense {
   created_at: string;
 }
 
+// POS/Z-Reading Types
+export interface POSReading {
+  id: string;
+  restaurant_id: string;
+  session_id: string;
+  date: string;
+  
+  // Sales breakdown
+  gross_sales: number;
+  net_sales: number;
+  vat_amount: number;
+  
+  // Payment methods
+  cash: number;
+  card: number;
+  other_payment: number;
+  
+  // Additional details
+  tips: number;
+  discounts: number;
+  refunds: number;
+  
+  // Metadata
+  notes?: string;
+  image_url?: string; // If uploaded from photo
+  created_at: string;
+  updated_at: string;
+}
+
+export interface POSReading {
+  id: string;
+  restaurant_id: string;
+  session_id: string;
+  date: string;
+  // Revenue breakdown
+  gross_revenue: number;
+  vat_amount: number;
+  net_revenue: number;
+  tips: number;
+  // Payment methods
+  cash: number;
+  card: number;
+  other_payment: number;
+  // Additional info
+  notes?: string;
+  photo_url?: string;
+  created_at: string;
+}
+
 export enum DocumentType {
   BANK_STATEMENT = 'Bank Statement',
   PAY_SLIP = 'Pay Slip',

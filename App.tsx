@@ -4,6 +4,7 @@ import { SessionProvider } from './context/SessionContext';
 import { EmployeeProvider } from './context/EmployeeContext';
 import { FinanceProvider } from './context/FinanceContext';
 import { DocumentProvider } from './context/DocumentContext';
+import { POSProvider } from './context/POSContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { Login } from './components/Login';
 import { RestaurantDashboard } from './components/RestaurantDashboard';
@@ -39,9 +40,11 @@ function AppContent() {
       <SessionProvider>
         <EmployeeProvider>
           <FinanceProvider>
-            <DocumentProvider>
-              <RestaurantDashboard />
-            </DocumentProvider>
+            <POSProvider>
+              <DocumentProvider>
+                <RestaurantDashboard />
+              </DocumentProvider>
+            </POSProvider>
           </FinanceProvider>
         </EmployeeProvider>
       </SessionProvider>
