@@ -777,9 +777,63 @@ function RevenuePlaceholder() {
 
 // Reports Tab Component - Full Implementation
 function ReportsPlaceholder() {
+  const { income, expenses } = useFinance();
+  const { currentSession, isAllSessionsView } = useSession();
   const [dateFrom, setDateFrom] = React.useState('');
   const [dateTo, setDateTo] = React.useState('');
   const [filterActive, setFilterActive] = React.useState(false);
+
+  // Filter data by current session
+  const filteredIncome = isAllSessionsView ? income : income.filter(i => i.session_id === currentSession?.id);
+  const filteredExpenses = isAllSessionsView ? expenses : expenses.filter(e => e.session_id === currentSession?.id);
+
+  // Apply date filter
+  const dateFilteredIncome = dateFrom && dateTo 
+    ? filteredIncome.filter(i => i.date >= dateFrom && i.date <= dateTo)
+    : filteredIncome;
+  
+  const dateFilteredExpenses = dateFrom && dateTo
+    ? filteredExpenses.filter(e => e.date >= dateFrom && e.date <= dateTo)
+    : filteredExpenses;
+
+  // Group by month
+  const monthlyData = React.useMemo(() => {
+    const months: Record<string, { income: number; expenses: number; balance: number }> = {};
+    
+    dateFilteredIncome.forEach(item => {
+      const month = item.date.substring(0, 7); // YYYY-MM
+      if (!months[month]) months[month] = { income: 0, expenses: 0, balance: 0 };
+      months[month].income += item.amount;
+    });
+    
+    dateFilteredExpenses.forEach(item => {
+      const month = item.date.substring(0, 7);
+      if (!months[month]) months[month] = { income: 0, expenses: 0, balance: 0 };
+      months[month].expenses += item.amount;
+    });
+    
+    Object.keys(months).forEach(month => {
+      months[month].balance = months[month].income - months[month].expenses;
+    });
+    
+    return Object.entries(months).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [dateFilteredIncome, dateFilteredExpenses]);
+
+  // Group expenses by supplier
+  const supplierData = React.useMemo(() => {
+    const suppliers: Record<string, number> = {};
+    
+    dateFilteredExpenses
+      .filter(e => e.category === 'SUPPLIERS')
+      .forEach(item => {
+        const supplier = item.description || 'Unknown';
+        suppliers[supplier] = (suppliers[supplier] || 0) + item.amount;
+      });
+    
+    return Object.entries(suppliers)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10); // Top 10 suppliers
+  }, [dateFilteredExpenses]);
 
   const setQuickFilter = (type: string) => {
     const today = new Date();
@@ -870,22 +924,67 @@ function ReportsPlaceholder() {
           <BarChart3 className="w-5 h-5 text-cdlp-gold" />
           <h2 className="text-sm md:text-base font-black text-cdlp-gold uppercase">Monthly Revenue Analysis</h2>
         </div>
-        <div className="text-center py-8">
-          <p className="text-cdlp-muted text-sm">No data available</p>
-          <p className="text-cdlp-muted/70 text-xs mt-2">Add income and expenses to see monthly breakdown</p>
-        </div>
+        {monthlyData.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-cdlp-muted text-sm">No data available</p>
+            <p className="text-cdlp-muted/70 text-xs mt-2">Add income and expenses to see monthly breakdown</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {monthlyData.map(([month, data]) => {
+              const monthName = new Date(month + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+              return (
+                <div key={month} className="bg-cdlp-card border border-cdlp-border rounded p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-bold text-cdlp-gold uppercase">{monthName}</h3>
+                    <span className={`text-lg font-black ${data.balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                      {data.balance.toFixed(2)} CHF
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 text-xs">
+                    <div>
+                      <p className="text-cdlp-muted uppercase mb-1">Income</p>
+                      <p className="font-bold text-emerald-500">{data.income.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-cdlp-muted uppercase mb-1">Expenses</p>
+                      <p className="font-bold text-red-500">{data.expenses.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-cdlp-muted uppercase mb-1">Balance</p>
+                      <p className={`font-bold ${data.balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {data.balance.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Supplier Analysis */}
       <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-4 md:p-6">
         <div className="flex items-center gap-2 mb-4">
           <Users className="w-5 h-5 text-cdlp-gold" />
-          <h2 className="text-sm md:text-base font-black text-cdlp-gold uppercase">Supplier Analysis</h2>
+          <h2 className="text-sm md:text-base font-black text-cdlp-gold uppercase">Top Suppliers</h2>
         </div>
-        <div className="text-center py-8">
-          <p className="text-cdlp-muted text-sm">No supplier expenses recorded</p>
-          <p className="text-cdlp-muted/70 text-xs mt-2">Upload supplier invoices to see spending analysis</p>
-        </div>
+        {supplierData.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-cdlp-muted text-sm">No supplier expenses recorded</p>
+            <p className="text-cdlp-muted/70 text-xs mt-2">Upload supplier invoices to see spending analysis</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {supplierData.map(([supplier, amount]) => (
+              <div key={supplier} className="flex justify-between items-center p-3 bg-cdlp-card border border-cdlp-border rounded">
+                <span className="text-sm font-bold text-white truncate flex-1">{supplier}</span>
+                <span className="text-sm font-black text-cdlp-gold ml-4">{amount.toFixed(2)} CHF</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -915,7 +1014,8 @@ function DocumentsTab() {
         const employeeName = doc.data.paySlip?.employee?.name || 'Unknown Employee';
         if (!employees[employeeName]) employees[employeeName] = [];
         employees[employeeName].push(doc);
-      } else if (docType === 'Ticket/Receipt' && doc.data.issuer?.toLowerCase().includes('pos')) {
+      } else if (docType === 'Ticket/Receipt' || docType === 'Z2 Multi-Ticket Sheet' || docType === 'Bank Deposit') {
+        // POS reports include: Tickets/Receipts, Z2 reports, and Bank Deposits
         posReports.push(doc);
       } else {
         const supplierName = doc.data.issuer || 'Unknown Supplier';
