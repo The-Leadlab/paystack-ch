@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Receipt, Plus, Edit2, Trash2, Upload, Save, X, Camera, DollarSign, CreditCard, Banknote, TrendingUp, TrendingDown, Percent } from 'lucide-react';
+import { Receipt, Plus, Edit2, Trash2, Upload, Save, X, Camera, DollarSign, CreditCard, Banknote, TrendingUp, TrendingDown, Percent, Zap } from 'lucide-react';
 import { usePOS } from '../context/POSContext';
+import { useFinance } from '../context/FinanceContext';
+import { useSession } from '../context/SessionContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { POSReading } from '../types';
 import { analyzeFinancialDocument } from '../services/geminiService';
@@ -181,7 +183,9 @@ function POSModal({ reading, onClose, onSave }: {
   onClose: () => void;
   onSave: (data: Omit<POSReading, 'id' | 'restaurant_id' | 'session_id' | 'created_at' | 'updated_at'>) => Promise<void>;
 }) {
-  const [mode, setMode] = useState<'manual' | 'upload'>('manual');
+  const { income } = useFinance();
+  const { currentSession } = useSession();
+  const [mode, setMode] = useState<'manual' | 'upload' | 'auto'>('auto');
   const [uploading, setUploading] = useState(false);
   
   const [date, setDate] = useState(reading?.date || new Date().toISOString().split('T')[0]);
@@ -195,6 +199,37 @@ function POSModal({ reading, onClose, onSave }: {
   const [discounts, setDiscounts] = useState(reading?.discounts.toString() || '0');
   const [refunds, setRefunds] = useState(reading?.refunds.toString() || '0');
   const [notes, setNotes] = useState(reading?.notes || '');
+
+  // Auto-generate from income data
+  const handleAutoGenerate = () => {
+    // Filter income for selected date and current session
+    const dayIncome = income.filter(i => 
+      i.date === date && 
+      i.session_id === currentSession?.id
+    );
+    
+    const totalIncome = dayIncome.reduce((sum, i) => sum + i.amount, 0);
+    
+    // Assume 7.7% VAT (Swiss standard rate)
+    const vatRate = 0.077;
+    const gross = totalIncome;
+    const vat = gross * (vatRate / (1 + vatRate));
+    const net = gross - vat;
+    
+    // Estimate payment split (60% card, 40% cash - user can adjust)
+    const estimatedCard = gross * 0.6;
+    const estimatedCash = gross * 0.4;
+    
+    setGrossSales(gross.toFixed(2));
+    setVatAmount(vat.toFixed(2));
+    setNetSales(net.toFixed(2));
+    setCard(estimatedCard.toFixed(2));
+    setCash(estimatedCash.toFixed(2));
+    setNotes(`Auto-generated from ${dayIncome.length} income entries`);
+    
+    // Switch to manual mode for editing
+    setMode('manual');
+  };
 
   const handleFileUpload = async (file: File) => {
     setUploading(true);
@@ -260,6 +295,16 @@ function POSModal({ reading, onClose, onSave }: {
         {!reading && (
           <div className="flex gap-2 mb-6">
             <button
+              onClick={() => setMode('auto')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase rounded ${
+                mode === 'auto'
+                  ? 'bg-cdlp-gold text-cdlp-black'
+                  : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
+              }`}
+            >
+              <Zap className="w-4 h-4" /> Auto-Generate
+            </button>
+            <button
               onClick={() => setMode('manual')}
               className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase rounded ${
                 mode === 'manual'
@@ -279,6 +324,48 @@ function POSModal({ reading, onClose, onSave }: {
             >
               <Camera className="w-4 h-4" /> Upload Photo
             </button>
+          </div>
+        )}
+
+        {/* Auto-Generate Mode */}
+        {mode === 'auto' && !reading && (
+          <div className="mb-6">
+            <div className="bg-cdlp-card border border-cdlp-border rounded-lg p-6">
+              <div className="text-center mb-4">
+                <Zap className="w-12 h-12 text-cdlp-gold mx-auto mb-3" />
+                <h4 className="text-sm font-bold text-cdlp-gold uppercase mb-2">Auto-Generate Z-Reading</h4>
+                <p className="text-xs text-cdlp-muted mb-4">
+                  Automatically create a Z-reading from today's income entries. You can edit all fields after generation.
+                </p>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">Select Date</label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-cdlp-black border border-cdlp-border rounded text-sm text-white"
+                />
+              </div>
+
+              <button
+                onClick={handleAutoGenerate}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-cdlp-gold text-cdlp-black text-sm font-bold uppercase rounded hover:bg-cdlp-gold-light"
+              >
+                <Zap className="w-5 h-5" /> Generate from Income Data
+              </button>
+
+              <div className="mt-4 p-3 bg-blue-600/10 border border-blue-600/20 rounded text-xs text-blue-400">
+                <p className="font-bold mb-1">How it works:</p>
+                <ul className="list-disc list-inside space-y-1 text-[10px]">
+                  <li>Sums all income entries for the selected date</li>
+                  <li>Calculates VAT (7.7% Swiss standard rate)</li>
+                  <li>Estimates payment split (60% card, 40% cash)</li>
+                  <li>You can edit all values after generation</li>
+                </ul>
+              </div>
+            </div>
           </div>
         )}
 
