@@ -1,3 +1,12 @@
+export interface Session {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  created_at: string;
+  is_active: boolean;
+  is_pinned: boolean;
+}
+
 export interface Client {
   id: string;
   user_id: string;
@@ -7,17 +16,19 @@ export interface Client {
 
 export interface Employee {
   id: string;
-  restaurant_id: string; // links to the restaurant owner
+  restaurant_id: string;
+  session_id?: string; // optional - global if not set
   name: string;
   position?: string;
   monthly_salary?: number;
-  social_contributions?: number; // employer contributions
+  social_contributions?: number;
   created_at: string;
 }
 
 export interface Income {
   id: string;
   restaurant_id: string;
+  session_id: string;
   date: string;
   type: 'SALES' | 'RESERVATION';
   amount: number;
@@ -28,11 +39,12 @@ export interface Income {
 export interface Expense {
   id: string;
   restaurant_id: string;
+  session_id: string;
   date: string;
   category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER';
   amount: number;
   description: string;
-  employee_id?: string; // if category is PAYROLL
+  employee_id?: string;
   created_at: string;
 }
 
@@ -113,6 +125,10 @@ export interface ProcessedDocument {
   data?: FinancialData;
   error?: string;
   fileRaw?: File;
+  restaurantId?: string;
+  session_id?: string;
+  created_at?: string;
+  fileHash?: string; // SHA-256 hash for duplicate detection
 }
 
 export interface BankStatementAnalysis {

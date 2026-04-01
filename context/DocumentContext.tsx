@@ -1,13 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { ProcessedDocument } from '../types';
 import { useAuth } from './AuthContext';
-import { useClient } from './ClientContext';
-import {
-  saveDocument,
-  getDocumentsByClient,
-  updateDocument,
-  deleteDocument as deleteDocumentFromDb,
-} from '../services/documentService';
+import { useSession } from './SessionContext';
+import { db } from '../lib/firebase';
+import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, orderBy } from 'firebase/firestore';
 
 type DocumentContextValue = {
   documents: ProcessedDocument[];
@@ -23,16 +19,15 @@ const DocumentContext = createContext<DocumentContextValue | null>(null);
 
 export function DocumentProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { currentClient } = useClient();
+  const { currentSession, isAllSessionsView } = useSession();
   const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchDocuments = useCallback(async () => {
     const uid = user?.uid;
-    const clientId = currentClient?.id;
     
-    if (!uid || !clientId) {
+    if (!uid || !db) {
       setDocuments([]);
       setLoading(false);
       return;
@@ -42,15 +37,36 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     
     try {
-      const docs = await getDocumentsByClient(uid, clientId);
+      const docsRef = collection(db, 'documents');
+      let q;
+      
+      if (isAllSessionsView) {
+        // Show all documents for this restaurant
+        q = query(docsRef, where('restaurantId', '==', uid), orderBy('created_at', 'desc'));
+      } else if (currentSession) {
+        // Show only documents for current session
+        q = query(docsRef, where('restaurantId', '==', uid), where('session_id', '==', currentSession.id), orderBy('created_at', 'desc'));
+      } else {
+        setDocuments([]);
+        setLoading(false);
+        return;
+      }
+      
+      const snapshot = await getDocs(q);
+      const docs: ProcessedDocument[] = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as ProcessedDocument));
+      
       setDocuments(docs);
     } catch (err) {
+      console.error('Error fetching documents:', err);
       setError(err instanceof Error ? err.message : String(err));
       setDocuments([]);
     } finally {
       setLoading(false);
     }
-  }, [user?.uid, currentClient?.id]);
+  }, [user?.uid, currentSession?.id, isAllSessionsView]);
 
   useEffect(() => {
     fetchDocuments();
@@ -59,32 +75,44 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
   const addDocument = useCallback(
     async (document: ProcessedDocument) => {
       const uid = user?.uid;
-      const clientId = currentClient?.id;
+      const sessionId = currentSession?.id;
       
-      if (!uid || !clientId) {
-        throw new Error('User or client not found');
+      if (!uid || !sessionId || !db) {
+        throw new Error('User or session not found');
       }
 
       try {
-        const docId = await saveDocument(uid, clientId, document);
-        const newDoc = { ...document, id: docId, clientId, userId: uid };
+        const docData = {
+          ...document,
+          restaurantId: uid,
+          session_id: sessionId,
+          created_at: new Date().toISOString(),
+        };
+        
+        const docRef = await addDoc(collection(db, 'documents'), docData);
+        const newDoc = { ...docData, id: docRef.id };
         setDocuments((prev) => [newDoc, ...prev]);
       } catch (err) {
+        console.error('Error adding document:', err);
         setError(err instanceof Error ? err.message : String(err));
         throw err;
       }
     },
-    [user?.uid, currentClient?.id]
+    [user?.uid, currentSession?.id]
   );
 
   const updateDocumentData = useCallback(
     async (documentId: string, updates: Partial<ProcessedDocument>) => {
+      if (!db) return;
+      
       try {
-        await updateDocument(documentId, updates);
+        const docRef = doc(db, 'documents', documentId);
+        await updateDoc(docRef, updates as any);
         setDocuments((prev) =>
-          prev.map((doc) => (doc.id === documentId ? { ...doc, ...updates } : doc))
+          prev.map((d) => (d.id === documentId ? { ...d, ...updates } : d))
         );
       } catch (err) {
+        console.error('Error updating document:', err);
         setError(err instanceof Error ? err.message : String(err));
         throw err;
       }
@@ -93,10 +121,14 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
   );
 
   const deleteDocument = useCallback(async (documentId: string) => {
+    if (!db) return;
+    
     try {
-      await deleteDocumentFromDb(documentId);
-      setDocuments((prev) => prev.filter((doc) => doc.id !== documentId));
+      const docRef = doc(db, 'documents', documentId);
+      await deleteDoc(docRef);
+      setDocuments((prev) => prev.filter((d) => d.id !== documentId));
     } catch (err) {
+      console.error('Error deleting document:', err);
       setError(err instanceof Error ? err.message : String(err));
       throw err;
     }

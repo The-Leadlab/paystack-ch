@@ -1,51 +1,35 @@
-
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { 
   Upload, CheckCircle, Loader2, Trash2, 
-  ChevronDown, ChevronRight, Building2, Wallet, 
-  Layers, AlertTriangle, ShieldCheck, Zap, 
-  FileText, Edit3, RefreshCcw, UserCheck, 
-  Cpu, Info, HeartHandshake, Coffee, 
-  Monitor, Calculator, CreditCard, HelpCircle, 
-  HardDrive, Scale, Landmark, ReceiptSwissFranc, 
-  Hash, ListOrdered, Clock, Tag, Ban, 
-  Activity, ExternalLink, ShieldAlert,
-  Shield, FileSpreadsheet, Image as ImageIcon,
-  Eye, FileSearch, Terminal, TerminalSquare, SearchCode,
-  FileBox, Bookmark, Package, FileUp, Sparkles,
-  Scissors, Plane, ShoppingBag, HeartPulse, Banknote,
-  Wrench, ShoppingCart, Code2, PlusCircle, Check,
-  ArrowUpRight, ArrowDownRight, Scale as ScaleIcon,
-  XCircle
+  ChevronDown, ChevronRight, AlertTriangle, 
+  ShieldCheck, Zap, Ban, FileSpreadsheet, XCircle,
+  Edit3, RefreshCcw, Check, ListOrdered, Terminal,
+  SearchCode, Cpu, Landmark, TerminalSquare, ExternalLink,
+  ArrowUpRight, ArrowDownRight, Scale as ScaleIcon
 } from 'lucide-react';
-import { analyzeFinancialDocument, getLiveExchangeRate } from '../services/geminiService';
+import { analyzeFinancialDocument } from '../services/geminiService';
 import { exportToExcel } from '../services/excelService';
-import { ProcessedDocument, DocumentType, FinancialData, BankTransaction, type PaySlipAnalysis } from '../types';
+import { ProcessedDocument, BankTransaction, FinancialData, DocumentType, PaySlipAnalysis } from '../types';
 
-export const TAX_CATEGORIES = [
-  { id: 'Salary', label: 'Salary / Wages', icon: Wallet, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  { id: 'Rent', label: 'Rent / Lease', icon: Building2, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { id: 'Beauty', label: 'Beauty / Personal Care', icon: Scissors, color: 'text-pink-600', bg: 'bg-pink-50' },
-  { id: 'Travel', label: 'Travel / Transport', icon: Plane, color: 'text-blue-600', bg: 'bg-blue-50' },
-  { id: 'Shopping', label: 'Shopping / Retail', icon: ShoppingBag, color: 'text-purple-600', bg: 'bg-purple-50' },
-  { id: 'Health', label: 'Health / Medical', icon: HeartPulse, color: 'text-red-600', bg: 'bg-red-50' },
-  { id: 'Cash Deposit', label: 'Cash Deposit', icon: Banknote, color: 'text-cyan-600', bg: 'bg-cyan-50' },
-  { id: 'Utility', label: 'Utilities / Bills', icon: Wrench, color: 'text-orange-600', bg: 'bg-orange-50' },
-  { id: 'Groceries', label: 'Groceries / Food', icon: ShoppingCart, color: 'text-slate-600', bg: 'bg-slate-50' },
-  { id: 'Software', label: 'Software / IT', icon: Code2, color: 'text-indigo-700', bg: 'bg-indigo-50' },
-  { id: 'Bank', label: 'Bank Fees / Finance', icon: Landmark, color: 'text-blue-700', bg: 'bg-blue-50' },
-  { id: 'Restaurant', label: 'Restaurant / Dining', icon: Coffee, color: 'text-amber-600', bg: 'bg-amber-50' },
-  { id: 'Entertainment', label: 'Entertainment', icon: Monitor, color: 'text-purple-700', bg: 'bg-purple-50' },
-  { id: 'Insurance', label: 'Insurance', icon: Shield, color: 'text-teal-600', bg: 'bg-teal-50' },
-  { id: 'Education', label: 'Education / Training', icon: Bookmark, color: 'text-blue-800', bg: 'bg-blue-50' },
-  { id: 'Office Supplies', label: 'Office Supplies', icon: Package, color: 'text-gray-600', bg: 'bg-gray-50' },
-  { id: 'Professional Services', label: 'Professional Services', icon: Wrench, color: 'text-indigo-800', bg: 'bg-indigo-50' },
+// Restaurant-specific categories adapted from Ypsom
+const RESTAURANT_CATEGORIES = [
+  { id: 'Salary', label: 'Salary / Wages' },
+  { id: 'Rent', label: 'Rent / Lease' },
+  { id: 'Groceries', label: 'Groceries / Food Supplies' },
+  { id: 'Restaurant', label: 'Restaurant Supplies' },
+  { id: 'Utility', label: 'Utilities / Bills' },
+  { id: 'Insurance', label: 'Insurance' },
+  { id: 'Bank', label: 'Bank Fees' },
+  { id: 'Professional Services', label: 'Professional Services' },
+  { id: 'Office Supplies', label: 'Office Supplies' },
+  { id: 'Other', label: 'Other' },
 ];
 
+// Neural Log Component (from Ypsom)
 const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
   const [docUrl, setDocUrl] = useState<string | null>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (doc.fileRaw) {
       const url = URL.createObjectURL(doc.fileRaw);
       setDocUrl(url);
@@ -57,7 +41,7 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
     { label: 'Neural Buffer Ingestion', icon: Terminal, delay: '0s' },
     { label: 'Multi-Page Pattern Scan', icon: SearchCode, delay: '0.2s' },
     { label: 'OCR Extraction Logic', icon: Cpu, delay: '0.4s' },
-    { label: 'Mappage semantique', icon: Landmark, delay: '0.6s' },
+    { label: 'Semantic Fiduciary Mapping', icon: Landmark, delay: '0.6s' },
     { label: 'Integrity Rule Validation', icon: ShieldCheck, delay: '0.8s' },
   ];
 
@@ -102,110 +86,8 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
   );
 };
 
-const EditableAuditLedger: React.FC<{ 
-  items: BankTransaction[], 
-  currency: string,
-  onUpdate: (newItems: BankTransaction[]) => void
-}> = ({ items, currency, onUpdate }) => {
-  const handleItemChange = (idx: number, field: keyof BankTransaction, value: any) => {
-    const next = [...items];
-    next[idx] = { ...next[idx], [field]: value, isHumanVerified: false };
-    onUpdate(next);
-  };
-
-  const toggleVerify = (idx: number) => {
-    const next = [...items];
-    next[idx] = { ...next[idx], isHumanVerified: !next[idx].isHumanVerified };
-    onUpdate(next);
-  };
-
-  return (
-    <div className="mt-8 space-y-4 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between border-b border-ypsom-alice pb-3">
-         <div className="flex items-center gap-2">
-            <ListOrdered className="w-4 h-4 text-ypsom-deep" />
-            <h5 className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-ypsom-deep">Line Item Detail Ledger (Bank Context)</h5>
-         </div>
-         <span className="text-[8px] sm:text-[9px] font-bold text-ypsom-slate opacity-40 uppercase tracking-widest">Records: {items.length}</span>
-      </div>
-      
-      <div className="border border-ypsom-alice rounded-sm overflow-hidden bg-white shadow-sm overflow-x-auto">
-        <table className="min-w-full text-xs">
-          <thead className="bg-gray-50 border-b border-ypsom-alice">
-            <tr className="font-bold uppercase text-[8px] tracking-widest text-ypsom-slate">
-              <th className="px-2 py-3 text-center w-10">Verify</th>
-              <th className="px-2 py-3 text-left w-24">Date</th>
-              <th className="px-2 py-3 text-left min-w-[150px]">Audit Description</th>
-              <th className="px-2 py-3 text-right w-28">Value ({currency})</th>
-              <th className="px-2 py-3 text-center w-20">Nature</th>
-              <th className="px-2 py-3 text-left min-w-[100px]">Category</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-ypsom-alice">
-            {items.map((item, idx) => (
-              <tr key={idx} className={`hover:bg-ypsom-alice/5 transition-colors ${item.isHumanVerified ? 'bg-emerald-50/20' : ''}`}>
-                <td className="px-2 py-3 text-center">
-                  <button 
-                    onClick={() => toggleVerify(idx)}
-                    className={`w-7 h-7 rounded-sm flex items-center justify-center transition-all ${item.isHumanVerified ? 'bg-emerald-600 text-white shadow-md' : 'bg-gray-100 text-gray-300 hover:text-emerald-600 border border-gray-200'}`}
-                  >
-                    <Check className={`w-3.5 h-3.5 ${item.isHumanVerified ? 'scale-110' : 'scale-90'}`} />
-                  </button>
-                </td>
-                <td className="px-2 py-3">
-                  <input 
-                    type="date"
-                    value={item.date}
-                    onChange={e => handleItemChange(idx, 'date', e.target.value)}
-                    className="w-full bg-transparent font-mono text-[10px] outline-none border-b border-transparent focus:border-ypsom-deep"
-                  />
-                </td>
-                <td className="px-2 py-3">
-                  <input 
-                    value={item.description}
-                    onChange={e => handleItemChange(idx, 'description', e.target.value)}
-                    className="w-full bg-transparent font-bold text-ypsom-deep text-[10px] outline-none border-b border-transparent focus:border-ypsom-deep"
-                  />
-                </td>
-                <td className="px-2 py-3 text-right">
-                  <input 
-                    type="number"
-                    step="0.01"
-                    value={item.amount}
-                    onChange={e => handleItemChange(idx, 'amount', parseFloat(e.target.value) || 0)}
-                    className={`w-full bg-transparent text-right font-mono font-black text-[10px] outline-none border-b border-transparent focus:border-ypsom-deep ${item.type === 'INCOME' ? 'text-green-700' : 'text-red-700'}`}
-                  />
-                </td>
-                <td className="px-2 py-3 text-center">
-                  <select 
-                    value={item.type}
-                    onChange={e => handleItemChange(idx, 'type', e.target.value)}
-                    className={`text-[7px] font-black uppercase rounded-full px-2 py-0.5 outline-none cursor-pointer ${item.type === 'INCOME' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
-                  >
-                    <option value="INCOME">INC</option>
-                    <option value="EXPENSE">EXP</option>
-                  </select>
-                </td>
-                <td className="px-2 py-3">
-                  <select 
-                    value={item.category ?? ''} 
-                    onChange={e => handleItemChange(idx, 'category', e.target.value)}
-                    className="w-full bg-transparent font-bold text-[9px] text-ypsom-deep outline-none border-b border-transparent focus:border-ypsom-deep"
-                  >
-                    <option value="">--</option>
-                    {TAX_CATEGORIES.map(cat => <option key={cat.id} value={cat.id}>{cat.label}</option>)}
-                  </select>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
-
-const EditablePaySlipLedger: React.FC<{
+// Editable Line Items Table (Bank Statements, Invoices)
+const EditableLineItemsTable: React.FC<{
   items: BankTransaction[];
   currency: string;
   onUpdate: (newItems: BankTransaction[]) => void;
@@ -224,22 +106,126 @@ const EditablePaySlipLedger: React.FC<{
 
   return (
     <div className="mt-8 space-y-4 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between border-b border-ypsom-alice pb-3">
+      <div className="flex items-center justify-between border-b border-cdlp-border pb-3">
+         <div className="flex items-center gap-2">
+            <ListOrdered className="w-4 h-4 text-cdlp-gold" />
+            <h5 className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-cdlp-gold">Line Item Detail Ledger</h5>
+         </div>
+         <span className="text-[8px] sm:text-[9px] font-bold text-cdlp-muted opacity-40 uppercase tracking-widest">Records: {items.length}</span>
+      </div>
+      
+      <div className="border border-cdlp-border rounded-sm overflow-hidden bg-cdlp-black shadow-sm overflow-x-auto">
+        <table className="min-w-full text-xs">
+          <thead className="bg-cdlp-gold text-cdlp-black border-b border-cdlp-border">
+            <tr className="font-bold uppercase text-[8px] tracking-widest">
+              <th className="px-2 py-3 text-center w-10">Verify</th>
+              <th className="px-2 py-3 text-left w-24">Date</th>
+              <th className="px-2 py-3 text-left min-w-[150px]">Description</th>
+              <th className="px-2 py-3 text-right w-28">Value ({currency})</th>
+              <th className="px-2 py-3 text-center w-20">Nature</th>
+              <th className="px-2 py-3 text-left min-w-[100px]">Category</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-cdlp-border">
+            {items.map((item, idx) => (
+              <tr key={idx} className={`hover:bg-cdlp-card transition-colors ${item.isHumanVerified ? 'bg-emerald-900/20' : ''}`}>
+                <td className="px-2 py-3 text-center">
+                  <button 
+                    onClick={() => toggleVerify(idx)}
+                    className={`w-7 h-7 rounded-sm flex items-center justify-center transition-all ${item.isHumanVerified ? 'bg-emerald-600 text-white shadow-md' : 'bg-cdlp-card text-cdlp-muted hover:text-emerald-600 border border-cdlp-border'}`}
+                  >
+                    <Check className={`w-3.5 h-3.5 ${item.isHumanVerified ? 'scale-110' : 'scale-90'}`} />
+                  </button>
+                </td>
+                <td className="px-2 py-3">
+                  <input 
+                    type="date"
+                    value={item.date}
+                    onChange={e => handleItemChange(idx, 'date', e.target.value)}
+                    className="w-full bg-transparent font-mono text-[10px] text-white outline-none border-b border-transparent focus:border-cdlp-gold"
+                  />
+                </td>
+                <td className="px-2 py-3">
+                  <input 
+                    value={item.description}
+                    onChange={e => handleItemChange(idx, 'description', e.target.value)}
+                    className="w-full bg-transparent font-bold text-white text-[10px] outline-none border-b border-transparent focus:border-cdlp-gold"
+                  />
+                </td>
+                <td className="px-2 py-3 text-right">
+                  <input 
+                    type="number"
+                    step="0.01"
+                    value={item.amount}
+                    onChange={e => handleItemChange(idx, 'amount', parseFloat(e.target.value) || 0)}
+                    className={`w-full bg-transparent text-right font-mono font-black text-[10px] outline-none border-b border-transparent focus:border-cdlp-gold ${item.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}
+                  />
+                </td>
+                <td className="px-2 py-3 text-center">
+                  <select 
+                    value={item.type}
+                    onChange={e => handleItemChange(idx, 'type', e.target.value)}
+                    className={`text-[7px] font-black uppercase rounded-full px-2 py-0.5 outline-none cursor-pointer ${item.type === 'INCOME' ? 'bg-emerald-600/20 text-emerald-400' : 'bg-red-600/20 text-red-400'}`}
+                  >
+                    <option value="INCOME">INC</option>
+                    <option value="EXPENSE">EXP</option>
+                  </select>
+                </td>
+                <td className="px-2 py-3">
+                  <select 
+                    value={item.category ?? ''} 
+                    onChange={e => handleItemChange(idx, 'category', e.target.value)}
+                    className="w-full bg-transparent font-bold text-[9px] text-white outline-none border-b border-transparent focus:border-cdlp-gold"
+                  >
+                    <option value="">--</option>
+                    {RESTAURANT_CATEGORIES.map(cat => <option key={cat.id} value={cat.id}>{cat.label}</option>)}
+                  </select>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// Editable PaySlip Components Table
+const EditablePaySlipTable: React.FC<{
+  items: BankTransaction[];
+  currency: string;
+  onUpdate: (newItems: BankTransaction[]) => void;
+}> = ({ items, currency, onUpdate }) => {
+  const handleItemChange = (idx: number, field: keyof BankTransaction, value: any) => {
+    const next = [...items];
+    next[idx] = { ...next[idx], [field]: value, isHumanVerified: false };
+    onUpdate(next);
+  };
+
+  const toggleVerify = (idx: number) => {
+    const next = [...items];
+    next[idx] = { ...next[idx], isHumanVerified: !next[idx].isHumanVerified };
+    onUpdate(next);
+  };
+
+  return (
+    <div className="mt-8 space-y-4 animate-in fade-in duration-500">
+      <div className="flex items-center justify-between border-b border-cdlp-border pb-3">
         <div className="flex items-center gap-2">
-          <ListOrdered className="w-4 h-4 text-emerald-700" />
-          <h5 className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-ypsom-deep">
+          <ListOrdered className="w-4 h-4 text-emerald-500" />
+          <h5 className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-cdlp-gold">
             Pay Slip Components (Earnings / Deductions)
           </h5>
         </div>
-        <span className="text-[8px] sm:text-[9px] font-bold text-ypsom-slate opacity-40 uppercase tracking-widest">
+        <span className="text-[8px] sm:text-[9px] font-bold text-cdlp-muted opacity-40 uppercase tracking-widest">
           Records: {items.length}
         </span>
       </div>
 
-      <div className="border border-ypsom-alice rounded-sm overflow-hidden bg-white shadow-sm overflow-x-auto">
+      <div className="border border-cdlp-border rounded-sm overflow-hidden bg-cdlp-black shadow-sm overflow-x-auto">
         <table className="min-w-full text-xs">
-          <thead className="bg-gray-50 border-b border-ypsom-alice">
-            <tr className="font-bold uppercase text-[8px] tracking-widest text-ypsom-slate">
+          <thead className="bg-cdlp-gold text-cdlp-black border-b border-cdlp-border">
+            <tr className="font-bold uppercase text-[8px] tracking-widest">
               <th className="px-2 py-3 text-center w-10">Verify</th>
               <th className="px-2 py-3 text-left w-24">Date</th>
               <th className="px-2 py-3 text-left min-w-[180px]">Component</th>
@@ -248,11 +234,11 @@ const EditablePaySlipLedger: React.FC<{
               <th className="px-2 py-3 text-left min-w-[140px]">Category</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-ypsom-alice">
+          <tbody className="divide-y divide-cdlp-border">
             {items.map((item, idx) => (
               <tr
                 key={idx}
-                className={`hover:bg-ypsom-alice/5 transition-colors ${item.isHumanVerified ? 'bg-emerald-50/20' : ''}`}
+                className={`hover:bg-cdlp-card transition-colors ${item.isHumanVerified ? 'bg-emerald-900/20' : ''}`}
               >
                 <td className="px-2 py-3 text-center">
                   <button
@@ -260,7 +246,7 @@ const EditablePaySlipLedger: React.FC<{
                     className={`w-7 h-7 rounded-sm flex items-center justify-center transition-all ${
                       item.isHumanVerified
                         ? 'bg-emerald-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-300 hover:text-emerald-600 border border-gray-200'
+                        : 'bg-cdlp-card text-cdlp-muted hover:text-emerald-600 border border-cdlp-border'
                     }`}
                   >
                     <Check className={`w-3.5 h-3.5 ${item.isHumanVerified ? 'scale-110' : 'scale-90'}`} />
@@ -271,14 +257,14 @@ const EditablePaySlipLedger: React.FC<{
                     type="date"
                     value={item.date || ''}
                     onChange={(e) => handleItemChange(idx, 'date', e.target.value)}
-                    className="w-full bg-transparent font-mono text-[10px] outline-none border-b border-transparent focus:border-ypsom-deep"
+                    className="w-full bg-transparent font-mono text-[10px] text-white outline-none border-b border-transparent focus:border-cdlp-gold"
                   />
                 </td>
                 <td className="px-2 py-3">
                   <input
                     value={item.description}
                     onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                    className="w-full bg-transparent font-bold text-ypsom-deep text-[10px] outline-none border-b border-transparent focus:border-ypsom-deep"
+                    className="w-full bg-transparent font-bold text-white text-[10px] outline-none border-b border-transparent focus:border-cdlp-gold"
                   />
                 </td>
                 <td className="px-2 py-3 text-right">
@@ -287,8 +273,8 @@ const EditablePaySlipLedger: React.FC<{
                     step="0.01"
                     value={item.amount}
                     onChange={(e) => handleItemChange(idx, 'amount', parseFloat(e.target.value) || 0)}
-                    className={`w-full bg-transparent text-right font-mono font-black text-[10px] outline-none border-b border-transparent focus:border-ypsom-deep ${
-                      item.type === 'INCOME' ? 'text-green-700' : 'text-red-700'
+                    className={`w-full bg-transparent text-right font-mono font-black text-[10px] outline-none border-b border-transparent focus:border-cdlp-gold ${
+                      item.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'
                     }`}
                   />
                 </td>
@@ -298,8 +284,8 @@ const EditablePaySlipLedger: React.FC<{
                     onChange={(e) => handleItemChange(idx, 'type', e.target.value)}
                     className={`text-[7px] font-black uppercase rounded-full px-2 py-0.5 outline-none cursor-pointer ${
                       item.type === 'INCOME'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
+                        ? 'bg-emerald-600/20 text-emerald-400'
+                        : 'bg-red-600/20 text-red-400'
                     }`}
                   >
                     <option value="INCOME">EARN</option>
@@ -310,8 +296,8 @@ const EditablePaySlipLedger: React.FC<{
                   <input
                     value={item.category ?? ''}
                     onChange={(e) => handleItemChange(idx, 'category', e.target.value)}
-                    className="w-full bg-transparent font-bold text-[9px] text-ypsom-deep outline-none border-b border-transparent focus:border-ypsom-deep"
-                    placeholder="e.g. Tax, Insurance"
+                    className="w-full bg-transparent font-bold text-[9px] text-white outline-none border-b border-transparent focus:border-cdlp-gold"
+                    placeholder="e.g. AVS, LPP"
                   />
                 </td>
               </tr>
@@ -323,140 +309,17 @@ const EditablePaySlipLedger: React.FC<{
   );
 };
 
-const EditableZ2Ledger: React.FC<{ 
-  subs: FinancialData[], 
-  currency: string,
-  onUpdate: (newSubs: FinancialData[]) => void
-}> = ({ subs, currency, onUpdate }) => {
-  const handleChange = (idx: number, field: string, value: any) => {
-    const next = [...subs];
-    next[idx] = { ...next[idx], [field]: value, isHumanVerified: false };
-    onUpdate(next);
-  };
-
-  const toggleVerify = (idx: number) => {
-    const next = [...subs];
-    next[idx] = { ...next[idx], isHumanVerified: !next[idx].isHumanVerified };
-    onUpdate(next);
-  };
-
-  const removeSub = (idx: number) => {
-    onUpdate(subs.filter((_, i) => i !== idx));
-  };
-
-  return (
-    <div className="mt-8 space-y-4 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between border-b border-ypsom-alice pb-3">
-         <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-amber-600" />
-            <h5 className="text-[11px] font-black uppercase tracking-widest text-ypsom-deep">Batch Asset Ledger</h5>
-         </div>
-         <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest">{subs.length} ASSETS</span>
-      </div>
-      
-      <div className="border border-ypsom-alice rounded-sm overflow-hidden bg-white shadow-sm overflow-x-auto">
-        <table className="min-w-full text-xs">
-          <thead className="bg-gray-50 border-b border-ypsom-alice">
-            <tr className="font-bold uppercase text-[8px] tracking-widest text-ypsom-slate">
-              <th className="px-2 py-3 text-center w-12">Verify</th>
-              <th className="px-2 py-3 text-left w-28">Date</th>
-              <th className="px-2 py-3 text-left min-w-[120px]">Entity</th>
-              <th className="px-2 py-3 text-left w-32">Classification</th>
-              <th className="px-2 py-3 text-right w-28">Value ({currency})</th>
-              <th className="px-2 py-3 text-center w-10"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-ypsom-alice">
-            {subs.map((item, idx) => (
-              <tr key={idx} className={`hover:bg-ypsom-alice/5 transition-all group ${item.isHumanVerified ? 'bg-emerald-50/20' : ''}`}>
-                <td className="px-2 py-2 text-center">
-                  <button 
-                    onClick={() => toggleVerify(idx)}
-                    className={`w-7 h-7 rounded-sm flex items-center justify-center transition-all ${item.isHumanVerified ? 'bg-emerald-600 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:text-emerald-600 border border-gray-200'}`}
-                  >
-                    <Check className={`w-3.5 h-3.5 transition-transform ${item.isHumanVerified ? 'scale-110' : 'scale-90'}`} />
-                  </button>
-                </td>
-                <td className="px-2 py-2">
-                  <input 
-                    type="date" 
-                    value={item.date} 
-                    onChange={e => handleChange(idx, 'date', e.target.value)}
-                    className="w-full bg-transparent border-b border-transparent focus:border-ypsom-deep px-1 py-1 font-mono text-[10px] outline-none"
-                  />
-                </td>
-                <td className="px-2 py-2">
-                  <input 
-                    value={item.issuer} 
-                    onChange={e => handleChange(idx, 'issuer', e.target.value)}
-                    className="w-full bg-transparent border-b border-transparent focus:border-ypsom-deep px-1 py-1 font-bold uppercase text-[10px] outline-none"
-                  />
-                </td>
-                <td className="px-2 py-2">
-                  <select 
-                    value={item.expenseCategory} 
-                    onChange={e => handleChange(idx, 'expenseCategory', e.target.value)}
-                    className="w-full bg-transparent border-b border-transparent focus:border-ypsom-deep px-1 py-1 font-black uppercase text-[9px] outline-none"
-                  >
-                    {TAX_CATEGORIES.map(cat => <option key={cat.id} value={cat.id}>{cat.label}</option>)}
-                    <option value="Other">Other...</option>
-                  </select>
-                </td>
-                <td className="px-2 py-2">
-                  <input 
-                    type="number"
-                    step="0.01"
-                    value={item.totalAmount} 
-                    onChange={e => handleChange(idx, 'totalAmount', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-transparent text-right border-b border-transparent focus:border-ypsom-deep px-1 py-1 font-black font-mono text-[10px] outline-none"
-                  />
-                </td>
-                <td className="px-2 py-2 text-center">
-                  <button onClick={() => removeSub(idx)} className="text-gray-300 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"><Trash2 className="w-3.5 h-3.5" /></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
-
+// Verification Hub - Main editing interface
 const VerificationHub: React.FC<{ 
   doc: ProcessedDocument; 
   onUpdate: (data: FinancialData) => void;
   onSave: (data: FinancialData) => void;
-  onRefine: (hint: string) => void;
-}> = ({ doc, onUpdate, onSave, onRefine }) => {
-  const [hint, setHint] = useState('');
+}> = ({ doc, onUpdate, onSave }) => {
   const [isAddingCustom, setIsAddingCustom] = useState(false);
 
-  // Function to calculate total gross value from ledger items or sub-documents
-  const recalculateTotal = (data: FinancialData): number => {
-    if (data.subDocuments && data.subDocuments.length > 0) {
-      return data.subDocuments.reduce((sum, sub) => sum + (Number(sub.totalAmount) || 0), 0);
-    }
-    if (data.lineItems && data.lineItems.length > 0) {
-      // Sum all line item amounts to get the total audited gross value
-      return data.lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-    }
-    return Number(data.totalAmount) || 0;
-  };
-
-  const handleFieldChange = async (field: keyof FinancialData, value: any) => {
+  const handleFieldChange = (field: keyof FinancialData, value: any) => {
     let newData = { ...doc.data!, [field]: value };
     
-    // If updating ledger items or sub-documents, trigger recalculation of Audit Gross Value
-    if (field === 'lineItems' || field === 'subDocuments') {
-      const newTotal = recalculateTotal(newData);
-      newData.totalAmount = newTotal;
-      // Also update target currency conversion
-      const rate = await getLiveExchangeRate(newData.originalCurrency || 'CHF', 'CHF');
-      newData.amountInCHF = newTotal * rate;
-      newData.conversionRateUsed = rate;
-    }
-
     // Pay slips: net pay is derived from earnings (INCOME) minus deductions (EXPENSE)
     if (field === 'paySlip') {
       const nextPaySlip: PaySlipAnalysis = value ?? { employee: { name: '' }, employer: { name: '' } };
@@ -482,28 +345,13 @@ const VerificationHub: React.FC<{
       newData.vatAmount = 0;
       newData.netAmount = net;
       newData.totalAmount = net;
-
-      const rate = await getLiveExchangeRate(nextCurrency || 'CHF', 'CHF');
-      newData.amountInCHF = net * rate;
-      newData.conversionRateUsed = rate;
+      newData.amountInCHF = net;
     }
     
-    if (field === 'totalAmount' || field === 'originalCurrency') {
-      const rate = await getLiveExchangeRate(newData.originalCurrency || 'CHF', 'CHF');
-      newData.amountInCHF = (Number(newData.totalAmount) || 0) * rate;
-      newData.conversionRateUsed = rate;
-    }
     onUpdate(newData);
   };
 
-  const syncTotalFromSubs = () => {
-     if (!doc.data?.subDocuments?.length) return;
-     const sum = doc.data.subDocuments.reduce((s, x) => s + (Number(x.totalAmount) || 0), 0);
-     handleFieldChange('totalAmount', sum);
-  };
-
   const editedData = doc.data!;
-  const isBatch = editedData.documentType === 'Z2 Multi-Ticket Sheet' || (editedData.subDocuments && editedData.subDocuments.length > 1);
   const isBankStatement = editedData.documentType === DocumentType.BANK_STATEMENT;
   const isPaySlip = editedData.documentType === DocumentType.PAY_SLIP;
   const isZeroValue = Number(editedData.totalAmount) === 0;
@@ -514,70 +362,69 @@ const VerificationHub: React.FC<{
   const computedNetPay = computedGrossPay - computedDeductions;
 
   return (
-    <div className="bg-white border-y border-ypsom-alice animate-in slide-in-from-top-2 duration-400 overflow-hidden shadow-inner">
+    <div className="bg-cdlp-black border-y border-cdlp-border animate-in slide-in-from-top-2 duration-400 overflow-hidden shadow-inner">
       <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row min-h-[500px]">
-        <div className="w-full lg:w-[320px] xl:w-[420px] bg-slate-900 border-r border-ypsom-alice flex flex-col shadow-2xl overflow-hidden shrink-0">
+        <div className="w-full lg:w-[320px] xl:w-[420px] bg-slate-900 border-r border-cdlp-border flex flex-col shadow-2xl overflow-hidden shrink-0">
           <NeuralLog doc={doc} />
         </div>
-        <div className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col bg-white overflow-hidden">
-           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 border-b border-ypsom-alice pb-5 gap-4">
+        <div className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col bg-cdlp-black overflow-hidden">
+           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 border-b border-cdlp-border pb-5 gap-4">
               <div>
-                 <h4 className="text-[12px] sm:text-[13px] font-black uppercase tracking-widest text-ypsom-deep flex items-center gap-3">
-                   Record Authentication Center 
-                   {isBatch && <span className="text-[8px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded-sm">BATCH</span>}
+                 <h4 className="text-[12px] sm:text-[13px] font-black uppercase tracking-widest text-cdlp-gold flex items-center gap-3">
+                   Document Verification Center
                  </h4>
-                 <p className="text-[9px] sm:text-[10px] font-bold text-ypsom-slate uppercase opacity-50 mt-1 truncate max-w-[200px] sm:max-w-md">{doc.fileName}</p>
+                 <p className="text-[9px] sm:text-[10px] font-bold text-cdlp-muted uppercase opacity-50 mt-1 truncate max-w-[200px] sm:max-w-md">{doc.fileName}</p>
               </div>
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                 <div className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 rounded-sm text-[9px] sm:text-[10px] font-black uppercase flex items-center gap-2 shadow-sm whitespace-nowrap">
+                 <div className="px-3 py-1.5 bg-emerald-600/10 text-emerald-400 border border-emerald-600/20 rounded-sm text-[9px] sm:text-[10px] font-black uppercase flex items-center gap-2 shadow-sm whitespace-nowrap">
                     <Cpu className="w-3.5 h-3.5" /> Match: {((doc.data?.confidenceScore || 0.95) * 100).toFixed(0)}%
                  </div>
               </div>
            </div>
 
            {isBankStatement && (
-             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 p-4 sm:p-6 bg-ypsom-alice/20 rounded-sm border border-ypsom-alice shadow-sm">
+             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 p-4 sm:p-6 bg-cdlp-card rounded-sm border border-cdlp-border shadow-sm">
                 <div>
-                   <label className="text-[8px] font-black uppercase text-ypsom-slate tracking-widest block mb-2">Opening Bal</label>
+                   <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Opening Bal</label>
                    <input 
                      type="number" 
                      value={editedData.openingBalance || 0} 
                      onChange={e => handleFieldChange('openingBalance', parseFloat(e.target.value) || 0)} 
-                     className="w-full bg-white border border-ypsom-alice h-9 px-3 font-mono font-bold text-[10px] outline-none" 
+                     className="w-full bg-cdlp-black border border-cdlp-border h-9 px-3 font-mono font-bold text-[10px] text-white outline-none" 
                    />
                 </div>
                 <div>
-                   <label className="text-[8px] font-black uppercase text-ypsom-slate tracking-widest block mb-2">Entree d'argent (+)</label>
+                   <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Income (+)</label>
                    <div className="relative">
                       <input 
                         type="number" 
                         value={editedData.calculatedTotalIncome || 0} 
                         onChange={e => handleFieldChange('calculatedTotalIncome', parseFloat(e.target.value) || 0)} 
-                        className="w-full bg-white border border-ypsom-alice h-9 px-3 pl-7 font-mono font-bold text-[10px] text-green-700 outline-none" 
+                        className="w-full bg-cdlp-black border border-cdlp-border h-9 px-3 pl-7 font-mono font-bold text-[10px] text-emerald-400 outline-none" 
                       />
-                      <ArrowUpRight className="w-3 h-3 text-green-500 absolute left-2 top-1/2 -translate-y-1/2" />
+                      <ArrowUpRight className="w-3 h-3 text-emerald-500 absolute left-2 top-1/2 -translate-y-1/2" />
                    </div>
                 </div>
                 <div>
-                   <label className="text-[8px] font-black uppercase text-ypsom-slate tracking-widest block mb-2">Sortie d'argent (-)</label>
+                   <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Expense (-)</label>
                    <div className="relative">
                       <input 
                         type="number" 
                         value={editedData.calculatedTotalExpense || 0} 
                         onChange={e => handleFieldChange('calculatedTotalExpense', parseFloat(e.target.value) || 0)} 
-                        className="w-full bg-white border border-ypsom-alice h-9 px-3 pl-7 font-mono font-bold text-[10px] text-red-700 outline-none" 
+                        className="w-full bg-cdlp-black border border-cdlp-border h-9 px-3 pl-7 font-mono font-bold text-[10px] text-red-400 outline-none" 
                       />
                       <ArrowDownRight className="w-3 h-3 text-red-500 absolute left-2 top-1/2 -translate-y-1/2" />
                    </div>
                 </div>
                 <div>
-                   <label className="text-[8px] font-black uppercase text-amber-700 tracking-widest block mb-2">Actual "Solde"</label>
+                   <label className="text-[8px] font-black uppercase text-amber-600 tracking-widest block mb-2">Final Balance</label>
                    <div className="relative">
                       <input 
                         type="number" 
                         value={editedData.finalBalance || 0} 
                         onChange={e => handleFieldChange('finalBalance', parseFloat(e.target.value) || 0)} 
-                        className="w-full bg-white border border-amber-200 h-9 px-3 pl-7 font-mono font-black text-[10px] text-ypsom-deep outline-none shadow-sm" 
+                        className="w-full bg-cdlp-black border border-amber-600/20 h-9 px-3 pl-7 font-mono font-black text-[10px] text-cdlp-gold outline-none shadow-sm" 
                       />
                       <ScaleIcon className="w-3 h-3 text-amber-600 absolute left-2 top-1/2 -translate-y-1/2" />
                    </div>
@@ -586,9 +433,9 @@ const VerificationHub: React.FC<{
            )}
 
            {isPaySlip && (
-             <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 p-4 sm:p-6 bg-indigo-50/70 rounded-sm border border-ypsom-alice shadow-sm">
+             <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 p-4 sm:p-6 bg-indigo-900/20 rounded-sm border border-cdlp-border shadow-sm">
                <div className="lg:col-span-1">
-                 <label className="text-[8px] font-black uppercase text-ypsom-slate tracking-widest block mb-2">Employee Name</label>
+                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Employee Name</label>
                  <input
                    value={currentPaySlip.employee?.name ?? ''}
                    onChange={(e) =>
@@ -597,11 +444,11 @@ const VerificationHub: React.FC<{
                        employee: { ...currentPaySlip.employee, name: e.target.value },
                      })
                    }
-                   className="w-full bg-white border border-ypsom-alice h-9 px-3 font-bold text-[10px] outline-none"
+                   className="w-full bg-cdlp-black border border-cdlp-border h-9 px-3 font-bold text-[10px] text-white outline-none"
                  />
                </div>
                <div>
-                 <label className="text-[8px] font-black uppercase text-ypsom-slate tracking-widest block mb-2">Employee ID</label>
+                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Employee ID</label>
                  <input
                    value={currentPaySlip.employee?.idNumber ?? ''}
                    onChange={(e) =>
@@ -610,11 +457,11 @@ const VerificationHub: React.FC<{
                        employee: { ...currentPaySlip.employee, idNumber: e.target.value },
                      })
                    }
-                   className="w-full bg-white border border-ypsom-alice h-9 px-3 font-bold text-[10px] outline-none"
+                   className="w-full bg-cdlp-black border border-cdlp-border h-9 px-3 font-bold text-[10px] text-white outline-none"
                  />
                </div>
                <div className="lg:col-span-1">
-                 <label className="text-[8px] font-black uppercase text-ypsom-slate tracking-widest block mb-2">Employer Name</label>
+                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Employer Name</label>
                  <input
                    value={currentPaySlip.employer?.name ?? ''}
                    onChange={(e) =>
@@ -623,72 +470,59 @@ const VerificationHub: React.FC<{
                        employer: { ...currentPaySlip.employer, name: e.target.value },
                      })
                    }
-                   className="w-full bg-white border border-ypsom-alice h-9 px-3 font-bold text-[10px] outline-none"
-                 />
-               </div>
-               <div className="lg:col-span-1">
-                 <label className="text-[8px] font-black uppercase text-ypsom-slate tracking-widest block mb-2">Employer Address</label>
-                 <input
-                   value={currentPaySlip.employer?.address ?? ''}
-                   onChange={(e) =>
-                     handleFieldChange('paySlip', {
-                       ...currentPaySlip,
-                       employer: { ...currentPaySlip.employer, address: e.target.value },
-                     })
-                   }
-                   className="w-full bg-white border border-ypsom-alice h-9 px-3 font-bold text-[10px] outline-none"
+                   className="w-full bg-cdlp-black border border-cdlp-border h-9 px-3 font-bold text-[10px] text-white outline-none"
                  />
                </div>
 
                <div>
-                 <label className="text-[8px] font-black uppercase text-ypsom-slate tracking-widest block mb-2">Period Start</label>
+                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Period Start</label>
                  <input
                    type="date"
                    value={currentPaySlip.periodStart ?? ''}
                    onChange={(e) =>
                      handleFieldChange('paySlip', { ...currentPaySlip, periodStart: e.target.value })
                    }
-                   className="w-full bg-white border border-ypsom-alice h-9 px-3 font-mono text-[10px] outline-none"
+                   className="w-full bg-cdlp-black border border-cdlp-border h-9 px-3 font-mono text-[10px] text-white outline-none"
                  />
                </div>
                <div>
-                 <label className="text-[8px] font-black uppercase text-ypsom-slate tracking-widest block mb-2">Period End</label>
+                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Period End</label>
                  <input
                    type="date"
                    value={currentPaySlip.periodEnd ?? ''}
                    onChange={(e) =>
                      handleFieldChange('paySlip', { ...currentPaySlip, periodEnd: e.target.value })
                    }
-                   className="w-full bg-white border border-ypsom-alice h-9 px-3 font-mono text-[10px] outline-none"
+                   className="w-full bg-cdlp-black border border-cdlp-border h-9 px-3 font-mono text-[10px] text-white outline-none"
                  />
                </div>
                <div>
-                 <label className="text-[8px] font-black uppercase text-ypsom-slate tracking-widest block mb-2">Pay Date</label>
+                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Pay Date</label>
                  <input
                    type="date"
                    value={currentPaySlip.payDate ?? ''}
                    onChange={(e) =>
                      handleFieldChange('paySlip', { ...currentPaySlip, payDate: e.target.value })
                    }
-                   className="w-full bg-white border border-ypsom-alice h-9 px-3 font-mono text-[10px] outline-none"
+                   className="w-full bg-cdlp-black border border-cdlp-border h-9 px-3 font-mono text-[10px] text-white outline-none"
                  />
                </div>
 
                <div className="lg:col-span-1">
-                 <label className="text-[8px] font-black uppercase text-green-700 tracking-widest block mb-2">Gross Pay (Earnings)</label>
-                 <div className="w-full bg-white border border-green-200 h-9 px-3 flex items-center font-mono text-[10px] font-black text-green-800">
+                 <label className="text-[8px] font-black uppercase text-emerald-600 tracking-widest block mb-2">Gross Pay</label>
+                 <div className="w-full bg-cdlp-black border border-emerald-600/20 h-9 px-3 flex items-center font-mono text-[10px] font-black text-emerald-400">
                    {computedGrossPay.toFixed(2)} {editedData.originalCurrency || 'CHF'}
                  </div>
                </div>
                <div className="lg:col-span-1">
-                 <label className="text-[8px] font-black uppercase text-red-700 tracking-widest block mb-2">Deductions</label>
-                 <div className="w-full bg-white border border-red-200 h-9 px-3 flex items-center font-mono text-[10px] font-black text-red-800">
+                 <label className="text-[8px] font-black uppercase text-red-600 tracking-widest block mb-2">Deductions</label>
+                 <div className="w-full bg-cdlp-black border border-red-600/20 h-9 px-3 flex items-center font-mono text-[10px] font-black text-red-400">
                    {computedDeductions.toFixed(2)} {editedData.originalCurrency || 'CHF'}
                  </div>
                </div>
                <div className="lg:col-span-1">
-                 <label className="text-[8px] font-black uppercase text-amber-700 tracking-widest block mb-2">Net Pay (Received)</label>
-                 <div className="w-full bg-white border border-amber-200 h-9 px-3 flex items-center font-mono text-[10px] font-black text-ypsom-deep">
+                 <label className="text-[8px] font-black uppercase text-amber-600 tracking-widest block mb-2">Net Pay</label>
+                 <div className="w-full bg-cdlp-black border border-amber-600/20 h-9 px-3 flex items-center font-mono text-[10px] font-black text-cdlp-gold">
                    {computedNetPay.toFixed(2)} {editedData.originalCurrency || 'CHF'}
                  </div>
                </div>
@@ -698,56 +532,24 @@ const VerificationHub: React.FC<{
            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8">
               <div className="space-y-5">
                  <div>
-                    <label className="text-[9px] font-black uppercase text-ypsom-slate tracking-[0.2em] block mb-2">Issuer Entity</label>
-                    <input value={editedData.issuer} onChange={e => handleFieldChange('issuer', e.target.value)} className="w-full h-11 px-4 bg-gray-50 border border-ypsom-alice rounded-sm text-xs font-bold outline-none focus:border-ypsom-deep transition-colors" />
+                    <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Issuer Entity</label>
+                    <input value={editedData.issuer} onChange={e => handleFieldChange('issuer', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-white outline-none focus:border-cdlp-gold transition-colors" />
                  </div>
                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                       <label className="text-[9px] font-black uppercase text-ypsom-slate tracking-[0.2em] block mb-2">Source Currency</label>
-                       <input value={editedData.originalCurrency} onChange={e => handleFieldChange('originalCurrency', e.target.value)} className="w-full h-11 px-4 bg-gray-50 border border-ypsom-alice rounded-sm text-xs font-bold outline-none uppercase" placeholder="CHF" />
+                       <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Currency</label>
+                       <input value={editedData.originalCurrency} onChange={e => handleFieldChange('originalCurrency', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-white outline-none uppercase" placeholder="CHF" />
                     </div>
                     <div>
-                       <label className="text-[9px] font-black uppercase text-ypsom-slate tracking-[0.2em] block mb-2">Target Currency</label>
-                       <select 
-                         value={editedData.amountInCHF ? 'CHF' : editedData.originalCurrency} 
-                         onChange={async (e) => {
-                           const targetCurrency = e.target.value;
-                           const rate = await getLiveExchangeRate(editedData.originalCurrency || 'CHF', targetCurrency);
-                           handleFieldChange('amountInCHF', (editedData.totalAmount || 0) * rate);
-                           handleFieldChange('conversionRateUsed', rate);
-                         }}
-                         className="w-full h-11 px-4 bg-white border border-ypsom-alice rounded-sm text-xs font-bold outline-none uppercase"
-                       >
-                         <option value="CHF">CHF</option>
-                         <option value="EUR">EUR</option>
-                         <option value="USD">USD</option>
-                         <option value="GBP">GBP</option>
-                         <option value="JPY">JPY</option>
-                       </select>
-                    </div>
-                 </div>
-                 <div className="bg-amber-50 border border-amber-200 rounded-sm p-3">
-                    <div className="flex items-center justify-between">
-                       <span className="text-[9px] font-black uppercase text-amber-700 tracking-widest">Exchange Rate</span>
-                       <span className="text-xs font-mono font-black text-amber-900">
-                         1 {editedData.originalCurrency} = {(editedData.conversionRateUsed || 1).toFixed(4)} CHF
-                       </span>
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-amber-200">
-                       <div className="flex items-center justify-between">
-                          <span className="text-[9px] font-bold uppercase text-amber-700">Converted Amount</span>
-                          <span className="text-sm font-black text-amber-900">
-                            {(editedData.amountInCHF || 0).toFixed(2)} CHF
-                          </span>
-                       </div>
+                       <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Document #</label>
+                       <input value={editedData.documentNumber} onChange={e => handleFieldChange('documentNumber', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-white outline-none" />
                     </div>
                  </div>
               </div>
               <div className="space-y-5">
                  <div>
-                    <label className={`text-[9px] font-black uppercase tracking-[0.2em] block mb-2 flex justify-between ${isZeroValue ? 'text-red-600' : 'text-ypsom-slate'}`}>
-                       <span>Total (incl. VAT) {isZeroValue && <AlertTriangle className="w-3 h-3 inline ml-1 align-text-top" />}</span>
-                       {isBatch && <button onClick={syncTotalFromSubs} className="text-[8px] text-amber-600 hover:underline flex items-center gap-1"><RefreshCcw className="w-2.5 h-2.5" /> Sync</button>}
+                    <label className={`text-[9px] font-black uppercase tracking-[0.2em] block mb-2 flex justify-between ${isZeroValue ? 'text-red-600' : 'text-cdlp-muted'}`}>
+                       <span>Total Amount {isZeroValue && <AlertTriangle className="w-3 h-3 inline ml-1 align-text-top" />}</span>
                     </label>
                     <div className="relative">
                       <input 
@@ -755,50 +557,43 @@ const VerificationHub: React.FC<{
                         step="0.01" 
                         value={editedData.totalAmount} 
                         onChange={e => handleFieldChange('totalAmount', parseFloat(e.target.value) || 0)} 
-                        className={`w-full h-11 px-4 rounded-sm text-xs font-black outline-none transition-all ${isZeroValue ? 'bg-red-50 border-2 border-red-200 text-red-700' : 'bg-gray-50 border border-ypsom-alice'}`} 
+                        className={`w-full h-11 px-4 rounded-sm text-xs font-black text-white outline-none transition-all ${isZeroValue ? 'bg-red-600/10 border-2 border-red-600' : 'bg-cdlp-card border border-cdlp-border'}`} 
                       />
                       {isZeroValue && (
-                        <div className="absolute -bottom-5 left-0 text-[8px] font-black text-red-600 uppercase tracking-widest animate-pulse">Erreur critique: la valeur ne peut pas etre nulle</div>
+                        <div className="absolute -bottom-5 left-0 text-[8px] font-black text-red-600 uppercase tracking-widest animate-pulse">Value cannot be zero</div>
                       )}
                     </div>
                  </div>
                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                       <label className="text-[9px] font-black uppercase text-blue-700 tracking-[0.2em] block mb-2">VAT Amount</label>
+                       <label className="text-[9px] font-black uppercase text-blue-600 tracking-[0.2em] block mb-2">VAT Amount</label>
                        <input 
                          type="number" 
                          step="0.01" 
                          value={editedData.vatAmount || 0} 
                          onChange={e => handleFieldChange('vatAmount', parseFloat(e.target.value) || 0)} 
-                         className="w-full h-11 px-4 bg-blue-50 border border-blue-200 rounded-sm text-xs font-bold outline-none focus:border-blue-400 transition-colors" 
+                         className="w-full h-11 px-4 bg-blue-600/10 border border-blue-600/20 rounded-sm text-xs font-bold text-white outline-none focus:border-blue-600 transition-colors" 
                        />
                     </div>
                     <div>
-                       <label className="text-[9px] font-black uppercase text-blue-700 tracking-[0.2em] block mb-2">VAT Rate %</label>
+                       <label className="text-[9px] font-black uppercase text-emerald-600 tracking-[0.2em] block mb-2">Net Amount</label>
                        <input 
                          type="number" 
-                         step="0.1" 
-                         value={editedData.vatRate || 0} 
-                         onChange={e => handleFieldChange('vatRate', parseFloat(e.target.value) || 0)} 
-                         className="w-full h-11 px-4 bg-blue-50 border border-blue-200 rounded-sm text-xs font-bold outline-none focus:border-blue-400 transition-colors" 
-                         placeholder="e.g. 7.7"
+                         step="0.01" 
+                         value={editedData.netAmount || 0} 
+                         onChange={e => handleFieldChange('netAmount', parseFloat(e.target.value) || 0)} 
+                         className="w-full h-11 px-4 bg-emerald-600/10 border border-emerald-600/20 rounded-sm text-xs font-bold text-white outline-none focus:border-emerald-600 transition-colors" 
                        />
                     </div>
                  </div>
               </div>
               <div className="space-y-5 md:col-span-2 xl:col-span-1">
                  <div>
-                    <label className="text-[9px] font-black uppercase text-green-700 tracking-[0.2em] block mb-2">Net Amount (excl. VAT)</label>
-                    <input 
-                      type="number" 
-                      step="0.01" 
-                      value={editedData.netAmount || 0} 
-                      onChange={e => handleFieldChange('netAmount', parseFloat(e.target.value) || 0)} 
-                      className="w-full h-11 px-4 bg-green-50 border border-green-200 rounded-sm text-xs font-black outline-none focus:border-green-400 transition-colors" 
-                    />
+                    <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Date</label>
+                    <input type="date" value={editedData.date} onChange={e => handleFieldChange('date', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-white outline-none" />
                  </div>
                  <div className="pt-1 sm:pt-0">
-                    <label className="text-[9px] font-black uppercase text-ypsom-slate tracking-[0.2em] block mb-2">Categorization</label>
+                    <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Category</label>
                     <div className="flex gap-2">
                       {isAddingCustom ? (
                         <input 
@@ -806,36 +601,23 @@ const VerificationHub: React.FC<{
                           value={editedData.expenseCategory} 
                           onChange={e => handleFieldChange('expenseCategory', e.target.value)} 
                           placeholder="Type custom..."
-                          className="flex-1 h-11 px-4 bg-white border border-ypsom-alice rounded-sm text-[10px] font-black uppercase outline-none shadow-inner"
+                          className="flex-1 h-11 px-4 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-white uppercase outline-none shadow-inner"
                         />
                       ) : (
-                        <select value={editedData.expenseCategory} onChange={e => handleFieldChange('expenseCategory', e.target.value)} className={`flex-1 h-11 px-4 bg-white border border-ypsom-alice rounded-sm text-[10px] font-black uppercase outline-none`}>
+                        <select value={editedData.expenseCategory} onChange={e => handleFieldChange('expenseCategory', e.target.value)} className={`flex-1 h-11 px-4 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-white uppercase outline-none`}>
                            <option value="">-- Uncategorized --</option>
-                           {TAX_CATEGORIES.map(cat => <option key={cat.id} value={cat.id}>{cat.label}</option>)}
-                           {!TAX_CATEGORIES.some(c => c.id === editedData.expenseCategory) && editedData.expenseCategory && (
+                           {RESTAURANT_CATEGORIES.map(cat => <option key={cat.id} value={cat.id}>{cat.label}</option>)}
+                           {!RESTAURANT_CATEGORIES.some(c => c.id === editedData.expenseCategory) && editedData.expenseCategory && (
                              <option value={editedData.expenseCategory}>{editedData.expenseCategory}</option>
                            )}
                         </select>
                       )}
                       <button 
                         onClick={() => setIsAddingCustom(!isAddingCustom)} 
-                        className={`w-11 h-11 rounded-sm border flex items-center justify-center transition-all shrink-0 ${isAddingCustom ? 'bg-ypsom-deep text-white' : 'bg-gray-100 border-ypsom-alice text-ypsom-slate'}`}
+                        className={`w-11 h-11 rounded-sm border flex items-center justify-center transition-all shrink-0 ${isAddingCustom ? 'bg-cdlp-gold text-cdlp-black' : 'bg-cdlp-card border-cdlp-border text-cdlp-muted'}`}
                       >
                         {isAddingCustom ? <CheckCircle className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
                       </button>
-                    </div>
-                 </div>
-              </div>
-              <div className="space-y-5 md:col-span-2 xl:col-span-1">
-                 <div>
-                    <label className="text-[9px] font-black uppercase text-ypsom-slate tracking-[0.2em] block mb-2">Audit Timestamp</label>
-                    <input type="date" value={editedData.date} onChange={e => handleFieldChange('date', e.target.value)} className="w-full h-11 px-4 bg-gray-50 border border-ypsom-alice rounded-sm text-xs font-bold outline-none" />
-                 </div>
-                 <div>
-                    <label className="text-[9px] font-black uppercase text-ypsom-slate tracking-[0.2em] block mb-2 text-amber-600">Neural Context Override</label>
-                    <div className="flex gap-2">
-                       <input value={hint} onChange={e => setHint(e.target.value)} placeholder="Correction hint..." className="flex-1 h-11 px-4 bg-gray-50 border border-amber-200 rounded-sm text-xs outline-none" />
-                       <button onClick={() => onRefine(hint)} disabled={!hint.trim()} className="w-11 h-11 bg-amber-600 text-white rounded-sm flex items-center justify-center shadow-lg disabled:opacity-20 shrink-0"><RefreshCcw className="w-4 h-4" /></button>
                     </div>
                  </div>
               </div>
@@ -843,7 +625,7 @@ const VerificationHub: React.FC<{
 
            <div className="flex-1 overflow-y-auto mt-6 min-h-[300px] custom-scrollbar">
              {isPaySlip ? (
-               <EditablePaySlipLedger
+               <EditablePaySlipTable
                  items={currentPaySlip.components ?? []}
                  currency={editedData.originalCurrency}
                  onUpdate={(newComponents) =>
@@ -854,32 +636,26 @@ const VerificationHub: React.FC<{
                    })
                  }
                />
-             ) : editedData.subDocuments && editedData.subDocuments.length > 0 ? (
-               <EditableZ2Ledger
-                 subs={editedData.subDocuments}
-                 currency={editedData.originalCurrency}
-                 onUpdate={(newSubs) => handleFieldChange('subDocuments', newSubs)}
-               />
              ) : editedData.lineItems && editedData.lineItems.length > 0 ? (
-               <EditableAuditLedger
+               <EditableLineItemsTable
                  items={editedData.lineItems}
                  currency={editedData.originalCurrency}
                  onUpdate={(newItems) => handleFieldChange('lineItems', newItems)}
                />
              ) : (
-               <div className="py-20 text-center border-2 border-dashed border-ypsom-alice rounded-sm bg-gray-50/30">
-                  <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-ypsom-slate opacity-30">
-                    No granular line-item data trace available
+               <div className="py-20 text-center border-2 border-dashed border-cdlp-border rounded-sm bg-cdlp-card/30">
+                  <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-cdlp-muted opacity-30">
+                    No line-item data available
                   </p>
                </div>
              )}
            </div>
            
-           <div className="pt-6 border-t border-ypsom-alice mt-6">
+           <div className="pt-6 border-t border-cdlp-border mt-6">
               <button 
-                onClick={() => onSave({ ...editedData, isHumanVerified: true, forensicAlerts: [] })} 
+                onClick={() => onSave({ ...editedData, isHumanVerified: true })} 
                 disabled={isZeroValue}
-                className={`w-full h-14 rounded-sm font-black text-[10px] sm:text-[11px] uppercase tracking-[0.3em] shadow-2xl transition-all flex items-center justify-center gap-3 ${isZeroValue ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-red-100 border' : 'bg-ypsom-deep text-white hover:bg-ypsom-shadow'}`}
+                className={`w-full h-14 rounded-sm font-black text-[10px] sm:text-[11px] uppercase tracking-[0.3em] shadow-2xl transition-all flex items-center justify-center gap-3 ${isZeroValue ? 'bg-cdlp-card text-cdlp-muted cursor-not-allowed border-red-600/20 border' : 'bg-cdlp-gold text-cdlp-black hover:bg-cdlp-gold-light'}`}
               >
                 <ShieldCheck className="w-5 h-5" /> Certify and Lock Record
               </button>
@@ -890,76 +666,113 @@ const VerificationHub: React.FC<{
   );
 };
 
+// Main Document Processor Component
 export const DocumentProcessor: React.FC<{ 
   documents: ProcessedDocument[], 
-  setDocuments: React.Dispatch<React.SetStateAction<ProcessedDocument[]>> 
-}> = ({ documents, setDocuments }) => {
+  updateDocument: (documentId: string, updates: Partial<ProcessedDocument>) => Promise<void>,
+  onDataExtracted: (data: any, fileName: string, fileHash?: string) => void
+}> = ({ documents, updateDocument, onDataExtracted }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [reportingCurrency, setReportingCurrency] = useState('CHF');
+  const [reportingCurrency] = useState('CHF');
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [localDocs, setLocalDocs] = useState<ProcessedDocument[]>([]);
   const stopProcessingRef = useRef(false);
   const dragCounter = useRef(0);
 
-  const CONCURRENCY_LIMIT = 6; 
-
-  const groupedDocuments = useMemo(() => {
-    const categories: Record<string, ProcessedDocument[]> = {
-      'Bank Records': [],
-      'Multiple Tickets (Batches)': [],
-      'Normal Receipts & Tickets': [],
-      'Uncategorized / Pending': []
-    };
-    documents.forEach(doc => {
-      const type = doc.data?.documentType;
-      const isBatch = type === 'Z2 Multi-Ticket Sheet' || (doc.data?.subDocuments && doc.data.subDocuments.length > 1);
-      if (!type || doc.status !== 'completed') categories['Uncategorized / Pending'].push(doc);
-      else if (type === 'Bank Statement' || type === 'Bank Deposit') categories['Bank Records'].push(doc);
-      else if (isBatch) categories['Multiple Tickets (Batches)'].push(doc);
-      else categories['Normal Receipts & Tickets'].push(doc);
-    });
-    return categories;
-  }, [documents]);
+  const CONCURRENCY_LIMIT = 3;
+  
+  // Combine Firestore documents with local processing documents
+  const allDocs = useMemo(() => {
+    const firestoreDocs = documents.map(d => ({ ...d, source: 'firestore' as const }));
+    const localProcessing = localDocs.filter(ld => !documents.some(d => d.fileName === ld.fileName));
+    return [...firestoreDocs, ...localProcessing];
+  }, [documents, localDocs]);
 
   const stats = useMemo(() => {
-    const total = documents.length;
-    const completed = documents.filter(d => d.status === 'completed').length;
+    const total = allDocs.length;
+    const completed = allDocs.filter(d => d.status === 'completed').length;
     const progress = total > 0 ? (completed / total) * 100 : 0;
-    const val = documents.reduce((acc, d) => acc + (d.data?.amountInCHF || d.data?.totalAmount || 0), 0);
-    return { total, completed, progress, val };
-  }, [documents]);
+    return { total, completed, progress };
+  }, [allDocs]);
 
-  const addFiles = (files: FileList | null) => {
+  // Generate SHA-256 hash for file
+  const generateFileHash = async (file: File): Promise<string> => {
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+  };
+
+  const addFiles = async (files: FileList | null) => {
     if (!files) return;
     setUploadError(null);
     const incoming = Array.from(files);
     
     // Check for duplicate filenames
-    const duplicates = incoming.filter(f => documents.some(d => d.fileName === f.name));
-    if (duplicates.length > 0) {
-      setUploadError(`Ignored ${duplicates.length} duplicate file(s): ${duplicates.map(f => f.name).join(', ')}`);
+    const duplicateNames = incoming.filter(f => documents.some(d => d.fileName === f.name));
+    
+    // Check for duplicate file content (hash)
+    const duplicateHashes: string[] = [];
+    const uniqueFiles: File[] = [];
+    
+    for (const file of incoming) {
+      if (duplicateNames.includes(file)) continue; // Skip filename duplicates
+      
+      const hash = await generateFileHash(file);
+      const isDuplicateHash = documents.some(d => d.fileHash === hash);
+      
+      if (isDuplicateHash) {
+        duplicateHashes.push(file.name);
+      } else {
+        uniqueFiles.push(file);
+      }
     }
-
-    const uniqueFiles = incoming.filter(f => !documents.some(d => d.fileName === f.name));
     
-    const news: ProcessedDocument[] = uniqueFiles.map((f: File) => ({ 
-      id: Math.random().toString(36).substr(2,9), 
-      fileName: f.name, 
-      status: 'pending' as const, 
-      fileRaw: f 
-    }));
+    if (duplicateNames.length > 0 || duplicateHashes.length > 0) {
+      const messages = [];
+      if (duplicateNames.length > 0) {
+        messages.push(`${duplicateNames.length} duplicate filename(s)`);
+      }
+      if (duplicateHashes.length > 0) {
+        messages.push(`${duplicateHashes.length} duplicate file(s) detected (same content)`);
+      }
+      setUploadError(`Ignored: ${messages.join(', ')}`);
+    }
     
-    setDocuments((p) => [...p, ...news]);
+    // Add files to local state for processing with hash
+    const news: ProcessedDocument[] = await Promise.all(
+      uniqueFiles.map(async (f: File) => {
+        const hash = await generateFileHash(f);
+        return {
+          id: Math.random().toString(36).substr(2,9), 
+          fileName: f.name, 
+          status: 'pending' as const, 
+          fileRaw: f,
+          fileHash: hash
+        };
+      })
+    );
+    
+    setLocalDocs((p) => [...p, ...news]);
   };
 
-  const processDoc = async (doc: ProcessedDocument, hint?: string) => {
-    setDocuments((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: hint ? 'verifying' : 'processing', error: undefined } : d));
+  const processDoc = async (doc: ProcessedDocument) => {
+    setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'processing', error: undefined } : d));
     try {
-      const res = await analyzeFinancialDocument(doc.fileRaw!, reportingCurrency, hint);
-      setDocuments((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'completed', data: res } : d));
+      console.log(`Processing: ${doc.fileName}`);
+      const res = await analyzeFinancialDocument(doc.fileRaw!, reportingCurrency);
+      console.log(`✅ Completed: ${doc.fileName}`);
+      
+      setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'completed', data: res } : d));
+      
+      // Auto-extract data and save to Firestore with hash
+      await onDataExtracted(res, doc.fileName, doc.fileHash);
     } catch (err: any) {
-      setDocuments((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'error', error: err.message } : d));
+      console.error(`❌ Error: ${doc.fileName}`, err);
+      setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'error', error: err.message } : d));
     }
   };
 
@@ -968,7 +781,7 @@ export const DocumentProcessor: React.FC<{
     setIsProcessing(true);
     stopProcessingRef.current = false;
     
-    const pending = documents.filter(d => d.status === 'pending' || d.status === 'error');
+    const pending = localDocs.filter(d => d.status === 'pending' || d.status === 'error');
     let index = 0;
     const activeTasks = new Set<Promise<void>>();
 
@@ -998,159 +811,192 @@ export const DocumentProcessor: React.FC<{
 
   return (
     <div 
-      className={`space-y-8 max-w-[1400px] mx-auto pb-20 relative transition-all duration-300`}
+      className="space-y-6"
       onDragEnter={(e) => { e.preventDefault(); dragCounter.current++; setIsDragging(true); }}
       onDragOver={(e) => e.preventDefault()}
       onDragLeave={() => { dragCounter.current--; if (dragCounter.current === 0) setIsDragging(false); }}
       onDrop={(e) => { e.preventDefault(); setIsDragging(false); dragCounter.current = 0; addFiles(e.dataTransfer.files); }}
     >
-      <div className="bg-white p-4 sm:p-8 border border-ypsom-alice rounded-sm shadow-sm">
+      <div className="bg-cdlp-black border border-cdlp-border p-4 md:p-6 rounded-lg shadow-card">
         {uploadError && (
-          <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-700 text-[10px] font-black uppercase tracking-widest flex items-center justify-between rounded-sm">
-            <span className="flex items-center gap-2"><AlertTriangle className="w-4 h-4 shrink-0" /> {uploadError}</span>
-            <button onClick={() => setUploadError(null)} className="hover:text-red-900 ml-4"><XCircle className="w-4 h-4" /></button>
+          <div className="mb-4 p-3 bg-red-600/10 border border-red-600 text-red-400 text-xs font-bold uppercase flex items-center justify-between rounded">
+            <span className="flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> {uploadError}</span>
+            <button onClick={() => setUploadError(null)} className="hover:text-red-300"><XCircle className="w-4 h-4" /></button>
           </div>
         )}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10">
+        
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
+          {/* Upload Area */}
           <div className="lg:col-span-5">
-            <label className={`flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-sm cursor-pointer transition-all group ${isDragging ? 'border-ypsom-deep bg-ypsom-alice/30 scale-105 shadow-xl' : 'border-ypsom-alice hover:bg-gray-50'}`}>
-              <Upload className="w-8 h-8 mb-4 text-ypsom-slate group-hover:-translate-y-1 transition-transform" />
+            <label className={`flex flex-col items-center justify-center h-40 border-2 border-dashed rounded cursor-pointer transition-all ${isDragging ? 'border-cdlp-gold bg-cdlp-gold/10 scale-105' : 'border-cdlp-border hover:bg-cdlp-card'}`}>
+              <Upload className="w-8 h-8 mb-3 text-cdlp-muted" />
               <div className="text-center px-4">
-                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] block text-ypsom-deep">Audit Evidence Submission</span>
-                <span className="text-[8px] sm:text-[9px] opacity-40 uppercase tracking-widest mt-1 block">Drop PDF / JPG / PNG files here</span>
+                <span className="text-xs font-bold uppercase tracking-wider block text-cdlp-gold">Upload Documents</span>
+                <span className="text-[10px] text-cdlp-muted uppercase tracking-wider mt-1 block">Drop PDF / JPG / PNG files</span>
               </div>
-              <input type="file" className="hidden" multiple onChange={(e) => addFiles(e.target.files)} />
+              <input type="file" className="hidden" multiple accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp" onChange={(e) => addFiles(e.target.files)} />
             </label>
           </div>
-          <div className="lg:col-span-3 flex flex-col justify-between py-1 gap-4 sm:gap-0">
-            <div className="space-y-2">
-               <span className="text-[9px] font-black text-ypsom-slate uppercase tracking-widest block ml-1">Reporting Currency</span>
-               <select value={reportingCurrency} onChange={(e) => setReportingCurrency(e.target.value)} className="w-full h-12 px-4 bg-gray-50 border border-ypsom-alice rounded-sm text-[10px] font-bold outline-none">
-                  <option value="CHF">CHF (Swiss Franc)</option>
-                  <option value="EUR">EUR (Euro)</option>
-                  <option value="USD">USD (Dollar)</option>
-               </select>
-            </div>
-            <div className="mt-auto">
-               {isProcessing ? (
-                 <button onClick={stopBatch} className="w-full h-12 bg-red-600 text-white rounded-sm font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-md">
-                    <Ban className="w-4 h-4" /> Stop Batch
-                 </button>
-               ) : (
-                 <button onClick={processAll} disabled={documents.filter(d => d.status === 'pending' || d.status === 'error').length === 0} className="w-full h-12 bg-ypsom-deep hover:bg-ypsom-shadow text-white rounded-sm font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-md">
-                    <ShieldCheck className="w-4 h-4" /> Start Extraction ({documents.filter(d => d.status === 'pending' || d.status === 'error').length})
-                 </button>
-               )}
-            </div>
+
+          {/* Controls */}
+          <div className="lg:col-span-3 flex flex-col justify-between gap-3">
+            {isProcessing ? (
+              <button onClick={stopBatch} className="w-full h-12 bg-red-600 text-white rounded font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-red-700">
+                <Ban className="w-4 h-4" /> Stop Processing
+              </button>
+            ) : (
+              <button 
+                onClick={processAll} 
+                disabled={localDocs.filter(d => d.status === 'pending' || d.status === 'error').length === 0} 
+                className="w-full h-12 bg-cdlp-gold text-cdlp-black rounded font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-30 hover:bg-cdlp-gold-light"
+              >
+                <ShieldCheck className="w-4 h-4" /> Start Processing ({localDocs.filter(d => d.status === 'pending' || d.status === 'error').length})
+              </button>
+            )}
           </div>
-          <div className="lg:col-span-4 flex flex-col h-48 border border-ypsom-alice rounded-sm bg-gray-50/50 p-6">
-            <div className="flex justify-between items-start mb-4">
+
+          {/* Stats */}
+          <div className="lg:col-span-4 flex flex-col h-40 border border-cdlp-border rounded bg-cdlp-card p-4">
+            <div className="flex justify-between items-start mb-3">
               <div>
-                <p className="text-[8px] font-black text-ypsom-slate uppercase tracking-widest mb-1">Queue status</p>
-                <p className="text-[10px] font-black text-ypsom-deep whitespace-nowrap">{stats.completed} / {stats.total} DONE</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[16px] sm:text-[18px] font-black text-ypsom-deep font-mono leading-none">{(stats.val || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-[10px] opacity-40 font-black">{reportingCurrency}</p>
+                <p className="text-[10px] font-bold text-cdlp-muted uppercase tracking-wider mb-1">Queue Status</p>
+                <p className="text-xs font-bold text-cdlp-gold">{stats.completed} / {stats.total} DONE</p>
               </div>
             </div>
             <div className="flex-1 flex flex-col justify-center">
-              <div className="w-full h-1.5 bg-ypsom-alice rounded-full overflow-hidden mb-2">
-                <div className="h-full bg-ypsom-deep transition-all duration-1000 ease-out" style={{ width: `${stats.progress}%` }} />
+              <div className="w-full h-1.5 bg-cdlp-border rounded-full overflow-hidden mb-2">
+                <div className="h-full bg-cdlp-gold transition-all duration-1000" style={{ width: `${stats.progress}%` }} />
               </div>
-              <p className="text-[9px] font-bold text-ypsom-slate text-center uppercase tracking-[0.2em]">{stats.progress.toFixed(0)}% SYNCHRONIZED</p>
+              <p className="text-[10px] font-bold text-cdlp-muted text-center uppercase tracking-wider">{stats.progress.toFixed(0)}% Complete</p>
             </div>
-            <div className="mt-4 flex gap-2">
-                <div className="flex-1 bg-white border border-ypsom-alice rounded-sm p-2 flex items-center justify-center gap-2">
-                   <Zap className="w-3 h-3 text-amber-500 shrink-0" />
-                   <span className="text-[8px] font-black text-ypsom-deep uppercase truncate">Turbo Mode Active</span>
-                </div>
+            <div className="mt-3 bg-cdlp-black border border-cdlp-border rounded p-2 flex items-center justify-center gap-2">
+              <Zap className="w-3 h-3 text-cdlp-gold" />
+              <span className="text-[10px] font-bold text-cdlp-gold uppercase">Concurrent Mode</span>
             </div>
           </div>
         </div>
       </div>
 
-      {documents.length > 0 && (
-        <div className="bg-white border border-ypsom-alice rounded-sm shadow-md overflow-hidden animate-in fade-in duration-500">
+      {/* Documents Table */}
+      {allDocs.length > 0 && (
+        <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card overflow-hidden">
           <div className="overflow-x-auto custom-scrollbar">
             <table className="min-w-full text-xs">
-              <thead className="bg-ypsom-deep text-white uppercase font-black text-[8px] tracking-widest">
+              <thead className="bg-cdlp-gold text-cdlp-black uppercase font-bold text-[10px] tracking-wider">
                 <tr>
-                  <th className="px-4 py-4 w-10 text-center hidden sm:table-cell">#</th>
-                  <th className="px-6 py-4 text-left">Audit Entity / Asset Class</th>
-                  <th className="px-6 py-4 text-left hidden md:table-cell">Audit Date</th>
-                  <th className="px-6 py-4 text-right">Value ({reportingCurrency})</th>
-                  <th className="px-6 py-4 text-right">Status</th>
+                  <th className="px-4 py-3 text-left">Document</th>
+                  <th className="px-4 py-3 text-left hidden md:table-cell">Date</th>
+                  <th className="px-4 py-3 text-right hidden md:table-cell">Amount</th>
+                  <th className="px-4 py-3 text-right">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-ypsom-alice">
-                {(Object.entries(groupedDocuments) as [string, ProcessedDocument[]][]).map(([category, docs]) => {
-                  if (docs.length === 0) return null;
+              <tbody className="divide-y divide-cdlp-border">
+                {allDocs.map((doc) => {
+                  const isExpanded = expandedRows.has(doc.id);
                   return (
-                    <React.Fragment key={category}>
-                      <tr className="bg-gray-100/80 border-y border-ypsom-alice">
-                        <td colSpan={5} className="px-6 py-2">
-                           <div className="flex items-center gap-2">
-                              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-ypsom-slate">{category} ({docs.length})</span>
-                           </div>
+                    <React.Fragment key={doc.id}>
+                      <tr 
+                        onClick={() => doc.status === 'completed' && toggleRow(doc.id)} 
+                        className={`hover:bg-cdlp-card transition-colors ${doc.status === 'completed' ? 'cursor-pointer' : ''} ${isExpanded ? 'bg-cdlp-card' : ''}`}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {doc.status === 'completed' && (
+                              isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-cdlp-gold" /> : <ChevronRight className="w-3.5 h-3.5 text-cdlp-muted" />
+                            )}
+                            <span className="font-bold text-white text-[11px] truncate max-w-[200px]">{doc.fileName}</span>
+                          </div>
+                          {doc.data?.issuer && (
+                            <div className="ml-5 mt-1">
+                              <span className="px-2 py-0.5 bg-cdlp-gold/20 text-cdlp-gold text-[9px] font-bold uppercase rounded">{doc.data.issuer}</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-[10px] text-cdlp-muted hidden md:table-cell">{doc.data?.date || '---'}</td>
+                        <td className="px-4 py-3 text-right font-bold font-mono text-[11px] text-white hidden md:table-cell">
+                          {doc.data ? (doc.data.amountInCHF || doc.data.totalAmount || 0).toFixed(2) : '0.00'}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {doc.status === 'processing' && <Loader2 className="w-4 h-4 text-cdlp-gold animate-spin" />}
+                            {doc.status === 'completed' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
+                            {doc.status === 'error' && <XCircle className="w-4 h-4 text-red-500" />}
+                            <span className={`text-[9px] font-bold uppercase tracking-wider hidden sm:inline ${
+                              doc.status === 'completed' ? 'text-emerald-500' : 
+                              doc.status === 'error' ? 'text-red-500' : 
+                              'text-cdlp-muted'
+                            }`}>{doc.status}</span>
+                            <button 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                if ((doc as any).source === 'firestore') {
+                                  // Delete from Firestore via context
+                                  // This will be handled by a delete button in the verification hub
+                                } else {
+                                  // Remove from local state
+                                  setLocalDocs(p => p.filter(d => d.id !== doc.id));
+                                }
+                              }} 
+                              className="text-cdlp-muted/30 hover:text-red-500"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
-                      {docs.map((doc, idx) => {
-                        const isExpanded = expandedRows.has(doc.id);
-                        return (
-                          <React.Fragment key={doc.id}>
-                            <tr onClick={() => toggleRow(doc.id)} className={`hover:bg-gray-50 transition-all cursor-pointer ${isExpanded ? 'bg-ypsom-alice/10' : ''}`}>
-                              <td className="px-4 py-4 text-center font-mono font-bold text-ypsom-slate/40 text-[10px] border-r border-ypsom-alice/10 hidden sm:table-cell">{String(idx + 1).padStart(3, '0')}</td>
-                              <td className="px-6 py-4">
-                                 <div className="flex flex-col gap-1.5">
-                                    <div className="flex items-center gap-2">
-                                       {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-ypsom-deep" /> : <ChevronRight className="w-3.5 h-3.5 text-ypsom-slate" />}
-                                       <span className="font-bold text-ypsom-deep uppercase text-[10px] truncate max-w-[120px] sm:max-w-[280px]">{doc.fileName}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 ml-5">
-                                       <span className="px-2 py-0.5 bg-ypsom-deep text-white text-[7px] font-black uppercase rounded-sm truncate max-w-[100px]">{doc.data?.issuer || '...'}</span>
-                                    </div>
-                                 </div>
-                              </td>
-                              <td className="px-6 py-4 font-mono text-[10px] text-ypsom-slate hidden md:table-cell">{doc.data?.date || '---'}</td>
-                              <td className="px-6 py-4 text-right font-black font-mono text-[11px] text-ypsom-deep">
-                                 {doc.data ? (doc.data.amountInCHF || doc.data.totalAmount || 0).toFixed(2) : '0.00'}
-                              </td>
-                              <td className="px-6 py-4 text-right">
-                                 <div className="flex items-center justify-end gap-3">
-                                    <span className={`text-[8px] font-black uppercase tracking-widest hidden sm:inline ${doc.status === 'completed' ? 'text-green-600' : 'text-ypsom-slate'}`}>{doc.status}</span>
-                                    <button onClick={(e) => { e.stopPropagation(); setDocuments(p => p.filter(d => d.id !== doc.id)); }} className="text-ypsom-slate/20 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
-                                 </div>
-                              </td>
-                            </tr>
-                            {isExpanded && (
-                              <tr onClick={(e) => e.stopPropagation()}>
-                                <td colSpan={5} className="p-0 bg-gray-50 border-t border-ypsom-alice">
-                                   {doc.data ? (
-                                     <VerificationHub 
-                                        doc={doc} 
-                                        onUpdate={(d) => setDocuments(p => p.map(x => x.id === doc.id ? { ...x, data: d } : x))}
-                                        onSave={(d) => { setDocuments(p => p.map(x => x.id === doc.id ? { ...x, data: d, status: 'completed' } : x)); toggleRow(doc.id); }} 
-                                        onRefine={(h) => processDoc(doc, h)} 
-                                     />
-                                   ) : <div className="p-16 text-center"><Loader2 className="w-8 h-8 animate-spin text-ypsom-deep/20 mx-auto" /></div>}
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        );
-                      })}
+                      {isExpanded && doc.data && (
+                        <tr onClick={(e) => e.stopPropagation()}>
+                          <td colSpan={4} className="p-0 bg-cdlp-card border-t border-cdlp-border">
+                            <VerificationHub
+                              doc={doc}
+                              onUpdate={(newData) => {
+                                if ((doc as any).source === 'firestore') {
+                                  updateDocument(doc.id, { data: newData });
+                                } else {
+                                  setLocalDocs((prev) =>
+                                    prev.map((d) => (d.id === doc.id ? { ...d, data: newData } : d))
+                                  );
+                                }
+                              }}
+                              onSave={(newData) => {
+                                if ((doc as any).source === 'firestore') {
+                                  updateDocument(doc.id, { data: newData });
+                                } else {
+                                  setLocalDocs((prev) =>
+                                    prev.map((d) => (d.id === doc.id ? { ...d, data: newData } : d))
+                                  );
+                                }
+                                toggleRow(doc.id);
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      )}
                     </React.Fragment>
                   );
                 })}
               </tbody>
             </table>
           </div>
-          <div className="p-5 border-t border-ypsom-alice bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
-             <div className="text-[9px] font-black text-ypsom-slate uppercase tracking-widest opacity-40">Certified Ledger • {stats.completed} Assets Reconciliation Complete</div>
-             <button onClick={() => exportToExcel(documents.map(d => d.data!).filter(Boolean), 'CafeDeLaPlace_Certified', reportingCurrency)} className="w-full sm:w-auto h-10 px-8 bg-ypsom-deep text-white rounded-sm font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl hover:bg-ypsom-shadow transition-all">
-                <FileSpreadsheet className="w-4 h-4" /> Export Ledger (XLSX)
-             </button>
+          <div className="p-4 border-t border-cdlp-border bg-cdlp-card flex justify-between items-center">
+            <div className="text-[10px] font-bold text-cdlp-muted uppercase tracking-wider">
+              {stats.completed} Documents Processed
+            </div>
+            <button 
+              onClick={() => {
+                const completedDocs = allDocs.filter(d => d.status === 'completed' && d.data);
+                if (completedDocs.length === 0) {
+                  alert('No completed documents to export');
+                  return;
+                }
+                const dataToExport = completedDocs.map(d => d.data!);
+                exportToExcel(dataToExport, 'Restaurant_Documents', reportingCurrency);
+              }}
+              disabled={stats.completed === 0}
+              className="h-10 px-6 bg-cdlp-gold text-cdlp-black rounded font-bold text-[10px] uppercase tracking-wider flex items-center gap-2 hover:bg-cdlp-gold-light disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <FileSpreadsheet className="w-4 h-4" /> Export to Excel
+            </button>
           </div>
         </div>
       )}

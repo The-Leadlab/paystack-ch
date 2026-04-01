@@ -21,6 +21,7 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
   const [files, setFiles] = useState<ProcessingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingMode, setProcessingMode] = useState<'parallel' | 'sequential'>('sequential');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
   const stopProcessingRef = useRef(false);
@@ -79,40 +80,70 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
     setIsProcessing(true);
 
     const pendingFiles = files.filter(f => f.status === 'pending');
+    console.log(`Starting ${processingMode} processing of ${pendingFiles.length} files...`);
 
-    for (const fileItem of pendingFiles) {
-      if (stopProcessingRef.current) break;
+    if (processingMode === 'sequential') {
+      // Process one by one to avoid rate limits
+      for (const fileItem of pendingFiles) {
+        if (stopProcessingRef.current) break;
+        await processFile(fileItem);
+      }
+    } else {
+      // Process all in parallel
+      const processingPromises = pendingFiles.map(fileItem => processFile(fileItem));
+      await Promise.allSettled(processingPromises);
+    }
 
+    console.log('Processing complete!');
+    setIsProcessing(false);
+  };
+
+  const processFile = async (fileItem: ProcessingFile) => {
+    if (stopProcessingRef.current) return;
+
+    console.log(`Processing: ${fileItem.name}`);
+    setFiles((prev) =>
+      prev.map((f) =>
+        f.id === fileItem.id ? { ...f, status: 'processing' as const } : f
+      )
+    );
+
+    try {
+      console.log(`Calling Gemini AI for: ${fileItem.name}`);
+      
+      // Add timeout wrapper (90 seconds for large files)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Processing timeout (90s)')), 90000)
+      );
+      
+      const data = await Promise.race([
+        analyzeFinancialDocument(fileItem.file, 'CHF'),
+        timeoutPromise
+      ]) as any;
+      
+      console.log(`✅ AI analysis complete for: ${fileItem.name}`);
+      
       setFiles((prev) =>
         prev.map((f) =>
-          f.id === fileItem.id ? { ...f, status: 'processing' as const } : f
+          f.id === fileItem.id ? { ...f, status: 'completed' as const, data } : f
         )
       );
 
-      try {
-        const data = await analyzeFinancialDocument(fileItem.file, 'CHF');
-        
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === fileItem.id ? { ...f, status: 'completed' as const, data } : f
-          )
-        );
-
-        // Automatically extract and categorize
-        onDataExtracted(data, fileItem.name);
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === fileItem.id
-              ? { ...f, status: 'error' as const, error: errorMsg }
-              : f
-          )
-        );
-      }
+      // Automatically extract and categorize
+      console.log(`Extracting data from: ${fileItem.name}`);
+      await onDataExtracted(data, fileItem.name);
+      console.log(`✅ Data extracted successfully for: ${fileItem.name}`);
+    } catch (error) {
+      console.error(`❌ Error processing ${fileItem.name}:`, error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === fileItem.id
+            ? { ...f, status: 'error' as const, error: errorMsg }
+            : f
+        )
+      );
     }
-
-    setIsProcessing(false);
   };
 
   const stopProcessing = () => {
@@ -165,9 +196,9 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
   const pendingCount = files.filter(f => f.status === 'pending').length;
 
   return (
-    <div className="bg-white p-4 md:p-6 rounded-lg border border-gray-200">
+    <div className="bg-cdlp-black border border-cdlp-border p-4 md:p-6 rounded-lg shadow-card">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base md:text-lg font-black text-ypsom-deep uppercase">
+        <h2 className="text-base md:text-lg font-black text-cdlp-gold uppercase">
           {t('uploadTitle')}
         </h2>
         <div className="flex gap-2">
@@ -175,7 +206,7 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
             <button
               onClick={clearAll}
               disabled={isProcessing}
-              className="flex items-center gap-1 px-3 py-1 text-xs font-bold uppercase text-red-600 border border-red-600 rounded hover:bg-red-50 disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1 text-xs font-bold uppercase text-red-400 border border-red-400 rounded hover:bg-red-400/10 disabled:opacity-50"
             >
               <Trash2 className="w-3 h-3" /> {t('clearAll')}
             </button>
@@ -183,7 +214,7 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
           {pendingCount > 0 && !isProcessing && (
             <button
               onClick={processFiles}
-              className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white text-xs font-bold uppercase rounded hover:bg-green-700"
+              className="flex items-center gap-1 px-3 py-1 bg-emerald-600 text-white text-xs font-bold uppercase rounded hover:bg-emerald-700"
             >
               <Play className="w-3 h-3" /> {t('startProcessing')} ({pendingCount})
             </button>
@@ -208,14 +239,14 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
         onClick={() => fileInputRef.current?.click()}
         className={`
           border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
-          ${isDragging ? 'border-ypsom-deep bg-ypsom-deep/5' : 'border-gray-300 hover:border-ypsom-deep hover:bg-gray-50'}
+          ${isDragging ? 'border-cdlp-gold bg-cdlp-gold/5' : 'border-cdlp-border hover:border-cdlp-gold hover:bg-cdlp-card'}
         `}
       >
-        <Upload className="w-8 h-8 mx-auto mb-2 text-ypsom-slate" />
-        <p className="text-sm text-ypsom-deep font-bold mb-1">{t('uploadDesc')}</p>
+        <Upload className="w-8 h-8 mx-auto mb-2 text-cdlp-muted" />
+        <p className="text-sm text-cdlp-gold font-bold mb-1">{t('uploadDesc')}</p>
         <button
           type="button"
-          className="text-xs text-ypsom-deep underline hover:no-underline"
+          className="text-xs text-cdlp-gold underline hover:no-underline"
         >
           {t('browse')}
         </button>
@@ -231,16 +262,16 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
 
       {/* Processing Status */}
       {files.length > 0 && (
-        <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
+        <div className="mt-4 space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
           {files.map((file) => (
             <div
               key={file.id}
-              className="flex items-center gap-3 p-3 bg-gray-50 rounded border border-gray-200"
+              className="flex items-center gap-3 p-3 bg-cdlp-card border border-cdlp-border rounded"
             >
-              <FileText className="w-4 h-4 text-ypsom-slate flex-shrink-0" />
+              <FileText className="w-4 h-4 text-cdlp-muted flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-ypsom-deep truncate">{file.name}</p>
-                <p className="text-[10px] text-ypsom-slate">
+                <p className="text-xs font-bold text-white truncate">{file.name}</p>
+                <p className="text-[10px] text-cdlp-muted">
                   {file.status === 'pending' && t('pending')}
                   {file.status === 'processing' && t('processing')}
                   {file.status === 'completed' && t('completed')}
@@ -248,13 +279,13 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
                 </p>
               </div>
               {file.status === 'processing' && (
-                <Loader className="w-4 h-4 text-ypsom-deep animate-spin flex-shrink-0" />
+                <Loader className="w-4 h-4 text-cdlp-gold animate-spin flex-shrink-0" />
               )}
               {file.status === 'completed' && (
-                <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
               )}
               {file.status === 'error' && (
-                <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                <XCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
               )}
               {(file.status === 'pending' || file.status === 'error') && (
                 <button
@@ -262,7 +293,7 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
                     e.stopPropagation();
                     removeFile(file.id);
                   }}
-                  className="text-red-500 hover:text-red-700"
+                  className="text-red-400 hover:text-red-500"
                 >
                   <XCircle className="w-4 h-4" />
                 </button>

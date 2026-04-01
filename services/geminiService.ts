@@ -46,8 +46,14 @@ export const analyzeFinancialDocument = async (
   const base64 = await fileToBase64(file);
   const mimeType = file.type;
 
+  console.log(`📄 Analyzing: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+  console.log(`🔑 API Key configured: ${import.meta.env.VITE_GEMINI_API_KEY ? 'Yes' : 'No'}`);
+
   return withRetry(async () => {
     const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+    
+    console.log(`🤖 Calling Gemini API...`);
+    const startTime = Date.now();
     
     const coreSchema: any = {
       type: Type.OBJECT,
@@ -222,7 +228,11 @@ export const analyzeFinancialDocument = async (
       }
     });
 
+    const elapsed = Date.now() - startTime;
+    console.log(`✅ Gemini API responded in ${elapsed}ms`);
+
     const parsed = JSON.parse(response.text) as FinancialData;
+    console.log(`📊 Parsed data:`, parsed);
 
     if (parsed.subDocuments && parsed.subDocuments.length > 0) {
        const sum = parsed.subDocuments.reduce((s, doc) => s + (doc.totalAmount || 0), 0);

@@ -14,6 +14,12 @@ const translations = {
     appName: 'CAFE DE LA PLACE',
     financialDashboard: 'Financial Dashboard',
     
+    // Tabs
+    dashboard: 'Dashboard',
+    revenue: 'Revenue',
+    reports: 'Reports',
+    documents: 'Documents',
+    
     // Sidebar
     employees: 'Employees',
     addEmployee: 'Employee',
@@ -21,6 +27,12 @@ const translations = {
     salary: 'Salary',
     contributions: 'Contributions',
     logout: 'Logout',
+    newSession: 'New Session',
+    sessions: 'Sessions',
+    allSessions: 'All Sessions',
+    clearAll: 'Clear All',
+    resetAllData: 'Reset All Data',
+    resetView: 'Reset View',
     
     // Financial Summary
     income: 'Income',
@@ -73,6 +85,12 @@ const translations = {
     appName: 'CAFE DE LA PLACE',
     financialDashboard: 'Tableau de bord financier',
     
+    // Tabs
+    dashboard: 'Tableau de bord',
+    revenue: 'Revenus',
+    reports: 'Rapports',
+    documents: 'Documents',
+    
     // Sidebar
     employees: 'Employés',
     addEmployee: 'Employé',
@@ -80,6 +98,12 @@ const translations = {
     salary: 'Salaire',
     contributions: 'Cotisations',
     logout: 'Déconnexion',
+    newSession: 'Nouvelle session',
+    sessions: 'Sessions',
+    allSessions: 'Toutes les sessions',
+    clearAll: 'Tout effacer',
+    resetAllData: 'Réinitialiser toutes les données',
+    resetView: 'Réinitialiser la vue',
     
     // Financial Summary
     income: 'Revenus',

@@ -20,6 +20,7 @@ function docToIncome(id: string, data: any): Income {
   return {
     id,
     restaurant_id: data.restaurantId,
+    session_id: data.sessionId || '',
     date: data.date,
     type: data.type,
     amount: data.amount,
@@ -32,6 +33,7 @@ function docToExpense(id: string, data: any): Expense {
   return {
     id,
     restaurant_id: data.restaurantId,
+    session_id: data.sessionId || '',
     date: data.date,
     category: data.category,
     amount: data.amount,
@@ -46,8 +48,8 @@ type FinanceContextValue = {
   expenses: Expense[];
   loading: boolean;
   error: string | null;
-  addIncome: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description?: string) => Promise<Income | null>;
-  addExpense: (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, employeeId?: string) => Promise<Expense | null>;
+  addIncome: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string) => Promise<Income | null>;
+  addExpense: (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, sessionId: string, employeeId?: string) => Promise<Expense | null>;
   deleteIncome: (id: string) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
   refreshFinances: () => Promise<void>;
@@ -99,12 +101,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   }, [fetchFinances]);
 
   const addIncome = useCallback(
-    async (date: string, type: 'SALES' | 'RESERVATION', amount: number, description?: string): Promise<Income | null> => {
+    async (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string): Promise<Income | null> => {
       const uid = user?.uid;
       if (!uid || !db) return null;
       try {
         const ref = await addDoc(collection(db, INCOME_COLLECTION), {
           restaurantId: uid,
+          sessionId,
           date,
           type,
           amount,
@@ -114,6 +117,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         const newIncome: Income = {
           id: ref.id,
           restaurant_id: uid,
+          session_id: sessionId,
           date,
           type,
           amount,
@@ -131,12 +135,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addExpense = useCallback(
-    async (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, employeeId?: string): Promise<Expense | null> => {
+    async (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, sessionId: string, employeeId?: string): Promise<Expense | null> => {
       const uid = user?.uid;
       if (!uid || !db) return null;
       try {
         const ref = await addDoc(collection(db, EXPENSE_COLLECTION), {
           restaurantId: uid,
+          sessionId,
           date,
           category,
           amount,
@@ -147,6 +152,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         const newExpense: Expense = {
           id: ref.id,
           restaurant_id: uid,
+          session_id: sessionId,
           date,
           category,
           amount,
