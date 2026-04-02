@@ -155,21 +155,21 @@ export function RestaurantDashboard() {
         }
       }
     } else if (docType === 'Pay Slip') {
-      // Create PAYROLL expense entry for the net pay
-      const netPay = data.paySlip?.netPay || data.totalAmount || 0;
+      // Create PAYROLL expense entry for the GROSS pay (not net pay)
+      const grossPay = data.paySlip?.grossPay || data.totalAmount || 0;
       const employeeName = data.paySlip?.employee?.name || 'Unknown Employee';
       
-      if (netPay > 0) {
+      if (grossPay > 0) {
         await addExpense(
           date, 
           'PAYROLL', 
-          netPay, 
+          grossPay, 
           `Payslip - ${employeeName}`, 
           currentSession.id
         );
       }
       
-      console.log('Payslip processed:', employeeName, 'Net Pay:', netPay);
+      console.log('Payslip processed:', employeeName, 'Gross Pay:', grossPay);
     } else if (amount > 0) {
       const category = data.expenseCategory?.toLowerCase().includes('supplier') ? 'SUPPLIERS' : 
                       data.expenseCategory?.toLowerCase().includes('bill') ? 'BILLS' : 'OTHER';
@@ -695,6 +695,8 @@ function ReportsPlaceholder() {
   const [dateFrom, setDateFrom] = React.useState('');
   const [dateTo, setDateTo] = React.useState('');
   const [filterActive, setFilterActive] = React.useState(false);
+  const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
+  const [supplierFilter, setSupplierFilter] = React.useState<string>('all');
 
   // Filter data by current session
   const filteredIncome = isAllSessionsView ? income : income.filter(i => i.session_id === currentSession?.id);
@@ -705,9 +707,19 @@ function ReportsPlaceholder() {
     ? filteredIncome.filter(i => i.date >= dateFrom && i.date <= dateTo)
     : filteredIncome;
   
-  const dateFilteredExpenses = dateFrom && dateTo
+  let dateFilteredExpenses = dateFrom && dateTo
     ? filteredExpenses.filter(e => e.date >= dateFrom && e.date <= dateTo)
     : filteredExpenses;
+  
+  // Apply category filter
+  if (categoryFilter !== 'all') {
+    dateFilteredExpenses = dateFilteredExpenses.filter(e => e.category === categoryFilter);
+  }
+  
+  // Apply supplier filter (description contains supplier name)
+  if (supplierFilter !== 'all') {
+    dateFilteredExpenses = dateFilteredExpenses.filter(e => e.description === supplierFilter);
+  }
 
   // Group by month
   const monthlyData = React.useMemo(() => {
@@ -747,6 +759,21 @@ function ReportsPlaceholder() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10); // Top 10 suppliers
   }, [dateFilteredExpenses]);
+  
+  // Get unique categories and suppliers for filters
+  const uniqueCategories = React.useMemo(() => {
+    const cats = new Set(filteredExpenses.map(e => e.category));
+    return Array.from(cats).sort();
+  }, [filteredExpenses]);
+  
+  const uniqueSuppliers = React.useMemo(() => {
+    const suppliers = new Set(
+      filteredExpenses
+        .filter(e => e.category === 'SUPPLIERS' && e.description)
+        .map(e => e.description)
+    );
+    return Array.from(suppliers).sort();
+  }, [filteredExpenses]);
 
   const setQuickFilter = (type: string) => {
     const today = new Date();
@@ -779,13 +806,15 @@ function ReportsPlaceholder() {
     setDateFrom('');
     setDateTo('');
     setFilterActive(false);
+    setCategoryFilter('all');
+    setSupplierFilter('all');
   };
 
   return (
     <div className="space-y-6">
-      {/* Date Range Filter */}
+      {/* Filters */}
       <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <div>
             <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">Date Range Filter</label>
             <div className="flex gap-2">
@@ -804,29 +833,55 @@ function ReportsPlaceholder() {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">Quick Filters</label>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={() => setQuickFilter('thisMonth')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
-                This Month
-              </button>
-              <button onClick={() => setQuickFilter('lastMonth')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
-                Last Month
-              </button>
-              <button onClick={() => setQuickFilter('last3Months')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
-                Last 3 Months
-              </button>
-              <button onClick={() => setQuickFilter('thisYear')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
-                This Year
-              </button>
-              <button onClick={clearFilter} className="px-3 py-1.5 bg-red-600/10 border border-red-600 text-red-400 text-xs font-bold uppercase rounded hover:bg-red-600/20">
-                Clear
-              </button>
-            </div>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">Category Filter</label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
+            >
+              <option value="all">All Categories</option>
+              {uniqueCategories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">Supplier Filter</label>
+            <select
+              value={supplierFilter}
+              onChange={(e) => setSupplierFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
+              disabled={uniqueSuppliers.length === 0}
+            >
+              <option value="all">All Suppliers</option>
+              {uniqueSuppliers.map(sup => (
+                <option key={sup} value={sup}>{sup}</option>
+              ))}
+            </select>
           </div>
         </div>
-        {filterActive && dateFrom && dateTo && (
-          <div className="text-xs text-cdlp-gold">
-            📅 Filtering: {dateFrom} → {dateTo}
+        <div className="flex flex-wrap gap-2 mb-3">
+          <button onClick={() => setQuickFilter('thisMonth')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
+            This Month
+          </button>
+          <button onClick={() => setQuickFilter('lastMonth')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
+            Last Month
+          </button>
+          <button onClick={() => setQuickFilter('last3Months')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
+            Last 3 Months
+          </button>
+          <button onClick={() => setQuickFilter('thisYear')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
+            This Year
+          </button>
+          <button onClick={clearFilter} className="px-3 py-1.5 bg-red-600/10 border border-red-600 text-red-400 text-xs font-bold uppercase rounded hover:bg-red-600/20">
+            Clear All
+          </button>
+        </div>
+        {(filterActive || categoryFilter !== 'all' || supplierFilter !== 'all') && (
+          <div className="text-xs text-cdlp-gold flex flex-wrap gap-2">
+            {filterActive && dateFrom && dateTo && <span>📅 Date: {dateFrom} → {dateTo}</span>}
+            {categoryFilter !== 'all' && <span>📂 Category: {categoryFilter}</span>}
+            {supplierFilter !== 'all' && <span>🏢 Supplier: {supplierFilter}</span>}
           </div>
         )}
       </div>

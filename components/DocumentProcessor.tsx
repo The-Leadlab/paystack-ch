@@ -833,6 +833,7 @@ export const DocumentProcessor: React.FC<{
               <div className="text-center px-4">
                 <span className="text-xs font-bold uppercase tracking-wider block text-cdlp-gold">Upload Documents</span>
                 <span className="text-[10px] text-cdlp-muted uppercase tracking-wider mt-1 block">Drop PDF / JPG / PNG files</span>
+                <span className="text-[9px] text-cdlp-muted/60 uppercase tracking-wider mt-1 block">Click rows below to view & edit</span>
               </div>
               <input type="file" className="hidden" multiple accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp" onChange={(e) => addFiles(e.target.files)} />
             </label>
@@ -871,7 +872,7 @@ export const DocumentProcessor: React.FC<{
             </div>
             <div className="mt-3 bg-cdlp-black border border-cdlp-border rounded p-2 flex items-center justify-center gap-2">
               <Zap className="w-3 h-3 text-cdlp-gold" />
-              <span className="text-[10px] font-bold text-cdlp-gold uppercase">Concurrent Mode</span>
+              <span className="text-[10px] font-bold text-cdlp-gold uppercase">3x Parallel Processing</span>
             </div>
           </div>
         </div>
