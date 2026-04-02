@@ -514,10 +514,66 @@ export function RestaurantDashboard() {
 function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentData, language, documents, updateDocument, t }: any) {
   const [showResetConfirm, setShowResetConfirm] = React.useState(false);
 
-  const handleResetData = () => {
-    if (confirm('⚠️ WARNING: This will delete ALL income and expense entries in the current session. This action cannot be undone. Are you sure?')) {
-      // TODO: Implement reset functionality
-      alert('Reset functionality will be implemented with Firestore delete operations');
+  const handleResetData = async () => {
+    if (!currentSession) {
+      alert('No session selected');
+      return;
+    }
+    
+    if (!confirm('⚠️ WARNING: This will delete ALL income and expense entries in the current session. This action cannot be undone. Are you sure?')) {
+      setShowResetConfirm(false);
+      return;
+    }
+    
+    try {
+      const { writeBatch, collection, getDocs, query, where } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      const { user } = useAuth();
+      
+      if (!db || !user?.uid) {
+        throw new Error('Database not available');
+      }
+
+      const batch = writeBatch(db);
+      let deleteCount = 0;
+
+      // Delete all income for this session
+      const incomeSnap = await getDocs(
+        query(
+          collection(db, 'income'), 
+          where('restaurantId', '==', user.uid),
+          where('session_id', '==', currentSession.id)
+        )
+      );
+      incomeSnap.forEach((doc) => {
+        batch.delete(doc.ref);
+        deleteCount++;
+      });
+
+      // Delete all expenses for this session
+      const expensesSnap = await getDocs(
+        query(
+          collection(db, 'expenses'), 
+          where('restaurantId', '==', user.uid),
+          where('session_id', '==', currentSession.id)
+        )
+      );
+      expensesSnap.forEach((doc) => {
+        batch.delete(doc.ref);
+        deleteCount++;
+      });
+
+      // Commit batch
+      await batch.commit();
+      
+      alert(`✅ Successfully deleted ${deleteCount} records from session "${currentSession.name}"!`);
+      setShowResetConfirm(false);
+      
+      // Refresh page to update UI
+      window.location.reload();
+    } catch (error) {
+      console.error('Reset error:', error);
+      alert('❌ Error resetting session data: ' + (error instanceof Error ? error.message : 'Unknown error'));
       setShowResetConfirm(false);
     }
   };
