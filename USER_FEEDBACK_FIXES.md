@@ -31,7 +31,13 @@ Fixed 4 critical issues reported by users based on screenshot feedback.
 - Shows active filters with visual indicators
 - "Clear All" button resets all filters
 
-**Impact**: Users can now analyze spending by specific suppliers or categories.
+**Additional Fix (April 2)**: Fixed supplier detection issue
+- Changed expense creation to use `data.issuer` (supplier name) as description
+- Updated supplier filter to include ALL expenses with descriptions (not just SUPPLIERS category)
+- Excludes payslip entries from supplier list
+- Now properly detects suppliers from document processing
+
+**Impact**: Users can now analyze spending by specific suppliers or categories with accurate supplier names.
 
 ---
 
@@ -69,7 +75,9 @@ Fixed 4 critical issues reported by users based on screenshot feedback.
 ### Files Modified:
 1. `components/RestaurantDashboard.tsx`
    - Line 154-165: Changed netPay to grossPay
+   - Line 147-157: Fixed supplier detection - use `data.issuer` as expense description
    - Line 700-850: Added category and supplier filters to Reports tab
+   - Line 730-740: Updated supplier filter to include all expenses (not just SUPPLIERS category)
    - Added state variables: `categoryFilter`, `supplierFilter`
    - Added filter logic and UI components
 
@@ -78,10 +86,11 @@ Fixed 4 critical issues reported by users based on screenshot feedback.
    - Line 745: Added "Click rows below to view & edit" hint
 
 ### Deployment:
-- Build: ✅ Successful (51.97s)
-- Git Commit: ✅ 8ff3bb0
+- Build: ✅ Successful (40.70s)
+- Git Commit: ✅ 223b5e7
 - Firebase Deploy: ✅ https://cafe-la-place.web.app
 - Status: LIVE IN PRODUCTION
+- Last Update: April 2, 2026 - Supplier detection fix
 
 ---
 
