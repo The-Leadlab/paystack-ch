@@ -150,7 +150,9 @@ export function RestaurantDashboard() {
           if (item.type === 'INCOME') {
             await addIncome(date, 'SALES', item.amount, item.description || fileName, currentSession.id);
           } else if (item.type === 'EXPENSE') {
-            await addExpense(date, 'OTHER', item.amount, item.description || fileName, currentSession.id);
+            // For expenses, use the item description which may contain supplier info
+            const description = item.description || data.issuer || fileName;
+            await addExpense(date, 'OTHER', item.amount, description, currentSession.id);
           }
         }
       }
@@ -173,7 +175,9 @@ export function RestaurantDashboard() {
     } else if (amount > 0) {
       const category = data.expenseCategory?.toLowerCase().includes('supplier') ? 'SUPPLIERS' : 
                       data.expenseCategory?.toLowerCase().includes('bill') ? 'BILLS' : 'OTHER';
-      await addExpense(date, category as any, amount, data.notes || fileName, currentSession.id);
+      // Use issuer (supplier name) as description for proper filtering
+      const description = data.issuer || data.notes || fileName;
+      await addExpense(date, category as any, amount, description, currentSession.id);
     }
     
     // Save document to Firestore with hash
@@ -769,7 +773,7 @@ function ReportsPlaceholder() {
   const uniqueSuppliers = React.useMemo(() => {
     const suppliers = new Set(
       filteredExpenses
-        .filter(e => e.category === 'SUPPLIERS' && e.description)
+        .filter(e => e.description && e.description.trim() !== '' && !e.description.startsWith('Payslip'))
         .map(e => e.description)
     );
     return Array.from(suppliers).sort();
