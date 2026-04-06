@@ -29,11 +29,14 @@ function AppContent() {
     return <Login />;
   }
 
-  // Temporarily disabled email verification for testing
-  // const isPasswordUser = user.providerData?.some((p) => p.providerId === 'password');
-  // if (isPasswordUser && !user.emailVerified) {
-  //   return <EmailVerificationGate />;
-  // }
+  // Check if user is admin (bypass email verification)
+  const isAdmin = user.email === 'admin@test.com';
+  
+  // Email verification check (bypass for admin)
+  const isPasswordUser = user.providerData?.some((p) => p.providerId === 'password');
+  if (isPasswordUser && !user.emailVerified && !isAdmin) {
+    return <EmailVerificationGate />;
+  }
 
   return (
     <LanguageProvider>

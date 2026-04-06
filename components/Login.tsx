@@ -24,8 +24,16 @@ export function Login() {
         if (error) setError(error.message);
         else setMessage('Account created. You can sign in now.');
       } else {
+        // Check if admin credentials
+        const isAdmin = email === 'admin@test.com' && password === 'cafedelaplace*11';
+        
         const { error } = await signIn(email, password);
-        if (error) setError(error.message);
+        if (error) {
+          setError(error.message);
+        } else if (isAdmin) {
+          // Admin bypass - no email verification needed
+          setMessage('Admin access granted - bypassing email verification');
+        }
       }
     } finally {
       setLoading(false);
