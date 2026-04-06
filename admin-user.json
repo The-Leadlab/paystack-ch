@@ -1,0 +1,24 @@
+{
+  "users": [
+    {
+      "localId": "admin-cafe-de-la-place",
+      "email": "admin@test.com",
+      "emailVerified": true,
+      "passwordHash": "cafedelaplace*11",
+      "salt": "",
+      "displayName": "Admin",
+      "photoUrl": "",
+      "createdAt": "1712073600000",
+      "lastLoginAt": "1712073600000",
+      "providerUserInfo": [
+        {
+          "providerId": "password",
+          "email": "admin@test.com",
+          "federatedId": "admin@test.com",
+          "displayName": "Admin",
+          "photoUrl": ""
+        }
+      ]
+    }
+  ]
+}
