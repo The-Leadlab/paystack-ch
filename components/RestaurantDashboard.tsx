@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download } from 'lucide-react';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
@@ -869,6 +869,26 @@ function ReportsPlaceholder() {
     setCategoryFilter('all');
     setSupplierFilter('all');
   };
+  
+  const handleExport = async (format: 'csv' | 'pdf') => {
+    const { exportToCSV, exportToPDF } = await import('../services/reportExportService');
+    
+    const reportData = {
+      income: dateFilteredIncome,
+      expenses: dateFilteredExpenses,
+      monthlyData,
+      supplierData,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+      sessionName: isAllSessionsView ? 'All Sessions' : currentSession?.name
+    };
+    
+    if (format === 'csv') {
+      exportToCSV(reportData);
+    } else {
+      await exportToPDF(reportData);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -944,6 +964,30 @@ function ReportsPlaceholder() {
             {supplierFilter !== 'all' && <span>🏢 Supplier: {supplierFilter}</span>}
           </div>
         )}
+      </div>
+
+      {/* Download Section */}
+      <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-bold text-cdlp-gold uppercase mb-1">Export Report</h3>
+            <p className="text-xs text-cdlp-muted">Download filtered data in your preferred format</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleExport('csv')}
+              className="flex items-center gap-2 px-4 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light transition-colors"
+            >
+              <Download className="w-4 h-4" /> Download CSV
+            </button>
+            <button
+              onClick={() => handleExport('pdf')}
+              className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-gold text-cdlp-gold text-xs font-bold uppercase rounded hover:bg-cdlp-gold/10 transition-colors"
+            >
+              <Download className="w-4 h-4" /> Download PDF
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Monthly Revenue Analysis */}
