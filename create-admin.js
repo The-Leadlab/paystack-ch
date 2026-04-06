@@ -21,18 +21,20 @@ async function createAdmin() {
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       'admin@test.com',
-      'admin'
+      'cafedelaplace*11'
     );
     console.log('✅ Admin user created successfully!');
     console.log('Email: admin@test.com');
-    console.log('Password: admin');
+    console.log('Password: cafedelaplace*11');
     console.log('UID:', userCredential.user.uid);
+    console.log('\n🔓 This account bypasses email verification automatically.');
     process.exit(0);
   } catch (error) {
     if (error.code === 'auth/email-already-in-use') {
       console.log('ℹ️  Admin user already exists');
       console.log('Email: admin@test.com');
-      console.log('Password: admin');
+      console.log('Password: cafedelaplace*11');
+      console.log('\n🔓 This account bypasses email verification automatically.');
     } else {
       console.error('❌ Error creating admin:', error.message);
     }
