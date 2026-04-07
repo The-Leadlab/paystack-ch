@@ -494,6 +494,7 @@ export function RestaurantDashboard() {
               documents={documents}
               updateDocument={updateDocumentData}
               t={t}
+              user={user}
             />
           )}
           {activeTab === 'revenue' && <POSManager />}
@@ -511,7 +512,7 @@ export function RestaurantDashboard() {
 }
 
 // Dashboard Tab Component
-function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentData, language, documents, updateDocument, t }: any) {
+function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentData, language, documents, updateDocument, t, user }: any) {
   const [showResetConfirm, setShowResetConfirm] = React.useState(false);
 
   const handleResetData = async () => {
@@ -528,7 +529,6 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
     try {
       const { writeBatch, collection, getDocs, query, where } = await import('firebase/firestore');
       const { db } = await import('../lib/firebase');
-      const { user } = useAuth();
       
       if (!db || !user?.uid) {
         throw new Error('Database not available');

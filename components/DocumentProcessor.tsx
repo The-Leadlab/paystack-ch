@@ -5,7 +5,7 @@ import {
   ShieldCheck, Zap, Ban, FileSpreadsheet, XCircle,
   Edit3, RefreshCcw, Check, ListOrdered, Terminal,
   SearchCode, Cpu, Landmark, TerminalSquare, ExternalLink,
-  ArrowUpRight, ArrowDownRight, Scale as ScaleIcon
+  ArrowUpRight, ArrowDownRight, Scale as ScaleIcon, Eye
 } from 'lucide-react';
 import { analyzeFinancialDocument } from '../services/geminiService';
 import { exportToExcel } from '../services/excelService';
@@ -927,6 +927,19 @@ export const DocumentProcessor: React.FC<{
                               doc.status === 'error' ? 'text-red-500' : 
                               'text-cdlp-muted'
                             }`}>{doc.status}</span>
+                            {doc.fileRaw && (
+                              <button 
+                                onClick={(e) => { 
+                                  e.stopPropagation();
+                                  const url = URL.createObjectURL(doc.fileRaw);
+                                  window.open(url, '_blank');
+                                }} 
+                                className="text-cdlp-muted/50 hover:text-cdlp-gold transition-colors"
+                                title="View document in new tab"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                             <button 
                               onClick={(e) => { 
                                 e.stopPropagation(); 
@@ -938,7 +951,8 @@ export const DocumentProcessor: React.FC<{
                                   setLocalDocs(p => p.filter(d => d.id !== doc.id));
                                 }
                               }} 
-                              className="text-cdlp-muted/30 hover:text-red-500"
+                              className="text-cdlp-muted/30 hover:text-red-500 transition-colors"
+                              title="Delete document"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
