@@ -50,6 +50,7 @@ const CATEGORY_GROUPS = [
 // Neural Log Component (from Ypsom)
 const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
   const [docUrl, setDocUrl] = useState<string | null>(null);
+  const [showZoom, setShowZoom] = useState(false);
 
   React.useEffect(() => {
     if (doc.fileRaw) {
@@ -68,31 +69,72 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
   ];
 
   const handleOpenRawTrace = () => {
-    // Get the document URL (from fileDataUrl or fileRaw)
+    // Priority: Use stored fileDataUrl first, then blob URL
     const url = doc.fileDataUrl || docUrl;
     if (url) {
       window.open(url, '_blank');
+    } else {
+      alert('Document file not available. The file may not have been stored with this document.');
     }
   };
 
+  const displayUrl = doc.fileDataUrl || docUrl;
+
   return (
     <div className="w-full h-full flex flex-col bg-slate-900 text-slate-300 font-mono text-[10px]">
-      {/* Document Preview Section */}
-      {docUrl && (
-        <div className="flex-1 bg-slate-950 border-b border-white/10 overflow-hidden">
-          {doc.fileRaw?.type === 'application/pdf' ? (
+      {/* Document Preview Section - Clickable to zoom */}
+      {displayUrl && (
+        <div 
+          className="flex-1 bg-slate-950 border-b border-white/10 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity relative group"
+          onClick={() => setShowZoom(true)}
+          title="Click to zoom"
+        >
+          {doc.fileName?.toLowerCase().endsWith('.pdf') || doc.fileRaw?.type === 'application/pdf' ? (
             <iframe 
-              src={docUrl} 
-              className="w-full h-full"
+              src={displayUrl} 
+              className="w-full h-full pointer-events-none"
               title="Document Preview"
             />
           ) : (
             <img 
-              src={docUrl} 
+              src={displayUrl} 
               alt="Document Preview" 
               className="w-full h-full object-contain"
             />
           )}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+            <Eye className="w-8 h-8 text-white" />
+          </div>
+        </div>
+      )}
+      
+      {/* Zoom Modal */}
+      {showZoom && displayUrl && (
+        <div 
+          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowZoom(false)}
+        >
+          <button
+            onClick={() => setShowZoom(false)}
+            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+          >
+            <XCircle className="w-6 h-6 text-white" />
+          </button>
+          <div className="max-w-7xl max-h-[90vh] w-full h-full" onClick={(e) => e.stopPropagation()}>
+            {doc.fileName?.toLowerCase().endsWith('.pdf') || doc.fileRaw?.type === 'application/pdf' ? (
+              <iframe 
+                src={displayUrl} 
+                className="w-full h-full rounded-lg"
+                title="Document Zoom"
+              />
+            ) : (
+              <img 
+                src={displayUrl} 
+                alt="Document Zoom" 
+                className="w-full h-full object-contain rounded-lg"
+              />
+            )}
+          </div>
         </div>
       )}
       
@@ -125,7 +167,7 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
         
         <div className="pt-4">
            {/* Open Raw Trace Button - Ypsom Style - Opens the actual document */}
-           {(docUrl || doc.fileDataUrl) && (
+           {displayUrl && (
              <button 
                onClick={handleOpenRawTrace} 
                className="w-full py-3 bg-emerald-600/10 hover:bg-emerald-600/20 border-2 border-emerald-600 text-emerald-400 rounded-sm font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 text-[9px] mb-2"
@@ -134,9 +176,9 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
              </button>
            )}
            
-           {(docUrl || doc.fileDataUrl) && (
+           {displayUrl && (
              <button 
-               onClick={() => window.open(doc.fileDataUrl || docUrl || '', '_blank')} 
+               onClick={() => window.open(displayUrl, '_blank')} 
                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-sm font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-lg text-[9px]"
              >
                <ExternalLink className="w-4 h-4" /> Open Full Document

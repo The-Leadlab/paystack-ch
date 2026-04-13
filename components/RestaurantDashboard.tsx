@@ -576,10 +576,14 @@ function IncomeExpenseSection({
       console.log('Drop data:', data, 'Target type:', type);
       
       // Check if it's from the opposite type
-      // Income items have 'type' field (SALES, RESERVATION)
-      // Expense items have 'category' field (BILLS, SUPPLIERS, etc)
-      const isFromIncome = data.type && !data.category;
-      const isFromExpense = data.category && !data.type;
+      // Income items have 'type' field (SALES, RESERVATION) and restaurantId
+      // Expense items have 'category' field (BILLS, SUPPLIERS, etc) and restaurantId
+      // We need to check which collection it came from
+      const hasIncomeType = data.type && (data.type === 'SALES' || data.type === 'RESERVATION');
+      const hasExpenseCategory = data.category && (data.category === 'BILLS' || data.category === 'SUPPLIERS' || data.category === 'PAYROLL' || data.category === 'OTHER');
+      
+      const isFromIncome = hasIncomeType && !hasExpenseCategory;
+      const isFromExpense = hasExpenseCategory && !hasIncomeType;
       
       // Only allow drop if it's from the opposite type
       const shouldConvert = (type === 'income' && isFromExpense) || (type === 'expense' && isFromIncome);
