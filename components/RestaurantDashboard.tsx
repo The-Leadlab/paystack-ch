@@ -1563,7 +1563,10 @@ function DocumentsTab() {
       ? groupedDocs.suppliers[selectedEntity] 
       : filter === 'employees'
       ? groupedDocs.employees[selectedEntity]
-      : groupedDocs.posReports;
+      : filter === 'pos'
+      ? groupedDocs.posReports
+      : // For 'all' filter, find the entity in suppliers or employees
+        groupedDocs.suppliers[selectedEntity] || groupedDocs.employees[selectedEntity] || [];
     
     const monthlyGroups = groupByMonth(entityDocs || []);
 
@@ -1579,7 +1582,14 @@ function DocumentsTab() {
           <h1 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">{selectedEntity}</h1>
         </div>
 
-        {monthlyGroups.map(([month, docs]) => {
+        {monthlyGroups.length === 0 ? (
+          <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-12 text-center">
+            <FileText className="w-16 h-16 text-cdlp-gold/30 mx-auto mb-4" />
+            <h3 className="text-lg font-black text-cdlp-gold uppercase mb-2">No Documents Found</h3>
+            <p className="text-cdlp-muted text-sm">No documents available for this entity</p>
+          </div>
+        ) : (
+          monthlyGroups.map(([month, docs]) => {
           const totalAmount = docs.reduce((sum, d) => sum + (d.data?.totalAmount || 0), 0);
           const monthName = new Date(month + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
 
@@ -1625,7 +1635,8 @@ function DocumentsTab() {
               </div>
             </div>
           );
-        })}
+        })
+        )}
       </div>
     );
   }

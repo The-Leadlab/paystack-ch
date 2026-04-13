@@ -71,10 +71,35 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
   const handleOpenRawTrace = () => {
     // Priority: Use stored fileDataUrl first, then blob URL
     const url = doc.fileDataUrl || docUrl;
-    if (url) {
-      window.open(url, '_blank');
-    } else {
+    if (!url) {
       alert('Document file not available. The file may not have been stored with this document.');
+      return;
+    }
+    
+    // For data URLs, create a blob and open it
+    if (url.startsWith('data:')) {
+      try {
+        // Convert data URL to blob
+        const arr = url.split(',');
+        const mime = arr[0].match(/:(.*?);/)?.[1] || 'application/octet-stream';
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+        // Clean up after a delay
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      } catch (err) {
+        console.error('Error opening document:', err);
+        alert('Error opening document. The file may be corrupted.');
+      }
+    } else {
+      // Regular URL
+      window.open(url, '_blank');
     }
   };
 
