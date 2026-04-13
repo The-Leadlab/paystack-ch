@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink } from 'lucide-react';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
@@ -10,6 +10,7 @@ import { usePOS } from '../context/POSContext';
 import { DocumentProcessor } from './DocumentProcessor';
 import { POSManager } from './POSManager';
 import type { FinancialData, ProcessedDocument, POSReading } from '../types';
+import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
 
 type Tab = 'dashboard' | 'revenue' | 'reports' | 'documents';
 
@@ -1389,13 +1390,11 @@ function DocumentsTab() {
               <div className="p-4">
                 {(selectedDocument.fileDataUrl || selectedDocument.fileRaw) ? (
                   <button
-                    onClick={() => {
-                      const url = selectedDocument.fileDataUrl || (selectedDocument.fileRaw ? URL.createObjectURL(selectedDocument.fileRaw) : '');
-                      if (url) window.open(url, '_blank');
-                    }}
-                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2"
+                    type="button"
+                    onClick={() => openDocumentInNewTab(selectedDocument)}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-sm text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-lg transition-all"
                   >
-                    <ExternalLink className="w-4 h-4" /> Open Full Document
+                    <ExternalLink className="w-4 h-4" /> Open Raw Trace
                   </button>
                 ) : (
                   <div className="text-center text-xs text-slate-500 italic">

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { analyzeFinancialDocument } from '../services/geminiService';
 import { exportToExcel } from '../services/excelService';
+import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
 import { ProcessedDocument, BankTransaction, FinancialData, DocumentType, PaySlipAnalysis } from '../types';
 
 // Restaurant-specific categories adapted from Ypsom - comprehensive categorization
@@ -67,41 +68,6 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
     { label: 'Semantic Fiduciary Mapping', icon: Landmark, delay: '0.6s' },
     { label: 'Integrity Rule Validation', icon: ShieldCheck, delay: '0.8s' },
   ];
-
-  const handleOpenRawTrace = () => {
-    // Priority: Use stored fileDataUrl first, then blob URL
-    const url = doc.fileDataUrl || docUrl;
-    if (!url) {
-      alert('Document file not available. The file may not have been stored with this document.');
-      return;
-    }
-    
-    // For data URLs, create a blob and open it
-    if (url.startsWith('data:')) {
-      try {
-        // Convert data URL to blob
-        const arr = url.split(',');
-        const mime = arr[0].match(/:(.*?);/)?.[1] || 'application/octet-stream';
-        const bstr = atob(arr[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        while (n--) {
-          u8arr[n] = bstr.charCodeAt(n);
-        }
-        const blob = new Blob([u8arr], { type: mime });
-        const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, '_blank');
-        // Clean up after a delay
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-      } catch (err) {
-        console.error('Error opening document:', err);
-        alert('Error opening document. The file may be corrupted.');
-      }
-    } else {
-      // Regular URL
-      window.open(url, '_blank');
-    }
-  };
 
   const displayUrl = doc.fileDataUrl || docUrl;
 
@@ -191,24 +157,16 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
         </div>
         
         <div className="pt-4">
-           {/* Open Raw Trace Button - Ypsom Style - Opens the actual document */}
-           {displayUrl && (
-             <button 
-               onClick={handleOpenRawTrace} 
-               className="w-full py-3 bg-emerald-600/10 hover:bg-emerald-600/20 border-2 border-emerald-600 text-emerald-400 rounded-sm font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 text-[9px] mb-2"
-             >
-               <Terminal className="w-4 h-4" /> Open Raw Trace
-             </button>
-           )}
-           
-           {displayUrl && (
-             <button 
-               onClick={() => window.open(displayUrl, '_blank')} 
-               className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-sm font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-lg text-[9px]"
-             >
-               <ExternalLink className="w-4 h-4" /> Open Full Document
-             </button>
-           )}
+          {/* Open Raw Trace — same control as Ypsom-partners-Financial-counter (opens file in new tab) */}
+          {displayUrl && (
+            <button
+              type="button"
+              onClick={() => openDocumentInNewTab(doc)}
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-sm font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-lg text-[9px]"
+            >
+              <ExternalLink className="w-4 h-4" /> Open Raw Trace
+            </button>
+          )}
         </div>
       </div>
     </div>
