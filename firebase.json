@@ -16,6 +16,9 @@
   "firestore": {
     "rules": "financial-tracker/firestore.rules",
     "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }
 

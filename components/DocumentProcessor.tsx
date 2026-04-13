@@ -11,17 +11,39 @@ import { analyzeFinancialDocument } from '../services/geminiService';
 import { exportToExcel } from '../services/excelService';
 import { ProcessedDocument, BankTransaction, FinancialData, DocumentType, PaySlipAnalysis } from '../types';
 
-// Restaurant-specific categories adapted from Ypsom
+// Restaurant-specific categories adapted from Ypsom - comprehensive categorization
 const RESTAURANT_CATEGORIES = [
-  { id: 'Salary', label: 'Salary / Wages' },
-  { id: 'Rent', label: 'Rent / Lease' },
-  { id: 'Groceries', label: 'Groceries / Food Supplies' },
-  { id: 'Restaurant', label: 'Restaurant Supplies' },
-  { id: 'Utility', label: 'Utilities / Bills' },
-  { id: 'Insurance', label: 'Insurance' },
-  { id: 'Bank', label: 'Bank Fees' },
-  { id: 'Professional Services', label: 'Professional Services' },
-  { id: 'Office Supplies', label: 'Office Supplies' },
+  { id: 'SALARY', label: 'Salary / Wages', group: 'Personnel' },
+  { id: 'PAYROLL_TAXES', label: 'Payroll Taxes / Social Charges', group: 'Personnel' },
+  { id: 'RENT', label: 'Rent / Lease', group: 'Fixed Costs' },
+  { id: 'UTILITIES', label: 'Utilities / Energy', group: 'Fixed Costs' },
+  { id: 'INSURANCE', label: 'Insurance', group: 'Fixed Costs' },
+  { id: 'FOOD_SUPPLIES', label: 'Food / Groceries', group: 'Inventory' },
+  { id: 'BEVERAGES', label: 'Beverages / Drinks', group: 'Inventory' },
+  { id: 'RESTAURANT_SUPPLIES', label: 'Restaurant Supplies / Equipment', group: 'Inventory' },
+  { id: 'PACKAGING', label: 'Packaging / Disposables', group: 'Inventory' },
+  { id: 'CLEANING', label: 'Cleaning Supplies', group: 'Operations' },
+  { id: 'MAINTENANCE', label: 'Maintenance / Repairs', group: 'Operations' },
+  { id: 'BANK_FEES', label: 'Bank Fees / Charges', group: 'Financial' },
+  { id: 'ACCOUNTING', label: 'Accounting / Professional Services', group: 'Financial' },
+  { id: 'MARKETING', label: 'Marketing / Advertising', group: 'Marketing' },
+  { id: 'DELIVERY', label: 'Delivery / Transport', group: 'Operations' },
+  { id: 'TELECOM', label: 'Internet / Telecom Services', group: 'Fixed Costs' },
+  { id: 'OFFICE_SUPPLIES', label: 'Office Supplies', group: 'Operations' },
+  { id: 'LICENSES', label: 'Licenses / Permits', group: 'Legal' },
+  { id: 'TAXES', label: 'Taxes / VAT', group: 'Financial' },
+  { id: 'OTHER', label: 'Other / Miscellaneous', group: 'Other' },
+];
+
+// Group categories for better organization
+const CATEGORY_GROUPS = [
+  { id: 'Personnel', label: 'Personnel Costs' },
+  { id: 'Inventory', label: 'Inventory & Supplies' },
+  { id: 'Fixed Costs', label: 'Fixed Costs' },
+  { id: 'Operations', label: 'Operations' },
+  { id: 'Financial', label: 'Financial' },
+  { id: 'Marketing', label: 'Marketing' },
+  { id: 'Legal', label: 'Legal & Compliance' },
   { id: 'Other', label: 'Other' },
 ];
 
@@ -45,42 +67,82 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
     { label: 'Integrity Rule Validation', icon: ShieldCheck, delay: '0.8s' },
   ];
 
+  const handleOpenRawTrace = () => {
+    // Get the document URL (from fileDataUrl or fileRaw)
+    const url = doc.fileDataUrl || docUrl;
+    if (url) {
+      window.open(url, '_blank');
+    }
+  };
+
   return (
-    <div className="w-full h-full flex flex-col p-6 space-y-6 bg-slate-900 text-slate-300 font-mono text-[10px]">
-      <div className="flex items-center justify-between border-b border-white/10 pb-3">
-        <h5 className="flex items-center gap-2 text-emerald-400 font-black uppercase tracking-widest text-[9px] md:text-[10px]">
-          <TerminalSquare className="w-3 h-3" /> Extraction Sequence
-        </h5>
-        <span className="bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full text-[8px] animate-pulse whitespace-nowrap">Live Trace</span>
-      </div>
-
-      <div className="space-y-4">
-        {steps.map((step, i) => (
-          <div key={i} className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-500" style={{ animationDelay: step.delay }}>
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-            <step.icon className="w-3 h-3 text-slate-500" />
-            <span className="uppercase tracking-tighter text-slate-400">{step.label}</span>
-            <span className="ml-auto text-emerald-500 font-bold opacity-50 hidden sm:inline">COMPLETED</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-4 flex-1 border-t border-white/10 pt-4 overflow-y-auto custom-scrollbar">
-        <h6 className="text-slate-500 uppercase tracking-widest font-black mb-3 text-[8px]">AI Interpretation Log:</h6>
-        <div className="bg-white/5 p-4 rounded-sm italic border-l-2 border-emerald-500/50 leading-relaxed text-slate-200">
-          {doc.data?.aiInterpretation || "Scanning document layers for semantic context."}
+    <div className="w-full h-full flex flex-col bg-slate-900 text-slate-300 font-mono text-[10px]">
+      {/* Document Preview Section */}
+      {docUrl && (
+        <div className="flex-1 bg-slate-950 border-b border-white/10 overflow-hidden">
+          {doc.fileRaw?.type === 'application/pdf' ? (
+            <iframe 
+              src={docUrl} 
+              className="w-full h-full"
+              title="Document Preview"
+            />
+          ) : (
+            <img 
+              src={docUrl} 
+              alt="Document Preview" 
+              className="w-full h-full object-contain"
+            />
+          )}
         </div>
-      </div>
+      )}
       
-      <div className="pt-4 mt-auto">
-         {docUrl && (
-           <button 
-             onClick={() => window.open(docUrl, '_blank')} 
-             className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-sm font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-lg text-[9px]"
-           >
-             <ExternalLink className="w-4 h-4" /> Open Raw Trace
-           </button>
-         )}
+      {/* Extraction Steps */}
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <h5 className="flex items-center gap-2 text-emerald-400 font-black uppercase tracking-widest text-[9px] md:text-[10px]">
+            <TerminalSquare className="w-3 h-3" /> Extraction Sequence
+          </h5>
+          <span className="bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full text-[8px] animate-pulse whitespace-nowrap">Live Trace</span>
+        </div>
+
+        <div className="space-y-4">
+          {steps.map((step, i) => (
+            <div key={i} className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-500" style={{ animationDelay: step.delay }}>
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+              <step.icon className="w-3 h-3 text-slate-500" />
+              <span className="uppercase tracking-tighter text-slate-400">{step.label}</span>
+              <span className="ml-auto text-emerald-500 font-bold opacity-50 hidden sm:inline">COMPLETED</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <h6 className="text-slate-500 uppercase tracking-widest font-black mb-3 text-[8px]">AI Interpretation Log:</h6>
+          <div className="bg-white/5 p-4 rounded-sm italic border-l-2 border-emerald-500/50 leading-relaxed text-slate-200">
+            {doc.data?.aiInterpretation || "Scanning document layers for semantic context."}
+          </div>
+        </div>
+        
+        <div className="pt-4">
+           {/* Open Raw Trace Button - Ypsom Style - Opens the actual document */}
+           {(docUrl || doc.fileDataUrl) && (
+             <button 
+               onClick={handleOpenRawTrace} 
+               className="w-full py-3 bg-emerald-600/10 hover:bg-emerald-600/20 border-2 border-emerald-600 text-emerald-400 rounded-sm font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 text-[9px] mb-2"
+             >
+               <Terminal className="w-4 h-4" /> Open Raw Trace
+             </button>
+           )}
+           
+           {(docUrl || doc.fileDataUrl) && (
+             <button 
+               onClick={() => window.open(doc.fileDataUrl || docUrl || '', '_blank')} 
+               className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-sm font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-lg text-[9px]"
+             >
+               <ExternalLink className="w-4 h-4" /> Open Full Document
+             </button>
+           )}
+        </div>
       </div>
     </div>
   );
@@ -178,7 +240,13 @@ const EditableLineItemsTable: React.FC<{
                     className="w-full bg-transparent font-bold text-[9px] text-white outline-none border-b border-transparent focus:border-cdlp-gold"
                   >
                     <option value="">--</option>
-                    {RESTAURANT_CATEGORIES.map(cat => <option key={cat.id} value={cat.id}>{cat.label}</option>)}
+                    {CATEGORY_GROUPS.map(group => (
+                      <optgroup key={group.id} label={group.label}>
+                        {RESTAURANT_CATEGORIES.filter(cat => cat.group === group.id).map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.label}</option>
+                        ))}
+                      </optgroup>
+                    ))}
                   </select>
                 </td>
               </tr>
@@ -606,7 +674,13 @@ const VerificationHub: React.FC<{
                       ) : (
                         <select value={editedData.expenseCategory} onChange={e => handleFieldChange('expenseCategory', e.target.value)} className={`flex-1 h-11 px-4 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-white uppercase outline-none`}>
                            <option value="">-- Uncategorized --</option>
-                           {RESTAURANT_CATEGORIES.map(cat => <option key={cat.id} value={cat.id}>{cat.label}</option>)}
+                           {CATEGORY_GROUPS.map(group => (
+                             <optgroup key={group.id} label={group.label}>
+                               {RESTAURANT_CATEGORIES.filter(cat => cat.group === group.id).map(cat => (
+                                 <option key={cat.id} value={cat.id}>{cat.label}</option>
+                               ))}
+                             </optgroup>
+                           ))}
                            {!RESTAURANT_CATEGORIES.some(c => c.id === editedData.expenseCategory) && editedData.expenseCategory && (
                              <option value={editedData.expenseCategory}>{editedData.expenseCategory}</option>
                            )}
@@ -670,7 +744,7 @@ const VerificationHub: React.FC<{
 export const DocumentProcessor: React.FC<{ 
   documents: ProcessedDocument[], 
   updateDocument: (documentId: string, updates: Partial<ProcessedDocument>) => Promise<void>,
-  onDataExtracted: (data: any, fileName: string, fileHash?: string) => void
+  onDataExtracted: (data: any, fileName: string, fileHash?: string, fileDataUrl?: string) => void
 }> = ({ documents, updateDocument, onDataExtracted }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -681,7 +755,7 @@ export const DocumentProcessor: React.FC<{
   const stopProcessingRef = useRef(false);
   const dragCounter = useRef(0);
 
-  const CONCURRENCY_LIMIT = 3;
+  const CONCURRENCY_LIMIT = 5; // Increased from 3 for faster processing
   
   // Combine Firestore documents with local processing documents
   const allDocs = useMemo(() => {
@@ -763,13 +837,33 @@ export const DocumentProcessor: React.FC<{
     setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'processing', error: undefined } : d));
     try {
       console.log(`Processing: ${doc.fileName}`);
+      
+      // Convert file to base64 data URL for free storage
+      let fileDataUrl: string | undefined;
+      
+      if (doc.fileRaw) {
+        try {
+          // Convert file to base64 data URL
+          const reader = new FileReader();
+          fileDataUrl = await new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(doc.fileRaw!);
+          });
+          console.log(`✅ File converted to data URL (${(fileDataUrl.length / 1024).toFixed(2)} KB)`);
+        } catch (conversionErr) {
+          console.error(`⚠️ File conversion failed: ${conversionErr}`);
+          // Continue processing even if conversion fails
+        }
+      }
+      
       const res = await analyzeFinancialDocument(doc.fileRaw!, reportingCurrency);
       console.log(`✅ Completed: ${doc.fileName}`);
       
-      setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'completed', data: res } : d));
+      setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'completed', data: res, fileDataUrl } : d));
       
-      // Auto-extract data and save to Firestore with hash
-      await onDataExtracted(res, doc.fileName, doc.fileHash);
+      // Auto-extract data and save to Firestore with hash and file data URL
+      await onDataExtracted(res, doc.fileName, doc.fileHash, fileDataUrl);
     } catch (err: any) {
       console.error(`❌ Error: ${doc.fileName}`, err);
       setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'error', error: err.message } : d));
@@ -872,7 +966,7 @@ export const DocumentProcessor: React.FC<{
             </div>
             <div className="mt-3 bg-cdlp-black border border-cdlp-border rounded p-2 flex items-center justify-center gap-2">
               <Zap className="w-3 h-3 text-cdlp-gold" />
-              <span className="text-[10px] font-bold text-cdlp-gold uppercase">3x Parallel Processing</span>
+              <span className="text-[10px] font-bold text-cdlp-gold uppercase">5x Parallel Processing</span>
             </div>
           </div>
         </div>

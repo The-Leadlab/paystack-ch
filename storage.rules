@@ -1,0 +1,17 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Documents folder - users can only access their own documents
+    match /documents/{userId}/{fileName} {
+      // Allow read if authenticated and accessing own documents
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow write if authenticated and writing to own folder
+      allow write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow delete if authenticated and deleting own documents
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

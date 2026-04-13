@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check } from 'lucide-react';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
@@ -134,7 +134,7 @@ export function RestaurantDashboard() {
   };
 
   // Handle extracted document data
-  const handleDocumentData = async (data: FinancialData, fileName: string, fileHash?: string) => {
+  const handleDocumentData = async (data: FinancialData, fileName: string, fileHash?: string, fileDataUrl?: string) => {
     if (!currentSession) {
       alert('Please select a session first');
       return;
@@ -143,6 +143,12 @@ export function RestaurantDashboard() {
     const date = data.date || new Date().toISOString().split('T')[0];
     const amount = data.amountInCHF || data.totalAmount || 0;
     const docType = data.documentType;
+    
+    // Check if this is revenue based on category or document type
+    const isRevenue = data.expenseCategory?.toUpperCase().includes('REVENUE') || 
+                      data.expenseCategory?.toUpperCase().includes('SALES') ||
+                      docType === 'Ticket/Receipt' ||
+                      docType === 'Z2 Multi-Ticket Sheet';
     
     if (docType === 'Bank Statement' || docType === 'Bank Deposit') {
       if (data.lineItems) {
@@ -172,7 +178,13 @@ export function RestaurantDashboard() {
       }
       
       console.log('Payslip processed:', employeeName, 'Gross Pay:', grossPay);
+    } else if (isRevenue && amount > 0) {
+      // This is revenue - add as income
+      const description = data.issuer || data.notes || fileName;
+      await addIncome(date, 'SALES', amount, description, currentSession.id);
+      console.log('Revenue processed:', description, 'Amount:', amount);
     } else if (amount > 0) {
+      // This is an expense
       const category = data.expenseCategory?.toLowerCase().includes('supplier') ? 'SUPPLIERS' : 
                       data.expenseCategory?.toLowerCase().includes('bill') ? 'BILLS' : 'OTHER';
       // Use issuer (supplier name) as description for proper filtering
@@ -180,7 +192,7 @@ export function RestaurantDashboard() {
       await addExpense(date, category as any, amount, description, currentSession.id);
     }
     
-    // Save document to Firestore with hash
+    // Save document to Firestore with hash and file data URL
     try {
       await addDocument({
         id: Math.random().toString(36).substr(2, 9),
@@ -188,6 +200,7 @@ export function RestaurantDashboard() {
         status: 'completed',
         data,
         fileHash,
+        fileDataUrl,
       });
     } catch (error) {
       console.error('Error saving document:', error);
@@ -493,6 +506,10 @@ export function RestaurantDashboard() {
               language={language}
               documents={documents}
               updateDocument={updateDocumentData}
+              deleteIncome={deleteIncome}
+              deleteExpense={deleteExpense}
+              addIncome={addIncome}
+              addExpense={addExpense}
               t={t}
               user={user}
             />
@@ -511,8 +528,208 @@ export function RestaurantDashboard() {
   );
 }
 
+// Income/Expense Section Component with Drag & Drop and Edit
+function IncomeExpenseSection({ 
+  title, 
+  items, 
+  type, 
+  onAdd, 
+  onEdit, 
+  onDelete, 
+  onDrop,
+  t 
+}: { 
+  title: string; 
+  items: any[]; 
+  type: 'income' | 'expense'; 
+  onAdd?: () => void; 
+  onEdit: (item: any) => void;
+  onDelete: (id: string) => Promise<void>;
+  onDrop: (item: any) => Promise<void>;
+  t: (key: string) => string;
+}) {
+  const [draggedOver, setDraggedOver] = React.useState(false);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [editForm, setEditForm] = React.useState<any>(null);
+
+  const handleDragStart = (e: React.DragEvent, item: any) => {
+    e.dataTransfer.setData('application/json', JSON.stringify(item));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDraggedOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setDraggedOver(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDraggedOver(false);
+    
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      // Only allow drop if it's from the opposite type
+      const isFromOpposite = (type === 'income' && data.category) || (type === 'expense' && data.type);
+      if (isFromOpposite) {
+        await onDrop(data);
+      }
+    } catch (err) {
+      console.error('Drop error:', err);
+    }
+  };
+
+  const startEdit = (item: any) => {
+    setEditingId(item.id);
+    setEditForm({ ...item });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditForm(null);
+  };
+
+  const saveEdit = async () => {
+    // TODO: Implement save via context
+    console.log('Save edit:', editForm);
+    setEditingId(null);
+    setEditForm(null);
+  };
+
+  const isIncome = type === 'income';
+  const colorClass = isIncome ? 'emerald' : 'red';
+
+  return (
+    <div 
+      className={`bg-cdlp-black border-2 p-4 md:p-6 rounded-lg shadow-card transition-all ${
+        draggedOver 
+          ? `border-${colorClass}-500 bg-${colorClass}-500/10` 
+          : 'border-cdlp-border'
+      }`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-base md:text-lg font-black text-cdlp-gold uppercase">{title}</h2>
+        {onAdd && (
+          <button
+            onClick={onAdd}
+            className={`flex items-center gap-1 px-2 md:px-3 py-1 bg-${colorClass}-600 text-white text-[10px] md:text-xs font-bold uppercase rounded hover:bg-${colorClass}-700`}
+          >
+            <Plus className="w-3 h-3" /> {t('add')}
+          </button>
+        )}
+      </div>
+      
+      {draggedOver && (
+        <div className={`mb-4 p-3 border-2 border-dashed border-${colorClass}-500 rounded bg-${colorClass}-500/5 text-center`}>
+          <p className={`text-xs font-bold text-${colorClass}-500 uppercase`}>
+            Drop here to convert to {type}
+          </p>
+        </div>
+      )}
+      
+      <div className="space-y-2 max-h-64 md:max-h-96 overflow-y-auto custom-scrollbar">
+        {items.length === 0 ? (
+          <p className="text-xs text-cdlp-muted/60">No {type} entries</p>
+        ) : (
+          items.map((item: any) => (
+            <div 
+              key={item.id}
+              draggable
+              onDragStart={(e) => handleDragStart(e, item)}
+              className={`p-2 md:p-3 bg-cdlp-card border border-cdlp-border rounded group hover:border-cdlp-gold transition-all cursor-move ${
+                editingId === item.id ? 'ring-2 ring-cdlp-gold' : ''
+              }`}
+            >
+              {editingId === item.id ? (
+                // Edit Mode
+                <div className="space-y-2">
+                  <input
+                    type="date"
+                    value={editForm.date}
+                    onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                    className="w-full px-2 py-1 bg-cdlp-dark border border-cdlp-border rounded text-xs text-white"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.amount}
+                    onChange={(e) => setEditForm({ ...editForm, amount: parseFloat(e.target.value) })}
+                    className="w-full px-2 py-1 bg-cdlp-dark border border-cdlp-border rounded text-xs text-white"
+                  />
+                  <input
+                    type="text"
+                    value={editForm.description || ''}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    placeholder="Description"
+                    className="w-full px-2 py-1 bg-cdlp-dark border border-cdlp-border rounded text-xs text-white"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={saveEdit}
+                      className="flex-1 px-2 py-1 bg-emerald-600 text-white text-[10px] font-bold uppercase rounded hover:bg-emerald-700"
+                    >
+                      <Check className="w-3 h-3 inline mr-1" /> Save
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="flex-1 px-2 py-1 bg-cdlp-card border border-cdlp-border text-white text-[10px] font-bold uppercase rounded hover:bg-cdlp-border/50"
+                    >
+                      <X className="w-3 h-3 inline mr-1" /> Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // View Mode
+                <div className="flex justify-between items-start">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-xs md:text-sm text-white truncate">
+                      {isIncome ? item.type : item.category}
+                    </p>
+                    <p className="text-[10px] md:text-xs text-cdlp-muted">{item.date}</p>
+                    {item.description && (
+                      <p className="text-[10px] md:text-xs text-cdlp-muted mt-1 truncate">{item.description}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 ml-2">
+                    <p className={`font-black text-sm md:text-base text-${colorClass}-500`}>
+                      {item.amount.toFixed(2)}
+                    </p>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => startEdit(item)}
+                        className="p-1 hover:bg-cdlp-gold/20 rounded transition-colors"
+                        title="Edit"
+                      >
+                        <Edit2 className="w-3 h-3 text-cdlp-gold" />
+                      </button>
+                      <button
+                        onClick={() => onDelete(item.id)}
+                        className="p-1 hover:bg-red-500/20 rounded transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3 h-3 text-red-500" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Dashboard Tab Component
-function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentData, language, documents, updateDocument, t, user }: any) {
+function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentData, language, documents, updateDocument, deleteIncome, deleteExpense, addIncome, addExpense, t, user }: any) {
   const [showResetConfirm, setShowResetConfirm] = React.useState(false);
 
   const handleResetData = async () => {
@@ -629,7 +846,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <TrendingUp className="w-4 md:w-5 h-4 md:h-5 text-emerald-500" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('income')}</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-emerald-500">{totalIncome.toFixed(0)}</p>
+          <p className="text-lg md:text-2xl font-black text-emerald-500">{totalIncome.toFixed(2)}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
         </div>
 
@@ -638,7 +855,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <TrendingDown className="w-4 md:w-5 h-4 md:h-5 text-red-500" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('expenses')}</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-red-500">{totalExpenses.toFixed(0)}</p>
+          <p className="text-lg md:text-2xl font-black text-red-500">{totalExpenses.toFixed(2)}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
         </div>
 
@@ -647,7 +864,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <Users className="w-4 md:w-5 h-4 md:h-5 text-cdlp-gold" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('payroll')}</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-cdlp-gold">{totalPayroll.toFixed(0)}</p>
+          <p className="text-lg md:text-2xl font-black text-cdlp-gold">{totalPayroll.toFixed(2)}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
         </div>
 
@@ -657,7 +874,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('balance')}</span>
           </div>
           <p className={`text-lg md:text-2xl font-black ${balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-            {balance.toFixed(0)}
+            {balance.toFixed(2)}
           </p>
           <p className="text-xs text-cdlp-muted">CHF</p>
         </div>
@@ -682,66 +899,48 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
       {/* Income & Expense Sections */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         {/* Income Section */}
-        <div className="bg-cdlp-black border border-cdlp-border p-4 md:p-6 rounded-lg shadow-card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base md:text-lg font-black text-cdlp-gold uppercase">{t('income')}</h2>
-            {currentSession && (
-              <button
-                onClick={onAddIncome}
-                className="flex items-center gap-1 px-2 md:px-3 py-1 bg-emerald-600 text-white text-[10px] md:text-xs font-bold uppercase rounded hover:bg-emerald-700"
-              >
-                <Plus className="w-3 h-3" /> {t('add')}
-              </button>
-            )}
-          </div>
-          <div className="space-y-2 max-h-64 md:max-h-96 overflow-y-auto custom-scrollbar">
-            {filteredIncome.length === 0 ? (
-              <p className="text-xs text-cdlp-muted/60">No income entries</p>
-            ) : (
-              filteredIncome.map((item: any) => (
-                <div key={item.id} className="p-2 md:p-3 bg-cdlp-card border border-cdlp-border rounded flex justify-between items-start">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-xs md:text-sm text-white truncate">{item.type}</p>
-                    <p className="text-[10px] md:text-xs text-cdlp-muted">{item.date}</p>
-                    {item.description && <p className="text-[10px] md:text-xs text-cdlp-muted mt-1 truncate">{item.description}</p>}
-                  </div>
-                  <p className="font-black text-sm md:text-base text-emerald-500 ml-2">{item.amount.toFixed(0)}</p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        <IncomeExpenseSection
+          title={t('income')}
+          items={filteredIncome}
+          type="income"
+          onAdd={currentSession ? onAddIncome : undefined}
+          onEdit={(item) => {/* TODO: Implement edit */}}
+          onDelete={async (id) => {
+            if (confirm('Delete this income entry?')) {
+              await deleteIncome(id);
+            }
+          }}
+          onDrop={async (item) => {
+            // Convert expense to income
+            if (confirm('Convert this expense to income?')) {
+              await addIncome(item.date, 'SALES', item.amount, item.description || item.category, item.session_id);
+              await deleteExpense(item.id);
+            }
+          }}
+          t={t}
+        />
 
         {/* Expense Section */}
-        <div className="bg-cdlp-black border border-cdlp-border p-4 md:p-6 rounded-lg shadow-card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base md:text-lg font-black text-cdlp-gold uppercase">{t('expenses')}</h2>
-            {currentSession && (
-              <button
-                onClick={onAddExpense}
-                className="flex items-center gap-1 px-2 md:px-3 py-1 bg-red-600 text-white text-[10px] md:text-xs font-bold uppercase rounded hover:bg-red-700"
-              >
-                <Plus className="w-3 h-3" /> {t('add')}
-              </button>
-            )}
-          </div>
-          <div className="space-y-2 max-h-64 md:max-h-96 overflow-y-auto custom-scrollbar">
-            {filteredExpenses.length === 0 ? (
-              <p className="text-xs text-cdlp-muted/60">No expense entries</p>
-            ) : (
-              filteredExpenses.map((item: any) => (
-                <div key={item.id} className="p-2 md:p-3 bg-cdlp-card border border-cdlp-border rounded flex justify-between items-start">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-xs md:text-sm text-white truncate">{item.category}</p>
-                    <p className="text-[10px] md:text-xs text-cdlp-muted">{item.date}</p>
-                    <p className="text-[10px] md:text-xs text-cdlp-muted mt-1 truncate">{item.description}</p>
-                  </div>
-                  <p className="font-black text-sm md:text-base text-red-500 ml-2">{item.amount.toFixed(0)}</p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        <IncomeExpenseSection
+          title={t('expenses')}
+          items={filteredExpenses}
+          type="expense"
+          onAdd={currentSession ? onAddExpense : undefined}
+          onEdit={(item) => {/* TODO: Implement edit */}}
+          onDelete={async (id) => {
+            if (confirm('Delete this expense entry?')) {
+              await deleteExpense(id);
+            }
+          }}
+          onDrop={async (item) => {
+            // Convert income to expense
+            if (confirm('Convert this income to expense?')) {
+              await addExpense(item.date, 'OTHER', item.amount, item.description || item.type, item.session_id);
+              await deleteIncome(item.id);
+            }
+          }}
+          t={t}
+        />
       </div>
     </>
   );
@@ -1063,9 +1262,10 @@ function ReportsPlaceholder() {
 }
 
 function DocumentsTab() {
-  const { documents } = useDocuments();
+  const { documents, updateDocument } = useDocuments();
   const [filter, setFilter] = useState<'all' | 'suppliers' | 'employees' | 'pos'>('all');
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<ProcessedDocument | null>(null);
 
   // Group documents by entity (supplier or employee)
   const groupedDocs = useMemo(() => {
@@ -1124,6 +1324,223 @@ function DocumentsTab() {
     return Object.entries(byMonth).sort((a, b) => b[0].localeCompare(a[0]));
   };
 
+  // If viewing a specific document
+  if (selectedDocument) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setSelectedDocument(null)}
+            className="flex items-center gap-2 text-cdlp-gold hover:text-cdlp-gold-light text-sm font-bold uppercase"
+          >
+            <ChevronRight className="w-4 h-4 rotate-180" /> Back to Documents
+          </button>
+          <h1 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase truncate">{selectedDocument.fileName}</h1>
+        </div>
+
+        {/* Document Analysis View - Similar to Ypsom */}
+        <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12">
+            {/* Document Preview Panel */}
+            <div className="lg:col-span-4 bg-slate-900 border-r border-cdlp-border">
+              <div className="p-4 border-b border-white/10">
+                <h3 className="text-xs font-black uppercase text-emerald-400 tracking-widest">Document Preview</h3>
+              </div>
+              <div className="aspect-[3/4] bg-slate-950 overflow-hidden flex items-center justify-center">
+                {(selectedDocument.fileDataUrl || selectedDocument.fileRaw) ? (
+                  selectedDocument.fileName.toLowerCase().endsWith('.pdf') ? (
+                    <iframe 
+                      src={selectedDocument.fileDataUrl || (selectedDocument.fileRaw ? URL.createObjectURL(selectedDocument.fileRaw) : '')} 
+                      className="w-full h-full"
+                      title="Document Preview"
+                    />
+                  ) : (
+                    <img 
+                      src={selectedDocument.fileDataUrl || (selectedDocument.fileRaw ? URL.createObjectURL(selectedDocument.fileRaw) : '')} 
+                      alt="Document Preview" 
+                      className="w-full h-full object-contain"
+                    />
+                  )
+                ) : (
+                  <div className="text-center p-8">
+                    <FileText className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                    <p className="text-sm text-slate-400 mb-2">Document file not available</p>
+                    <p className="text-xs text-slate-500">The original file was not stored with this document</p>
+                  </div>
+                )}
+              </div>
+              <div className="p-4">
+                {(selectedDocument.fileDataUrl || selectedDocument.fileRaw) ? (
+                  <button
+                    onClick={() => {
+                      const url = selectedDocument.fileDataUrl || (selectedDocument.fileRaw ? URL.createObjectURL(selectedDocument.fileRaw) : '');
+                      if (url) window.open(url, '_blank');
+                    }}
+                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2"
+                  >
+                    <ExternalLink className="w-4 h-4" /> Open Full Document
+                  </button>
+                ) : (
+                  <div className="text-center text-xs text-slate-500 italic">
+                    Original file not available for viewing
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Analysis Panel */}
+            <div className="lg:col-span-8 p-6">
+              <div className="space-y-6">
+                {/* Document Info */}
+                <div>
+                  <h3 className="text-sm font-black uppercase text-cdlp-gold mb-4">Document Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Issuer Entity</label>
+                      <p className="text-sm font-bold text-white">{selectedDocument.data?.issuer || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Date</label>
+                      <p className="text-sm font-bold text-white">{selectedDocument.data?.date || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Total Amount</label>
+                      <p className="text-lg font-black text-cdlp-gold">{(selectedDocument.data?.totalAmount || 0).toFixed(2)} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Document Type</label>
+                      <p className="text-sm font-bold text-white">{selectedDocument.data?.documentType || 'Unknown'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">VAT Amount</label>
+                      <p className="text-sm font-bold text-blue-400">{(selectedDocument.data?.vatAmount || 0).toFixed(2)} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Net Amount</label>
+                      <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data?.netAmount || 0).toFixed(2)} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Category</label>
+                      <p className="text-sm font-bold text-white">{selectedDocument.data?.expenseCategory || 'Uncategorized'}</p>
+                    </div>
+                    {selectedDocument.data?.notes && (
+                      <div className="col-span-2">
+                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Notes</label>
+                        <p className="text-sm text-white">{selectedDocument.data.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* AI Interpretation */}
+                {selectedDocument.data?.aiInterpretation && (
+                  <div>
+                    <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">AI Analysis</h3>
+                    <div className="bg-cdlp-card border border-cdlp-border rounded p-4">
+                      <p className="text-sm text-cdlp-muted italic">{selectedDocument.data.aiInterpretation}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Line Items if available */}
+                {selectedDocument.data?.lineItems && selectedDocument.data.lineItems.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">Line Items</h3>
+                    <div className="border border-cdlp-border rounded overflow-hidden">
+                      <table className="min-w-full text-xs">
+                        <thead className="bg-cdlp-gold text-cdlp-black">
+                          <tr className="font-bold uppercase">
+                            <th className="px-3 py-2 text-left">Date</th>
+                            <th className="px-3 py-2 text-left">Description</th>
+                            <th className="px-3 py-2 text-right">Amount</th>
+                            <th className="px-3 py-2 text-center">Type</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-cdlp-border">
+                          {selectedDocument.data.lineItems.map((item, idx) => (
+                            <tr key={idx} className="hover:bg-cdlp-card">
+                              <td className="px-3 py-2 text-cdlp-muted">{item.date}</td>
+                              <td className="px-3 py-2 text-white font-bold">{item.description}</td>
+                              <td className={`px-3 py-2 text-right font-bold ${item.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {item.amount.toFixed(2)}
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                                  item.type === 'INCOME' ? 'bg-emerald-600/20 text-emerald-400' : 'bg-red-600/20 text-red-400'
+                                }`}>
+                                  {item.type}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Payslip Details if available */}
+                {selectedDocument.data?.paySlip && (
+                  <div>
+                    <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">Payslip Details</h3>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Employee</label>
+                        <p className="text-sm font-bold text-white">{selectedDocument.data.paySlip.employee?.name || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Employer</label>
+                        <p className="text-sm font-bold text-white">{selectedDocument.data.paySlip.employer?.name || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Gross Pay</label>
+                        <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data.paySlip.grossPay || 0).toFixed(2)} CHF</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Net Pay</label>
+                        <p className="text-sm font-bold text-cdlp-gold">{(selectedDocument.data.paySlip.netPay || 0).toFixed(2)} CHF</p>
+                      </div>
+                    </div>
+                    {selectedDocument.data.paySlip.components && selectedDocument.data.paySlip.components.length > 0 && (
+                      <div className="border border-cdlp-border rounded overflow-hidden">
+                        <table className="min-w-full text-xs">
+                          <thead className="bg-cdlp-gold text-cdlp-black">
+                            <tr className="font-bold uppercase">
+                              <th className="px-3 py-2 text-left">Component</th>
+                              <th className="px-3 py-2 text-right">Amount</th>
+                              <th className="px-3 py-2 text-center">Type</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-cdlp-border">
+                            {selectedDocument.data.paySlip.components.map((comp, idx) => (
+                              <tr key={idx} className="hover:bg-cdlp-card">
+                                <td className="px-3 py-2 text-white font-bold">{comp.description}</td>
+                                <td className={`px-3 py-2 text-right font-bold ${comp.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                  {comp.amount.toFixed(2)}
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                                    comp.type === 'INCOME' ? 'bg-emerald-600/20 text-emerald-400' : 'bg-red-600/20 text-red-400'
+                                  }`}>
+                                    {comp.type}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (selectedEntity) {
     const entityDocs = filter === 'suppliers' 
       ? groupedDocs.suppliers[selectedEntity] 
@@ -1160,18 +1577,30 @@ function DocumentsTab() {
               </div>
               <div className="divide-y divide-cdlp-border">
                 {docs.map(doc => (
-                  <div key={doc.id} className="p-4 hover:bg-cdlp-card transition-colors">
+                  <div key={doc.id} className="p-4 hover:bg-cdlp-card transition-colors group">
                     <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <p className="font-bold text-white text-sm">{doc.fileName}</p>
+                      <button
+                        onClick={() => setSelectedDocument(doc)}
+                        className="flex-1 text-left"
+                      >
+                        <p className="font-bold text-white text-sm group-hover:text-cdlp-gold transition-colors">{doc.fileName}</p>
                         <p className="text-xs text-cdlp-muted mt-1">{doc.data?.date}</p>
                         {doc.data?.notes && (
                           <p className="text-xs text-cdlp-muted mt-1">{doc.data.notes}</p>
                         )}
-                      </div>
-                      <div className="text-right ml-4">
-                        <p className="font-black text-white text-base">{(doc.data?.totalAmount || 0).toFixed(2)}</p>
-                        <p className="text-xs text-cdlp-muted">{doc.data?.originalCurrency || 'CHF'}</p>
+                      </button>
+                      <div className="text-right ml-4 flex items-center gap-3">
+                        <div>
+                          <p className="font-black text-white text-base">{(doc.data?.totalAmount || 0).toFixed(2)}</p>
+                          <p className="text-xs text-cdlp-muted">{doc.data?.originalCurrency || 'CHF'}</p>
+                        </div>
+                        <button
+                          onClick={() => setSelectedDocument(doc)}
+                          className="p-2 hover:bg-cdlp-gold/10 rounded transition-colors"
+                          title="View Details"
+                        >
+                          <ChevronRight className="w-4 h-4 text-cdlp-muted group-hover:text-cdlp-gold transition-colors" />
+                        </button>
                       </div>
                     </div>
                   </div>

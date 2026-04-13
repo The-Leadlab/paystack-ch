@@ -174,6 +174,7 @@ export interface ProcessedDocument {
   data?: FinancialData;
   error?: string;
   fileRaw?: File;
+  fileDataUrl?: string; // Base64 data URL for free storage in Firestore
   restaurantId?: string;
   session_id?: string;
   created_at?: string;

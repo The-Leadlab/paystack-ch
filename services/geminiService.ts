@@ -61,32 +61,32 @@ export const analyzeFinancialDocument = async (
         documentType: {
           type: Type.STRING,
           enum: ["Bank Statement", "Pay Slip", "Invoice", "Ticket/Receipt", "Z2 Multi-Ticket Sheet", "Bank Deposit", "Unknown"],
-          description: "MANDATORY: Use 'Bank Deposit' for ATM/Bank confirmations. Use 'Z2 Multi-Ticket Sheet' ONLY if the file contains 2 or more distinct receipts/invoices."
+          description: "Document type classification"
         },
         date: { type: Type.STRING, description: "YYYY-MM-DD" },
-        issuer: { type: Type.STRING, description: "Primary entity name." },
+        issuer: { type: Type.STRING, description: "Primary entity name" },
         documentNumber: { type: Type.STRING },
         totalAmount: { type: Type.NUMBER, description: "Total amount INCLUDING VAT" },
         originalCurrency: { type: Type.STRING },
-        vatAmount: { type: Type.NUMBER, description: "VAT/Tax amount if shown. Extract from 'TVA', 'VAT', 'MwSt', 'Tax', 'IVA' labels. Set to 0 if not found." },
-        vatRate: { type: Type.NUMBER, description: "VAT rate percentage if shown (e.g., 7.7, 8.1, 19, 20). Set to 0 if not found." },
-        netAmount: { type: Type.NUMBER, description: "Amount BEFORE VAT (net/HT). Calculate as totalAmount - vatAmount if not explicitly shown." },
+        vatAmount: { type: Type.NUMBER, description: "VAT/Tax amount. Set to 0 if not found." },
+        vatRate: { type: Type.NUMBER, description: "VAT rate %. Set to 0 if not found." },
+        netAmount: { type: Type.NUMBER, description: "Amount BEFORE VAT" },
         expenseCategory: { 
           type: Type.STRING,
-          description: "CRITICAL: Provide SPECIFIC category based on issuer and context. Examples: 'Restaurant / Dining' for restaurants, 'Groceries / Food' for supermarkets, 'Beauty / Personal Care' for salons/cosmetics, 'Travel / Transport' for tickets/fuel, 'Health / Medical' for pharmacies/doctors, 'Utilities / Bills' for electricity/water/phone, 'Software / IT' for tech services, 'Professional Services' for consultants/lawyers, 'Office Supplies' for stationery, 'Insurance' for insurance companies, 'Bank Fees / Finance' for bank charges, 'Entertainment' for cinema/events, 'Education / Training' for courses/schools. Be SPECIFIC, not generic."
+          description: "Specific category based on issuer"
         },
         amountInCHF: { type: Type.NUMBER },
         notes: { type: Type.STRING },
-        aiInterpretation: { type: Type.STRING, description: "Diagnostic explanation of the scan result." },
+        aiInterpretation: { type: Type.STRING, description: "Brief scan result" },
         confidenceScore: { type: Type.NUMBER },
         forensicAlerts: { type: Type.ARRAY, items: { type: Type.STRING } },
         openingBalance: { type: Type.NUMBER },
-        finalBalance: { type: Type.NUMBER, description: "The final balance (solde) shown on the bank document." },
+        finalBalance: { type: Type.NUMBER },
         calculatedTotalIncome: { type: Type.NUMBER },
         calculatedTotalExpense: { type: Type.NUMBER },
         paySlip: {
           type: Type.OBJECT,
-          description: "Optional. Populate ONLY when documentType is 'Pay Slip'. Extract employee/customer and employer/business data and a full breakdown of earnings and deductions.",
+          description: "Populate ONLY for Pay Slips",
           properties: {
             employee: {
               type: Type.OBJECT,
@@ -107,24 +107,22 @@ export const analyzeFinancialDocument = async (
               required: ["name"],
             },
             payslipNumber: { type: Type.STRING },
-            periodStart: { type: Type.STRING, description: "YYYY-MM-DD or best available format" },
-            periodEnd: { type: Type.STRING, description: "YYYY-MM-DD or best available format" },
-            payDate: { type: Type.STRING, description: "YYYY-MM-DD or best available format" },
+            periodStart: { type: Type.STRING },
+            periodEnd: { type: Type.STRING },
+            payDate: { type: Type.STRING },
             currency: { type: Type.STRING },
-            grossPay: { type: Type.NUMBER, description: "Total earnings before deductions" },
-            netPay: { type: Type.NUMBER, description: "Final amount received after deductions" },
+            grossPay: { type: Type.NUMBER },
+            netPay: { type: Type.NUMBER },
             components: {
               type: Type.ARRAY,
-              description: "Full list of earnings and deductions lines.",
               items: {
                 type: Type.OBJECT,
                 properties: {
                   date: { type: Type.STRING },
-                  description: { type: Type.STRING, description: "Component label (e.g., salary, bonus, tax, insurance)" },
+                  description: { type: Type.STRING },
                   amount: { type: Type.NUMBER },
-                  // Map earnings → INCOME and deductions → EXPENSE
                   type: { type: Type.STRING, enum: ["INCOME", "EXPENSE"] },
-                  category: { type: Type.STRING, description: "Category label for audit (free text)" },
+                  category: { type: Type.STRING },
                 },
                 required: ["date", "description", "amount", "type", "category"],
               },
@@ -151,13 +149,13 @@ export const analyzeFinancialDocument = async (
             properties: {
               issuer: { type: Type.STRING },
               date: { type: Type.STRING },
-              totalAmount: { type: Type.NUMBER, description: "Total including VAT" },
+              totalAmount: { type: Type.NUMBER },
               originalCurrency: { type: Type.STRING },
               documentType: { type: Type.STRING, enum: ["VOUCHER", "TICKET/RECEIPT", "BANK_DEPOSIT"] },
               expenseCategory: { type: Type.STRING },
-              vatAmount: { type: Type.NUMBER, description: "VAT amount if visible" },
-              vatRate: { type: Type.NUMBER, description: "VAT rate % if visible" },
-              netAmount: { type: Type.NUMBER, description: "Amount before VAT" },
+              vatAmount: { type: Type.NUMBER },
+              vatRate: { type: Type.NUMBER },
+              netAmount: { type: Type.NUMBER },
             }
           }
         }
@@ -165,66 +163,42 @@ export const analyzeFinancialDocument = async (
       required: ["documentType", "totalAmount", "originalCurrency", "issuer", "expenseCategory"]
     };
 
-    const hintSection = userHint ? `USER OVERRIDE HINT: "${userHint}".` : "";
+    const hintSection = userHint ? `USER HINT: "${userHint}".` : "";
 
+    // Simplified, faster prompt
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview', 
+      model: 'gemini-2.5-flash', // Fast and current model
       contents: {
         parts: [
           { inlineData: { mimeType: mimeType, data: base64 } },
           {
-            text: `AUDIT INTELLIGENCE MISSION (DEEP SCAN):
-            ${hintSection}
-            
-            1. MULTI-PAGE SCAN: This file might have dozens of pages. Scan EVERY page.
-            2. ASSET ISOLATION: Identify every separate transaction confirmation. If multiple exist, use 'Z2 Multi-Ticket Sheet' and list them in 'subDocuments'.
-            3. BANK STATEMENTS (CRITICAL): If this is a bank statement, you MUST extract EVERY transaction from EVERY page into 'lineItems'. Do NOT truncate, summarize, or limit the list. Each transaction row on the statement must appear as one object in lineItems with date, description, amount, type (INCOME or EXPENSE), and category. Include opening balance, final balance (solde), calculatedTotalIncome, and calculatedTotalExpense.
-            4. PAY SLIPS (CRITICAL): If this is a pay slip, extract:
-               - employee/customer: name, idNumber (if shown), address (if shown)
-               - employer/business: name, idNumber (if shown), address (if shown)
-               - payslip identifiers: payslipNumber (if shown), periodStart, periodEnd, payDate (if shown)
-               - full earnings/deductions breakdown: every line into 'paySlip.components' with date (use payDate or best available), description, amount, type (INCOME for earnings, EXPENSE for deductions), and category (free text)
-               - grossPay and netPay from the slip
-               Also set standard audit fields as follows:
-               - documentType must be exactly 'Pay Slip'
-               - issuer must be the employer/business name
-               - expenseCategory should be 'Salary' when this is payroll to the employee (otherwise use best-fit category)
-               - vatAmount should be 0
-               - netAmount should equal totalAmount
-               - totalAmount should be netPay (final amount received)
-            5. SMART CATEGORIZATION (CRITICAL): 
-               - Analyze the ISSUER name and document content carefully
-               - Restaurants/Cafes → "Restaurant / Dining"
-               - Supermarkets/Food stores → "Groceries / Food"
-               - Salons/Spas/Cosmetics → "Beauty / Personal Care"
-               - Airlines/Trains/Taxis/Fuel → "Travel / Transport"
-               - Pharmacies/Doctors/Hospitals → "Health / Medical"
-               - Telecom/Electricity/Water → "Utilities / Bills"
-               - Tech companies/SaaS → "Software / IT"
-               - Consultants/Lawyers/Accountants → "Professional Services"
-               - Stationery/Office equipment → "Office Supplies"
-               - Insurance companies → "Insurance"
-               - Banks/Financial institutions → "Bank Fees / Finance"
-               - Cinema/Events/Subscriptions → "Entertainment"
-               - Schools/Courses/Training → "Education / Training"
-               - DO NOT use generic "SALARY" unless it's actually a salary payment
-               - BE SPECIFIC based on the actual business type
-            6. VAT DETECTION (CRITICAL): 
-               - Look for VAT/Tax labels: "TVA", "VAT", "MwSt", "Tax", "IVA", "Steuer", "Taxe"
-               - Extract VAT amount (vatAmount) if shown
-               - Extract VAT rate percentage (vatRate) if shown (e.g., 7.7%, 8.1%, 19%, 20%)
-               - Calculate net amount (netAmount) = totalAmount - vatAmount
-               - If VAT is not shown, set vatAmount=0, vatRate=0, netAmount=totalAmount
-               - For invoices/receipts, VAT is usually shown separately
-               - For Z2 Multi-Ticket sheets, extract VAT for EACH sub-document
-            
-            Return JSON only.`
+            text: `Extract financial data from this document. ${hintSection}
+
+CRITICAL RULES:
+1. Identify document type accurately
+2. Determine if this is INCOME (revenue, sales, deposits) or EXPENSE (bills, invoices to pay, purchases)
+3. For INCOME documents: Set expenseCategory to "REVENUE" or "SALES"
+4. For EXPENSE documents: Categorize specifically (e.g., "FOOD_SUPPLIES", "RENT", "UTILITIES")
+5. Extract key financial data (amounts, dates, issuer)
+6. For bank statements: extract ALL transactions into lineItems
+7. For payslips: extract employee/employer info and components
+8. Extract VAT if shown (TVA, VAT, MwSt, Tax labels)
+9. For multi-document files: use subDocuments array
+
+INCOME vs EXPENSE Detection:
+- INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings
+- EXPENSE: Supplier invoices, bills to pay, purchases, rent, utilities, salaries
+
+Return JSON only.`
           }
         ]
       },
       config: {
         responseMimeType: "application/json",
         responseSchema: coreSchema,
+        temperature: 0.1, // Lower temperature for faster, more consistent results
+        topP: 0.8,
+        topK: 20,
       }
     });
 

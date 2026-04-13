@@ -2,6 +2,7 @@ import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getAnalytics, isSupported, type Analytics } from 'firebase/analytics';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? 'AIzaSyCTo9cQ0Xa4690GQpPDWZ_oskZu9S41M6I',
@@ -29,12 +30,14 @@ if (!firebaseReady) {
 let app: FirebaseApp | undefined;
 export let auth: Auth | null = null;
 export let db: Firestore | null = null;
+export let storage: FirebaseStorage | null = null;
 export let analytics: Analytics | null = null;
 
 if (firebaseReady) {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
+  storage = getStorage(app);
 
   // Analytics works only in browser environments and when supported.
   if (typeof window !== 'undefined') {
