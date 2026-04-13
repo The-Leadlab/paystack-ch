@@ -573,10 +573,23 @@ function IncomeExpenseSection({
     
     try {
       const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      console.log('Drop data:', data, 'Target type:', type);
+      
+      // Check if it's from the opposite type
+      // Income items have 'type' field (SALES, RESERVATION)
+      // Expense items have 'category' field (BILLS, SUPPLIERS, etc)
+      const isFromIncome = data.type && !data.category;
+      const isFromExpense = data.category && !data.type;
+      
       // Only allow drop if it's from the opposite type
-      const isFromOpposite = (type === 'income' && data.category) || (type === 'expense' && data.type);
-      if (isFromOpposite) {
+      const shouldConvert = (type === 'income' && isFromExpense) || (type === 'expense' && isFromIncome);
+      
+      console.log('Should convert:', shouldConvert, 'isFromIncome:', isFromIncome, 'isFromExpense:', isFromExpense);
+      
+      if (shouldConvert) {
         await onDrop(data);
+      } else {
+        console.log('Drop rejected - same type or invalid data');
       }
     } catch (err) {
       console.error('Drop error:', err);
