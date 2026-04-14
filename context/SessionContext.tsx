@@ -190,8 +190,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setCurrentSessionState(session);
     if (session) {
       localStorage.setItem(LAST_SESSION_KEY, session.id);
+      // Only set isAllSessionsView to false when selecting a specific session
+      setAllSessionsView(false);
     }
-    setAllSessionsView(false);
+    // Don't change isAllSessionsView when setting to null - let the caller control it
   }, []);
 
   const value: SessionContextValue = {

@@ -38,12 +38,16 @@ export function RestaurantDashboard() {
   console.log('=== DASHBOARD DATA DEBUG ===');
   console.log('isAllSessionsView:', isAllSessionsView);
   console.log('currentSession:', currentSession);
-  console.log('Total income items:', income.length);
-  console.log('Total expense items:', expenses.length);
+  console.log('Total income items in context:', income.length);
+  console.log('Total expense items in context:', expenses.length);
   console.log('Filtered income items:', filteredIncome.length);
   console.log('Filtered expense items:', filteredExpenses.length);
-  console.log('Sample income item:', income[0]);
-  console.log('Sample expense item:', expenses[0]);
+  if (income.length > 0) {
+    console.log('Sample income item:', income[0]);
+  }
+  if (expenses.length > 0) {
+    console.log('Sample expense item:', expenses[0]);
+  }
 
   const totalIncome = filteredIncome.reduce((sum, i) => sum + i.amount, 0);
   // Total expenses (all categories)
@@ -54,6 +58,7 @@ export function RestaurantDashboard() {
   const balance = totalIncome - totalExpenses;
 
   console.log('Calculated totals:', { totalIncome, totalExpenses, totalPayroll, balance });
+  console.log('=== END DEBUG ===');
 
   const handleResetAllData = async () => {
     if (!confirm('⚠️ DANGER: This will permanently delete ALL employees, income, and expenses from the entire database. This cannot be undone. Are you absolutely sure?')) {
