@@ -574,30 +574,40 @@ function IncomeExpenseSection({
     
     try {
       const data = JSON.parse(e.dataTransfer.getData('application/json'));
-      console.log('Drop data:', data, 'Target type:', type);
+      console.log('=== DROP DEBUG ===');
+      console.log('Dropped data:', data);
+      console.log('Target section type:', type);
+      console.log('Data has type field:', data.type);
+      console.log('Data has category field:', data.category);
       
-      // Check if it's from the opposite type
-      // Income items have 'type' field (SALES, RESERVATION) and restaurantId
-      // Expense items have 'category' field (BILLS, SUPPLIERS, etc) and restaurantId
-      // We need to check which collection it came from
-      const hasIncomeType = data.type && (data.type === 'SALES' || data.type === 'RESERVATION');
-      const hasExpenseCategory = data.category && (data.category === 'BILLS' || data.category === 'SUPPLIERS' || data.category === 'PAYROLL' || data.category === 'OTHER');
+      // Simplified detection: 
+      // If dropping into income section, only accept items with category (expenses)
+      // If dropping into expense section, only accept items with type (income)
+      let shouldConvert = false;
       
-      const isFromIncome = hasIncomeType && !hasExpenseCategory;
-      const isFromExpense = hasExpenseCategory && !hasIncomeType;
+      if (type === 'income') {
+        // Dropping into income - accept if it has category (is an expense)
+        shouldConvert = !!data.category;
+        console.log('Dropping into INCOME, has category?', shouldConvert);
+      } else if (type === 'expense') {
+        // Dropping into expense - accept if it has type field (is income)
+        shouldConvert = !!data.type && (data.type === 'SALES' || data.type === 'RESERVATION');
+        console.log('Dropping into EXPENSE, has income type?', shouldConvert);
+      }
       
-      // Only allow drop if it's from the opposite type
-      const shouldConvert = (type === 'income' && isFromExpense) || (type === 'expense' && isFromIncome);
-      
-      console.log('Should convert:', shouldConvert, 'isFromIncome:', isFromIncome, 'isFromExpense:', isFromExpense);
+      console.log('Should convert?', shouldConvert);
       
       if (shouldConvert) {
+        console.log('Calling onDrop handler...');
         await onDrop(data);
+        console.log('onDrop completed successfully');
       } else {
-        console.log('Drop rejected - same type or invalid data');
+        console.log('Drop rejected - not from opposite type');
+        alert('Cannot drop here - item is already in this section');
       }
     } catch (err) {
       console.error('Drop error:', err);
+      alert('Error during drop: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 
@@ -930,9 +940,21 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           }}
           onDrop={async (item) => {
             // Convert expense to income
+            console.log('Income onDrop called with:', item);
             if (confirm('Convert this expense to income?')) {
-              await addIncome(item.date, 'SALES', item.amount, item.description || item.category, item.session_id);
-              await deleteExpense(item.id);
+              try {
+                console.log('Adding income:', item.date, 'SALES', item.amount, item.description || item.category, item.session_id);
+                await addIncome(item.date, 'SALES', item.amount, item.description || item.category, item.session_id);
+                console.log('Income added, now deleting expense:', item.id);
+                await deleteExpense(item.id);
+                console.log('Expense deleted successfully');
+                alert('✅ Converted to income successfully!');
+              } catch (err) {
+                console.error('Error converting to income:', err);
+                alert('❌ Error: ' + (err instanceof Error ? err.message : 'Unknown error'));
+              }
+            } else {
+              console.log('User cancelled conversion');
             }
           }}
           t={t}
@@ -952,9 +974,21 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           }}
           onDrop={async (item) => {
             // Convert income to expense
+            console.log('Expense onDrop called with:', item);
             if (confirm('Convert this income to expense?')) {
-              await addExpense(item.date, 'OTHER', item.amount, item.description || item.type, item.session_id);
-              await deleteIncome(item.id);
+              try {
+                console.log('Adding expense:', item.date, 'OTHER', item.amount, item.description || item.type, item.session_id);
+                await addExpense(item.date, 'OTHER', item.amount, item.description || item.type, item.session_id);
+                console.log('Expense added, now deleting income:', item.id);
+                await deleteIncome(item.id);
+                console.log('Income deleted successfully');
+                alert('✅ Converted to expense successfully!');
+              } catch (err) {
+                console.error('Error converting to expense:', err);
+                alert('❌ Error: ' + (err instanceof Error ? err.message : 'Unknown error'));
+              }
+            } else {
+              console.log('User cancelled conversion');
             }
           }}
           t={t}
