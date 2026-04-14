@@ -266,6 +266,54 @@ export const exportToPDF = async (data: ReportData) => {
         </div>
       ` : ''}
       
+      <div class="section">
+        <div class="section-title">Income Details (${income.length} entries)</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th class="text-right">Amount (CHF)</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${income.map(item => `
+              <tr>
+                <td>${item.date}</td>
+                <td>${item.type}</td>
+                <td class="text-right">${item.amount.toFixed(2)}</td>
+                <td>${item.description || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">Expense Details (${expenses.length} entries)</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Category</th>
+              <th class="text-right">Amount (CHF)</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${expenses.map(item => `
+              <tr>
+                <td>${item.date}</td>
+                <td>${item.category}</td>
+                <td class="text-right">${item.amount.toFixed(2)}</td>
+                <td>${item.description || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      
       <div class="footer">
         <p>This report was generated automatically by Café de la Place Financial Management System</p>
         <p>© ${new Date().getFullYear()} Café de la Place - All rights reserved</p>

@@ -935,7 +935,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <TrendingUp className="w-4 md:w-5 h-4 md:h-5 text-emerald-500" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('income')}</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-emerald-500">{totalIncome.toFixed(2)}</p>
+          <p className="text-lg md:text-2xl font-black text-emerald-500">{totalIncome.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
         </div>
 
@@ -944,7 +944,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <TrendingDown className="w-4 md:w-5 h-4 md:h-5 text-red-500" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('expenses')}</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-red-500">{totalExpenses.toFixed(2)}</p>
+          <p className="text-lg md:text-2xl font-black text-red-500">{totalExpenses.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
         </div>
 
@@ -953,7 +953,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <Users className="w-4 md:w-5 h-4 md:h-5 text-cdlp-gold" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('payroll')}</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-cdlp-gold">{totalPayroll.toFixed(2)}</p>
+          <p className="text-lg md:text-2xl font-black text-cdlp-gold">{totalPayroll.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
         </div>
 
@@ -963,7 +963,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('balance')}</span>
           </div>
           <p className={`text-lg md:text-2xl font-black ${balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-            {balance.toFixed(2)}
+            {balance.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <p className="text-xs text-cdlp-muted">CHF</p>
         </div>
