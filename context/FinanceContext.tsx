@@ -105,8 +105,16 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const addIncome = useCallback(
     async (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string): Promise<Income | null> => {
       const uid = user?.uid;
-      if (!uid || !db) return null;
+      if (!uid || !db) {
+        console.error('addIncome failed: No user or database');
+        throw new Error('User not authenticated or database not available');
+      }
+      if (!sessionId) {
+        console.error('addIncome failed: No session ID provided');
+        throw new Error('Session ID is required');
+      }
       try {
+        console.log('addIncome: Creating document with sessionId:', sessionId);
         const ref = await addDoc(collection(db, INCOME_COLLECTION), {
           restaurantId: uid,
           sessionId,
@@ -127,10 +135,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           created_at: new Date().toISOString(),
         };
         setIncome((prev) => [newIncome, ...prev]);
+        console.log('addIncome: Success, new income ID:', ref.id);
         return newIncome;
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-        return null;
+        console.error('addIncome error:', err);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        setError(errorMsg);
+        throw new Error('Failed to add income: ' + errorMsg);
       }
     },
     [user?.uid]
@@ -139,8 +150,16 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const addExpense = useCallback(
     async (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, sessionId: string, employeeId?: string): Promise<Expense | null> => {
       const uid = user?.uid;
-      if (!uid || !db) return null;
+      if (!uid || !db) {
+        console.error('addExpense failed: No user or database');
+        throw new Error('User not authenticated or database not available');
+      }
+      if (!sessionId) {
+        console.error('addExpense failed: No session ID provided');
+        throw new Error('Session ID is required');
+      }
       try {
+        console.log('addExpense: Creating document with sessionId:', sessionId);
         const ref = await addDoc(collection(db, EXPENSE_COLLECTION), {
           restaurantId: uid,
           sessionId,
@@ -163,10 +182,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           created_at: new Date().toISOString(),
         };
         setExpenses((prev) => [newExpense, ...prev]);
+        console.log('addExpense: Success, new expense ID:', ref.id);
         return newExpense;
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-        return null;
+        console.error('addExpense error:', err);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        setError(errorMsg);
+        throw new Error('Failed to add expense: ' + errorMsg);
       }
     },
     [user?.uid]
