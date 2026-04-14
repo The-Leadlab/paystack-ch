@@ -35,6 +35,16 @@ export function RestaurantDashboard() {
   const filteredIncome = isAllSessionsView ? income : income.filter(i => i.session_id === currentSession?.id);
   const filteredExpenses = isAllSessionsView ? expenses : expenses.filter(e => e.session_id === currentSession?.id);
 
+  console.log('=== DASHBOARD DATA DEBUG ===');
+  console.log('isAllSessionsView:', isAllSessionsView);
+  console.log('currentSession:', currentSession);
+  console.log('Total income items:', income.length);
+  console.log('Total expense items:', expenses.length);
+  console.log('Filtered income items:', filteredIncome.length);
+  console.log('Filtered expense items:', filteredExpenses.length);
+  console.log('Sample income item:', income[0]);
+  console.log('Sample expense item:', expenses[0]);
+
   const totalIncome = filteredIncome.reduce((sum, i) => sum + i.amount, 0);
   // Total expenses (all categories)
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
@@ -42,6 +52,8 @@ export function RestaurantDashboard() {
   const totalPayroll = filteredExpenses.filter(e => e.category === 'PAYROLL').reduce((sum, e) => sum + e.amount, 0);
   // Balance: Income - All Expenses (which includes payroll)
   const balance = totalIncome - totalExpenses;
+
+  console.log('Calculated totals:', { totalIncome, totalExpenses, totalPayroll, balance });
 
   const handleResetAllData = async () => {
     if (!confirm('⚠️ DANGER: This will permanently delete ALL employees, income, and expenses from the entire database. This cannot be undone. Are you absolutely sure?')) {
@@ -987,15 +999,35 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           }}
           onDrop={async (item) => {
             // Convert expense to income
+            console.log('=== INCOME DROP START ===');
             console.log('Income onDrop called with:', item);
+            console.log('Item session_id:', item.session_id);
+            console.log('Item has category?', !!item.category);
+            console.log('Item has type?', !!item.type);
+            
             if (confirm('Convert this expense to income?')) {
               try {
-                console.log('Adding income:', item.date, 'SALES', item.amount, item.description || item.category, item.session_id);
-                await addIncome(item.date, 'SALES', item.amount, item.description || item.category, item.session_id);
-                console.log('Income added, now deleting expense:', item.id);
-                await deleteExpense(item.id);
-                console.log('Expense deleted successfully');
-                alert('✅ Converted to income successfully!');
+                console.log('User confirmed conversion');
+                console.log('Calling addIncome with params:', {
+                  date: item.date,
+                  type: 'SALES',
+                  amount: item.amount,
+                  description: item.description || item.category,
+                  sessionId: item.session_id
+                });
+                
+                const newIncome = await addIncome(item.date, 'SALES', item.amount, item.description || item.category, item.session_id);
+                console.log('addIncome returned:', newIncome);
+                
+                if (newIncome) {
+                  console.log('Income added successfully, now deleting expense:', item.id);
+                  await deleteExpense(item.id);
+                  console.log('Expense deleted successfully');
+                  alert('✅ Converted to income successfully!');
+                } else {
+                  console.error('addIncome returned null');
+                  alert('❌ Failed to add income - check console for details');
+                }
               } catch (err) {
                 console.error('Error converting to income:', err);
                 alert('❌ Error: ' + (err instanceof Error ? err.message : 'Unknown error'));
@@ -1024,15 +1056,35 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           }}
           onDrop={async (item) => {
             // Convert income to expense
+            console.log('=== EXPENSE DROP START ===');
             console.log('Expense onDrop called with:', item);
+            console.log('Item session_id:', item.session_id);
+            console.log('Item has category?', !!item.category);
+            console.log('Item has type?', !!item.type);
+            
             if (confirm('Convert this income to expense?')) {
               try {
-                console.log('Adding expense:', item.date, 'OTHER', item.amount, item.description || item.type, item.session_id);
-                await addExpense(item.date, 'OTHER', item.amount, item.description || item.type, item.session_id);
-                console.log('Expense added, now deleting income:', item.id);
-                await deleteIncome(item.id);
-                console.log('Income deleted successfully');
-                alert('✅ Converted to expense successfully!');
+                console.log('User confirmed conversion');
+                console.log('Calling addExpense with params:', {
+                  date: item.date,
+                  category: 'OTHER',
+                  amount: item.amount,
+                  description: item.description || item.type,
+                  sessionId: item.session_id
+                });
+                
+                const newExpense = await addExpense(item.date, 'OTHER', item.amount, item.description || item.type, item.session_id);
+                console.log('addExpense returned:', newExpense);
+                
+                if (newExpense) {
+                  console.log('Expense added successfully, now deleting income:', item.id);
+                  await deleteIncome(item.id);
+                  console.log('Income deleted successfully');
+                  alert('✅ Converted to expense successfully!');
+                } else {
+                  console.error('addExpense returned null');
+                  alert('❌ Failed to add expense - check console for details');
+                }
               } catch (err) {
                 console.error('Error converting to expense:', err);
                 alert('❌ Error: ' + (err instanceof Error ? err.message : 'Unknown error'));

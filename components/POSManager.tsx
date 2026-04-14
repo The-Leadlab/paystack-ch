@@ -9,15 +9,30 @@ import { analyzeFinancialDocument } from '../services/geminiService';
 
 export function POSManager() {
   const { posReadings, addPOSReading, updatePOSReading, deletePOSReading } = usePOS();
+  const { income } = useFinance();
+  const { currentSession, isAllSessionsView } = useSession();
   const { t } = useLanguage();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingReading, setEditingReading] = useState<POSReading | null>(null);
   const [uploadMode, setUploadMode] = useState<'manual' | 'upload'>('manual');
 
+  // Filter income by session
+  const filteredIncome = isAllSessionsView ? income : income.filter(i => i.session_id === currentSession?.id);
+  
+  // Calculate totals from income (for display when no POS readings exist)
+  const totalIncomeAmount = filteredIncome.reduce((sum, i) => sum + i.amount, 0);
+  
+  // Calculate totals from POS readings
   const totalGrossSales = posReadings.reduce((sum, r) => sum + r.gross_sales, 0);
   const totalNetSales = posReadings.reduce((sum, r) => sum + r.net_sales, 0);
   const totalCash = posReadings.reduce((sum, r) => sum + r.cash, 0);
   const totalCard = posReadings.reduce((sum, r) => sum + r.card, 0);
+  
+  // Use POS readings if available, otherwise show income data
+  const displayGrossSales = posReadings.length > 0 ? totalGrossSales : totalIncomeAmount;
+  const displayNetSales = posReadings.length > 0 ? totalNetSales : totalIncomeAmount * 0.93; // Estimate net (assuming 7% VAT)
+  const displayCash = posReadings.length > 0 ? totalCash : totalIncomeAmount * 0.4; // Estimate 40% cash
+  const displayCard = posReadings.length > 0 ? totalCard : totalIncomeAmount * 0.6; // Estimate 60% card
 
   return (
     <div className="space-y-6">
@@ -28,8 +43,11 @@ export function POSManager() {
             <TrendingUp className="w-4 md:w-5 h-4 md:h-5 text-emerald-500" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">Gross Sales</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-emerald-500">{totalGrossSales.toFixed(2)}</p>
+          <p className="text-lg md:text-2xl font-black text-emerald-500">{displayGrossSales.toFixed(2)}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
+          {posReadings.length === 0 && (
+            <p className="text-[9px] text-cdlp-muted/60 mt-1">From income data</p>
+          )}
         </div>
 
         <div className="bg-cdlp-black border border-cdlp-border p-3 md:p-4 rounded-lg shadow-card">
@@ -37,8 +55,11 @@ export function POSManager() {
             <DollarSign className="w-4 md:w-5 h-4 md:h-5 text-emerald-400" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">Net Sales</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-emerald-400">{totalNetSales.toFixed(2)}</p>
+          <p className="text-lg md:text-2xl font-black text-emerald-400">{displayNetSales.toFixed(2)}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
+          {posReadings.length === 0 && (
+            <p className="text-[9px] text-cdlp-muted/60 mt-1">Estimated</p>
+          )}
         </div>
 
         <div className="bg-cdlp-black border border-cdlp-border p-3 md:p-4 rounded-lg shadow-card">
@@ -46,8 +67,11 @@ export function POSManager() {
             <Banknote className="w-4 md:w-5 h-4 md:h-5 text-cdlp-gold" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">Cash</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-cdlp-gold">{totalCash.toFixed(2)}</p>
+          <p className="text-lg md:text-2xl font-black text-cdlp-gold">{displayCash.toFixed(2)}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
+          {posReadings.length === 0 && (
+            <p className="text-[9px] text-cdlp-muted/60 mt-1">Estimated</p>
+          )}
         </div>
 
         <div className="bg-cdlp-black border border-cdlp-border p-3 md:p-4 rounded-lg shadow-card">
@@ -55,8 +79,11 @@ export function POSManager() {
             <CreditCard className="w-4 md:w-5 h-4 md:h-5 text-blue-500" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">Card</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-blue-500">{totalCard.toFixed(2)}</p>
+          <p className="text-lg md:text-2xl font-black text-blue-500">{displayCard.toFixed(2)}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
+          {posReadings.length === 0 && (
+            <p className="text-[9px] text-cdlp-muted/60 mt-1">Estimated</p>
+          )}
         </div>
       </div>
 

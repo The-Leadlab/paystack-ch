@@ -88,6 +88,12 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       const expenseList: Expense[] = [];
       expenseSnap.forEach((doc) => expenseList.push(docToExpense(doc.id, doc.data())));
       
+      console.log('=== FINANCE CONTEXT FETCH ===');
+      console.log('Loaded income items:', incomeList.length);
+      console.log('Loaded expense items:', expenseList.length);
+      console.log('Sample income:', incomeList[0]);
+      console.log('Sample expense:', expenseList[0]);
+      
       setIncome(incomeList);
       setExpenses(expenseList);
     } catch (err) {
