@@ -16,7 +16,7 @@ type Tab = 'dashboard' | 'revenue' | 'reports' | 'documents';
 
 export function RestaurantDashboard() {
   const { employees, addEmployee, deleteEmployee } = useEmployee();
-  const { income, expenses, addIncome, addExpense, deleteIncome, deleteExpense } = useFinance();
+  const { income, expenses, addIncome, addExpense, updateIncome, updateExpense, deleteIncome, deleteExpense } = useFinance();
   const { sessions, currentSession, addSession, deleteSession, renameSession, setCurrentSession, isAllSessionsView, setAllSessionsView } = useSession();
   const { documents, addDocument, updateDocumentData } = useDocuments();
   const { signOut, user } = useAuth();
@@ -509,6 +509,8 @@ export function RestaurantDashboard() {
               updateDocument={updateDocumentData}
               deleteIncome={deleteIncome}
               deleteExpense={deleteExpense}
+              updateIncome={updateIncome}
+              updateExpense={updateExpense}
               addIncome={addIncome}
               addExpense={addExpense}
               t={t}
@@ -538,6 +540,7 @@ function IncomeExpenseSection({
   onEdit, 
   onDelete, 
   onDrop,
+  onUpdate,
   t 
 }: { 
   title: string; 
@@ -547,6 +550,7 @@ function IncomeExpenseSection({
   onEdit: (item: any) => void;
   onDelete: (id: string) => Promise<void>;
   onDrop: (item: any) => Promise<void>;
+  onUpdate: (id: string, updates: any) => Promise<void>;
   t: (key: string) => string;
 }) {
   const [draggedOver, setDraggedOver] = React.useState(false);
@@ -622,10 +626,29 @@ function IncomeExpenseSection({
   };
 
   const saveEdit = async () => {
-    // TODO: Implement save via context
-    console.log('Save edit:', editForm);
-    setEditingId(null);
-    setEditForm(null);
+    if (!editForm) return;
+    
+    try {
+      const updates: any = {
+        date: editForm.date,
+        amount: editForm.amount,
+        description: editForm.description || '',
+      };
+      
+      if (type === 'income') {
+        updates.type = editForm.type;
+      } else {
+        updates.category = editForm.category;
+      }
+      
+      await onUpdate(editForm.id, updates);
+      setEditingId(null);
+      setEditForm(null);
+      alert('✅ Updated successfully!');
+    } catch (err) {
+      console.error('Save edit error:', err);
+      alert('❌ Error saving: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    }
   };
 
   const isIncome = type === 'income';
@@ -698,6 +721,27 @@ function IncomeExpenseSection({
                     placeholder="Description"
                     className="w-full px-2 py-1 bg-cdlp-dark border border-cdlp-border rounded text-xs text-white"
                   />
+                  {isIncome ? (
+                    <select
+                      value={editForm.type}
+                      onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
+                      className="w-full px-2 py-1 bg-cdlp-dark border border-cdlp-border rounded text-xs text-white"
+                    >
+                      <option value="SALES">SALES</option>
+                      <option value="RESERVATION">RESERVATION</option>
+                    </select>
+                  ) : (
+                    <select
+                      value={editForm.category}
+                      onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                      className="w-full px-2 py-1 bg-cdlp-dark border border-cdlp-border rounded text-xs text-white"
+                    >
+                      <option value="BILLS">BILLS</option>
+                      <option value="SUPPLIERS">SUPPLIERS</option>
+                      <option value="PAYROLL">PAYROLL</option>
+                      <option value="OTHER">OTHER</option>
+                    </select>
+                  )}
                   <div className="flex gap-2">
                     <button
                       onClick={saveEdit}
@@ -757,7 +801,7 @@ function IncomeExpenseSection({
 }
 
 // Dashboard Tab Component
-function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentData, language, documents, updateDocument, deleteIncome, deleteExpense, addIncome, addExpense, t, user }: any) {
+function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentData, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, t, user }: any) {
   const [showResetConfirm, setShowResetConfirm] = React.useState(false);
 
   const handleResetData = async () => {
@@ -938,6 +982,9 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
               await deleteIncome(id);
             }
           }}
+          onUpdate={async (id, updates) => {
+            await updateIncome(id, updates);
+          }}
           onDrop={async (item) => {
             // Convert expense to income
             console.log('Income onDrop called with:', item);
@@ -971,6 +1018,9 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             if (confirm('Delete this expense entry?')) {
               await deleteExpense(id);
             }
+          }}
+          onUpdate={async (id, updates) => {
+            await updateExpense(id, updates);
           }}
           onDrop={async (item) => {
             // Convert income to expense

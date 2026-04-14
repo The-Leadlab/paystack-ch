@@ -50,6 +50,8 @@ type FinanceContextValue = {
   error: string | null;
   addIncome: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string) => Promise<Income | null>;
   addExpense: (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, sessionId: string, employeeId?: string) => Promise<Expense | null>;
+  updateIncome: (id: string, updates: Partial<Omit<Income, 'id' | 'restaurant_id' | 'created_at'>>) => Promise<void>;
+  updateExpense: (id: string, updates: Partial<Omit<Expense, 'id' | 'restaurant_id' | 'created_at'>>) => Promise<void>;
   deleteIncome: (id: string) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
   refreshFinances: () => Promise<void>;
@@ -190,6 +192,53 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const updateIncome = useCallback(async (id: string, updates: Partial<Omit<Income, 'id' | 'restaurant_id' | 'created_at'>>) => {
+    if (!db) return;
+    try {
+      const { updateDoc, doc: docRef } = await import('firebase/firestore');
+      const updateData: any = {};
+      if (updates.date !== undefined) updateData.date = updates.date;
+      if (updates.type !== undefined) updateData.type = updates.type;
+      if (updates.amount !== undefined) updateData.amount = updates.amount;
+      if (updates.description !== undefined) updateData.description = updates.description;
+      if (updates.session_id !== undefined) updateData.sessionId = updates.session_id;
+      
+      await updateDoc(docRef(db, INCOME_COLLECTION, id), updateData);
+      
+      setIncome((prev) => prev.map((item) => 
+        item.id === id ? { ...item, ...updates } : item
+      ));
+    } catch (err) {
+      console.error('Update income error:', err);
+      setError(err instanceof Error ? err.message : String(err));
+      throw err;
+    }
+  }, []);
+
+  const updateExpense = useCallback(async (id: string, updates: Partial<Omit<Expense, 'id' | 'restaurant_id' | 'created_at'>>) => {
+    if (!db) return;
+    try {
+      const { updateDoc, doc: docRef } = await import('firebase/firestore');
+      const updateData: any = {};
+      if (updates.date !== undefined) updateData.date = updates.date;
+      if (updates.category !== undefined) updateData.category = updates.category;
+      if (updates.amount !== undefined) updateData.amount = updates.amount;
+      if (updates.description !== undefined) updateData.description = updates.description;
+      if (updates.session_id !== undefined) updateData.sessionId = updates.session_id;
+      if (updates.employee_id !== undefined) updateData.employeeId = updates.employee_id;
+      
+      await updateDoc(docRef(db, EXPENSE_COLLECTION, id), updateData);
+      
+      setExpenses((prev) => prev.map((item) => 
+        item.id === id ? { ...item, ...updates } : item
+      ));
+    } catch (err) {
+      console.error('Update expense error:', err);
+      setError(err instanceof Error ? err.message : String(err));
+      throw err;
+    }
+  }, []);
+
   const value: FinanceContextValue = {
     income,
     expenses,
@@ -197,6 +246,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     error,
     addIncome,
     addExpense,
+    updateIncome,
+    updateExpense,
     deleteIncome,
     deleteExpense,
     refreshFinances: fetchFinances,
