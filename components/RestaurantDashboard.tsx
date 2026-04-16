@@ -788,7 +788,7 @@ function IncomeExpenseSection({
                   </div>
                   <div className="flex items-center gap-2 ml-2">
                     <p className={`font-black text-sm md:text-base text-${colorClass}-500`}>
-                      {item.amount.toFixed(2)}
+                      {item.amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button

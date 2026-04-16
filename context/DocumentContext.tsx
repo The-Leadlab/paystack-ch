@@ -27,7 +27,13 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
   const fetchDocuments = useCallback(async () => {
     const uid = user?.uid;
     
+    console.log('=== FETCH DOCUMENTS DEBUG ===');
+    console.log('User ID:', uid);
+    console.log('Current Session:', currentSession);
+    console.log('Is All Sessions View:', isAllSessionsView);
+    
     if (!uid || !db) {
+      console.log('No user or db, skipping fetch');
       setDocuments([]);
       setLoading(false);
       return;
@@ -42,11 +48,14 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
       
       if (isAllSessionsView) {
         // Show all documents for this restaurant
+        console.log('Fetching ALL documents for restaurant');
         q = query(docsRef, where('restaurantId', '==', uid), orderBy('created_at', 'desc'));
       } else if (currentSession) {
         // Show only documents for current session
+        console.log('Fetching documents for session:', currentSession.id);
         q = query(docsRef, where('restaurantId', '==', uid), where('session_id', '==', currentSession.id), orderBy('created_at', 'desc'));
       } else {
+        console.log('No session selected, skipping fetch');
         setDocuments([]);
         setLoading(false);
         return;
@@ -57,6 +66,11 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
         id: doc.id,
         ...doc.data()
       } as ProcessedDocument));
+      
+      console.log('Fetched documents:', docs.length);
+      if (docs.length > 0) {
+        console.log('Sample document:', docs[0]);
+      }
       
       setDocuments(docs);
     } catch (err) {
