@@ -9,7 +9,7 @@ type DocumentContextValue = {
   documents: ProcessedDocument[];
   loading: boolean;
   error: string | null;
-  addDocument: (document: ProcessedDocument) => Promise<void>;
+  addDocument: (document: ProcessedDocument) => Promise<ProcessedDocument>;
   updateDocumentData: (documentId: string, updates: Partial<ProcessedDocument>) => Promise<void>;
   deleteDocument: (documentId: string) => Promise<void>;
   refreshDocuments: () => Promise<void>;
@@ -87,7 +87,7 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
   }, [fetchDocuments]);
 
   const addDocument = useCallback(
-    async (document: ProcessedDocument) => {
+    async (document: ProcessedDocument): Promise<ProcessedDocument> => {
       const uid = user?.uid;
       const sessionId = currentSession?.id;
       
@@ -106,6 +106,7 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
         const docRef = await addDoc(collection(db, 'documents'), docData);
         const newDoc = { ...docData, id: docRef.id };
         setDocuments((prev) => [newDoc, ...prev]);
+        return newDoc; // Return the document with its ID
       } catch (err) {
         console.error('Error adding document:', err);
         setError(err instanceof Error ? err.message : String(err));

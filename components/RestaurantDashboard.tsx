@@ -29,11 +29,18 @@ export function RestaurantDashboard() {
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
-  const [isResetting, setIsResetting] = useState(false);
+  const [showMasterReset, setShowMasterReset] = useState(false);
+  const [selectedDocumentFromFinance, setSelectedDocumentFromFinance] = useState<ProcessedDocument | null>(null);
 
   // Filter data by current session or show all
-  const filteredIncome = isAllSessionsView ? income : income.filter(i => i.session_id === currentSession?.id);
-  const filteredExpenses = isAllSessionsView ? expenses : expenses.filter(e => e.session_id === currentSession?.id);
+  // For "All Sessions" view, only show data from existing sessions (not orphaned data)
+  const existingSessionIds = sessions.map(s => s.id);
+  const filteredIncome = isAllSessionsView 
+    ? income.filter(i => existingSessionIds.includes(i.session_id))
+    : income.filter(i => i.session_id === currentSession?.id);
+  const filteredExpenses = isAllSessionsView 
+    ? expenses.filter(e => existingSessionIds.includes(e.session_id))
+    : expenses.filter(e => e.session_id === currentSession?.id);
 
   console.log('=== DASHBOARD DATA DEBUG ===');
   console.log('isAllSessionsView:', isAllSessionsView);
@@ -50,28 +57,26 @@ export function RestaurantDashboard() {
   }
 
   const totalIncome = filteredIncome.reduce((sum, i) => sum + i.amount, 0);
-  // Total expenses (all categories)
-  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-  // Payroll is NOT deducted separately - it's already in expenses as PAYROLL category
+  // Total expenses (excluding payroll)
+  const totalExpenses = filteredExpenses.filter(e => e.category !== 'PAYROLL').reduce((sum, e) => sum + e.amount, 0);
+  // Payroll is deducted separately
   const totalPayroll = filteredExpenses.filter(e => e.category === 'PAYROLL').reduce((sum, e) => sum + e.amount, 0);
-  // Balance: Income - All Expenses (which includes payroll)
-  const balance = totalIncome - totalExpenses;
+  // Balance: Income - Expenses - Payroll
+  const balance = totalIncome - totalExpenses - totalPayroll;
 
   console.log('Calculated totals:', { totalIncome, totalExpenses, totalPayroll, balance });
   console.log('=== END DEBUG ===');
 
-  const handleResetAllData = async () => {
-    if (!confirm('⚠️ DANGER: This will permanently delete ALL employees, income, and expenses from the entire database. This cannot be undone. Are you absolutely sure?')) {
+  const handleMasterReset = async () => {
+    if (!confirm('🗑️ MASTER RESET\n\nThis will permanently delete EVERYTHING:\n• All sessions\n• All income & expenses\n• All POS readings\n• All documents\n• All employees\n\nThis cannot be undone!\n\nAre you absolutely sure?')) {
       return;
     }
     
-    if (!confirm('Last chance! This will delete ALL data. Continue?')) {
+    if (!confirm('⚠️ FINAL WARNING!\n\nYou are about to delete ALL data from the entire system.\n\nType YES in your mind and click OK to proceed.')) {
       return;
     }
 
-    setIsResetting(true);
     try {
-      // Use Firestore batch for faster deletion
       const { writeBatch, collection, getDocs, query, where } = await import('firebase/firestore');
       const { db } = await import('../lib/firebase');
       
@@ -81,6 +86,13 @@ export function RestaurantDashboard() {
 
       const batch = writeBatch(db);
       let deleteCount = 0;
+
+      // Delete all sessions
+      const sessionsSnap = await getDocs(query(collection(db, 'sessions'), where('restaurantId', '==', user.uid)));
+      sessionsSnap.forEach((doc) => {
+        batch.delete(doc.ref);
+        deleteCount++;
+      });
 
       // Delete all employees
       const employeesSnap = await getDocs(query(collection(db, 'employees'), where('restaurantId', '==', user.uid)));
@@ -103,18 +115,30 @@ export function RestaurantDashboard() {
         deleteCount++;
       });
 
+      // Delete all POS readings
+      const posSnap = await getDocs(query(collection(db, 'pos_readings'), where('restaurantId', '==', user.uid)));
+      posSnap.forEach((doc) => {
+        batch.delete(doc.ref);
+        deleteCount++;
+      });
+
+      // Delete all documents
+      const docsSnap = await getDocs(query(collection(db, 'documents'), where('restaurantId', '==', user.uid)));
+      docsSnap.forEach((doc) => {
+        batch.delete(doc.ref);
+        deleteCount++;
+      });
+
       // Commit batch
       await batch.commit();
       
-      alert(`✅ Successfully deleted ${deleteCount} records!`);
+      alert(`✅ Master Reset Complete!\n\nDeleted ${deleteCount} records.\n\nThe page will now reload.`);
       
       // Refresh data
       window.location.reload();
     } catch (error) {
-      console.error('Reset error:', error);
-      alert('❌ Error resetting data: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    } finally {
-      setIsResetting(false);
+      console.error('Master reset error:', error);
+      alert('❌ Error during master reset: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
@@ -123,18 +147,8 @@ export function RestaurantDashboard() {
   };
 
   const handleDeleteSession = async (id: string) => {
-    if (confirm('Delete this session? All associated data will remain but won\'t be visible in this session.')) {
+    if (confirm('Delete this session and all its data (income, expenses, documents, POS readings)?')) {
       await deleteSession(id);
-    }
-  };
-
-  const handleDeleteAllSessions = async () => {
-    if (confirm('⚠️ WARNING: Delete ALL sessions? This will remove all session records but data will remain in the database.')) {
-      if (confirm('Are you absolutely sure? This cannot be undone.')) {
-        for (const session of sessions) {
-          await deleteSession(session.id);
-        }
-      }
     }
   };
 
@@ -151,16 +165,64 @@ export function RestaurantDashboard() {
     setRenameValue(currentName);
   };
 
-  // Handle extracted document data
-  const handleDocumentData = async (data: FinancialData, fileName: string, fileHash?: string, fileDataUrl?: string) => {
+  const handleDocumentData = async (data: FinancialData, fileName: string, fileHash?: string, fileRaw?: File) => {
+    console.log('🔵 handleDocumentData called:', { fileName, hasData: !!data, currentSession: currentSession?.id });
+    
     if (!currentSession) {
+      console.error('❌ No session selected');
       alert('Please select a session first');
-      return;
+      throw new Error('No session selected');
+    }
+
+    // Check for duplicate document by hash
+    if (fileHash) {
+      const existingDoc = documents.find(d => d.fileHash === fileHash);
+      if (existingDoc) {
+        console.log('⚠️ Duplicate document detected:', fileHash);
+        alert(`⚠️ This document has already been processed: "${existingDoc.fileName}"\n\nSkipping to avoid duplicate entries.`);
+        throw new Error('Duplicate document');
+      }
+    }
+
+    // Upload file to Firebase Storage (FREE tier: 5GB storage, 1GB/day download)
+    let fileUrl: string | undefined;
+    if (fileRaw && user?.uid) {
+      try {
+        console.log('📤 Uploading file to Firebase Storage...');
+        const { uploadDocument } = await import('../services/storageService');
+        fileUrl = await uploadDocument(fileRaw, user.uid, fileName);
+        console.log('✅ File uploaded successfully:', fileUrl);
+      } catch (uploadError) {
+        console.error('⚠️ File upload failed:', uploadError);
+        // Continue without file URL - document metadata will still be saved
+      }
+    }
+
+    // Save the document with file URL
+    let documentId: string;
+    try {
+      console.log('💾 Saving document to Firestore...');
+      const newDoc = await addDocument({
+        id: Math.random().toString(36).substr(2, 9),
+        fileName,
+        status: 'completed',
+        data,
+        fileHash,
+        fileUrl, // Store Firebase Storage URL instead of base64
+      });
+      documentId = newDoc.id;
+      console.log('✅ Document saved with ID:', documentId);
+    } catch (error) {
+      console.error('❌ Error saving document:', error);
+      alert('Failed to save document: ' + (error as Error).message);
+      throw error;
     }
 
     const date = data.date || new Date().toISOString().split('T')[0];
     const amount = data.amountInCHF || data.totalAmount || 0;
     const docType = data.documentType;
+    
+    console.log('📊 Processing document type:', docType, 'Amount:', amount);
     
     // Check if this is revenue based on category or document type
     const isRevenue = data.expenseCategory?.toUpperCase().includes('REVENUE') || 
@@ -169,21 +231,24 @@ export function RestaurantDashboard() {
                       docType === 'Z2 Multi-Ticket Sheet';
     
     if (docType === 'Bank Statement' || docType === 'Bank Deposit') {
+      console.log('🏦 Processing bank statement with', data.lineItems?.length || 0, 'line items');
       if (data.lineItems) {
         for (const item of data.lineItems) {
           if (item.type === 'INCOME') {
-            await addIncome(date, 'SALES', item.amount, item.description || fileName, currentSession.id);
+            console.log('➕ Adding income:', item.amount, item.description);
+            await addIncome(date, 'SALES', item.amount, item.description || fileName, currentSession.id, documentId);
           } else if (item.type === 'EXPENSE') {
-            // For expenses, use the item description which may contain supplier info
+            console.log('➖ Adding expense:', item.amount, item.description);
             const description = item.description || data.issuer || fileName;
-            await addExpense(date, 'OTHER', item.amount, description, currentSession.id);
+            await addExpense(date, 'OTHER', item.amount, description, currentSession.id, undefined, documentId);
           }
         }
       }
     } else if (docType === 'Pay Slip') {
-      // Create PAYROLL expense entry for the GROSS pay (not net pay)
       const grossPay = data.paySlip?.grossPay || data.totalAmount || 0;
       const employeeName = data.paySlip?.employee?.name || 'Unknown Employee';
+      
+      console.log('💰 Processing payslip:', employeeName, 'Gross Pay:', grossPay);
       
       if (grossPay > 0) {
         await addExpense(
@@ -191,37 +256,115 @@ export function RestaurantDashboard() {
           'PAYROLL', 
           grossPay, 
           `Payslip - ${employeeName}`, 
-          currentSession.id
+          currentSession.id,
+          undefined,
+          documentId
         );
       }
-      
-      console.log('Payslip processed:', employeeName, 'Gross Pay:', grossPay);
     } else if (isRevenue && amount > 0) {
-      // This is revenue - add as income
+      console.log('💵 Adding revenue:', amount);
       const description = data.issuer || data.notes || fileName;
-      await addIncome(date, 'SALES', amount, description, currentSession.id);
-      console.log('Revenue processed:', description, 'Amount:', amount);
+      await addIncome(date, 'SALES', amount, description, currentSession.id, documentId);
     } else if (amount > 0) {
-      // This is an expense
+      console.log('💸 Adding expense:', amount);
       const category = data.expenseCategory?.toLowerCase().includes('supplier') ? 'SUPPLIERS' : 
                       data.expenseCategory?.toLowerCase().includes('bill') ? 'BILLS' : 'OTHER';
-      // Use issuer (supplier name) as description for proper filtering
       const description = data.issuer || data.notes || fileName;
-      await addExpense(date, category as any, amount, description, currentSession.id);
+      await addExpense(date, category as any, amount, description, currentSession.id, undefined, documentId);
     }
     
-    // Save document to Firestore with hash and file data URL
+    console.log('✅ Document processing complete:', fileName);
+  };
+
+  const handleNavigateToDocument = (doc: ProcessedDocument) => {
+    setSelectedDocumentFromFinance(doc);
+    setActiveTab('documents');
+  };
+
+  const handleDocumentUpdated = async (documentId: string, newData: FinancialData) => {
+    console.log('🔄 Updating document and related income/expenses:', documentId);
+    
+    if (!currentSession) {
+      console.error('❌ No session selected');
+      return;
+    }
+
     try {
-      await addDocument({
-        id: Math.random().toString(36).substr(2, 9),
-        fileName,
-        status: 'completed',
-        data,
-        fileHash,
-        fileDataUrl,
-      });
+      // Delete all existing income/expenses linked to this document
+      console.log('🗑️ Deleting old income/expenses for document:', documentId);
+      const oldIncome = income.filter(i => i.documentId === documentId);
+      const oldExpenses = expenses.filter(e => e.documentId === documentId);
+      
+      for (const item of oldIncome) {
+        await deleteIncome(item.id);
+      }
+      for (const item of oldExpenses) {
+        await deleteExpense(item.id);
+      }
+      
+      console.log(`✅ Deleted ${oldIncome.length} income and ${oldExpenses.length} expense entries`);
+      
+      // Re-create income/expenses from updated document data
+      const date = newData.date || new Date().toISOString().split('T')[0];
+      const amount = newData.amountInCHF || newData.totalAmount || 0;
+      const docType = newData.documentType;
+      
+      console.log('📊 Re-processing document type:', docType, 'Amount:', amount);
+      
+      // Check if this is revenue based on category or document type
+      const isRevenue = newData.expenseCategory?.toUpperCase().includes('REVENUE') || 
+                        newData.expenseCategory?.toUpperCase().includes('SALES') ||
+                        docType === 'Ticket/Receipt' ||
+                        docType === 'Z2 Multi-Ticket Sheet';
+      
+      if (docType === 'Bank Statement' || docType === 'Bank Deposit') {
+        console.log('🏦 Re-processing bank statement with', newData.lineItems?.length || 0, 'line items');
+        if (newData.lineItems) {
+          for (const item of newData.lineItems) {
+            if (item.type === 'INCOME') {
+              console.log('➕ Re-adding income:', item.amount, item.description);
+              await addIncome(date, 'SALES', item.amount, item.description || 'Bank Statement', currentSession.id, documentId);
+            } else if (item.type === 'EXPENSE') {
+              console.log('➖ Re-adding expense:', item.amount, item.description);
+              const description = item.description || newData.issuer || 'Bank Statement';
+              await addExpense(date, 'OTHER', item.amount, description, currentSession.id, undefined, documentId);
+            }
+          }
+        }
+      } else if (docType === 'Pay Slip') {
+        const grossPay = newData.paySlip?.grossPay || newData.totalAmount || 0;
+        const employeeName = newData.paySlip?.employee?.name || 'Unknown Employee';
+        
+        console.log('💰 Re-processing payslip:', employeeName, 'Gross Pay:', grossPay);
+        
+        if (grossPay > 0) {
+          await addExpense(
+            date, 
+            'PAYROLL', 
+            grossPay, 
+            `Payslip - ${employeeName}`, 
+            currentSession.id,
+            undefined,
+            documentId
+          );
+        }
+      } else if (isRevenue && amount > 0) {
+        console.log('💵 Re-adding revenue:', amount);
+        const description = newData.issuer || newData.notes || 'Document';
+        await addIncome(date, 'SALES', amount, description, currentSession.id, documentId);
+      } else if (amount > 0) {
+        console.log('💸 Re-adding expense:', amount);
+        const category = newData.expenseCategory?.toLowerCase().includes('supplier') ? 'SUPPLIERS' : 
+                        newData.expenseCategory?.toLowerCase().includes('bill') ? 'BILLS' : 'OTHER';
+        const description = newData.issuer || newData.notes || 'Document';
+        await addExpense(date, category as any, amount, description, currentSession.id, undefined, documentId);
+      }
+      
+      console.log('✅ Document update complete');
+      alert('✅ Document updated successfully! Dashboard numbers have been refreshed.');
     } catch (error) {
-      console.error('Error saving document:', error);
+      console.error('❌ Error updating document:', error);
+      alert('Failed to update document: ' + (error as Error).message);
     }
   };
 
@@ -287,6 +430,15 @@ export function RestaurantDashboard() {
               </svg>
             </div>
           </div>
+          
+          {/* Master Reset Button */}
+          <button
+            onClick={() => setShowMasterReset(true)}
+            className="w-full flex items-center justify-center gap-2 py-2 mb-3 bg-red-600/10 border border-red-600 text-red-400 text-xs font-bold uppercase rounded hover:bg-red-600/20"
+          >
+            <Trash2 className="w-4 h-4" /> Master Reset
+          </button>
+          
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs text-cdlp-muted">{user?.email}</span>
             <button
@@ -332,15 +484,6 @@ export function RestaurantDashboard() {
             <h3 className="text-xs font-bold uppercase text-cdlp-muted">
               {t('sessions')} ({sessions.length})
             </h3>
-            {sessions.length > 0 && (
-              <button
-                onClick={handleDeleteAllSessions}
-                className="text-[10px] text-red-400 hover:text-red-300 uppercase font-bold"
-                title="Delete all sessions"
-              >
-                {t('clearAll')}
-              </button>
-            )}
           </div>
           
           {/* All Sessions View Button */}
@@ -418,14 +561,7 @@ export function RestaurantDashboard() {
           )}
         </div>
 
-        <div className="p-4 border-t border-cdlp-border space-y-2">
-          <button
-            onClick={handleResetAllData}
-            disabled={isResetting}
-            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase bg-red-600/10 border border-red-600 text-red-400 rounded hover:bg-red-600/20 disabled:opacity-50"
-          >
-            <Trash2 className="w-4 h-4" /> {isResetting ? 'Resetting...' : t('resetAllData')}
-          </button>
+        <div className="p-4 border-t border-cdlp-border">
           <button
             onClick={signOut}
             className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-muted hover:text-cdlp-gold"
@@ -493,21 +629,6 @@ export function RestaurantDashboard() {
 
         {/* Tab Content */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-          {/* Reset View Button for All Sessions */}
-          {isAllSessionsView && (
-            <div className="mb-4 flex justify-end">
-              <button
-                onClick={() => {
-                  setAllSessionsView(false);
-                  setCurrentSession(sessions[0] || null);
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600/10 border border-red-600 text-red-400 text-xs font-bold uppercase rounded hover:bg-red-600/20"
-              >
-                <X className="w-4 h-4" /> {t('resetView')}
-              </button>
-            </div>
-          )}
-          
           {activeTab === 'dashboard' && (
             <DashboardTab
               currentSession={currentSession}
@@ -521,6 +642,7 @@ export function RestaurantDashboard() {
               onAddIncome={() => setShowAddIncome(true)}
               onAddExpense={() => setShowAddExpense(true)}
               onDocumentData={handleDocumentData}
+              onDocumentUpdated={handleDocumentUpdated}
               language={language}
               documents={documents}
               updateDocument={updateDocumentData}
@@ -530,13 +652,14 @@ export function RestaurantDashboard() {
               updateExpense={updateExpense}
               addIncome={addIncome}
               addExpense={addExpense}
+              onNavigateToDocument={handleNavigateToDocument}
               t={t}
               user={user}
             />
           )}
           {activeTab === 'revenue' && <POSManager />}
           {activeTab === 'reports' && <ReportsPlaceholder />}
-          {activeTab === 'documents' && <DocumentsTab />}
+          {activeTab === 'documents' && <DocumentsTab selectedDocument={selectedDocumentFromFinance} onClearSelection={() => setSelectedDocumentFromFinance(null)} />}
         </div>
       </div>
 
@@ -544,6 +667,74 @@ export function RestaurantDashboard() {
       {showAddEmployee && <AddEmployeeModal onClose={() => setShowAddEmployee(false)} onAdd={addEmployee} t={t} />}
       {showAddIncome && <AddIncomeModal onClose={() => setShowAddIncome(false)} onAdd={(date, type, amount, desc) => addIncome(date, type, amount, desc, currentSession?.id || '')} t={t} />}
       {showAddExpense && <AddExpenseModal onClose={() => setShowAddExpense(false)} onAdd={(date, cat, amount, desc) => addExpense(date, cat, amount, desc, currentSession?.id || '')} t={t} />}
+      
+      {/* Master Reset Confirmation Modal */}
+      {showMasterReset && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="bg-cdlp-black border-2 border-red-600 rounded-lg p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-600/20 flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-red-500 uppercase">Master Reset</h3>
+                <p className="text-xs text-red-400">Permanent deletion</p>
+              </div>
+            </div>
+            
+            <div className="mb-6 space-y-3">
+              <p className="text-sm text-white font-bold">This will permanently delete EVERYTHING:</p>
+              <ul className="space-y-2 text-xs text-cdlp-muted">
+                <li className="flex items-center gap-2">
+                  <X className="w-4 h-4 text-red-500" />
+                  <span>All sessions ({sessions.length})</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <X className="w-4 h-4 text-red-500" />
+                  <span>All income entries ({income.length})</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <X className="w-4 h-4 text-red-500" />
+                  <span>All expense entries ({expenses.length})</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <X className="w-4 h-4 text-red-500" />
+                  <span>All POS readings</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <X className="w-4 h-4 text-red-500" />
+                  <span>All documents ({documents.length})</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <X className="w-4 h-4 text-red-500" />
+                  <span>All employees ({employees.length})</span>
+                </li>
+              </ul>
+              <div className="bg-red-600/10 border border-red-600/30 rounded p-3 mt-4">
+                <p className="text-xs text-red-400 font-bold">⚠️ This action cannot be undone!</p>
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowMasterReset(false);
+                  handleMasterReset();
+                }}
+                className="flex-1 py-3 bg-red-600 text-white text-sm font-bold uppercase rounded hover:bg-red-700"
+              >
+                Yes, Delete Everything
+              </button>
+              <button
+                onClick={() => setShowMasterReset(false)}
+                className="flex-1 py-3 bg-cdlp-card border border-cdlp-border text-white text-sm font-bold uppercase rounded hover:bg-cdlp-border/50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -558,6 +749,7 @@ function IncomeExpenseSection({
   onDelete, 
   onDrop,
   onUpdate,
+  onItemClick,
   t 
 }: { 
   title: string; 
@@ -568,6 +760,7 @@ function IncomeExpenseSection({
   onDelete: (id: string) => Promise<void>;
   onDrop: (item: any) => Promise<void>;
   onUpdate: (id: string, updates: any) => Promise<void>;
+  onItemClick?: (item: any) => void;
   t: (key: string) => string;
 }) {
   const [draggedOver, setDraggedOver] = React.useState(false);
@@ -777,15 +970,24 @@ function IncomeExpenseSection({
               ) : (
                 // View Mode
                 <div className="flex justify-between items-start">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-xs md:text-sm text-white truncate">
-                      {isIncome ? item.type : item.category}
-                    </p>
+                  <button
+                    onClick={() => onItemClick && item.document_id && onItemClick(item)}
+                    className={`flex-1 min-w-0 text-left ${item.document_id ? 'cursor-pointer hover:bg-cdlp-gold/5 -m-1 p-1 rounded transition-colors' : ''}`}
+                    disabled={!item.document_id}
+                  >
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-xs md:text-sm text-white truncate">
+                        {isIncome ? item.type : item.category}
+                      </p>
+                      {item.document_id && (
+                        <FileText className="w-3 h-3 text-cdlp-gold flex-shrink-0" title="Linked to document" />
+                      )}
+                    </div>
                     <p className="text-[10px] md:text-xs text-cdlp-muted">{item.date}</p>
                     {item.description && (
                       <p className="text-[10px] md:text-xs text-cdlp-muted mt-1 truncate">{item.description}</p>
                     )}
-                  </div>
+                  </button>
                   <div className="flex items-center gap-2 ml-2">
                     <p className={`font-black text-sm md:text-base text-${colorClass}-500`}>
                       {item.amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -818,69 +1020,15 @@ function IncomeExpenseSection({
 }
 
 // Dashboard Tab Component
-function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentData, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, t, user }: any) {
-  const [showResetConfirm, setShowResetConfirm] = React.useState(false);
-
-  const handleResetData = async () => {
-    if (!currentSession) {
-      alert('No session selected');
-      return;
-    }
-    
-    if (!confirm('⚠️ WARNING: This will delete ALL income and expense entries in the current session. This action cannot be undone. Are you sure?')) {
-      setShowResetConfirm(false);
-      return;
-    }
-    
-    try {
-      const { writeBatch, collection, getDocs, query, where } = await import('firebase/firestore');
-      const { db } = await import('../lib/firebase');
-      
-      if (!db || !user?.uid) {
-        throw new Error('Database not available');
+function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentData, onDocumentUpdated, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, t, user, onNavigateToDocument }: any) {
+  const handleItemClick = (item: any) => {
+    if (item.document_id && onNavigateToDocument) {
+      const doc = documents.find((d: any) => d.id === item.document_id);
+      if (doc) {
+        onNavigateToDocument(doc);
+      } else {
+        alert('Document not found');
       }
-
-      const batch = writeBatch(db);
-      let deleteCount = 0;
-
-      // Delete all income for this session
-      const incomeSnap = await getDocs(
-        query(
-          collection(db, 'income'), 
-          where('restaurantId', '==', user.uid),
-          where('session_id', '==', currentSession.id)
-        )
-      );
-      incomeSnap.forEach((doc) => {
-        batch.delete(doc.ref);
-        deleteCount++;
-      });
-
-      // Delete all expenses for this session
-      const expensesSnap = await getDocs(
-        query(
-          collection(db, 'expenses'), 
-          where('restaurantId', '==', user.uid),
-          where('session_id', '==', currentSession.id)
-        )
-      );
-      expensesSnap.forEach((doc) => {
-        batch.delete(doc.ref);
-        deleteCount++;
-      });
-
-      // Commit batch
-      await batch.commit();
-      
-      alert(`✅ Successfully deleted ${deleteCount} records from session "${currentSession.name}"!`);
-      setShowResetConfirm(false);
-      
-      // Refresh page to update UI
-      window.location.reload();
-    } catch (error) {
-      console.error('Reset error:', error);
-      alert('❌ Error resetting session data: ' + (error instanceof Error ? error.message : 'Unknown error'));
-      setShowResetConfirm(false);
     }
   };
 
@@ -890,43 +1038,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
         <h1 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">
           {isAllSessionsView ? 'All Sessions' : currentSession?.name || 'Dashboard'}
         </h1>
-        {currentSession && !isAllSessionsView && (
-          <button
-            onClick={() => setShowResetConfirm(true)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-red-600/10 border border-red-600 text-red-400 text-xs font-bold uppercase rounded hover:bg-red-600/20"
-          >
-            <Trash2 className="w-3 h-3" /> Reset Data
-          </button>
-        )}
       </div>
-
-      {showResetConfirm && (
-        <div className="mb-6 bg-red-600/10 border border-red-600 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <div className="flex-1">
-              <h3 className="text-sm font-bold text-red-400 mb-1">Reset Session Data?</h3>
-              <p className="text-xs text-red-300 mb-3">This will permanently delete all income and expense entries in this session. Documents and employees will not be affected.</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleResetData}
-                  className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold uppercase rounded hover:bg-red-700"
-                >
-                  Yes, Reset Data
-                </button>
-                <button
-                  onClick={() => setShowResetConfirm(false)}
-                  className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:bg-cdlp-border/50"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-            <button onClick={() => setShowResetConfirm(false)} className="text-red-400 hover:text-red-300">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Financial Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
@@ -981,6 +1093,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             documents={documents}
             updateDocument={updateDocument}
             onDataExtracted={onDocumentData}
+            onDocumentUpdated={onDocumentUpdated}
           />
         </div>
       )}
@@ -1002,6 +1115,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           onUpdate={async (id, updates) => {
             await updateIncome(id, updates);
           }}
+          onItemClick={handleItemClick}
           onDrop={async (item) => {
             // Convert expense to income
             console.log('=== INCOME DROP START ===');
@@ -1059,6 +1173,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           onUpdate={async (id, updates) => {
             await updateExpense(id, updates);
           }}
+          onItemClick={handleItemClick}
           onDrop={async (item) => {
             // Convert income to expense
             console.log('=== EXPENSE DROP START ===');
@@ -1109,7 +1224,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
 // Reports Tab Component - Full Implementation
 function ReportsPlaceholder() {
   const { income, expenses } = useFinance();
-  const { currentSession, isAllSessionsView } = useSession();
+  const { currentSession, isAllSessionsView, sessions } = useSession();
   const [dateFrom, setDateFrom] = React.useState('');
   const [dateTo, setDateTo] = React.useState('');
   const [filterActive, setFilterActive] = React.useState(false);
@@ -1117,8 +1232,14 @@ function ReportsPlaceholder() {
   const [supplierFilter, setSupplierFilter] = React.useState<string>('all');
 
   // Filter data by current session
-  const filteredIncome = isAllSessionsView ? income : income.filter(i => i.session_id === currentSession?.id);
-  const filteredExpenses = isAllSessionsView ? expenses : expenses.filter(e => e.session_id === currentSession?.id);
+  // For "All Sessions" view, only show data from existing sessions (not orphaned data)
+  const existingSessionIds = sessions.map(s => s.id);
+  const filteredIncome = isAllSessionsView 
+    ? income.filter(i => existingSessionIds.includes(i.session_id))
+    : income.filter(i => i.session_id === currentSession?.id);
+  const filteredExpenses = isAllSessionsView 
+    ? expenses.filter(e => existingSessionIds.includes(e.session_id))
+    : expenses.filter(e => e.session_id === currentSession?.id);
 
   // Apply date filter
   const dateFilteredIncome = dateFrom && dateTo 
@@ -1368,22 +1489,22 @@ function ReportsPlaceholder() {
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-sm font-bold text-cdlp-gold uppercase">{monthName}</h3>
                     <span className={`text-lg font-black ${data.balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                      {data.balance.toFixed(2)} CHF
+                      {data.balance.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-4 text-xs">
                     <div>
                       <p className="text-cdlp-muted uppercase mb-1">Income</p>
-                      <p className="font-bold text-emerald-500">{data.income.toFixed(2)}</p>
+                      <p className="font-bold text-emerald-500">{data.income.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                     <div>
                       <p className="text-cdlp-muted uppercase mb-1">Expenses</p>
-                      <p className="font-bold text-red-500">{data.expenses.toFixed(2)}</p>
+                      <p className="font-bold text-red-500">{data.expenses.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                     <div>
                       <p className="text-cdlp-muted uppercase mb-1">Balance</p>
                       <p className={`font-bold ${data.balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                        {data.balance.toFixed(2)}
+                        {data.balance.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>
@@ -1410,7 +1531,7 @@ function ReportsPlaceholder() {
             {supplierData.map(([supplier, amount]) => (
               <div key={supplier} className="flex justify-between items-center p-3 bg-cdlp-card border border-cdlp-border rounded">
                 <span className="text-sm font-bold text-white truncate flex-1">{supplier}</span>
-                <span className="text-sm font-black text-cdlp-gold ml-4">{amount.toFixed(2)} CHF</span>
+                <span className="text-sm font-black text-cdlp-gold ml-4">{amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
               </div>
             ))}
           </div>
@@ -1420,11 +1541,18 @@ function ReportsPlaceholder() {
   );
 }
 
-function DocumentsTab() {
+function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelection }: { selectedDocument?: ProcessedDocument | null; onClearSelection?: () => void }) {
   const { documents, updateDocument } = useDocuments();
   const [filter, setFilter] = useState<'all' | 'suppliers' | 'employees' | 'pos'>('all');
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
-  const [selectedDocument, setSelectedDocument] = useState<ProcessedDocument | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<ProcessedDocument | null>(initialSelectedDocument || null);
+
+  // Update selectedDocument when initialSelectedDocument changes
+  React.useEffect(() => {
+    if (initialSelectedDocument) {
+      setSelectedDocument(initialSelectedDocument);
+    }
+  }, [initialSelectedDocument]);
 
   // Group documents by entity (supplier or employee)
   const groupedDocs = useMemo(() => {
@@ -1489,7 +1617,10 @@ function DocumentsTab() {
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => setSelectedDocument(null)}
+            onClick={() => {
+              setSelectedDocument(null);
+              if (onClearSelection) onClearSelection();
+            }}
             className="flex items-center gap-2 text-cdlp-gold hover:text-cdlp-gold-light text-sm font-bold uppercase"
           >
             <ChevronRight className="w-4 h-4 rotate-180" /> Back to Documents
@@ -1506,16 +1637,16 @@ function DocumentsTab() {
                 <h3 className="text-xs font-black uppercase text-emerald-400 tracking-widest">Document Preview</h3>
               </div>
               <div className="aspect-[3/4] bg-slate-950 overflow-hidden flex items-center justify-center">
-                {(selectedDocument.fileDataUrl || selectedDocument.fileRaw) ? (
+                {(selectedDocument.fileUrl || selectedDocument.fileDataUrl || selectedDocument.fileRaw) ? (
                   selectedDocument.fileName.toLowerCase().endsWith('.pdf') ? (
                     <iframe 
-                      src={selectedDocument.fileDataUrl || (selectedDocument.fileRaw ? URL.createObjectURL(selectedDocument.fileRaw) : '')} 
+                      src={selectedDocument.fileUrl || selectedDocument.fileDataUrl || (selectedDocument.fileRaw ? URL.createObjectURL(selectedDocument.fileRaw) : '')} 
                       className="w-full h-full"
                       title="Document Preview"
                     />
                   ) : (
                     <img 
-                      src={selectedDocument.fileDataUrl || (selectedDocument.fileRaw ? URL.createObjectURL(selectedDocument.fileRaw) : '')} 
+                      src={selectedDocument.fileUrl || selectedDocument.fileDataUrl || (selectedDocument.fileRaw ? URL.createObjectURL(selectedDocument.fileRaw) : '')} 
                       alt="Document Preview" 
                       className="w-full h-full object-contain"
                     />
@@ -1529,7 +1660,7 @@ function DocumentsTab() {
                 )}
               </div>
               <div className="p-4">
-                {(selectedDocument.fileDataUrl || selectedDocument.fileRaw) ? (
+                {(selectedDocument.fileUrl || selectedDocument.fileDataUrl || selectedDocument.fileRaw) ? (
                   <button
                     type="button"
                     onClick={() => openDocumentInNewTab(selectedDocument)}
@@ -1562,7 +1693,7 @@ function DocumentsTab() {
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Total Amount</label>
-                      <p className="text-lg font-black text-cdlp-gold">{(selectedDocument.data?.totalAmount || 0).toFixed(2)} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
+                      <p className="text-lg font-black text-cdlp-gold">{(selectedDocument.data?.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Document Type</label>
@@ -1570,11 +1701,11 @@ function DocumentsTab() {
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">VAT Amount</label>
-                      <p className="text-sm font-bold text-blue-400">{(selectedDocument.data?.vatAmount || 0).toFixed(2)} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
+                      <p className="text-sm font-bold text-blue-400">{(selectedDocument.data?.vatAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Net Amount</label>
-                      <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data?.netAmount || 0).toFixed(2)} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
+                      <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data?.netAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
                     </div>
                     <div className="col-span-2">
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Category</label>
@@ -1619,7 +1750,7 @@ function DocumentsTab() {
                               <td className="px-3 py-2 text-cdlp-muted">{item.date}</td>
                               <td className="px-3 py-2 text-white font-bold">{item.description}</td>
                               <td className={`px-3 py-2 text-right font-bold ${item.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {item.amount.toFixed(2)}
+                                {item.amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
                               <td className="px-3 py-2 text-center">
                                 <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded-full ${
@@ -1651,11 +1782,11 @@ function DocumentsTab() {
                       </div>
                       <div>
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Gross Pay</label>
-                        <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data.paySlip.grossPay || 0).toFixed(2)} CHF</p>
+                        <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data.paySlip.grossPay || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</p>
                       </div>
                       <div>
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Net Pay</label>
-                        <p className="text-sm font-bold text-cdlp-gold">{(selectedDocument.data.paySlip.netPay || 0).toFixed(2)} CHF</p>
+                        <p className="text-sm font-bold text-cdlp-gold">{(selectedDocument.data.paySlip.netPay || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</p>
                       </div>
                     </div>
                     {selectedDocument.data.paySlip.components && selectedDocument.data.paySlip.components.length > 0 && (
@@ -1673,7 +1804,7 @@ function DocumentsTab() {
                               <tr key={idx} className="hover:bg-cdlp-card">
                                 <td className="px-3 py-2 text-white font-bold">{comp.description}</td>
                                 <td className={`px-3 py-2 text-right font-bold ${comp.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}>
-                                  {comp.amount.toFixed(2)}
+                                  {comp.amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
                                 <td className="px-3 py-2 text-center">
                                   <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded-full ${
@@ -1739,7 +1870,7 @@ function DocumentsTab() {
                 <h3 className="text-sm font-bold text-cdlp-gold uppercase">{monthName}</h3>
                 <div className="text-right">
                   <p className="text-xs text-cdlp-muted uppercase">Total</p>
-                  <p className="text-lg font-black text-white">{totalAmount.toFixed(2)} CHF</p>
+                  <p className="text-lg font-black text-white">{totalAmount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</p>
                 </div>
               </div>
               <div className="divide-y divide-cdlp-border">
@@ -1758,7 +1889,7 @@ function DocumentsTab() {
                       </button>
                       <div className="text-right ml-4 flex items-center gap-3">
                         <div>
-                          <p className="font-black text-white text-base">{(doc.data?.totalAmount || 0).toFixed(2)}</p>
+                          <p className="font-black text-white text-base">{(doc.data?.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                           <p className="text-xs text-cdlp-muted">{doc.data?.originalCurrency || 'CHF'}</p>
                         </div>
                         <button
@@ -1885,7 +2016,7 @@ function DocumentsTab() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-cdlp-muted uppercase">Total Amount</span>
-                    <span className="text-lg font-black text-cdlp-gold">{totalAmount.toFixed(2)} CHF</span>
+                    <span className="text-lg font-black text-cdlp-gold">{totalAmount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
                   </div>
                 </div>
               </button>

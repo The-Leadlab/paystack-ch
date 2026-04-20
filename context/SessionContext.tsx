@@ -155,13 +155,56 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     async (id: string) => {
       if (!db) return;
       try {
-        await deleteDoc(doc(db, SESSIONS_COLLECTION, id));
+        const { writeBatch, collection, getDocs, query, where } = await import('firebase/firestore');
+        const batch = writeBatch(db);
+        
+        // Delete the session
+        batch.delete(doc(db, SESSIONS_COLLECTION, id));
+        
+        // Delete all income for this session
+        const incomeSnap = await getDocs(
+          query(collection(db, 'income'), where('sessionId', '==', id))
+        );
+        incomeSnap.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+        
+        // Delete all expenses for this session
+        const expensesSnap = await getDocs(
+          query(collection(db, 'expenses'), where('sessionId', '==', id))
+        );
+        expensesSnap.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+        
+        // Delete all POS readings for this session
+        const posSnap = await getDocs(
+          query(collection(db, 'pos_readings'), where('sessionId', '==', id))
+        );
+        posSnap.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+        
+        // Delete all documents for this session
+        const docsSnap = await getDocs(
+          query(collection(db, 'documents'), where('session_id', '==', id))
+        );
+        docsSnap.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+        
+        // Commit all deletions
+        await batch.commit();
+        
         setSessions((prev) => prev.filter((s) => s.id !== id));
         if (currentSession?.id === id) {
           const remaining = sessions.filter(s => s.id !== id);
           setCurrentSessionState(remaining[0] || null);
         }
+        
+        console.log(`✅ Session ${id} and all associated data deleted`);
       } catch (err) {
+        console.error('Delete session error:', err);
         setError(err instanceof Error ? err.message : String(err));
       }
     },

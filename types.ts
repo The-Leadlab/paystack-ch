@@ -33,6 +33,7 @@ export interface Income {
   type: 'SALES' | 'RESERVATION';
   amount: number;
   description?: string;
+  document_id?: string; // Link to source document
   created_at: string;
 }
 
@@ -45,6 +46,7 @@ export interface Expense {
   amount: number;
   description: string;
   employee_id?: string;
+  document_id?: string; // Link to source document
   created_at: string;
 }
 
@@ -170,11 +172,12 @@ export interface FinancialData {
 export interface ProcessedDocument {
   id: string;
   fileName: string;
-  status: 'pending' | 'processing' | 'completed' | 'error' | 'verifying';
+  status: 'pending' | 'processing' | 'completed' | 'error' | 'verifying' | 'skipped';
   data?: FinancialData;
   error?: string;
   fileRaw?: File;
-  fileDataUrl?: string; // Base64 data URL for free storage in Firestore
+  fileDataUrl?: string; // Deprecated - kept for backward compatibility
+  fileUrl?: string; // Firebase Storage URL (NEW - free tier: 5GB storage)
   restaurantId?: string;
   session_id?: string;
   created_at?: string;

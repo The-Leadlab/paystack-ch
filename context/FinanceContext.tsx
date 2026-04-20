@@ -25,6 +25,7 @@ function docToIncome(id: string, data: any): Income {
     type: data.type,
     amount: data.amount,
     description: data.description,
+    document_id: data.documentId,
     created_at: data.createdAt?.toDate?.()?.toISOString?.() ?? new Date().toISOString(),
   };
 }
@@ -39,6 +40,7 @@ function docToExpense(id: string, data: any): Expense {
     amount: data.amount,
     description: data.description,
     employee_id: data.employeeId,
+    document_id: data.documentId,
     created_at: data.createdAt?.toDate?.()?.toISOString?.() ?? new Date().toISOString(),
   };
 }
@@ -48,8 +50,8 @@ type FinanceContextValue = {
   expenses: Expense[];
   loading: boolean;
   error: string | null;
-  addIncome: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string) => Promise<Income | null>;
-  addExpense: (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, sessionId: string, employeeId?: string) => Promise<Expense | null>;
+  addIncome: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string) => Promise<Income | null>;
+  addExpense: (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string) => Promise<Expense | null>;
   updateIncome: (id: string, updates: Partial<Omit<Income, 'id' | 'restaurant_id' | 'created_at'>>) => Promise<void>;
   updateExpense: (id: string, updates: Partial<Omit<Expense, 'id' | 'restaurant_id' | 'created_at'>>) => Promise<void>;
   deleteIncome: (id: string) => Promise<void>;
@@ -109,7 +111,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   }, [fetchFinances]);
 
   const addIncome = useCallback(
-    async (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string): Promise<Income | null> => {
+    async (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string): Promise<Income | null> => {
       const uid = user?.uid;
       if (!uid || !db) {
         console.error('addIncome failed: No user or database');
@@ -120,7 +122,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Session ID is required');
       }
       try {
-        console.log('addIncome: Creating document with sessionId:', sessionId);
+        console.log('addIncome: Creating document with sessionId:', sessionId, 'documentId:', documentId);
         const ref = await addDoc(collection(db, INCOME_COLLECTION), {
           restaurantId: uid,
           sessionId,
@@ -128,6 +130,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           type,
           amount,
           description: description || '',
+          documentId: documentId || null,
           createdAt: serverTimestamp(),
         });
         const newIncome: Income = {
@@ -138,6 +141,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           type,
           amount,
           description,
+          document_id: documentId,
           created_at: new Date().toISOString(),
         };
         setIncome((prev) => [newIncome, ...prev]);
@@ -154,7 +158,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addExpense = useCallback(
-    async (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, sessionId: string, employeeId?: string): Promise<Expense | null> => {
+    async (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string): Promise<Expense | null> => {
       const uid = user?.uid;
       if (!uid || !db) {
         console.error('addExpense failed: No user or database');
@@ -165,7 +169,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Session ID is required');
       }
       try {
-        console.log('addExpense: Creating document with sessionId:', sessionId);
+        console.log('addExpense: Creating document with sessionId:', sessionId, 'documentId:', documentId);
         const ref = await addDoc(collection(db, EXPENSE_COLLECTION), {
           restaurantId: uid,
           sessionId,
@@ -174,6 +178,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           amount,
           description,
           employeeId: employeeId || null,
+          documentId: documentId || null,
           createdAt: serverTimestamp(),
         });
         const newExpense: Expense = {
@@ -185,6 +190,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           amount,
           description,
           employee_id: employeeId,
+          document_id: documentId,
           created_at: new Date().toISOString(),
         };
         setExpenses((prev) => [newExpense, ...prev]);
@@ -230,6 +236,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       if (updates.amount !== undefined) updateData.amount = updates.amount;
       if (updates.description !== undefined) updateData.description = updates.description;
       if (updates.session_id !== undefined) updateData.sessionId = updates.session_id;
+      if (updates.document_id !== undefined) updateData.documentId = updates.document_id;
       
       await updateDoc(docRef(db, INCOME_COLLECTION, id), updateData);
       
@@ -254,6 +261,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       if (updates.description !== undefined) updateData.description = updates.description;
       if (updates.session_id !== undefined) updateData.sessionId = updates.session_id;
       if (updates.employee_id !== undefined) updateData.employeeId = updates.employee_id;
+      if (updates.document_id !== undefined) updateData.documentId = updates.document_id;
       
       await updateDoc(docRef(db, EXPENSE_COLLECTION, id), updateData);
       

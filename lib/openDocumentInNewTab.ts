@@ -1,17 +1,27 @@
 /**
  * Open the original document in a new browser tab for manual verification.
- * Aligns with Ypsom (blob URL via window.open) and supports persisted fileDataUrl / data: URLs.
+ * Supports Firebase Storage URLs, blob URLs, and data URLs.
  */
 export function openDocumentInNewTab(doc: {
+  fileUrl?: string;
   fileDataUrl?: string;
   fileRaw?: File;
 }): void {
-  const url = doc.fileDataUrl || (doc.fileRaw ? URL.createObjectURL(doc.fileRaw) : null);
+  // Priority: Firebase Storage URL > fileDataUrl > fileRaw blob
+  const url = doc.fileUrl || doc.fileDataUrl || (doc.fileRaw ? URL.createObjectURL(doc.fileRaw) : null);
+  
   if (!url) {
     alert('Document file not available. The file may not have been stored with this document.');
     return;
   }
 
+  // Firebase Storage URLs can be opened directly
+  if (url.startsWith('https://')) {
+    window.open(url, '_blank');
+    return;
+  }
+
+  // Handle data: URLs (base64)
   if (url.startsWith('data:')) {
     try {
       const arr = url.split(',');
@@ -33,6 +43,7 @@ export function openDocumentInNewTab(doc: {
     return;
   }
 
+  // Handle blob: URLs
   window.open(url, '_blank');
   if (doc.fileRaw && url.startsWith('blob:')) {
     setTimeout(() => URL.revokeObjectURL(url), 60_000);

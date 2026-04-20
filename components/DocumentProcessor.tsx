@@ -5,7 +5,7 @@ import {
   ShieldCheck, Zap, Ban, FileSpreadsheet, XCircle,
   Edit3, RefreshCcw, Check, ListOrdered, Terminal,
   SearchCode, Cpu, Landmark, TerminalSquare, ExternalLink,
-  ArrowUpRight, ArrowDownRight, Scale as ScaleIcon, Eye
+  ArrowUpRight, ArrowDownRight, Scale as ScaleIcon, Eye, Plus
 } from 'lucide-react';
 import { analyzeFinancialDocument } from '../services/geminiService';
 import { exportToExcel } from '../services/excelService';
@@ -54,12 +54,17 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
   const [showZoom, setShowZoom] = useState(false);
 
   React.useEffect(() => {
-    if (doc.fileRaw) {
+    // Priority: Firebase Storage URL > fileRaw > fileDataUrl (deprecated)
+    if (doc.fileUrl) {
+      setDocUrl(doc.fileUrl);
+    } else if (doc.fileRaw) {
       const url = URL.createObjectURL(doc.fileRaw);
       setDocUrl(url);
       return () => { if (url) URL.revokeObjectURL(url); };
+    } else if (doc.fileDataUrl) {
+      setDocUrl(doc.fileDataUrl);
     }
-  }, [doc.fileRaw]);
+  }, [doc.fileUrl, doc.fileRaw, doc.fileDataUrl]);
 
   const steps = [
     { label: 'Neural Buffer Ingestion', icon: Terminal, delay: '0s' },
@@ -69,7 +74,7 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
     { label: 'Integrity Rule Validation', icon: ShieldCheck, delay: '0.8s' },
   ];
 
-  const displayUrl = doc.fileDataUrl || docUrl;
+  const displayUrl = docUrl;
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-900 text-slate-300 font-mono text-[10px]">
@@ -179,6 +184,9 @@ const EditableLineItemsTable: React.FC<{
   currency: string;
   onUpdate: (newItems: BankTransaction[]) => void;
 }> = ({ items, currency, onUpdate }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showAddRow, setShowAddRow] = useState(false);
+  
   const handleItemChange = (idx: number, field: keyof BankTransaction, value: any) => {
     const next = [...items];
     next[idx] = { ...next[idx], [field]: value, isHumanVerified: false };
@@ -191,94 +199,169 @@ const EditableLineItemsTable: React.FC<{
     onUpdate(next);
   };
 
+  const addNewRow = () => {
+    const newItem: BankTransaction = {
+      date: new Date().toISOString().split('T')[0],
+      description: '',
+      amount: 0,
+      type: 'EXPENSE',
+      category: 'OTHER',
+      isHumanVerified: false
+    };
+    onUpdate([...items, newItem]);
+    setShowAddRow(false);
+  };
+
+  const deleteRow = (idx: number) => {
+    if (confirm('Delete this line item?')) {
+      const next = items.filter((_, i) => i !== idx);
+      onUpdate(next);
+    }
+  };
+
+  // Filter items based on search term
+  const filteredItems = items.filter(item => 
+    item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.amount.toString().includes(searchTerm)
+  );
+
   return (
     <div className="mt-8 space-y-4 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between border-b border-cdlp-border pb-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-cdlp-border pb-3 gap-3">
          <div className="flex items-center gap-2">
             <ListOrdered className="w-4 h-4 text-cdlp-gold" />
             <h5 className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-cdlp-gold">Line Item Detail Ledger</h5>
          </div>
-         <span className="text-[8px] sm:text-[9px] font-bold text-cdlp-muted opacity-40 uppercase tracking-widest">Records: {items.length}</span>
+         <div className="flex items-center gap-2 w-full sm:w-auto">
+           {/* Search Bar */}
+           <div className="relative flex-1 sm:flex-initial">
+             <input
+               type="text"
+               placeholder="Search items..."
+               value={searchTerm}
+               onChange={(e) => setSearchTerm(e.target.value)}
+               className="w-full sm:w-48 h-8 px-3 pl-8 bg-cdlp-card border border-cdlp-border rounded text-[10px] text-white placeholder-cdlp-muted outline-none focus:border-cdlp-gold transition-colors"
+             />
+             <SearchCode className="w-3.5 h-3.5 text-cdlp-muted absolute left-2 top-1/2 -translate-y-1/2" />
+           </div>
+           {/* Add Button */}
+           <button
+             onClick={addNewRow}
+             className="px-3 h-8 bg-cdlp-gold text-cdlp-black rounded text-[9px] font-black uppercase flex items-center gap-1 hover:bg-cdlp-gold-light transition-colors whitespace-nowrap"
+           >
+             <Plus className="w-3.5 h-3.5" /> Add
+           </button>
+           <span className="text-[8px] sm:text-[9px] font-bold text-cdlp-muted opacity-40 uppercase tracking-widest whitespace-nowrap">
+             {filteredItems.length}/{items.length}
+           </span>
+         </div>
       </div>
       
       <div className="border border-cdlp-border rounded-sm overflow-hidden bg-cdlp-black shadow-sm overflow-x-auto">
         <table className="min-w-full text-xs">
           <thead className="bg-cdlp-gold text-cdlp-black border-b border-cdlp-border">
             <tr className="font-bold uppercase text-[8px] tracking-widest">
-              <th className="px-2 py-3 text-center w-10">Verify</th>
+              <th className="px-2 py-3 text-center w-10">✓</th>
               <th className="px-2 py-3 text-left w-24">Date</th>
               <th className="px-2 py-3 text-left min-w-[150px]">Description</th>
               <th className="px-2 py-3 text-right w-28">Value ({currency})</th>
-              <th className="px-2 py-3 text-center w-20">Nature</th>
-              <th className="px-2 py-3 text-left min-w-[100px]">Category</th>
+              <th className="px-2 py-3 text-center w-20">Type</th>
+              <th className="px-2 py-3 text-left min-w-[120px]">Category</th>
+              <th className="px-2 py-3 text-center w-10">Del</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-cdlp-border">
-            {items.map((item, idx) => (
-              <tr key={idx} className={`hover:bg-cdlp-card transition-colors ${item.isHumanVerified ? 'bg-emerald-900/20' : ''}`}>
-                <td className="px-2 py-3 text-center">
-                  <button 
-                    onClick={() => toggleVerify(idx)}
-                    className={`w-7 h-7 rounded-sm flex items-center justify-center transition-all ${item.isHumanVerified ? 'bg-emerald-600 text-white shadow-md' : 'bg-cdlp-card text-cdlp-muted hover:text-emerald-600 border border-cdlp-border'}`}
-                  >
-                    <Check className={`w-3.5 h-3.5 ${item.isHumanVerified ? 'scale-110' : 'scale-90'}`} />
-                  </button>
-                </td>
-                <td className="px-2 py-3">
-                  <input 
-                    type="date"
-                    value={item.date}
-                    onChange={e => handleItemChange(idx, 'date', e.target.value)}
-                    className="w-full bg-transparent font-mono text-[10px] text-white outline-none border-b border-transparent focus:border-cdlp-gold"
-                  />
-                </td>
-                <td className="px-2 py-3">
-                  <input 
-                    value={item.description}
-                    onChange={e => handleItemChange(idx, 'description', e.target.value)}
-                    className="w-full bg-transparent font-bold text-white text-[10px] outline-none border-b border-transparent focus:border-cdlp-gold"
-                  />
-                </td>
-                <td className="px-2 py-3 text-right">
-                  <input 
-                    type="number"
-                    step="0.01"
-                    value={item.amount}
-                    onChange={e => handleItemChange(idx, 'amount', parseFloat(e.target.value) || 0)}
-                    className={`w-full bg-transparent text-right font-mono font-black text-[10px] outline-none border-b border-transparent focus:border-cdlp-gold ${item.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}
-                  />
-                </td>
-                <td className="px-2 py-3 text-center">
-                  <select 
-                    value={item.type}
-                    onChange={e => handleItemChange(idx, 'type', e.target.value)}
-                    className={`text-[7px] font-black uppercase rounded-full px-2 py-0.5 outline-none cursor-pointer ${item.type === 'INCOME' ? 'bg-emerald-600/20 text-emerald-400' : 'bg-red-600/20 text-red-400'}`}
-                  >
-                    <option value="INCOME">INC</option>
-                    <option value="EXPENSE">EXP</option>
-                  </select>
-                </td>
-                <td className="px-2 py-3">
-                  <select 
-                    value={item.category ?? ''} 
-                    onChange={e => handleItemChange(idx, 'category', e.target.value)}
-                    className="w-full bg-transparent font-bold text-[9px] text-white outline-none border-b border-transparent focus:border-cdlp-gold"
-                  >
-                    <option value="">--</option>
-                    {CATEGORY_GROUPS.map(group => (
-                      <optgroup key={group.id} label={group.label}>
-                        {RESTAURANT_CATEGORIES.filter(cat => cat.group === group.id).map(cat => (
-                          <option key={cat.id} value={cat.id}>{cat.label}</option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                </td>
-              </tr>
-            ))}
+            {filteredItems.map((item, idx) => {
+              const originalIdx = items.indexOf(item);
+              return (
+                <tr key={originalIdx} className={`hover:bg-cdlp-card/50 transition-colors ${item.isHumanVerified ? 'bg-emerald-900/20' : ''}`}>
+                  <td className="px-2 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); toggleVerify(originalIdx); }}
+                      className={`w-7 h-7 rounded-sm flex items-center justify-center transition-all ${item.isHumanVerified ? 'bg-emerald-600 text-white shadow-md' : 'bg-cdlp-card text-cdlp-muted hover:text-emerald-600 border border-cdlp-border'}`}
+                      title="Mark as verified"
+                    >
+                      <Check className={`w-3.5 h-3.5 ${item.isHumanVerified ? 'scale-110' : 'scale-90'}`} />
+                    </button>
+                  </td>
+                  <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
+                    <input 
+                      type="date"
+                      value={item.date}
+                      onChange={e => handleItemChange(originalIdx, 'date', e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full bg-cdlp-black border border-cdlp-border rounded px-2 py-1 font-mono text-[10px] text-white outline-none focus:border-cdlp-gold transition-colors"
+                    />
+                  </td>
+                  <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
+                    <input 
+                      value={item.description}
+                      onChange={e => handleItemChange(originalIdx, 'description', e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      placeholder="Enter description..."
+                      className="w-full bg-cdlp-black border border-cdlp-border rounded px-2 py-1 font-bold text-white text-[10px] outline-none focus:border-cdlp-gold transition-colors placeholder-cdlp-muted"
+                    />
+                  </td>
+                  <td className="px-2 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <input 
+                      type="number"
+                      step="0.01"
+                      value={item.amount}
+                      onChange={e => handleItemChange(originalIdx, 'amount', parseFloat(e.target.value) || 0)}
+                      onClick={(e) => e.stopPropagation()}
+                      className={`w-full bg-cdlp-black border border-cdlp-border rounded px-2 py-1 text-right font-mono font-black text-[11px] outline-none focus:border-cdlp-gold transition-colors ${item.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}
+                    />
+                  </td>
+                  <td className="px-2 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <select 
+                      value={item.type}
+                      onChange={e => handleItemChange(originalIdx, 'type', e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className={`w-full text-[8px] font-black uppercase rounded px-2 py-1 outline-none cursor-pointer border ${item.type === 'INCOME' ? 'bg-emerald-600/20 text-emerald-400 border-emerald-600/30' : 'bg-red-600/20 text-red-400 border-red-600/30'}`}
+                    >
+                      <option value="INCOME">INC</option>
+                      <option value="EXPENSE">EXP</option>
+                    </select>
+                  </td>
+                  <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
+                    <select 
+                      value={item.category ?? ''} 
+                      onChange={e => handleItemChange(originalIdx, 'category', e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full bg-cdlp-black border border-cdlp-border rounded px-2 py-1 font-bold text-[9px] text-white outline-none focus:border-cdlp-gold transition-colors"
+                    >
+                      <option value="">-- Select --</option>
+                      {CATEGORY_GROUPS.map(group => (
+                        <optgroup key={group.id} label={group.label}>
+                          {RESTAURANT_CATEGORIES.filter(cat => cat.group === group.id).map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.label}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-2 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteRow(originalIdx); }}
+                      className="w-7 h-7 rounded-sm flex items-center justify-center text-cdlp-muted hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                      title="Delete row"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
+      
+      {filteredItems.length === 0 && searchTerm && (
+        <div className="text-center py-8 text-cdlp-muted text-[10px]">
+          No items match "{searchTerm}"
+        </div>
+      )}
     </div>
   );
 };
@@ -412,6 +495,38 @@ const VerificationHub: React.FC<{
 
   const handleFieldChange = (field: keyof FinancialData, value: any) => {
     let newData = { ...doc.data!, [field]: value };
+    
+    // When line items change, recalculate totals
+    if (field === 'lineItems') {
+      const lineItems = value as BankTransaction[];
+      const totalIncome = lineItems
+        .filter((item) => item.type === 'INCOME')
+        .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      const totalExpense = lineItems
+        .filter((item) => item.type === 'EXPENSE')
+        .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      
+      // Update calculated totals
+      newData.calculatedTotalIncome = totalIncome;
+      newData.calculatedTotalExpense = totalExpense;
+      
+      // For invoices/bills, total amount is the sum of all line items
+      // For bank statements, it's income - expense
+      if (newData.documentType === DocumentType.BANK_STATEMENT) {
+        newData.totalAmount = totalIncome - totalExpense;
+      } else {
+        // For invoices, sum all amounts
+        newData.totalAmount = lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      }
+      
+      newData.amountInCHF = newData.totalAmount;
+      
+      console.log('📊 Line items changed - recalculated totals:', {
+        totalIncome,
+        totalExpense,
+        totalAmount: newData.totalAmount
+      });
+    }
     
     // Pay slips: net pay is derived from earnings (INCOME) minus deductions (EXPENSE)
     if (field === 'paySlip') {
@@ -722,7 +837,47 @@ const VerificationHub: React.FC<{
               </div>
            </div>
 
-           <div className="flex-1 overflow-y-auto mt-6 min-h-[300px] custom-scrollbar">
+           {/* Computed Totals Summary - Shows real-time calculation from line items */}
+           {editedData.lineItems && editedData.lineItems.length > 0 && (
+             <div className="mt-6 mb-4 p-4 bg-gradient-to-r from-emerald-900/20 to-red-900/20 border border-cdlp-border rounded-lg">
+               <div className="flex items-center justify-between mb-3">
+                 <h5 className="text-[10px] font-black uppercase tracking-widest text-cdlp-gold flex items-center gap-2">
+                   <RefreshCcw className="w-3.5 h-3.5" /> Live Calculation
+                 </h5>
+                 <span className="text-[8px] text-cdlp-muted uppercase">Auto-updates as you edit</span>
+               </div>
+               <div className="grid grid-cols-3 gap-4">
+                 <div className="bg-emerald-900/20 border border-emerald-600/30 rounded p-3">
+                   <p className="text-[8px] font-black uppercase text-emerald-600 mb-1">Total Income</p>
+                   <p className="text-lg font-black text-emerald-400">
+                     {(editedData.lineItems.filter(i => i.type === 'INCOME').reduce((s, i) => s + (Number(i.amount) || 0), 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                   </p>
+                   <p className="text-[8px] text-emerald-600/60">{editedData.originalCurrency || 'CHF'}</p>
+                 </div>
+                 <div className="bg-red-900/20 border border-red-600/30 rounded p-3">
+                   <p className="text-[8px] font-black uppercase text-red-600 mb-1">Total Expenses</p>
+                   <p className="text-lg font-black text-red-400">
+                     {(editedData.lineItems.filter(i => i.type === 'EXPENSE').reduce((s, i) => s + (Number(i.amount) || 0), 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                   </p>
+                   <p className="text-[8px] text-red-600/60">{editedData.originalCurrency || 'CHF'}</p>
+                 </div>
+                 <div className="bg-cdlp-gold/20 border border-cdlp-gold/30 rounded p-3">
+                   <p className="text-[8px] font-black uppercase text-cdlp-gold mb-1">Document Total</p>
+                   <p className="text-lg font-black text-cdlp-gold">
+                     {(editedData.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                   </p>
+                   <p className="text-[8px] text-cdlp-gold/60">{editedData.originalCurrency || 'CHF'}</p>
+                 </div>
+               </div>
+               <div className="mt-3 text-center">
+                 <p className="text-[9px] text-cdlp-muted">
+                   ℹ️ These totals update automatically as you edit line items. Click save button below to apply changes to dashboard.
+                 </p>
+               </div>
+             </div>
+           )}
+
+           <div className="flex-1 overflow-y-auto mt-6 min-h-[300px] max-h-[400px] custom-scrollbar">
              {isPaySlip ? (
                <EditablePaySlipTable
                  items={currentPaySlip.components ?? []}
@@ -750,14 +905,38 @@ const VerificationHub: React.FC<{
              )}
            </div>
            
-           <div className="pt-6 border-t border-cdlp-border mt-6">
+           {/* Sticky Save Button - Improved with clear messaging */}
+           <div className="sticky bottom-0 pt-6 pb-2 border-t-2 border-cdlp-gold/30 mt-6 bg-gradient-to-t from-cdlp-black via-cdlp-black to-transparent">
+              <div className="bg-cdlp-card border border-cdlp-border rounded-lg p-4 mb-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span className="text-[9px] font-black uppercase text-emerald-400">Ready to Save</span>
+                  </div>
+                  <span className="text-[8px] text-cdlp-muted">All changes will be applied</span>
+                </div>
+                <div className="text-[8px] text-cdlp-muted space-y-1">
+                  <p>✓ Document data will be updated</p>
+                  <p>✓ Dashboard income/expenses will be recalculated</p>
+                  <p>✓ Totals will refresh automatically</p>
+                </div>
+              </div>
+              
               <button 
-                onClick={() => onSave({ ...editedData, isHumanVerified: true })} 
+                onClick={() => {
+                  console.log('💾 SAVE BUTTON CLICKED - Saving document with data:', editedData);
+                  onSave({ ...editedData, isHumanVerified: true });
+                }} 
                 disabled={isZeroValue}
-                className={`w-full h-14 rounded-sm font-black text-[10px] sm:text-[11px] uppercase tracking-[0.3em] shadow-2xl transition-all flex items-center justify-center gap-3 ${isZeroValue ? 'bg-cdlp-card text-cdlp-muted cursor-not-allowed border-red-600/20 border' : 'bg-cdlp-gold text-cdlp-black hover:bg-cdlp-gold-light'}`}
+                className={`w-full h-16 rounded-lg font-black text-[11px] sm:text-[12px] uppercase tracking-[0.3em] shadow-2xl transition-all flex items-center justify-center gap-3 ${isZeroValue ? 'bg-cdlp-card text-cdlp-muted cursor-not-allowed border-red-600/20 border' : 'bg-gradient-to-r from-emerald-600 to-cdlp-gold text-white hover:from-emerald-500 hover:to-cdlp-gold-light animate-pulse'}`}
               >
-                <ShieldCheck className="w-5 h-5" /> Certify and Lock Record
+                <ShieldCheck className="w-6 h-6" /> 
+                <span>Save & Update Dashboard</span>
+                <RefreshCcw className="w-5 h-5" />
               </button>
+              <p className="text-center text-[9px] text-cdlp-gold mt-3 uppercase tracking-wider font-bold">
+                ⚡ Click to apply all changes and sync with dashboard
+              </p>
            </div>
         </div>
       </div>
@@ -769,8 +948,9 @@ const VerificationHub: React.FC<{
 export const DocumentProcessor: React.FC<{ 
   documents: ProcessedDocument[], 
   updateDocument: (documentId: string, updates: Partial<ProcessedDocument>) => Promise<void>,
-  onDataExtracted: (data: any, fileName: string, fileHash?: string, fileDataUrl?: string) => void
-}> = ({ documents, updateDocument, onDataExtracted }) => {
+  onDataExtracted: (data: any, fileName: string, fileHash?: string, fileRaw?: File) => void,
+  onDocumentUpdated?: (documentId: string, newData: FinancialData) => Promise<void>
+}> = ({ documents, updateDocument, onDataExtracted, onDocumentUpdated }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -863,35 +1043,36 @@ export const DocumentProcessor: React.FC<{
     try {
       console.log(`Processing: ${doc.fileName}`);
       
-      // Convert file to base64 data URL for free storage
-      let fileDataUrl: string | undefined;
-      
-      if (doc.fileRaw) {
-        try {
-          // Convert file to base64 data URL
-          const reader = new FileReader();
-          fileDataUrl = await new Promise<string>((resolve, reject) => {
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(doc.fileRaw!);
-          });
-          console.log(`✅ File converted to data URL (${(fileDataUrl.length / 1024).toFixed(2)} KB)`);
-        } catch (conversionErr) {
-          console.error(`⚠️ File conversion failed: ${conversionErr}`);
-          // Continue processing even if conversion fails
-        }
-      }
-      
       const res = await analyzeFinancialDocument(doc.fileRaw!, reportingCurrency);
       console.log(`✅ Completed: ${doc.fileName}`);
       
-      setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'completed', data: res, fileDataUrl } : d));
+      setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'completed', data: res } : d));
       
-      // Auto-extract data and save to Firestore with hash and file data URL
-      await onDataExtracted(res, doc.fileName, doc.fileHash, fileDataUrl);
+      // Auto-extract data and save to Firestore with file metadata
+      try {
+        console.log(`💾 Saving document: ${doc.fileName}`);
+        await onDataExtracted(res, doc.fileName, doc.fileHash, doc.fileRaw);
+        console.log(`✅ Document saved successfully: ${doc.fileName}`);
+      } catch (saveErr: any) {
+        console.error(`❌ Failed to save document: ${doc.fileName}`, saveErr);
+        // Mark as error but keep the analyzed data
+        setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'error', error: `Failed to save: ${saveErr.message}` } : d));
+      }
     } catch (err: any) {
       console.error(`❌ Error: ${doc.fileName}`, err);
       setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'error', error: err.message } : d));
+    }
+  };
+
+  const skipDoc = (docId: string) => {
+    setLocalDocs((prev) => prev.map((d) => d.id === docId ? { ...d, status: 'skipped' as const, error: 'Skipped by user' } : d));
+  };
+
+  const retryDoc = async (docId: string) => {
+    const doc = localDocs.find(d => d.id === docId);
+    if (doc) {
+      setLocalDocs((prev) => prev.map((d) => d.id === docId ? { ...d, status: 'pending', error: undefined } : d));
+      await processDoc(doc);
     }
   };
 
@@ -900,13 +1081,15 @@ export const DocumentProcessor: React.FC<{
     setIsProcessing(true);
     stopProcessingRef.current = false;
     
-    const pending = localDocs.filter(d => d.status === 'pending' || d.status === 'error');
+    const pending = localDocs.filter(d => d.status === 'pending' || d.status === 'error' || d.status === 'skipped');
     let index = 0;
     const activeTasks = new Set<Promise<void>>();
 
     while (index < pending.length && !stopProcessingRef.current) {
       while (activeTasks.size < CONCURRENCY_LIMIT && index < pending.length && !stopProcessingRef.current) {
         const doc = pending[index++];
+        // Reset status to pending before processing
+        setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'pending', error: undefined } : d));
         const task = processDoc(doc).finally(() => activeTasks.delete(task));
         activeTasks.add(task);
       }
@@ -967,10 +1150,10 @@ export const DocumentProcessor: React.FC<{
             ) : (
               <button 
                 onClick={processAll} 
-                disabled={localDocs.filter(d => d.status === 'pending' || d.status === 'error').length === 0} 
+                disabled={localDocs.filter(d => d.status === 'pending' || d.status === 'error' || d.status === 'skipped').length === 0} 
                 className="w-full h-12 bg-cdlp-gold text-cdlp-black rounded font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-30 hover:bg-cdlp-gold-light"
               >
-                <ShieldCheck className="w-4 h-4" /> Start Processing ({localDocs.filter(d => d.status === 'pending' || d.status === 'error').length})
+                <ShieldCheck className="w-4 h-4" /> Start Processing ({localDocs.filter(d => d.status === 'pending' || d.status === 'error' || d.status === 'skipped').length})
               </button>
             )}
           </div>
@@ -1041,11 +1224,44 @@ export const DocumentProcessor: React.FC<{
                             {doc.status === 'processing' && <Loader2 className="w-4 h-4 text-cdlp-gold animate-spin" />}
                             {doc.status === 'completed' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
                             {doc.status === 'error' && <XCircle className="w-4 h-4 text-red-500" />}
+                            {doc.status === 'skipped' && <Ban className="w-4 h-4 text-amber-500" />}
                             <span className={`text-[9px] font-bold uppercase tracking-wider hidden sm:inline ${
                               doc.status === 'completed' ? 'text-emerald-500' : 
                               doc.status === 'error' ? 'text-red-500' : 
+                              doc.status === 'skipped' ? 'text-amber-500' :
                               'text-cdlp-muted'
                             }`}>{doc.status}</span>
+                            
+                            {/* Skip button - show when processing or error */}
+                            {(doc.status === 'processing' || doc.status === 'error') && (doc as any).source !== 'firestore' && (
+                              <button 
+                                onClick={(e) => { 
+                                  e.stopPropagation();
+                                  skipDoc(doc.id);
+                                }} 
+                                className="px-2 py-1 bg-amber-600/20 hover:bg-amber-600/30 text-amber-500 text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
+                                title="Skip this document"
+                              >
+                                <Ban className="w-3 h-3" />
+                                <span className="hidden lg:inline">Skip</span>
+                              </button>
+                            )}
+                            
+                            {/* Retry button - show when skipped */}
+                            {doc.status === 'skipped' && (doc as any).source !== 'firestore' && (
+                              <button 
+                                onClick={(e) => { 
+                                  e.stopPropagation();
+                                  retryDoc(doc.id);
+                                }} 
+                                className="px-2 py-1 bg-cdlp-gold/20 hover:bg-cdlp-gold/30 text-cdlp-gold text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
+                                title="Retry processing this document"
+                              >
+                                <RefreshCcw className="w-3 h-3" />
+                                <span className="hidden lg:inline">Retry</span>
+                              </button>
+                            )}
+                            
                             {doc.fileRaw && (
                               <button 
                                 onClick={(e) => { 
@@ -1092,9 +1308,15 @@ export const DocumentProcessor: React.FC<{
                                   );
                                 }
                               }}
-                              onSave={(newData) => {
+                              onSave={async (newData) => {
                                 if ((doc as any).source === 'firestore') {
-                                  updateDocument(doc.id, { data: newData });
+                                  // Update document in Firestore
+                                  await updateDocument(doc.id, { data: newData });
+                                  
+                                  // Update related income/expenses in dashboard
+                                  if (onDocumentUpdated) {
+                                    await onDocumentUpdated(doc.id, newData);
+                                  }
                                 } else {
                                   setLocalDocs((prev) =>
                                     prev.map((d) => (d.id === doc.id ? { ...d, data: newData } : d))

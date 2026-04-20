@@ -10,14 +10,18 @@ import { analyzeFinancialDocument } from '../services/geminiService';
 export function POSManager() {
   const { posReadings, addPOSReading, updatePOSReading, deletePOSReading } = usePOS();
   const { income } = useFinance();
-  const { currentSession, isAllSessionsView } = useSession();
+  const { currentSession, isAllSessionsView, sessions } = useSession();
   const { t } = useLanguage();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingReading, setEditingReading] = useState<POSReading | null>(null);
   const [uploadMode, setUploadMode] = useState<'manual' | 'upload'>('manual');
 
   // Filter income by session
-  const filteredIncome = isAllSessionsView ? income : income.filter(i => i.session_id === currentSession?.id);
+  // For "All Sessions" view, only show data from existing sessions (not orphaned data)
+  const existingSessionIds = sessions.map(s => s.id);
+  const filteredIncome = isAllSessionsView 
+    ? income.filter(i => existingSessionIds.includes(i.session_id))
+    : income.filter(i => i.session_id === currentSession?.id);
   
   // Calculate totals from income (for display when no POS readings exist)
   const totalIncomeAmount = filteredIncome.reduce((sum, i) => sum + i.amount, 0);
@@ -43,7 +47,7 @@ export function POSManager() {
             <TrendingUp className="w-4 md:w-5 h-4 md:h-5 text-emerald-500" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">Gross Sales</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-emerald-500">{displayGrossSales.toFixed(2)}</p>
+          <p className="text-lg md:text-2xl font-black text-emerald-500">{displayGrossSales.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
           {posReadings.length === 0 && (
             <p className="text-[9px] text-cdlp-muted/60 mt-1">From income data</p>
@@ -55,7 +59,7 @@ export function POSManager() {
             <DollarSign className="w-4 md:w-5 h-4 md:h-5 text-emerald-400" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">Net Sales</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-emerald-400">{displayNetSales.toFixed(2)}</p>
+          <p className="text-lg md:text-2xl font-black text-emerald-400">{displayNetSales.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
           {posReadings.length === 0 && (
             <p className="text-[9px] text-cdlp-muted/60 mt-1">Estimated</p>
@@ -67,7 +71,7 @@ export function POSManager() {
             <Banknote className="w-4 md:w-5 h-4 md:h-5 text-cdlp-gold" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">Cash</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-cdlp-gold">{displayCash.toFixed(2)}</p>
+          <p className="text-lg md:text-2xl font-black text-cdlp-gold">{displayCash.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
           {posReadings.length === 0 && (
             <p className="text-[9px] text-cdlp-muted/60 mt-1">Estimated</p>
@@ -79,7 +83,7 @@ export function POSManager() {
             <CreditCard className="w-4 md:w-5 h-4 md:h-5 text-blue-500" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">Card</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-blue-500">{displayCard.toFixed(2)}</p>
+          <p className="text-lg md:text-2xl font-black text-blue-500">{displayCard.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
           {posReadings.length === 0 && (
             <p className="text-[9px] text-cdlp-muted/60 mt-1">Estimated</p>
@@ -143,36 +147,36 @@ export function POSManager() {
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between">
                   <span className="text-cdlp-muted">Gross Sales:</span>
-                  <span className="font-bold text-emerald-500">{reading.gross_sales.toFixed(2)} CHF</span>
+                  <span className="font-bold text-emerald-500">{reading.gross_sales.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-cdlp-muted">Net Sales:</span>
-                  <span className="font-bold text-white">{reading.net_sales.toFixed(2)} CHF</span>
+                  <span className="font-bold text-white">{reading.net_sales.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-cdlp-muted">VAT:</span>
-                  <span className="font-bold text-cdlp-gold">{reading.vat_amount.toFixed(2)} CHF</span>
+                  <span className="font-bold text-cdlp-gold">{reading.vat_amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
                 </div>
                 <div className="border-t border-cdlp-border pt-2 mt-2">
                   <div className="flex justify-between mb-1">
                     <span className="text-cdlp-muted">Cash:</span>
-                    <span className="font-bold text-cdlp-gold">{reading.cash.toFixed(2)}</span>
+                    <span className="font-bold text-cdlp-gold">{reading.cash.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between mb-1">
                     <span className="text-cdlp-muted">Card:</span>
-                    <span className="font-bold text-blue-400">{reading.card.toFixed(2)}</span>
+                    <span className="font-bold text-blue-400">{reading.card.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   {reading.other_payment > 0 && (
                     <div className="flex justify-between">
                       <span className="text-cdlp-muted">Other:</span>
-                      <span className="font-bold text-white">{reading.other_payment.toFixed(2)}</span>
+                      <span className="font-bold text-white">{reading.other_payment.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   )}
                 </div>
                 {reading.tips > 0 && (
                   <div className="flex justify-between text-emerald-400">
                     <span>Tips:</span>
-                    <span className="font-bold">+{reading.tips.toFixed(2)}</span>
+                    <span className="font-bold">+{reading.tips.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 )}
               </div>

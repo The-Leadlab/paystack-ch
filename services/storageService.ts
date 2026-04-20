@@ -4,41 +4,88 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 /**
  * Upload a file to Firebase Storage
  * @param file - The file to upload
- * @param path - The storage path (e.g., 'documents/userId/filename.pdf')
+ * @param userId - The user ID (for folder organization)
+ * @param fileName - The file name
  * @returns The download URL of the uploaded file
  */
-export async function uploadFile(file: File, path: string): Promise<string> {
+export async function uploadDocument(
+  file: File,
+  userId: string,
+  fileName: string
+): Promise<string> {
   if (!storage) {
-    throw new Error('Firebase Storage is not initialized');
+    throw new Error('Firebase Storage not initialized');
   }
 
-  const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, file);
-  const downloadURL = await getDownloadURL(storageRef);
-  return downloadURL;
+  // Create a reference to the file location
+  // Path: documents/{userId}/{timestamp}_{fileName}
+  const timestamp = Date.now();
+  const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const filePath = `documents/${userId}/${timestamp}_${sanitizedFileName}`;
+  const storageRef = ref(storage, filePath);
+
+  console.log('📤 Uploading file to Firebase Storage:', filePath);
+
+  try {
+    // Upload the file
+    const snapshot = await uploadBytes(storageRef, file, {
+      contentType: file.type,
+      customMetadata: {
+        originalName: fileName,
+        uploadedAt: new Date().toISOString(),
+      },
+    });
+
+    console.log('✅ File uploaded successfully:', snapshot.metadata.fullPath);
+
+    // Get the download URL
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    console.log('🔗 Download URL:', downloadURL);
+
+    return downloadURL;
+  } catch (error) {
+    console.error('❌ Error uploading file:', error);
+    throw error;
+  }
 }
 
 /**
  * Delete a file from Firebase Storage
- * @param path - The storage path of the file to delete
+ * @param fileUrl - The download URL of the file to delete
  */
-export async function deleteFile(path: string): Promise<void> {
+export async function deleteDocument(fileUrl: string): Promise<void> {
   if (!storage) {
-    throw new Error('Firebase Storage is not initialized');
+    throw new Error('Firebase Storage not initialized');
   }
 
-  const storageRef = ref(storage, path);
-  await deleteObject(storageRef);
+  try {
+    // Extract the file path from the URL
+    const url = new URL(fileUrl);
+    const pathMatch = url.pathname.match(/\/o\/(.+)\?/);
+    
+    if (!pathMatch) {
+      throw new Error('Invalid file URL');
+    }
+
+    const filePath = decodeURIComponent(pathMatch[1]);
+    const storageRef = ref(storage, filePath);
+
+    console.log('🗑️ Deleting file from Firebase Storage:', filePath);
+    await deleteObject(storageRef);
+    console.log('✅ File deleted successfully');
+  } catch (error) {
+    console.error('❌ Error deleting file:', error);
+    throw error;
+  }
 }
 
 /**
- * Generate a unique file path for document storage
- * @param userId - The user ID
- * @param fileName - The original file name
- * @returns A unique storage path
+ * Get file size in a human-readable format
  */
-export function generateDocumentPath(userId: string, fileName: string): string {
-  const timestamp = Date.now();
-  const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-  return `documents/${userId}/${timestamp}_${sanitizedFileName}`;
+export function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
