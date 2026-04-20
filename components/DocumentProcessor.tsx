@@ -10,6 +10,7 @@ import {
 import { analyzeFinancialDocument } from '../services/geminiService';
 import { exportToExcel } from '../services/excelService';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
+import { detectCategory } from '../services/categoryDetectionService';
 import { ProcessedDocument, BankTransaction, FinancialData, DocumentType, PaySlipAnalysis } from '../types';
 
 // Restaurant-specific categories adapted from Ypsom - comprehensive categorization
@@ -190,6 +191,16 @@ const EditableLineItemsTable: React.FC<{
   const handleItemChange = (idx: number, field: keyof BankTransaction, value: any) => {
     const next = [...items];
     next[idx] = { ...next[idx], [field]: value, isHumanVerified: false };
+    
+    // Auto-detect category when description changes
+    if (field === 'description' && value) {
+      const detectedCategory = detectCategory(value);
+      if (detectedCategory && detectedCategory !== 'OTHER') {
+        next[idx].category = detectedCategory;
+        console.log(`🎯 Auto-detected category for "${value}": ${detectedCategory}`);
+      }
+    }
+    
     onUpdate(next);
   };
 
@@ -205,7 +216,7 @@ const EditableLineItemsTable: React.FC<{
       description: '',
       amount: 0,
       type: 'EXPENSE',
-      category: 'OTHER',
+      category: 'OTHER', // Will be auto-detected when description is entered
       isHumanVerified: false
     };
     onUpdate([...items, newItem]);
@@ -325,21 +336,29 @@ const EditableLineItemsTable: React.FC<{
                     </select>
                   </td>
                   <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
-                    <select 
-                      value={item.category ?? ''} 
-                      onChange={e => handleItemChange(originalIdx, 'category', e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-full bg-cdlp-black border border-cdlp-border rounded px-2 py-1 font-bold text-[9px] text-white outline-none focus:border-cdlp-gold transition-colors"
-                    >
-                      <option value="">-- Select --</option>
-                      {CATEGORY_GROUPS.map(group => (
-                        <optgroup key={group.id} label={group.label}>
-                          {RESTAURANT_CATEGORIES.filter(cat => cat.group === group.id).map(cat => (
-                            <option key={cat.id} value={cat.id}>{cat.label}</option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select 
+                        value={item.category ?? ''} 
+                        onChange={e => handleItemChange(originalIdx, 'category', e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full bg-cdlp-black border border-cdlp-border rounded px-2 py-1 font-bold text-[9px] text-white outline-none focus:border-cdlp-gold transition-colors pr-6"
+                        title={item.category && item.category !== 'OTHER' ? '🤖 Auto-detected category (you can change it)' : 'Select category'}
+                      >
+                        <option value="">-- Select --</option>
+                        {CATEGORY_GROUPS.map(group => (
+                          <optgroup key={group.id} label={group.label}>
+                            {RESTAURANT_CATEGORIES.filter(cat => cat.group === group.id).map(cat => (
+                              <option key={cat.id} value={cat.id}>{cat.label}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      {item.category && item.category !== 'OTHER' && item.category !== '' && (
+                        <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none">
+                          <span className="text-[8px] bg-emerald-600/20 text-emerald-400 px-1 rounded" title="AI detected">🤖</span>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-2 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                     <button
@@ -1217,7 +1236,7 @@ export const DocumentProcessor: React.FC<{
                         </td>
                         <td className="px-4 py-3 font-mono text-[10px] text-cdlp-muted hidden md:table-cell">{doc.data?.date || '---'}</td>
                         <td className="px-4 py-3 text-right font-bold font-mono text-[11px] text-white hidden md:table-cell">
-                          {doc.data ? (doc.data.amountInCHF || doc.data.totalAmount || 0).toFixed(2) : '0.00'}
+                          {doc.data ? (doc.data.amountInCHF || doc.data.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
