@@ -257,9 +257,9 @@ export function RestaurantDashboard() {
       const grossPay = data.paySlip?.grossPay || 0;
       const employeeName = data.paySlip?.employee?.name || 'Unknown Employee';
       const employeeId = data.paySlip?.employee?.idNumber || '';
-      const socialContributions = grossPay - netPay; // Deductions = Gross - Net
+      const socialContributions = grossPay > 0 ? (grossPay - netPay) : 0; // Deductions = Gross - Net
       
-      console.log('💰 Processing payslip:', employeeName, 'Net Pay:', netPay, 'Social Contributions:', socialContributions);
+      console.log('💰 Processing payslip:', employeeName, 'Net Pay:', netPay, 'Gross Pay:', grossPay, 'Social Contributions:', socialContributions);
       
       // Automatically create or update employee record
       try {
@@ -269,21 +269,14 @@ export function RestaurantDashboard() {
         
         if (existingEmployee) {
           // Update existing employee with latest payslip data
-          console.log('📝 Updating existing employee:', employeeName);
-          // Note: You'll need to add an updateEmployee function to EmployeeContext
-          // For now, we'll just log it
-          console.log('Employee already exists, would update with:', {
-            net_salary: netPay,
-            social_contributions: socialContributions,
-            monthly_salary: grossPay
-          });
+          console.log('📝 Employee already exists:', employeeName);
         } else {
-          // Create new employee automatically
+          // Create new employee automatically with NET PAY as the expense amount
           console.log('➕ Creating new employee:', employeeName);
           await addEmployee(
             employeeName,
             'Employee', // Default position
-            grossPay, // monthly_salary (total cost)
+            netPay, // monthly_salary = net pay (what we actually pay)
             currentSession?.id
           );
           console.log('✅ Employee created successfully');
@@ -293,6 +286,7 @@ export function RestaurantDashboard() {
         // Continue even if employee creation fails
       }
       
+      // Add payroll expense with NET PAY (what employee receives)
       if (netPay > 0) {
         await addExpense(
           date, 
