@@ -24,6 +24,7 @@ function docToIncome(id: string, data: any): Income {
     date: data.date,
     type: data.type,
     amount: data.amount,
+    vat_amount: data.vatAmount || 0,
     description: data.description,
     document_id: data.documentId,
     created_at: data.createdAt?.toDate?.()?.toISOString?.() ?? new Date().toISOString(),
@@ -38,6 +39,7 @@ function docToExpense(id: string, data: any): Expense {
     date: data.date,
     category: data.category,
     amount: data.amount,
+    vat_amount: data.vatAmount || 0,
     description: data.description,
     employee_id: data.employeeId,
     document_id: data.documentId,
@@ -50,8 +52,8 @@ type FinanceContextValue = {
   expenses: Expense[];
   loading: boolean;
   error: string | null;
-  addIncome: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string) => Promise<Income | null>;
-  addExpense: (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string) => Promise<Expense | null>;
+  addIncome: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number) => Promise<Income | null>;
+  addExpense: (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number) => Promise<Expense | null>;
   updateIncome: (id: string, updates: Partial<Omit<Income, 'id' | 'restaurant_id' | 'created_at'>>) => Promise<void>;
   updateExpense: (id: string, updates: Partial<Omit<Expense, 'id' | 'restaurant_id' | 'created_at'>>) => Promise<void>;
   deleteIncome: (id: string) => Promise<void>;
@@ -111,7 +113,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   }, [fetchFinances]);
 
   const addIncome = useCallback(
-    async (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string): Promise<Income | null> => {
+    async (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number): Promise<Income | null> => {
       const uid = user?.uid;
       if (!uid || !db) {
         console.error('addIncome failed: No user or database');
@@ -122,13 +124,14 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Session ID is required');
       }
       try {
-        console.log('addIncome: Creating document with sessionId:', sessionId, 'documentId:', documentId);
+        console.log('addIncome: Creating document with sessionId:', sessionId, 'documentId:', documentId, 'VAT:', vatAmount);
         const ref = await addDoc(collection(db, INCOME_COLLECTION), {
           restaurantId: uid,
           sessionId,
           date,
           type,
           amount,
+          vatAmount: vatAmount || 0,
           description: description || '',
           documentId: documentId || null,
           createdAt: serverTimestamp(),
@@ -140,6 +143,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           date,
           type,
           amount,
+          vat_amount: vatAmount || 0,
           description,
           document_id: documentId,
           created_at: new Date().toISOString(),
@@ -158,7 +162,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addExpense = useCallback(
-    async (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string): Promise<Expense | null> => {
+    async (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number): Promise<Expense | null> => {
       const uid = user?.uid;
       if (!uid || !db) {
         console.error('addExpense failed: No user or database');
@@ -169,13 +173,14 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Session ID is required');
       }
       try {
-        console.log('addExpense: Creating document with sessionId:', sessionId, 'documentId:', documentId);
+        console.log('addExpense: Creating document with sessionId:', sessionId, 'documentId:', documentId, 'VAT:', vatAmount);
         const ref = await addDoc(collection(db, EXPENSE_COLLECTION), {
           restaurantId: uid,
           sessionId,
           date,
           category,
           amount,
+          vatAmount: vatAmount || 0,
           description,
           employeeId: employeeId || null,
           documentId: documentId || null,
@@ -188,6 +193,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           date,
           category,
           amount,
+          vat_amount: vatAmount || 0,
           description,
           employee_id: employeeId,
           document_id: documentId,

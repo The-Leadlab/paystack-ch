@@ -241,19 +241,57 @@ export function RestaurantDashboard() {
         for (const item of data.lineItems) {
           if (item.type === 'INCOME') {
             console.log('➕ Adding income:', item.amount, item.description);
-            await addIncome(date, 'SALES', item.amount, item.description || fileName, currentSession.id, documentId);
+            // Extract VAT if available (typically 7.7% or 8.1% in Switzerland)
+            const vatAmount = data.vatAmount || 0;
+            await addIncome(date, 'SALES', item.amount, item.description || fileName, currentSession.id, documentId, vatAmount);
           } else if (item.type === 'EXPENSE') {
             console.log('➖ Adding expense:', item.amount, item.description);
             const description = item.description || data.issuer || fileName;
-            await addExpense(date, 'OTHER', item.amount, description, currentSession.id, undefined, documentId);
+            const vatAmount = data.vatAmount || 0;
+            await addExpense(date, 'OTHER', item.amount, description, currentSession.id, undefined, documentId, vatAmount);
           }
         }
       }
     } else if (docType === 'Pay Slip') {
       const netPay = data.paySlip?.netPay || data.totalAmount || 0;
+      const grossPay = data.paySlip?.grossPay || 0;
       const employeeName = data.paySlip?.employee?.name || 'Unknown Employee';
+      const employeeId = data.paySlip?.employee?.idNumber || '';
+      const socialContributions = grossPay - netPay; // Deductions = Gross - Net
       
-      console.log('💰 Processing payslip:', employeeName, 'Net Pay:', netPay);
+      console.log('💰 Processing payslip:', employeeName, 'Net Pay:', netPay, 'Social Contributions:', socialContributions);
+      
+      // Automatically create or update employee record
+      try {
+        const existingEmployee = employees.find(emp => 
+          emp.name.toLowerCase() === employeeName.toLowerCase()
+        );
+        
+        if (existingEmployee) {
+          // Update existing employee with latest payslip data
+          console.log('📝 Updating existing employee:', employeeName);
+          // Note: You'll need to add an updateEmployee function to EmployeeContext
+          // For now, we'll just log it
+          console.log('Employee already exists, would update with:', {
+            net_salary: netPay,
+            social_contributions: socialContributions,
+            monthly_salary: grossPay
+          });
+        } else {
+          // Create new employee automatically
+          console.log('➕ Creating new employee:', employeeName);
+          await addEmployee(
+            employeeName,
+            'Employee', // Default position
+            grossPay, // monthly_salary (total cost)
+            currentSession?.id
+          );
+          console.log('✅ Employee created successfully');
+        }
+      } catch (empError) {
+        console.error('⚠️ Error managing employee:', empError);
+        // Continue even if employee creation fails
+      }
       
       if (netPay > 0) {
         await addExpense(
@@ -269,13 +307,15 @@ export function RestaurantDashboard() {
     } else if (isRevenue && amount > 0) {
       console.log('💵 Adding revenue:', amount);
       const description = data.issuer || data.notes || fileName;
-      await addIncome(date, 'SALES', amount, description, currentSession.id, documentId);
+      const vatAmount = data.vatAmount || 0;
+      await addIncome(date, 'SALES', amount, description, currentSession.id, documentId, vatAmount);
     } else if (amount > 0) {
       console.log('💸 Adding expense:', amount);
       const category = data.expenseCategory?.toLowerCase().includes('supplier') ? 'SUPPLIERS' : 
                       data.expenseCategory?.toLowerCase().includes('bill') ? 'BILLS' : 'OTHER';
       const description = data.issuer || data.notes || fileName;
-      await addExpense(date, category as any, amount, description, currentSession.id, undefined, documentId);
+      const vatAmount = data.vatAmount || 0;
+      await addExpense(date, category as any, amount, description, currentSession.id, undefined, documentId, vatAmount);
     }
     
     console.log('✅ Document processing complete:', fileName);
