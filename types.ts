@@ -21,7 +21,9 @@ export interface Employee {
   name: string;
   position?: string;
   monthly_salary?: number;
+  net_salary?: number; // Net salary from payslip
   social_contributions?: number;
+  state_rest?: number; // "Rest" amount from state invoice
   created_at: string;
 }
 
@@ -32,6 +34,7 @@ export interface Income {
   date: string;
   type: 'SALES' | 'RESERVATION';
   amount: number;
+  vat_amount?: number; // VAT received from customers
   description?: string;
   document_id?: string; // Link to source document
   created_at: string;
@@ -44,6 +47,7 @@ export interface Expense {
   date: string;
   category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER';
   amount: number;
+  vat_amount?: number; // VAT paid on expenses
   description: string;
   employee_id?: string;
   document_id?: string; // Link to source document

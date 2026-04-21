@@ -31,6 +31,7 @@ export function RestaurantDashboard() {
   const [renameValue, setRenameValue] = useState('');
   const [showMasterReset, setShowMasterReset] = useState(false);
   const [selectedDocumentFromFinance, setSelectedDocumentFromFinance] = useState<ProcessedDocument | null>(null);
+  const [showEmployeePanel, setShowEmployeePanel] = useState(false);
 
   // Filter data by current session or show all
   // For "All Sessions" view, only show data from existing sessions (not orphaned data)
@@ -61,6 +62,10 @@ export function RestaurantDashboard() {
   const totalExpenses = filteredExpenses.filter(e => e.category !== 'PAYROLL').reduce((sum, e) => sum + e.amount, 0);
   // Payroll is deducted separately
   const totalPayroll = filteredExpenses.filter(e => e.category === 'PAYROLL').reduce((sum, e) => sum + e.amount, 0);
+  // VAT calculations
+  const vatReceived = filteredIncome.reduce((sum, i) => sum + (i.vat_amount || 0), 0);
+  const vatPaid = filteredExpenses.reduce((sum, e) => sum + (e.vat_amount || 0), 0);
+  const vatBalance = vatReceived - vatPaid;
   // Balance: Income - Expenses - Payroll
   const balance = totalIncome - totalExpenses - totalPayroll;
 
@@ -245,16 +250,16 @@ export function RestaurantDashboard() {
         }
       }
     } else if (docType === 'Pay Slip') {
-      const grossPay = data.paySlip?.grossPay || data.totalAmount || 0;
+      const netPay = data.paySlip?.netPay || data.totalAmount || 0;
       const employeeName = data.paySlip?.employee?.name || 'Unknown Employee';
       
-      console.log('💰 Processing payslip:', employeeName, 'Gross Pay:', grossPay);
+      console.log('💰 Processing payslip:', employeeName, 'Net Pay:', netPay);
       
-      if (grossPay > 0) {
+      if (netPay > 0) {
         await addExpense(
           date, 
           'PAYROLL', 
-          grossPay, 
+          netPay, 
           `Payslip - ${employeeName}`, 
           currentSession.id,
           undefined,
@@ -332,16 +337,16 @@ export function RestaurantDashboard() {
           }
         }
       } else if (docType === 'Pay Slip') {
-        const grossPay = newData.paySlip?.grossPay || newData.totalAmount || 0;
+        const netPay = newData.paySlip?.netPay || newData.totalAmount || 0;
         const employeeName = newData.paySlip?.employee?.name || 'Unknown Employee';
         
-        console.log('💰 Re-processing payslip:', employeeName, 'Gross Pay:', grossPay);
+        console.log('💰 Re-processing payslip:', employeeName, 'Net Pay:', netPay);
         
-        if (grossPay > 0) {
+        if (netPay > 0) {
           await addExpense(
             date, 
             'PAYROLL', 
-            grossPay, 
+            netPay, 
             `Payslip - ${employeeName}`, 
             currentSession.id,
             undefined,
@@ -637,6 +642,9 @@ export function RestaurantDashboard() {
               totalExpenses={totalExpenses}
               totalPayroll={totalPayroll}
               balance={balance}
+              vatReceived={vatReceived}
+              vatPaid={vatPaid}
+              vatBalance={vatBalance}
               filteredIncome={filteredIncome}
               filteredExpenses={filteredExpenses}
               onAddIncome={() => setShowAddIncome(true)}
@@ -653,6 +661,7 @@ export function RestaurantDashboard() {
               addIncome={addIncome}
               addExpense={addExpense}
               onNavigateToDocument={handleNavigateToDocument}
+              onShowEmployeePanel={() => setShowEmployeePanel(true)}
               t={t}
               user={user}
             />
@@ -734,6 +743,129 @@ export function RestaurantDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Employee Sliding Panel */}
+      {showEmployeePanel && (
+        <>
+          {/* Overlay */}
+          <div 
+            className="fixed inset-0 bg-black/60 z-40"
+            onClick={() => setShowEmployeePanel(false)}
+          />
+          
+          {/* Sliding Panel */}
+          <div className="fixed right-0 top-0 bottom-0 w-full md:w-[500px] bg-cdlp-black border-l border-cdlp-border z-50 overflow-y-auto custom-scrollbar animate-in slide-in-from-right duration-300">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-cdlp-border">
+                <div>
+                  <h2 className="text-xl font-black text-cdlp-gold uppercase">Employees</h2>
+                  <p className="text-xs text-cdlp-muted mt-1">Payroll & State Contributions</p>
+                </div>
+                <button
+                  onClick={() => setShowEmployeePanel(false)}
+                  className="p-2 hover:bg-cdlp-border rounded transition-colors"
+                >
+                  <X className="w-5 h-5 text-cdlp-muted" />
+                </button>
+              </div>
+
+              {/* Add Employee Button */}
+              <button
+                onClick={() => {
+                  setShowEmployeePanel(false);
+                  setShowAddEmployee(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-cdlp-gold text-cdlp-black text-sm font-bold uppercase rounded hover:bg-cdlp-gold-light mb-6"
+              >
+                <Plus className="w-4 h-4" /> Add Employee
+              </button>
+
+              {/* Employees List */}
+              {employees.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="w-12 h-12 text-cdlp-muted/30 mx-auto mb-3" />
+                  <p className="text-sm text-cdlp-muted">No employees yet</p>
+                  <p className="text-xs text-cdlp-muted/60 mt-1">Add your first employee to track payroll</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {employees.map((emp) => (
+                    <div key={emp.id} className="bg-cdlp-card border border-cdlp-border rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="text-sm font-black text-white">{emp.name}</h3>
+                          {emp.position && (
+                            <p className="text-xs text-cdlp-muted mt-1">{emp.position}</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Delete employee ${emp.name}?`)) {
+                              deleteEmployee(emp.id);
+                            }
+                          }}
+                          className="p-1.5 hover:bg-red-500/20 rounded transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        {emp.net_salary && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-cdlp-muted">Net Salary</span>
+                            <span className="text-sm font-bold text-emerald-400">
+                              {emp.net_salary.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                            </span>
+                          </div>
+                        )}
+                        {emp.social_contributions && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-cdlp-muted">Social Contributions</span>
+                            <span className="text-sm font-bold text-blue-400">
+                              {emp.social_contributions.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                            </span>
+                          </div>
+                        )}
+                        {emp.state_rest && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-cdlp-muted">State Rest</span>
+                            <span className="text-sm font-bold text-purple-400">
+                              {emp.state_rest.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                            </span>
+                          </div>
+                        )}
+                        {emp.monthly_salary && (
+                          <div className="flex justify-between items-center pt-2 border-t border-cdlp-border">
+                            <span className="text-xs font-bold text-cdlp-gold uppercase">Total Cost</span>
+                            <span className="text-sm font-black text-cdlp-gold">
+                              {emp.monthly_salary.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Summary */}
+              {employees.length > 0 && (
+                <div className="mt-6 p-4 bg-cdlp-gold/10 border border-cdlp-gold/30 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-cdlp-gold uppercase">Total Payroll</span>
+                    <span className="text-lg font-black text-cdlp-gold">
+                      {employees.reduce((sum, emp) => sum + (emp.monthly_salary || 0), 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                    </span>
+                  </div>
+                  <p className="text-xs text-cdlp-muted mt-2">{employees.length} employee{employees.length !== 1 ? 's' : ''}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -1020,7 +1152,7 @@ function IncomeExpenseSection({
 }
 
 // Dashboard Tab Component
-function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentData, onDocumentUpdated, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, t, user, onNavigateToDocument }: any) {
+function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentData, onDocumentUpdated, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, t, user, onNavigateToDocument, onShowEmployeePanel }: any) {
   const handleItemClick = (item: any) => {
     if (item.document_id && onNavigateToDocument) {
       const doc = documents.find((d: any) => d.id === item.document_id);
@@ -1038,10 +1170,16 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
         <h1 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">
           {isAllSessionsView ? 'All Sessions' : currentSession?.name || 'Dashboard'}
         </h1>
+        <button
+          onClick={onShowEmployeePanel}
+          className="flex items-center gap-2 px-4 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light transition-colors"
+        >
+          <Users className="w-4 h-4" /> Employees
+        </button>
       </div>
 
-      {/* Financial Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+      {/* Financial Summary Cards - 2 rows */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4">
         <div className="bg-cdlp-black border border-cdlp-border p-3 md:p-4 rounded-lg shadow-card">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-4 md:w-5 h-4 md:h-5 text-emerald-500" />
@@ -1078,6 +1216,38 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             {balance.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <p className="text-xs text-cdlp-muted">CHF</p>
+        </div>
+      </div>
+
+      {/* VAT Summary Cards */}
+      <div className="grid grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
+        <div className="bg-cdlp-black border border-blue-500/30 p-3 md:p-4 rounded-lg shadow-card">
+          <div className="flex items-center gap-2 mb-2">
+            <Receipt className="w-4 md:w-5 h-4 md:h-5 text-blue-400" />
+            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">VAT Received</span>
+          </div>
+          <p className="text-lg md:text-2xl font-black text-blue-400">{vatReceived.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-xs text-cdlp-muted">From customers</p>
+        </div>
+
+        <div className="bg-cdlp-black border border-orange-500/30 p-3 md:p-4 rounded-lg shadow-card">
+          <div className="flex items-center gap-2 mb-2">
+            <Receipt className="w-4 md:w-5 h-4 md:h-5 text-orange-400" />
+            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">VAT Paid</span>
+          </div>
+          <p className="text-lg md:text-2xl font-black text-orange-400">{vatPaid.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-xs text-cdlp-muted">On expenses</p>
+        </div>
+
+        <div className="bg-cdlp-black border border-purple-500/30 p-3 md:p-4 rounded-lg shadow-card">
+          <div className="flex items-center gap-2 mb-2">
+            <Receipt className="w-4 md:w-5 h-4 md:h-5 text-purple-400" />
+            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">VAT Balance</span>
+          </div>
+          <p className={`text-lg md:text-2xl font-black ${vatBalance >= 0 ? 'text-purple-400' : 'text-red-400'}`}>
+            {vatBalance.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+          <p className="text-xs text-cdlp-muted">{vatBalance >= 0 ? 'To pay' : 'Refund'}</p>
         </div>
       </div>
 
