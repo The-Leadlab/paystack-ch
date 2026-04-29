@@ -51,12 +51,12 @@
   --color-cdlp-dark: color-mix(in srgb, var(--color-brand-charcoal) 88%, #000000);
   --color-cdlp-card: color-mix(in srgb, var(--color-brand-charcoal) 78%, #000000);
   --color-cdlp-border: color-mix(in srgb, var(--color-brand-charcoal) 62%, #ffffff);
-  --color-cdlp-gold: var(--color-brand-gold);
-  --color-cdlp-gold-light: color-mix(in srgb, var(--color-brand-gold) 88%, #ffffff);
-  --color-cdlp-gold-pale: color-mix(in srgb, var(--color-brand-gold) 62%, #ffffff);
+  --color-cdlp-gold: var(--color-brand-red);
+  --color-cdlp-gold-light: color-mix(in srgb, var(--color-brand-red) 88%, #ffffff);
+  --color-cdlp-gold-pale: color-mix(in srgb, var(--color-brand-red) 62%, #ffffff);
   --color-cdlp-cream: color-mix(in srgb, var(--color-brand-gold) 12%, #ffffff);
   --color-cdlp-muted: color-mix(in srgb, var(--color-brand-charcoal) 45%, #ffffff);
-  --color-cdlp-red: var(--color-brand-red);
+  --color-cdlp-red: var(--color-brand-gold);
 
   /* Typography */
   --font-display: 'Sora', system-ui, sans-serif;

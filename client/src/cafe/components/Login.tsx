@@ -57,31 +57,16 @@ export function Login() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center justify-center mb-8">
-          <div className="w-32 h-32 mb-4 text-cdlp-gold">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none" className="w-full h-full">
-              <circle cx="200" cy="200" r="180" stroke="currentColor" strokeWidth="3" fill="none"/>
-              <circle cx="200" cy="200" r="130" stroke="currentColor" strokeWidth="3" fill="none"/>
-              <line x1="140" y1="140" x2="260" y2="260" stroke="currentColor" strokeWidth="3"/>
-              <line x1="260" y1="140" x2="140" y2="260" stroke="currentColor" strokeWidth="3"/>
-              <text x="170" y="190" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">C</text>
-              <text x="220" y="190" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">D</text>
-              <text x="170" y="240" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">L</text>
-              <text x="220" y="240" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">P</text>
-              <path id="topArc" d="M 60,200 A 140,140 0 0,1 340,200" fill="none"/>
-              <text fontFamily="Arial, sans-serif" fontSize="28" fontWeight="300" fill="currentColor" letterSpacing="6">
-                <textPath href="#topArc" startOffset="50%" textAnchor="middle">
-                  CAFÉ DE LA PLACE
-                </textPath>
-              </text>
-              <path id="bottomArc" d="M 340,200 A 140,140 0 0,1 60,200" fill="none"/>
-              <text fontFamily="Arial, sans-serif" fontSize="24" fontWeight="300" fill="currentColor" letterSpacing="4">
-                <textPath href="#bottomArc" startOffset="50%" textAnchor="middle">
-                  BISTROT GENÈVE
-                </textPath>
-              </text>
-            </svg>
+          <div className="mb-4 flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-cdlp-gold flex items-center justify-center">
+              <span className="font-black text-cdlp-black text-xl">P</span>
+            </div>
+            <div className="text-left">
+              <p className="text-cdlp-gold font-black text-lg tracking-tight">paystack.ch</p>
+              <p className="text-cdlp-muted text-[10px] uppercase tracking-[0.2em]">Finance System</p>
+            </div>
           </div>
-          <p className="text-cdlp-muted/70 text-[9px] uppercase tracking-[0.3em]">Suivi Financier</p>
+          <p className="text-cdlp-muted/70 text-[9px] uppercase tracking-[0.3em]">Swiss Financial Operations</p>
         </div>
 
         <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-6">

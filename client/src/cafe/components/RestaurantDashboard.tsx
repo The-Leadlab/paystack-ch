@@ -444,29 +444,14 @@ export function RestaurantDashboard() {
         {/* Desktop Header */}
         <div className="hidden md:block p-4 border-b border-cdlp-border">
           <div className="flex flex-col items-center mb-4">
-            <div className="w-20 h-20 mb-2 text-cdlp-gold">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none" className="w-full h-full">
-                <circle cx="200" cy="200" r="180" stroke="currentColor" strokeWidth="3" fill="none"/>
-                <circle cx="200" cy="200" r="130" stroke="currentColor" strokeWidth="3" fill="none"/>
-                <line x1="140" y1="140" x2="260" y2="260" stroke="currentColor" strokeWidth="3"/>
-                <line x1="260" y1="140" x2="140" y2="260" stroke="currentColor" strokeWidth="3"/>
-                <text x="170" y="190" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">C</text>
-                <text x="220" y="190" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">D</text>
-                <text x="170" y="240" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">L</text>
-                <text x="220" y="240" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">P</text>
-                <path id="topArc" d="M 60,200 A 140,140 0 0,1 340,200" fill="none"/>
-                <text fontFamily="Arial, sans-serif" fontSize="28" fontWeight="300" fill="currentColor" letterSpacing="6">
-                  <textPath href="#topArc" startOffset="50%" textAnchor="middle">
-                    CAFÉ DE LA PLACE
-                  </textPath>
-                </text>
-                <path id="bottomArc" d="M 340,200 A 140,140 0 0,1 60,200" fill="none"/>
-                <text fontFamily="Arial, sans-serif" fontSize="24" fontWeight="300" fill="currentColor" letterSpacing="4">
-                  <textPath href="#bottomArc" startOffset="50%" textAnchor="middle">
-                    BISTROT GENÈVE
-                  </textPath>
-                </text>
-              </svg>
+            <div className="w-full flex items-center gap-3 px-2">
+              <div className="w-10 h-10 rounded-lg bg-cdlp-gold flex items-center justify-center">
+                <span className="font-black text-cdlp-black text-lg">P</span>
+              </div>
+              <div>
+                <p className="text-cdlp-gold font-black text-sm tracking-tight">paystack.ch</p>
+                <p className="text-cdlp-muted text-[10px] uppercase tracking-[0.2em]">System</p>
+              </div>
             </div>
           </div>
           
