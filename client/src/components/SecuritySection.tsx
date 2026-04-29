@@ -56,7 +56,15 @@ export default function SecuritySection() {
                   alt="Swiss Made Data Protection — Precision, Security, Trust"
                   className="w-full h-full object-contain"
                   loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                    if (fallback) fallback.style.display = "flex";
+                  }}
                 />
+                <div className="hidden h-full w-full items-center justify-center rounded-full border border-border bg-card text-xs text-muted-foreground">
+                  Trust badge unavailable
+                </div>
               </div>
               <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mb-4 text-foreground">
                 Swiss-grade{" "}

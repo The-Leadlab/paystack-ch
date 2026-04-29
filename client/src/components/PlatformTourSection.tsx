@@ -129,7 +129,15 @@ export default function PlatformTourSection() {
                       alt={current.alt}
                       className="w-full h-auto"
                       loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                        const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                        if (fallback) fallback.style.display = "flex";
+                      }}
                     />
+                    <div className="hidden h-[360px] w-full items-center justify-center bg-gradient-to-br from-secondary to-background text-muted-foreground">
+                      Platform screenshot unavailable
+                    </div>
                   </div>
                 </div>
               </div>

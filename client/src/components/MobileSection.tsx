@@ -32,7 +32,15 @@ export default function MobileSection() {
                 alt="Paystack.ch mobile app — financial dashboard on iPhone showing CHF balance and recent transactions"
                 className="relative w-64 sm:w-72 lg:w-80 h-auto drop-shadow-xl"
                 loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                  const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                  if (fallback) fallback.style.display = "flex";
+                }}
               />
+              <div className="hidden relative h-[420px] w-64 sm:w-72 lg:w-80 items-center justify-center rounded-3xl border border-border bg-card text-muted-foreground">
+                Mobile mockup unavailable
+              </div>
             </div>
           </ScrollReveal>
 

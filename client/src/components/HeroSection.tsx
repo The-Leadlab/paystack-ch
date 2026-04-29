@@ -144,7 +144,15 @@ export default function HeroSection() {
                 alt="Paystack.ch Financial Dashboard showing income, expenses, salary summaries and AI document processing"
                 className="w-full h-auto"
                 loading="eager"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                  const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                  if (fallback) fallback.style.display = "flex";
+                }}
               />
+              <div className="hidden h-[320px] w-full items-center justify-center bg-gradient-to-br from-secondary to-background text-muted-foreground">
+                Dashboard preview unavailable
+              </div>
             </div>
 
             {/* Floating badge */}

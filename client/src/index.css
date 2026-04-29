@@ -102,6 +102,51 @@
   --sidebar-ring: oklch(0.55 0.2 25);
 }
 
+.dark {
+  --background: #160f12;
+  --foreground: #f7f3f4;
+  --card: #1f161a;
+  --card-foreground: #f7f3f4;
+  --popover: #1f161a;
+  --popover-foreground: #f7f3f4;
+  --primary: #e8423f;
+  --primary-foreground: #ffffff;
+  --secondary: #2a1e23;
+  --secondary-foreground: #f7f3f4;
+  --muted: #2a1e23;
+  --muted-foreground: #c6aeb0;
+  --accent: #e8423f;
+  --accent-foreground: #ffffff;
+  --destructive: #e8423f;
+  --destructive-foreground: #ffffff;
+  --border: #4a2a31;
+  --input: #4a2a31;
+  --ring: #e8423f;
+  --chart-1: #e8423f;
+  --chart-2: #ffd730;
+  --chart-3: #f7f3f4;
+  --chart-4: #ff7a78;
+  --chart-5: #ffd730;
+  --sidebar: #1a1215;
+  --sidebar-foreground: #f7f3f4;
+  --sidebar-primary: #e8423f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #2a1e23;
+  --sidebar-accent-foreground: #f7f3f4;
+  --sidebar-border: #4a2a31;
+  --sidebar-ring: #e8423f;
+  --color-cdlp-black: #120d0f;
+  --color-cdlp-dark: #160f12;
+  --color-cdlp-card: #1f161a;
+  --color-cdlp-border: #4a2a31;
+  --color-cdlp-gold: #e8423f;
+  --color-cdlp-gold-light: #f26a67;
+  --color-cdlp-gold-pale: #f6a3a1;
+  --color-cdlp-cream: #24191d;
+  --color-cdlp-muted: #c6aeb0;
+  --color-cdlp-red: #ffd730;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
