@@ -270,3 +270,40 @@
 html {
   scroll-behavior: smooth;
 }
+
+/* Cafe system theme wrappers */
+.cafe-shell.cafe-theme-light {
+  --color-cdlp-black: #ffffff;
+  --color-cdlp-dark: #fcfaf4;
+  --color-cdlp-card: #ffffff;
+  --color-cdlp-border: color-mix(in srgb, var(--color-brand-charcoal) 20%, #ffffff);
+  --color-cdlp-gold: #e8423f;
+  --color-cdlp-gold-light: #f26a67;
+  --color-cdlp-gold-pale: #f8a3a1;
+  --color-cdlp-cream: #fff5f4;
+  --color-cdlp-muted: #6f6669;
+  --color-cdlp-red: #ffd730;
+}
+
+.cafe-shell.cafe-theme-light .text-white {
+  color: #2b2b2b !important;
+}
+
+.cafe-shell.cafe-theme-light .bg-cdlp-black,
+.cafe-shell.cafe-theme-light .bg-cdlp-card,
+.cafe-shell.cafe-theme-light .bg-cdlp-dark {
+  color: #2b2b2b;
+}
+
+.cafe-shell.cafe-theme-dark {
+  --color-cdlp-black: #120d0f;
+  --color-cdlp-dark: #160f12;
+  --color-cdlp-card: #1f161a;
+  --color-cdlp-border: #4a2a31;
+  --color-cdlp-gold: #e8423f;
+  --color-cdlp-gold-light: #f26a67;
+  --color-cdlp-gold-pale: #f6a3a1;
+  --color-cdlp-cream: #24191d;
+  --color-cdlp-muted: #c6aeb0;
+  --color-cdlp-red: #ffd730;
+}
