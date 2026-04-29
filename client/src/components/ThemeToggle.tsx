@@ -19,7 +19,7 @@ export default function ThemeToggle() {
       title={dark ? "Switch to white/red theme" : "Switch to red/black theme"}
     >
       {dark ? <Sun size={14} /> : <Moon size={14} />}
-      {dark ? "White / Red" : "Red / Black"}
+      {dark ? "Red / Black" : "White / Red"}
     </button>
   );
 }

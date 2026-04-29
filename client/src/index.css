@@ -47,16 +47,16 @@
   --color-brand-gold: #FFD730;
   --color-brand-red-light: oklch(0.65 0.2 25 / 0.1);
   --color-brand-gold-light: oklch(0.85 0.15 85 / 0.1);
-  --color-cdlp-black: var(--color-brand-charcoal);
-  --color-cdlp-dark: color-mix(in srgb, var(--color-brand-charcoal) 88%, #000000);
-  --color-cdlp-card: color-mix(in srgb, var(--color-brand-charcoal) 78%, #000000);
-  --color-cdlp-border: color-mix(in srgb, var(--color-brand-charcoal) 62%, #ffffff);
-  --color-cdlp-gold: var(--color-brand-red);
-  --color-cdlp-gold-light: color-mix(in srgb, var(--color-brand-red) 88%, #ffffff);
-  --color-cdlp-gold-pale: color-mix(in srgb, var(--color-brand-red) 62%, #ffffff);
-  --color-cdlp-cream: color-mix(in srgb, var(--color-brand-gold) 12%, #ffffff);
-  --color-cdlp-muted: color-mix(in srgb, var(--color-brand-charcoal) 45%, #ffffff);
-  --color-cdlp-red: var(--color-brand-gold);
+  --color-cdlp-black: #ffffff;
+  --color-cdlp-dark: #fcfaf4;
+  --color-cdlp-card: #ffffff;
+  --color-cdlp-border: color-mix(in srgb, var(--color-brand-charcoal) 20%, #ffffff);
+  --color-cdlp-gold: #e8423f;
+  --color-cdlp-gold-light: #f26a67;
+  --color-cdlp-gold-pale: #f8a3a1;
+  --color-cdlp-cream: #fff5f4;
+  --color-cdlp-muted: #6f6669;
+  --color-cdlp-red: #ffd730;
 
   /* Typography */
   --font-display: 'Sora', system-ui, sans-serif;
@@ -271,39 +271,3 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Cafe system theme wrappers */
-.cafe-shell.cafe-theme-light {
-  --color-cdlp-black: #ffffff;
-  --color-cdlp-dark: #fcfaf4;
-  --color-cdlp-card: #ffffff;
-  --color-cdlp-border: color-mix(in srgb, var(--color-brand-charcoal) 20%, #ffffff);
-  --color-cdlp-gold: #e8423f;
-  --color-cdlp-gold-light: #f26a67;
-  --color-cdlp-gold-pale: #f8a3a1;
-  --color-cdlp-cream: #fff5f4;
-  --color-cdlp-muted: #6f6669;
-  --color-cdlp-red: #ffd730;
-}
-
-.cafe-shell.cafe-theme-light .text-white {
-  color: #2b2b2b !important;
-}
-
-.cafe-shell.cafe-theme-light .bg-cdlp-black,
-.cafe-shell.cafe-theme-light .bg-cdlp-card,
-.cafe-shell.cafe-theme-light .bg-cdlp-dark {
-  color: #2b2b2b;
-}
-
-.cafe-shell.cafe-theme-dark {
-  --color-cdlp-black: #120d0f;
-  --color-cdlp-dark: #160f12;
-  --color-cdlp-card: #1f161a;
-  --color-cdlp-border: #4a2a31;
-  --color-cdlp-gold: #e8423f;
-  --color-cdlp-gold-light: #f26a67;
-  --color-cdlp-gold-pale: #f6a3a1;
-  --color-cdlp-cream: #24191d;
-  --color-cdlp-muted: #c6aeb0;
-  --color-cdlp-red: #ffd730;
-}
