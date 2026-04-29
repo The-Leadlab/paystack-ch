@@ -18,12 +18,12 @@
 
       .custom-scrollbar::-webkit-scrollbar { width: 4px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-      .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(184,160,106,0.3); border-radius: 10px; }
-      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(184,160,106,0.6); }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,215,48,0.3); border-radius: 10px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,215,48,0.6); }
 
       /* Gold shimmer on logo text */
       .gold-text {
-        background: linear-gradient(135deg, #c9a84c 0%, #e8d5a3 40%, #b8a06a 60%, #d4af6e 100%);
+        background: linear-gradient(135deg, #ffd730 0%, #fff0a6 40%, #e8423f 65%, #c73835 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -35,7 +35,7 @@
         display: inline-block;
         width: 2rem;
         height: 1px;
-        background: #b8a06a;
+        background: #ffd730;
         vertical-align: middle;
         margin: 0 0.5rem;
       }
@@ -46,27 +46,28 @@
           extend: {
             colors: {
               cdlp: {
-                black:  '#111111',
-                dark:   '#1a1a1a',
-                card:   '#222222',
-                border: '#333333',
-                gold:   '#b8a06a',
-                'gold-light': '#d4af6e',
-                'gold-pale':  '#e8d5a3',
-                cream:  '#f5f0e8',
-                muted:  '#888888',
+                black:  '#2b2b2b',
+                dark:   '#3a3a3a',
+                card:   '#454545',
+                border: '#5a5a5a',
+                gold:   '#ffd730',
+                'gold-light': '#ffe066',
+                'gold-pale':  '#fff0a6',
+                cream:  '#fcfaf4',
+                muted:  '#b8b8b8',
+                red:    '#e8423f',
               },
               /* keep ypsom for the audit center components */
               ypsom: {
                 shadow: '#132420',
-                deep:   '#b8a06a',
+                deep:   '#ffd730',
                 alice:  '#2a2a2a',
                 slate:  '#aaaaaa',
                 darker: '#111111',
               },
             },
             boxShadow: {
-              'gold': '0 4px 24px rgba(184,160,106,0.15)',
+              'gold': '0 4px 24px rgba(255,215,48,0.2)',
               'card': '0 2px 16px rgba(0,0,0,0.4)',
             }
           }
@@ -89,6 +90,6 @@
   <script type="module" crossorigin src="/assets/index-unjxJm14.js"></script>
 </head>
   <body class="bg-cdlp-dark text-white overflow-x-hidden">
-    <div id="root"></div>
+    <div id="root"></div>
   </body>
 </html>
