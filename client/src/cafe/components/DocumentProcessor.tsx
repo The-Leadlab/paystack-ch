@@ -967,9 +967,10 @@ const VerificationHub: React.FC<{
 export const DocumentProcessor: React.FC<{ 
   documents: ProcessedDocument[], 
   updateDocument: (documentId: string, updates: Partial<ProcessedDocument>) => Promise<void>,
+  deleteDocument: (documentId: string) => Promise<void>,
   onDataExtracted: (data: any, fileName: string, fileHash?: string, fileRaw?: File) => void,
   onDocumentUpdated?: (documentId: string, newData: FinancialData) => Promise<void>
-}> = ({ documents, updateDocument, onDataExtracted, onDocumentUpdated }) => {
+}> = ({ documents, updateDocument, deleteDocument, onDataExtracted, onDocumentUpdated }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -1296,11 +1297,19 @@ export const DocumentProcessor: React.FC<{
                               </button>
                             )}
                             <button 
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
+                              onClick={async (e) => { 
+                                e.stopPropagation();
+                                if (!confirm(`Delete "${doc.fileName}"?`)) return;
                                 if ((doc as any).source === 'firestore') {
-                                  // Delete from Firestore via context
-                                  // This will be handled by a delete button in the verification hub
+                                  try {
+                                    if (doc.fileUrl) {
+                                      const { deleteDocument: deleteStoredFile } = await import('../services/storageService');
+                                      await deleteStoredFile(doc.fileUrl);
+                                    }
+                                  } catch (storageErr) {
+                                    console.warn('Storage delete skipped/failed:', storageErr);
+                                  }
+                                  await deleteDocument(doc.id);
                                 } else {
                                   // Remove from local state
                                   setLocalDocs(p => p.filter(d => d.id !== doc.id));
