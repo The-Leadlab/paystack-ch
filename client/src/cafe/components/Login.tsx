@@ -57,14 +57,13 @@ export function Login() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center justify-center mb-8">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-cdlp-gold flex items-center justify-center">
-              <span className="font-black text-cdlp-black text-xl">P</span>
-            </div>
-            <div className="text-left">
-              <p className="text-cdlp-gold font-black text-lg tracking-tight">paystack.ch</p>
-              <p className="text-cdlp-muted text-[10px] uppercase tracking-[0.2em]">Finance System</p>
-            </div>
+          <div className="mb-4 flex flex-col items-center gap-2">
+            <img
+              src="/brand/paystack-final-logo.png"
+              alt="Paystack"
+              className="h-12 w-auto object-contain"
+            />
+            <p className="text-cdlp-muted text-[10px] uppercase tracking-[0.2em]">Finance System</p>
           </div>
           <p className="text-cdlp-muted/70 text-[9px] uppercase tracking-[0.3em]">Swiss Financial Operations</p>
         </div>

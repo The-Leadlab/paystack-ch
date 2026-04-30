@@ -42,12 +42,12 @@ export default function Navbar() {
         <div className="container flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
           <a href="#" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-brand-charcoal flex items-center justify-center">
-              <span className="font-display font-bold text-sm text-white">P</span>
-            </div>
-            <span className="font-display font-semibold text-lg tracking-tight text-foreground">
-              paystack<span className="text-brand-red">.ch</span>
-            </span>
+            <img
+              src="/brand/paystack-final-logo.png"
+              alt="Paystack"
+              className="h-8 w-auto object-contain"
+            />
+            <span className="sr-only">Paystack</span>
           </a>
 
           {/* Desktop Nav Links */}

@@ -412,11 +412,11 @@ export function RestaurantDashboard() {
       {/* Mobile Header */}
       <div className="md:hidden bg-cdlp-black border-b border-cdlp-border p-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5">
-            <div className="w-6 h-px bg-cdlp-gold"></div>
-            <h1 className="font-serif text-base font-bold gold-text tracking-wide">CAFÉ DE LA PLACE</h1>
-            <div className="w-6 h-px bg-cdlp-gold"></div>
-          </div>
+          <img
+            src="/brand/paystack-final-logo.png"
+            alt="Paystack"
+            className="h-7 w-auto object-contain"
+          />
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -445,11 +445,13 @@ export function RestaurantDashboard() {
         <div className="hidden md:block p-4 border-b border-cdlp-border">
           <div className="flex flex-col items-center mb-4">
             <div className="w-full flex items-center gap-3 px-2">
-              <div className="w-10 h-10 rounded-lg bg-cdlp-gold flex items-center justify-center">
-                <span className="font-black text-cdlp-black text-lg">P</span>
-              </div>
+              <img
+                src="/brand/paystack-final-logo.png"
+                alt="Paystack"
+                className="h-10 w-auto object-contain"
+              />
               <div>
-                <p className="text-cdlp-gold font-black text-sm tracking-tight">paystack.ch</p>
+                <p className="text-cdlp-gold font-black text-sm tracking-tight">Paystack</p>
                 <p className="text-cdlp-muted text-[10px] uppercase tracking-[0.2em]">System</p>
               </div>
             </div>

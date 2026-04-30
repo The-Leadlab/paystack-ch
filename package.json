@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "approve-builds": "corepack pnpm approve-builds",
     "firebase:login": "corepack pnpm exec firebase login",
-    "firebase:init": "corepack pnpm exec firebase init"
+    "firebase:init": "corepack pnpm exec firebase init",
+    "firebase:deploy": "corepack pnpm exec firebase deploy --only hosting"
   },
   "dependencies": {
     "@google/genai": "^1.50.1",
