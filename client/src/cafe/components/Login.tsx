@@ -81,7 +81,7 @@ export function Login() {
               type="button"
               onClick={handleGoogle}
               disabled={googleLoading || loading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 border border-cdlp-border bg-cdlp-card text-white font-bold text-xs uppercase tracking-wider rounded hover:bg-cdlp-border/50 disabled:opacity-60 transition-colors mb-4"
+              className="w-full flex items-center justify-center gap-2 py-2.5 border border-cdlp-border bg-cdlp-card text-foreground font-bold text-xs uppercase tracking-wider rounded hover:bg-cdlp-border/50 disabled:opacity-60 transition-colors mb-4"
             >
               {googleLoading ? '…' : 'Continue with Google'}
             </button>
@@ -100,7 +100,7 @@ export function Login() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Display name"
-                    className="w-full pl-10 pr-4 py-2.5 bg-cdlp-card border border-cdlp-border rounded text-sm text-white placeholder:text-cdlp-muted/50 focus:outline-none focus:ring-2 focus:ring-cdlp-gold/30 focus:border-cdlp-gold"
+                    className="w-full pl-10 pr-4 py-2.5 bg-cdlp-card border border-cdlp-border rounded text-sm text-foreground placeholder:text-cdlp-muted/50 focus:outline-none focus:ring-2 focus:ring-cdlp-gold/30 focus:border-cdlp-gold"
                   />
                 </div>
               </div>
@@ -117,7 +117,7 @@ export function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@company.com"
                   required
-                  className="w-full pl-10 pr-4 py-2.5 bg-cdlp-card border border-cdlp-border rounded text-sm text-white placeholder:text-cdlp-muted/50 focus:outline-none focus:ring-2 focus:ring-cdlp-gold/30 focus:border-cdlp-gold"
+                  className="w-full pl-10 pr-4 py-2.5 bg-cdlp-card border border-cdlp-border rounded text-sm text-foreground placeholder:text-cdlp-muted/50 focus:outline-none focus:ring-2 focus:ring-cdlp-gold/30 focus:border-cdlp-gold"
                 />
               </div>
             </div>
@@ -134,7 +134,7 @@ export function Login() {
                   placeholder="••••••••"
                   required
                   minLength={6}
-                  className="w-full pl-10 pr-4 py-2.5 bg-cdlp-card border border-cdlp-border rounded text-sm text-white placeholder:text-cdlp-muted/50 focus:outline-none focus:ring-2 focus:ring-cdlp-gold/30 focus:border-cdlp-gold"
+                  className="w-full pl-10 pr-4 py-2.5 bg-cdlp-card border border-cdlp-border rounded text-sm text-foreground placeholder:text-cdlp-muted/50 focus:outline-none focus:ring-2 focus:ring-cdlp-gold/30 focus:border-cdlp-gold"
                 />
               </div>
             </div>

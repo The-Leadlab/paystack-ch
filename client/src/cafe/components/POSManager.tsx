@@ -151,7 +151,7 @@ export function POSManager() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-cdlp-muted">Net Sales:</span>
-                  <span className="font-bold text-white">{reading.net_sales.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
+                  <span className="font-bold text-foreground">{reading.net_sales.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-cdlp-muted">VAT:</span>
@@ -169,7 +169,7 @@ export function POSManager() {
                   {reading.other_payment > 0 && (
                     <div className="flex justify-between">
                       <span className="text-cdlp-muted">Other:</span>
-                      <span className="font-bold text-white">{reading.other_payment.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span className="font-bold text-foreground">{reading.other_payment.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   )}
                 </div>
@@ -317,7 +317,7 @@ function POSModal({ reading, onClose, onSave }: {
           <h3 className="text-lg font-black text-cdlp-gold uppercase">
             {reading ? 'Edit Z-Reading' : 'Add Z-Reading'}
           </h3>
-          <button onClick={onClose} className="text-cdlp-muted hover:text-white">
+          <button onClick={onClose} className="text-cdlp-muted hover:text-foreground">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -330,7 +330,7 @@ function POSModal({ reading, onClose, onSave }: {
               className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase rounded ${
                 mode === 'auto'
                   ? 'bg-cdlp-gold text-cdlp-black'
-                  : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
+                  : 'bg-cdlp-card border border-cdlp-border text-foreground hover:border-cdlp-gold'
               }`}
             >
               <Zap className="w-4 h-4" /> Auto-Generate
@@ -340,7 +340,7 @@ function POSModal({ reading, onClose, onSave }: {
               className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase rounded ${
                 mode === 'manual'
                   ? 'bg-cdlp-gold text-cdlp-black'
-                  : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
+                  : 'bg-cdlp-card border border-cdlp-border text-foreground hover:border-cdlp-gold'
               }`}
             >
               <Edit2 className="w-4 h-4" /> Manual Entry
@@ -350,7 +350,7 @@ function POSModal({ reading, onClose, onSave }: {
               className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase rounded ${
                 mode === 'upload'
                   ? 'bg-cdlp-gold text-cdlp-black'
-                  : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
+                  : 'bg-cdlp-card border border-cdlp-border text-foreground hover:border-cdlp-gold'
               }`}
             >
               <Camera className="w-4 h-4" /> Upload Photo
