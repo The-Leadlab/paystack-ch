@@ -38,6 +38,108 @@ const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 2000): Pr
   }
 };
 
+type ExhaustiveInvoicePass = {
+  detectedInvoiceCount?: number;
+  subDocuments?: Array<{
+    pageRange?: string;
+    issuer?: string;
+    date?: string;
+    totalAmount?: number;
+    originalCurrency?: string;
+    documentType?: string;
+    expenseCategory?: string;
+    vatAmount?: number;
+    vatRate?: number;
+    netAmount?: number;
+  }>;
+  lineItems?: BankTransaction[];
+};
+
+async function extractInvoiceBreakdownExhaustive(
+  ai: GoogleGenAI,
+  base64: string,
+  mimeType: string,
+  userHint?: string
+): Promise<ExhaustiveInvoicePass | null> {
+  const hintSection = userHint ? `USER HINT: "${userHint}".` : "";
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: {
+        parts: [
+          { inlineData: { mimeType, data: base64 } },
+          {
+            text: `You are auditing a multi-page PDF containing multiple invoices/receipts.
+${hintSection}
+
+MANDATORY:
+1. Read EVERY page from first to last.
+2. Return one subDocuments entry per distinct invoice/receipt block found.
+3. NEVER stop after first 2 pages.
+4. If one invoice spans multiple pages, merge it into one entry with a pageRange like "3-4".
+5. If there are 5 or 6 invoices, return all 5 or 6 entries.
+6. Keep lineItems aligned with all detected invoice entries.
+
+Return JSON only matching schema.`
+          }
+        ]
+      },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            detectedInvoiceCount: { type: Type.NUMBER },
+            subDocuments: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  pageRange: { type: Type.STRING },
+                  issuer: { type: Type.STRING },
+                  date: { type: Type.STRING },
+                  totalAmount: { type: Type.NUMBER },
+                  originalCurrency: { type: Type.STRING },
+                  documentType: { type: Type.STRING },
+                  expenseCategory: { type: Type.STRING },
+                  vatAmount: { type: Type.NUMBER },
+                  vatRate: { type: Type.NUMBER },
+                  netAmount: { type: Type.NUMBER },
+                },
+                required: ["issuer", "totalAmount", "originalCurrency", "expenseCategory"]
+              }
+            },
+            lineItems: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  date: { type: Type.STRING },
+                  description: { type: Type.STRING },
+                  amount: { type: Type.NUMBER },
+                  type: { type: Type.STRING, enum: ["INCOME", "EXPENSE"] },
+                  category: { type: Type.STRING }
+                },
+                required: ["description", "amount", "type", "category"]
+              }
+            }
+          }
+        },
+        temperature: 0.05,
+        topP: 0.9,
+        topK: 20,
+        maxOutputTokens: 8192,
+      }
+    });
+
+    const parsed = JSON.parse(response.text || '{}') as ExhaustiveInvoicePass;
+    return parsed;
+  } catch (error) {
+    console.warn('Exhaustive invoice pass failed:', error);
+    return null;
+  }
+}
+
 function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
   const subDocs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments : [];
   const normalizedLineItems = Array.isArray(parsed.lineItems) ? parsed.lineItems : [];
@@ -296,7 +398,28 @@ Return JSON only.`
        }
     }
 
-    const normalized = normalizeMultiInvoiceData(parsed);
+    let normalized = normalizeMultiInvoiceData(parsed);
+
+    // Second-pass exhaustive extraction for PDFs to avoid undercounting invoices on later pages.
+    const isPdf = mimeType === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (isPdf) {
+      const exhaustive = await extractInvoiceBreakdownExhaustive(ai, base64, mimeType, userHint);
+      if (exhaustive?.subDocuments && exhaustive.subDocuments.length > 0) {
+        const currentSubCount = Array.isArray(normalized.subDocuments) ? normalized.subDocuments.length : 0;
+        const exhaustiveSubCount = exhaustive.subDocuments.length;
+        if (exhaustiveSubCount > currentSubCount) {
+          normalized = normalizeMultiInvoiceData({
+            ...normalized,
+            subDocuments: exhaustive.subDocuments as any,
+            lineItems: (Array.isArray(exhaustive.lineItems) && exhaustive.lineItems.length > 0)
+              ? exhaustive.lineItems
+              : normalized.lineItems,
+            issuer: `${exhaustiveSubCount} invoices detected`
+          });
+          console.log(`📚 Exhaustive pass increased invoice blocks: ${currentSubCount} -> ${exhaustiveSubCount}`);
+        }
+      }
+    }
 
     if (normalized.totalAmount !== undefined && (!normalized.amountInCHF || normalized.amountInCHF === 0)) {
       const rate = await getLiveExchangeRate(normalized.originalCurrency || 'CHF', targetCurrency);
