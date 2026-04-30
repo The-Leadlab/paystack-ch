@@ -512,6 +512,7 @@ const VerificationHub: React.FC<{
 }> = ({ doc, onUpdate, onSave }) => {
   const [isAddingCustom, setIsAddingCustom] = useState(false);
   const [showSubInvoiceModal, setShowSubInvoiceModal] = useState(false);
+  const hasViewableSource = Boolean(doc.fileUrl || doc.fileDataUrl || doc.fileRaw);
 
   const handleFieldChange = (field: keyof FinancialData, value: any) => {
     let newData = { ...doc.data!, [field]: value };
@@ -771,25 +772,47 @@ const VerificationHub: React.FC<{
               <div className="space-y-5">
                  <div>
                     <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Issuer Entity</label>
-                    <input value={editedData.issuer} onChange={e => handleFieldChange('issuer', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-white outline-none focus:border-cdlp-gold transition-colors" />
+                    <input value={editedData.issuer} onChange={e => handleFieldChange('issuer', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-foreground outline-none focus:border-cdlp-gold transition-colors" />
                  </div>
                  {subDocuments.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowSubInvoiceModal(true)}
+                      className="h-11 px-4 bg-cdlp-gold/15 border border-cdlp-gold/40 rounded-sm text-xs font-black text-cdlp-gold uppercase tracking-wider hover:bg-cdlp-gold/25 transition-colors"
+                    >
+                      {subDocuments.length} invoices detected
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowSubInvoiceModal(true)}
+                      className="h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-black text-foreground uppercase tracking-wider hover:border-cdlp-gold transition-colors"
+                    >
+                      Open sub-table analysis
+                    </button>
+                  </div>
+                 )}
+                 {hasViewableSource ? (
                    <button
                      type="button"
-                     onClick={() => setShowSubInvoiceModal(true)}
-                     className="w-full h-11 px-4 bg-cdlp-gold/15 border border-cdlp-gold/40 rounded-sm text-xs font-black text-cdlp-gold uppercase tracking-wider hover:bg-cdlp-gold/25 transition-colors"
+                     onClick={() => openDocumentInNewTab(doc)}
+                     className="w-full h-11 px-4 bg-cdlp-gold text-cdlp-black rounded-sm text-xs font-black uppercase tracking-wider hover:bg-cdlp-gold-light transition-colors flex items-center justify-center gap-2"
                    >
-                     {subDocuments.length} invoices detected - view breakdown
+                     <ExternalLink className="w-4 h-4" /> Open PDF
                    </button>
+                 ) : (
+                   <div className="text-[10px] font-bold text-cdlp-muted bg-cdlp-card border border-cdlp-border rounded-sm px-3 py-2">
+                     PDF source is unavailable for this record.
+                   </div>
                  )}
                  <div className="grid grid-cols-2 gap-3">
                     <div>
                        <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Currency</label>
-                       <input value={editedData.originalCurrency} onChange={e => handleFieldChange('originalCurrency', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-white outline-none uppercase" placeholder="CHF" />
+                       <input value={editedData.originalCurrency} onChange={e => handleFieldChange('originalCurrency', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-foreground outline-none uppercase" placeholder="CHF" />
                     </div>
                     <div>
                        <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Document #</label>
-                       <input value={editedData.documentNumber} onChange={e => handleFieldChange('documentNumber', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-white outline-none" />
+                       <input value={editedData.documentNumber} onChange={e => handleFieldChange('documentNumber', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-foreground outline-none" />
                     </div>
                  </div>
               </div>
@@ -804,7 +827,7 @@ const VerificationHub: React.FC<{
                         step="0.01" 
                         value={editedData.totalAmount} 
                         onChange={e => handleFieldChange('totalAmount', parseFloat(e.target.value) || 0)} 
-                        className={`w-full h-11 px-4 rounded-sm text-xs font-black text-white outline-none transition-all ${isZeroValue ? 'bg-red-600/10 border-2 border-red-600' : 'bg-cdlp-card border border-cdlp-border'}`} 
+                        className={`w-full h-11 px-4 rounded-sm text-xs font-black text-foreground outline-none transition-all ${isZeroValue ? 'bg-red-600/10 border-2 border-red-600' : 'bg-cdlp-card border border-cdlp-border'}`} 
                       />
                       {isZeroValue && (
                         <div className="absolute -bottom-5 left-0 text-[8px] font-black text-red-600 uppercase tracking-widest animate-pulse">Value cannot be zero</div>
@@ -819,7 +842,7 @@ const VerificationHub: React.FC<{
                          step="0.01" 
                          value={editedData.vatAmount || 0} 
                          onChange={e => handleFieldChange('vatAmount', parseFloat(e.target.value) || 0)} 
-                         className="w-full h-11 px-4 bg-blue-600/10 border border-blue-600/20 rounded-sm text-xs font-bold text-white outline-none focus:border-blue-600 transition-colors" 
+                        className="w-full h-11 px-4 bg-blue-600/10 border border-blue-600/20 rounded-sm text-xs font-bold text-foreground outline-none focus:border-blue-600 transition-colors" 
                        />
                     </div>
                     <div>
@@ -829,7 +852,7 @@ const VerificationHub: React.FC<{
                          step="0.01" 
                          value={editedData.netAmount || 0} 
                          onChange={e => handleFieldChange('netAmount', parseFloat(e.target.value) || 0)} 
-                         className="w-full h-11 px-4 bg-emerald-600/10 border border-emerald-600/20 rounded-sm text-xs font-bold text-white outline-none focus:border-emerald-600 transition-colors" 
+                        className="w-full h-11 px-4 bg-emerald-600/10 border border-emerald-600/20 rounded-sm text-xs font-bold text-foreground outline-none focus:border-emerald-600 transition-colors" 
                        />
                     </div>
                  </div>
@@ -837,7 +860,7 @@ const VerificationHub: React.FC<{
               <div className="space-y-5 md:col-span-2 xl:col-span-1">
                  <div>
                     <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Date</label>
-                    <input type="date" value={editedData.date} onChange={e => handleFieldChange('date', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-white outline-none" />
+                    <input type="date" value={editedData.date} onChange={e => handleFieldChange('date', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-foreground outline-none" />
                  </div>
                  <div className="pt-1 sm:pt-0">
                     <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Category</label>
@@ -848,10 +871,10 @@ const VerificationHub: React.FC<{
                           value={editedData.expenseCategory} 
                           onChange={e => handleFieldChange('expenseCategory', e.target.value)} 
                           placeholder="Type custom..."
-                          className="flex-1 h-11 px-4 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-white uppercase outline-none shadow-inner"
+                          className="flex-1 h-11 px-4 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-foreground uppercase outline-none shadow-inner"
                         />
                       ) : (
-                        <select value={editedData.expenseCategory} onChange={e => handleFieldChange('expenseCategory', e.target.value)} className={`flex-1 h-11 px-4 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-white uppercase outline-none`}>
+                        <select value={editedData.expenseCategory} onChange={e => handleFieldChange('expenseCategory', e.target.value)} className={`flex-1 h-11 px-4 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-foreground uppercase outline-none`}>
                            <option value="">-- Uncategorized --</option>
                            {CATEGORY_GROUPS.map(group => (
                              <optgroup key={group.id} label={group.label}>
@@ -1036,6 +1059,9 @@ const VerificationHub: React.FC<{
                 </tbody>
               </table>
             </div>
+            <p className="mt-3 text-[10px] text-muted-foreground">
+              Showing {subDocuments.length} extracted invoice blocks from the full document.
+            </p>
           </div>
         </div>
       )}

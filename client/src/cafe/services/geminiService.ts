@@ -40,7 +40,7 @@ const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 2000): Pr
 
 function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
   const subDocs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments : [];
-  if (subDocs.length === 0) return parsed;
+  const normalizedLineItems = Array.isArray(parsed.lineItems) ? parsed.lineItems : [];
 
   // Build stable line items from each detected sub-invoice so analysis table is always populated.
   const generatedLineItems: BankTransaction[] = subDocs.map((sub: any) => ({
@@ -52,26 +52,55 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
     notes: `VAT ${Number(sub.vatRate || 0)}% | VAT Amount ${Number(sub.vatAmount || 0)} ${sub.originalCurrency || parsed.originalCurrency || 'CHF'}`
   }));
 
-  const subTotal = subDocs.reduce((sum: number, sub: any) => sum + Number(sub.totalAmount || 0), 0);
-  const subVat = subDocs.reduce((sum: number, sub: any) => sum + Number(sub.vatAmount || 0), 0);
-  const subNet = subDocs.reduce((sum: number, sub: any) => sum + Number(sub.netAmount || 0), 0);
+  // If model under-fills subDocuments, derive additional invoice blocks from expense line items.
+  const inferredSubDocsFromLineItems = normalizedLineItems
+    .filter((item) => item.type === 'EXPENSE' && Number(item.amount || 0) > 0)
+    .map((item) => ({
+      pageRange: '',
+      issuer: item.description || 'Unknown issuer',
+      date: item.date || parsed.date || new Date().toISOString().slice(0, 10),
+      totalAmount: Number(item.amount || 0),
+      originalCurrency: parsed.originalCurrency || 'CHF',
+      documentType: 'TICKET/RECEIPT',
+      expenseCategory: item.category || parsed.expenseCategory || 'OTHER',
+      vatAmount: 0,
+      vatRate: 0,
+      netAmount: Number(item.amount || 0),
+    }));
 
-  const normalizedLineItems = Array.isArray(parsed.lineItems) ? parsed.lineItems : [];
+  const mergedSubDocs = [...subDocs];
+  const seen = new Set(
+    subDocs.map((s: any) => `${s.issuer || ''}|${s.date || ''}|${Number(s.totalAmount || 0).toFixed(2)}`)
+  );
+  for (const inferred of inferredSubDocsFromLineItems) {
+    const signature = `${inferred.issuer}|${inferred.date}|${Number(inferred.totalAmount || 0).toFixed(2)}`;
+    if (!seen.has(signature)) {
+      mergedSubDocs.push(inferred as any);
+      seen.add(signature);
+    }
+  }
+
+  if (mergedSubDocs.length === 0) return parsed;
+
+  const subTotal = mergedSubDocs.reduce((sum: number, sub: any) => sum + Number(sub.totalAmount || 0), 0);
+  const subVat = mergedSubDocs.reduce((sum: number, sub: any) => sum + Number(sub.vatAmount || 0), 0);
+  const subNet = mergedSubDocs.reduce((sum: number, sub: any) => sum + Number(sub.netAmount || 0), 0);
   const finalLineItems =
-    normalizedLineItems.length >= subDocs.length && normalizedLineItems.length > 0
+    normalizedLineItems.length >= mergedSubDocs.length && normalizedLineItems.length > 0
       ? normalizedLineItems
       : generatedLineItems;
 
   return {
     ...parsed,
+    subDocuments: mergedSubDocs as any,
     totalAmount: parsed.totalAmount && parsed.totalAmount > 0 ? parsed.totalAmount : subTotal,
     vatAmount: parsed.vatAmount && parsed.vatAmount > 0 ? parsed.vatAmount : subVat,
     netAmount: parsed.netAmount && parsed.netAmount > 0 ? parsed.netAmount : subNet,
     issuer: parsed.issuer && parsed.issuer !== 'Multiple Issuers'
       ? parsed.issuer
-      : `${subDocs.length} invoices detected`,
+      : `${mergedSubDocs.length} invoices detected`,
     lineItems: finalLineItems,
-    aiInterpretation: parsed.aiInterpretation || `Detected ${subDocs.length} invoice blocks across all pages.`
+    aiInterpretation: parsed.aiInterpretation || `Detected ${mergedSubDocs.length} invoice blocks across all pages.`
   };
 }
 
