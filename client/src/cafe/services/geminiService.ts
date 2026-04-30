@@ -26,10 +26,22 @@ export const getLiveExchangeRate = async (from: string, to: string): Promise<num
   }
 };
 
+const isNonRetryableGeminiError = (error: any): boolean => {
+  const message = String(error?.message || error || '');
+  return (
+    message.includes('API_KEY_INVALID') ||
+    message.includes('API key not valid') ||
+    message.includes('INVALID_ARGUMENT')
+  );
+};
+
 const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> => {
   try {
     return await fn();
   } catch (error: any) {
+    if (isNonRetryableGeminiError(error)) {
+      throw error;
+    }
     if (retries > 0) {
       await new Promise(resolve => setTimeout(resolve, delay));
       return withRetry(fn, retries - 1, delay * 2);

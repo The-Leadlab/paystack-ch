@@ -220,6 +220,19 @@
   color: #2b2b2b !important;
 }
 
+.cafe-shell.cafe-theme-light .bg-cdlp-card .text-white,
+.cafe-shell.cafe-theme-light .bg-cdlp-black .text-white,
+.cafe-shell.cafe-theme-light .bg-cdlp-dark .text-white {
+  color: #2b2b2b !important;
+}
+
+/* Preserve intended white text on high-contrast action backgrounds */
+.cafe-shell.cafe-theme-light .bg-red-600.text-white,
+.cafe-shell.cafe-theme-light .bg-emerald-600.text-white,
+.cafe-shell.cafe-theme-light .bg-cdlp-gold.text-white {
+  color: #ffffff !important;
+}
+
 .cafe-shell.cafe-theme-light input.bg-cdlp-card,
 .cafe-shell.cafe-theme-light input.bg-cdlp-black,
 .cafe-shell.cafe-theme-light textarea.bg-cdlp-card,

@@ -1079,6 +1079,12 @@ export const DocumentProcessor: React.FC<{
       }
     } catch (err: any) {
       console.error(`❌ Error: ${doc.fileName}`, err);
+      const message = String(err?.message || err || 'Unknown error');
+      if (message.includes('API_KEY_INVALID') || message.includes('API key not valid')) {
+        setUploadError('Gemini API key is invalid. Update VITE_GEMINI_API_KEY in deployment environment and redeploy.');
+        stopProcessingRef.current = true;
+        setIsProcessing(false);
+      }
       setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'error', error: err.message } : d));
     }
   };
