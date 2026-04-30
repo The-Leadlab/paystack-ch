@@ -56,6 +56,12 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
   const subVat = subDocs.reduce((sum: number, sub: any) => sum + Number(sub.vatAmount || 0), 0);
   const subNet = subDocs.reduce((sum: number, sub: any) => sum + Number(sub.netAmount || 0), 0);
 
+  const normalizedLineItems = Array.isArray(parsed.lineItems) ? parsed.lineItems : [];
+  const finalLineItems =
+    normalizedLineItems.length >= subDocs.length && normalizedLineItems.length > 0
+      ? normalizedLineItems
+      : generatedLineItems;
+
   return {
     ...parsed,
     totalAmount: parsed.totalAmount && parsed.totalAmount > 0 ? parsed.totalAmount : subTotal,
@@ -64,7 +70,7 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
     issuer: parsed.issuer && parsed.issuer !== 'Multiple Issuers'
       ? parsed.issuer
       : `${subDocs.length} invoices detected`,
-    lineItems: parsed.lineItems && parsed.lineItems.length > 0 ? parsed.lineItems : generatedLineItems,
+    lineItems: finalLineItems,
     aiInterpretation: parsed.aiInterpretation || `Detected ${subDocs.length} invoice blocks across all pages.`
   };
 }
@@ -223,6 +229,7 @@ CRITICAL RULES:
 12. If VAT is missing for a sub-document, set vatAmount=0 and vatRate=0 (never omit fields).
 13. If one invoice spans multiple pages, merge those pages into ONE subDocuments entry with a combined pageRange (e.g. "2-3"), do not duplicate it.
 14. For multi-invoice files, include a complete lineItems array derived from all detected invoices.
+15. NEVER cap extracted invoices to 2; include every invoice found across all pages.
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings

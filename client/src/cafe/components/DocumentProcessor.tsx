@@ -511,6 +511,7 @@ const VerificationHub: React.FC<{
   onSave: (data: FinancialData) => void;
 }> = ({ doc, onUpdate, onSave }) => {
   const [isAddingCustom, setIsAddingCustom] = useState(false);
+  const [showSubInvoiceModal, setShowSubInvoiceModal] = useState(false);
 
   const handleFieldChange = (field: keyof FinancialData, value: any) => {
     let newData = { ...doc.data!, [field]: value };
@@ -582,6 +583,7 @@ const VerificationHub: React.FC<{
   const isBankStatement = editedData.documentType === DocumentType.BANK_STATEMENT;
   const isPaySlip = editedData.documentType === DocumentType.PAY_SLIP;
   const isZeroValue = Number(editedData.totalAmount) === 0;
+  const subDocuments = Array.isArray(editedData.subDocuments) ? editedData.subDocuments : [];
   const currentPaySlip: PaySlipAnalysis = editedData.paySlip ?? { employee: { name: '' }, employer: { name: '' }, components: [] };
   const paySlipComponents = currentPaySlip.components ?? [];
   const computedGrossPay = paySlipComponents.filter((c) => c.type === 'INCOME').reduce((s, x) => s + (Number(x.amount) || 0), 0);
@@ -603,6 +605,15 @@ const VerificationHub: React.FC<{
                  <p className="text-[9px] sm:text-[10px] font-bold text-cdlp-muted uppercase opacity-50 mt-1 truncate max-w-[200px] sm:max-w-md">{doc.fileName}</p>
               </div>
               <div className="flex items-center gap-3 w-full sm:w-auto">
+                 {(doc.fileUrl || doc.fileDataUrl || doc.fileRaw) && (
+                   <button
+                     type="button"
+                     onClick={() => openDocumentInNewTab(doc)}
+                     className="h-8 px-3 bg-cdlp-card border border-cdlp-border text-cdlp-gold rounded-sm text-[9px] sm:text-[10px] font-black uppercase flex items-center gap-2 hover:border-cdlp-gold transition-colors whitespace-nowrap"
+                   >
+                     <ExternalLink className="w-3.5 h-3.5" /> Open PDF
+                   </button>
+                 )}
                  <div className="px-3 py-1.5 bg-emerald-600/10 text-emerald-400 border border-emerald-600/20 rounded-sm text-[9px] sm:text-[10px] font-black uppercase flex items-center gap-2 shadow-sm whitespace-nowrap">
                     <Cpu className="w-3.5 h-3.5" /> Match: {((doc.data?.confidenceScore || 0.95) * 100).toFixed(0)}%
                  </div>
@@ -762,6 +773,15 @@ const VerificationHub: React.FC<{
                     <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Issuer Entity</label>
                     <input value={editedData.issuer} onChange={e => handleFieldChange('issuer', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-white outline-none focus:border-cdlp-gold transition-colors" />
                  </div>
+                 {subDocuments.length > 0 && (
+                   <button
+                     type="button"
+                     onClick={() => setShowSubInvoiceModal(true)}
+                     className="w-full h-11 px-4 bg-cdlp-gold/15 border border-cdlp-gold/40 rounded-sm text-xs font-black text-cdlp-gold uppercase tracking-wider hover:bg-cdlp-gold/25 transition-colors"
+                   >
+                     {subDocuments.length} invoices detected - view breakdown
+                   </button>
+                 )}
                  <div className="grid grid-cols-2 gap-3">
                     <div>
                        <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Currency</label>
@@ -959,6 +979,66 @@ const VerificationHub: React.FC<{
            </div>
         </div>
       </div>
+      {showSubInvoiceModal && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/70 flex items-center justify-center p-4"
+          onClick={() => setShowSubInvoiceModal(false)}
+        >
+          <div
+            className="w-full max-w-6xl max-h-[85vh] overflow-auto bg-card border border-border rounded-lg shadow-2xl p-4 sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h4 className="text-sm sm:text-base font-black uppercase tracking-wider text-foreground">
+                Invoice Breakdown ({subDocuments.length})
+              </h4>
+              <button
+                type="button"
+                onClick={() => setShowSubInvoiceModal(false)}
+                className="h-8 px-3 rounded border border-border bg-background text-foreground text-xs font-bold hover:border-cdlp-gold transition-colors"
+              >
+                Close
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-xs">
+                <thead className="bg-muted text-foreground uppercase font-bold">
+                  <tr>
+                    <th className="px-3 py-2 text-left">#</th>
+                    <th className="px-3 py-2 text-left">Issuer</th>
+                    <th className="px-3 py-2 text-left">Pages</th>
+                    <th className="px-3 py-2 text-left">Date</th>
+                    <th className="px-3 py-2 text-left">Category</th>
+                    <th className="px-3 py-2 text-right">Total</th>
+                    <th className="px-3 py-2 text-right">Net</th>
+                    <th className="px-3 py-2 text-right">VAT</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {subDocuments.map((subDoc: any, idx: number) => (
+                    <tr key={`${subDoc.issuer || 'invoice'}-${idx}`} className="text-foreground">
+                      <td className="px-3 py-2">{idx + 1}</td>
+                      <td className="px-3 py-2 font-semibold">{subDoc.issuer || `Invoice ${idx + 1}`}</td>
+                      <td className="px-3 py-2">{subDoc.pageRange || '-'}</td>
+                      <td className="px-3 py-2">{subDoc.date || '-'}</td>
+                      <td className="px-3 py-2">{subDoc.expenseCategory || '-'}</td>
+                      <td className="px-3 py-2 text-right">
+                        {(Number(subDoc.totalAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {(Number(subDoc.netAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {(Number(subDoc.vatAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
