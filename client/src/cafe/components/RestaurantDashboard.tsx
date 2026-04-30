@@ -1921,6 +1921,65 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                   </div>
                 )}
 
+                {/* Multi-invoice breakdown (one item per detected invoice block across pages) */}
+                {selectedDocument.data?.subDocuments && selectedDocument.data.subDocuments.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">
+                      Invoice Breakdown ({selectedDocument.data.subDocuments.length})
+                    </h3>
+                    <div className="space-y-2">
+                      {selectedDocument.data.subDocuments.map((subDoc: any, idx) => (
+                        <details key={`subdoc-${idx}`} className="bg-cdlp-card border border-cdlp-border rounded p-3">
+                          <summary className="cursor-pointer list-none flex items-center justify-between">
+                            <span className="text-sm font-bold text-foreground">
+                              {subDoc.issuer || `Invoice ${idx + 1}`}
+                            </span>
+                            <span className="text-xs text-cdlp-muted">
+                              {subDoc.pageRange ? `Pages ${subDoc.pageRange}` : `Invoice ${idx + 1}`}
+                            </span>
+                          </summary>
+                          <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <p className="text-cdlp-muted uppercase">Date</p>
+                              <p className="font-bold text-foreground">{subDoc.date || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-cdlp-muted uppercase">Currency</p>
+                              <p className="font-bold text-foreground">{subDoc.originalCurrency || selectedDocument.data?.originalCurrency || 'CHF'}</p>
+                            </div>
+                            <div>
+                              <p className="text-cdlp-muted uppercase">Gross Total</p>
+                              <p className="font-black text-cdlp-gold">
+                                {(Number(subDoc.totalAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-cdlp-muted uppercase">Net Amount</p>
+                              <p className="font-bold text-foreground">
+                                {(Number(subDoc.netAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-cdlp-muted uppercase">VAT Amount</p>
+                              <p className="font-bold text-foreground">
+                                {(Number(subDoc.vatAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-cdlp-muted uppercase">VAT Rate</p>
+                              <p className="font-bold text-foreground">{Number(subDoc.vatRate || 0)}%</p>
+                            </div>
+                            <div className="col-span-2">
+                              <p className="text-cdlp-muted uppercase">Category</p>
+                              <p className="font-bold text-foreground">{subDoc.expenseCategory || 'OTHER'}</p>
+                            </div>
+                          </div>
+                        </details>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Line Items if available */}
                 {selectedDocument.data?.lineItems && selectedDocument.data.lineItems.length > 0 && (
                   <div>

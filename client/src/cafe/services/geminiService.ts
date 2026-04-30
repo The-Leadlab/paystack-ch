@@ -26,22 +26,10 @@ export const getLiveExchangeRate = async (from: string, to: string): Promise<num
   }
 };
 
-const isNonRetryableGeminiError = (error: any): boolean => {
-  const message = String(error?.message || error || '');
-  return (
-    message.includes('API_KEY_INVALID') ||
-    message.includes('API key not valid') ||
-    message.includes('INVALID_ARGUMENT')
-  );
-};
-
 const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> => {
   try {
     return await fn();
   } catch (error: any) {
-    if (isNonRetryableGeminiError(error)) {
-      throw error;
-    }
     if (retries > 0) {
       await new Promise(resolve => setTimeout(resolve, delay));
       return withRetry(fn, retries - 1, delay * 2);
@@ -49,6 +37,37 @@ const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 2000): Pr
     throw error;
   }
 };
+
+function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
+  const subDocs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments : [];
+  if (subDocs.length === 0) return parsed;
+
+  // Build stable line items from each detected sub-invoice so analysis table is always populated.
+  const generatedLineItems: BankTransaction[] = subDocs.map((sub: any) => ({
+    date: sub.date || parsed.date || new Date().toISOString().slice(0, 10),
+    description: `${sub.issuer || 'Unknown issuer'}${sub.pageRange ? ` (pages ${sub.pageRange})` : ''}`,
+    amount: Number(sub.totalAmount || 0),
+    type: 'EXPENSE',
+    category: sub.expenseCategory || 'OTHER',
+    notes: `VAT ${Number(sub.vatRate || 0)}% | VAT Amount ${Number(sub.vatAmount || 0)} ${sub.originalCurrency || parsed.originalCurrency || 'CHF'}`
+  }));
+
+  const subTotal = subDocs.reduce((sum: number, sub: any) => sum + Number(sub.totalAmount || 0), 0);
+  const subVat = subDocs.reduce((sum: number, sub: any) => sum + Number(sub.vatAmount || 0), 0);
+  const subNet = subDocs.reduce((sum: number, sub: any) => sum + Number(sub.netAmount || 0), 0);
+
+  return {
+    ...parsed,
+    totalAmount: parsed.totalAmount && parsed.totalAmount > 0 ? parsed.totalAmount : subTotal,
+    vatAmount: parsed.vatAmount && parsed.vatAmount > 0 ? parsed.vatAmount : subVat,
+    netAmount: parsed.netAmount && parsed.netAmount > 0 ? parsed.netAmount : subNet,
+    issuer: parsed.issuer && parsed.issuer !== 'Multiple Issuers'
+      ? parsed.issuer
+      : `${subDocs.length} invoices detected`,
+    lineItems: parsed.lineItems && parsed.lineItems.length > 0 ? parsed.lineItems : generatedLineItems,
+    aiInterpretation: parsed.aiInterpretation || `Detected ${subDocs.length} invoice blocks across all pages.`
+  };
+}
 
 export const analyzeFinancialDocument = async (
   file: File, 
@@ -156,9 +175,11 @@ export const analyzeFinancialDocument = async (
         },
         subDocuments: {
           type: Type.ARRAY,
+          description: "MANDATORY for multi-page/multi-invoice PDFs: one entry per detected invoice/receipt/document block across ALL pages.",
           items: {
             type: Type.OBJECT,
             properties: {
+              pageRange: { type: Type.STRING, description: "Page or page range where this sub-document appears, e.g. '1', '2-3'" },
               issuer: { type: Type.STRING },
               date: { type: Type.STRING },
               totalAmount: { type: Type.NUMBER },
@@ -168,7 +189,8 @@ export const analyzeFinancialDocument = async (
               vatAmount: { type: Type.NUMBER },
               vatRate: { type: Type.NUMBER },
               netAmount: { type: Type.NUMBER },
-            }
+            },
+            required: ["pageRange", "issuer", "date", "totalAmount", "originalCurrency", "expenseCategory", "vatAmount", "vatRate", "netAmount"]
           }
         }
       },
@@ -196,10 +218,20 @@ CRITICAL RULES:
 7. For payslips: extract employee/employer info and components
 8. Extract VAT if shown (TVA, VAT, MwSt, Tax labels)
 9. For multi-document files: use subDocuments array
+10. READ ALL PAGES of the PDF. Do not summarize only the first page.
+11. If multiple invoices/receipts exist in one PDF, create one subDocuments entry per invoice/receipt with issuer, VAT, net, gross, currency, and pageRange.
+12. If VAT is missing for a sub-document, set vatAmount=0 and vatRate=0 (never omit fields).
+13. If one invoice spans multiple pages, merge those pages into ONE subDocuments entry with a combined pageRange (e.g. "2-3"), do not duplicate it.
+14. For multi-invoice files, include a complete lineItems array derived from all detected invoices.
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings
 - EXPENSE: Supplier invoices, bills to pay, purchases, rent, utilities, salaries
+
+MULTI-PAGE / MULTI-INVOICE REQUIREMENT:
+- Process the full file from first page to last page.
+- Ensure subDocuments covers every detected invoice-like block in the document.
+- Do not stop after the first invoice.
 
 Return JSON only.`
           }
@@ -211,6 +243,7 @@ Return JSON only.`
         temperature: 0.1, // Lower temperature for faster, more consistent results
         topP: 0.8,
         topK: 20,
+        maxOutputTokens: 8192,
       }
     });
 
@@ -227,13 +260,15 @@ Return JSON only.`
        }
     }
 
-    if (parsed.totalAmount !== undefined && (!parsed.amountInCHF || parsed.amountInCHF === 0)) {
-      const rate = await getLiveExchangeRate(parsed.originalCurrency || 'CHF', targetCurrency);
-      parsed.amountInCHF = parsed.totalAmount * rate;
-      parsed.conversionRateUsed = rate;
+    const normalized = normalizeMultiInvoiceData(parsed);
+
+    if (normalized.totalAmount !== undefined && (!normalized.amountInCHF || normalized.amountInCHF === 0)) {
+      const rate = await getLiveExchangeRate(normalized.originalCurrency || 'CHF', targetCurrency);
+      normalized.amountInCHF = normalized.totalAmount * rate;
+      normalized.conversionRateUsed = rate;
     }
 
-    return parsed;
+    return normalized;
   });
 };
 
