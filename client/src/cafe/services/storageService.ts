@@ -59,18 +59,25 @@ export async function deleteDocument(fileUrl: string): Promise<void> {
   }
 
   try {
-    // Extract the file path from the URL
-    const url = new URL(fileUrl);
-    const pathMatch = url.pathname.match(/\/o\/(.+)\?/);
-    
-    if (!pathMatch) {
+    if (!fileUrl || typeof fileUrl !== 'string') {
       throw new Error('Invalid file URL');
     }
 
-    const filePath = decodeURIComponent(pathMatch[1]);
-    const storageRef = ref(storage, filePath);
+    const normalized = fileUrl.trim();
+    let storageRef;
 
-    console.log('🗑️ Deleting file from Firebase Storage:', filePath);
+    // Accept Firebase download URLs, gs:// URLs, and raw storage paths.
+    if (
+      normalized.startsWith('https://') ||
+      normalized.startsWith('http://') ||
+      normalized.startsWith('gs://')
+    ) {
+      storageRef = ref(storage, normalized);
+    } else {
+      storageRef = ref(storage, normalized.replace(/^\/+/, ''));
+    }
+
+    console.log('🗑️ Deleting file from Firebase Storage:', storageRef.fullPath);
     await deleteObject(storageRef);
     console.log('✅ File deleted successfully');
   } catch (error) {

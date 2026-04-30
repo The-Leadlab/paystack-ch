@@ -1,0 +1,65 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownerUid() {
+      return request.auth.uid;
+    }
+
+    function resourceOwnedByUser() {
+      return signedIn() && (
+        resource.data.restaurantId == ownerUid() ||
+        resource.data.restaurant_id == ownerUid() ||
+        resource.data.userId == ownerUid() ||
+        resource.data.uid == ownerUid()
+      );
+    }
+
+    function createOwnedByUser() {
+      return signedIn() && (
+        request.resource.data.restaurantId == ownerUid() ||
+        request.resource.data.restaurant_id == ownerUid() ||
+        request.resource.data.userId == ownerUid() ||
+        request.resource.data.uid == ownerUid()
+      );
+    }
+
+    match /sessions/{id} {
+      allow read, update, delete: if resourceOwnedByUser();
+      allow create: if createOwnedByUser();
+    }
+
+    match /documents/{id} {
+      allow read, update, delete: if resourceOwnedByUser();
+      allow create: if createOwnedByUser();
+    }
+
+    match /income/{id} {
+      allow read, update, delete: if resourceOwnedByUser();
+      allow create: if createOwnedByUser();
+    }
+
+    match /expenses/{id} {
+      allow read, update, delete: if resourceOwnedByUser();
+      allow create: if createOwnedByUser();
+    }
+
+    match /pos_readings/{id} {
+      allow read, update, delete: if resourceOwnedByUser();
+      allow create: if createOwnedByUser();
+    }
+
+    match /employees/{id} {
+      allow read, update, delete: if resourceOwnedByUser();
+      allow create: if createOwnedByUser();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

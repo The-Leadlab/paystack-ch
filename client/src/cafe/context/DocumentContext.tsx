@@ -129,6 +129,9 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
         const rawDocData = {
           ...document,
           restaurantId: uid,
+          restaurant_id: uid,
+          userId: uid,
+          uid,
           session_id: sessionId,
           created_at: new Date().toISOString(),
         };
