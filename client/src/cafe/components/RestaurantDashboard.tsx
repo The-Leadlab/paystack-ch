@@ -615,7 +615,7 @@ export function RestaurantDashboard() {
               className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
                 activeTab === 'dashboard'
                   ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
-                  : 'text-cdlp-muted hover:text-white'
+                  : 'text-cdlp-muted hover:text-foreground'
               }`}
             >
               <LayoutDashboard className="w-4 h-4" /> {t('dashboard')}
@@ -625,7 +625,7 @@ export function RestaurantDashboard() {
               className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
                 activeTab === 'revenue'
                   ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
-                  : 'text-cdlp-muted hover:text-white'
+                  : 'text-cdlp-muted hover:text-foreground'
               }`}
             >
               <Receipt className="w-4 h-4" /> {t('revenue')}
@@ -635,7 +635,7 @@ export function RestaurantDashboard() {
               className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
                 activeTab === 'reports'
                   ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
-                  : 'text-cdlp-muted hover:text-white'
+                  : 'text-cdlp-muted hover:text-foreground'
               }`}
             >
               <BarChart3 className="w-4 h-4" /> {t('reports')}
@@ -645,7 +645,7 @@ export function RestaurantDashboard() {
               className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
                 activeTab === 'documents'
                   ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
-                  : 'text-cdlp-muted hover:text-white'
+                  : 'text-cdlp-muted hover:text-foreground'
               }`}
             >
               <FileText className="w-4 h-4" /> {t('documents')}
@@ -1823,11 +1823,11 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
         <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-12">
             {/* Document Preview Panel */}
-            <div className="lg:col-span-4 bg-slate-900 border-r border-cdlp-border">
-              <div className="p-4 border-b border-white/10">
+            <div className="lg:col-span-4 bg-cdlp-dark border-r border-cdlp-border">
+              <div className="p-4 border-b border-cdlp-border">
                 <h3 className="text-xs font-black uppercase text-emerald-400 tracking-widest">Document Preview</h3>
               </div>
-              <div className="aspect-[3/4] bg-slate-950 overflow-hidden flex items-center justify-center">
+              <div className="aspect-[3/4] bg-cdlp-black overflow-hidden flex items-center justify-center">
                 {(selectedDocument.fileUrl || selectedDocument.fileDataUrl || selectedDocument.fileRaw) ? (
                   selectedDocument.fileName.toLowerCase().endsWith('.pdf') ? (
                     <iframe 
@@ -1844,9 +1844,9 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                   )
                 ) : (
                   <div className="text-center p-8">
-                    <FileText className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                    <p className="text-sm text-slate-400 mb-2">Document file not available</p>
-                    <p className="text-xs text-slate-500">The original file was not stored with this document</p>
+                    <FileText className="w-16 h-16 text-cdlp-muted mx-auto mb-4" />
+                    <p className="text-sm text-cdlp-muted mb-2">Document file not available</p>
+                    <p className="text-xs text-cdlp-muted">The original file was not stored with this document</p>
                   </div>
                 )}
               </div>
@@ -1860,7 +1860,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     <ExternalLink className="w-4 h-4" /> Open Raw Trace
                   </button>
                 ) : (
-                  <div className="text-center text-xs text-slate-500 italic">
+                  <div className="text-center text-xs text-cdlp-muted italic">
                     Original file not available for viewing
                   </div>
                 )}
@@ -1876,11 +1876,11 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Issuer Entity</label>
-                      <p className="text-sm font-bold text-white">{selectedDocument.data?.issuer || 'N/A'}</p>
+                      <p className="text-sm font-bold text-foreground">{selectedDocument.data?.issuer || 'N/A'}</p>
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Date</label>
-                      <p className="text-sm font-bold text-white">{selectedDocument.data?.date || 'N/A'}</p>
+                      <p className="text-sm font-bold text-foreground">{selectedDocument.data?.date || 'N/A'}</p>
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Total Amount</label>
@@ -1888,7 +1888,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Document Type</label>
-                      <p className="text-sm font-bold text-white">{selectedDocument.data?.documentType || 'Unknown'}</p>
+                      <p className="text-sm font-bold text-foreground">{selectedDocument.data?.documentType || 'Unknown'}</p>
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">VAT Amount</label>
@@ -1900,12 +1900,12 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     </div>
                     <div className="col-span-2">
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Category</label>
-                      <p className="text-sm font-bold text-white">{selectedDocument.data?.expenseCategory || 'Uncategorized'}</p>
+                      <p className="text-sm font-bold text-foreground">{selectedDocument.data?.expenseCategory || 'Uncategorized'}</p>
                     </div>
                     {selectedDocument.data?.notes && (
                       <div className="col-span-2">
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Notes</label>
-                        <p className="text-sm text-white">{selectedDocument.data.notes}</p>
+                        <p className="text-sm text-foreground">{selectedDocument.data.notes}</p>
                       </div>
                     )}
                   </div>
@@ -1939,7 +1939,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                           {selectedDocument.data.lineItems.map((item, idx) => (
                             <tr key={idx} className="hover:bg-cdlp-card">
                               <td className="px-3 py-2 text-cdlp-muted">{item.date}</td>
-                              <td className="px-3 py-2 text-white font-bold">{item.description}</td>
+                              <td className="px-3 py-2 text-foreground font-bold">{item.description}</td>
                               <td className={`px-3 py-2 text-right font-bold ${item.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {item.amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
@@ -1965,11 +1965,11 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Employee</label>
-                        <p className="text-sm font-bold text-white">{selectedDocument.data.paySlip.employee?.name || 'N/A'}</p>
+                        <p className="text-sm font-bold text-foreground">{selectedDocument.data.paySlip.employee?.name || 'N/A'}</p>
                       </div>
                       <div>
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Employer</label>
-                        <p className="text-sm font-bold text-white">{selectedDocument.data.paySlip.employer?.name || 'N/A'}</p>
+                        <p className="text-sm font-bold text-foreground">{selectedDocument.data.paySlip.employer?.name || 'N/A'}</p>
                       </div>
                       <div>
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Gross Pay</label>
@@ -1993,7 +1993,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                           <tbody className="divide-y divide-cdlp-border">
                             {selectedDocument.data.paySlip.components.map((comp, idx) => (
                               <tr key={idx} className="hover:bg-cdlp-card">
-                                <td className="px-3 py-2 text-white font-bold">{comp.description}</td>
+                                <td className="px-3 py-2 text-foreground font-bold">{comp.description}</td>
                                 <td className={`px-3 py-2 text-right font-bold ${comp.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}>
                                   {comp.amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
@@ -2072,7 +2072,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                         onClick={() => setSelectedDocument(doc)}
                         className="flex-1 text-left"
                       >
-                        <p className="font-bold text-white text-sm group-hover:text-cdlp-gold transition-colors">{doc.fileName}</p>
+                        <p className="font-bold text-foreground text-sm group-hover:text-cdlp-gold transition-colors">{doc.fileName}</p>
                         <p className="text-xs text-cdlp-muted mt-1">{doc.data?.date}</p>
                         {doc.data?.notes && (
                           <p className="text-xs text-cdlp-muted mt-1">{doc.data.notes}</p>
@@ -2080,7 +2080,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                       </button>
                       <div className="text-right ml-4 flex items-center gap-3">
                         <div>
-                          <p className="font-black text-white text-base">{(doc.data?.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          <p className="font-black text-foreground text-base">{(doc.data?.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                           <p className="text-xs text-cdlp-muted">{doc.data?.originalCurrency || 'CHF'}</p>
                         </div>
                         <button
@@ -2117,7 +2117,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
             className={`px-3 py-1.5 text-xs font-bold uppercase rounded ${
               filter === 'all'
                 ? 'bg-cdlp-gold text-cdlp-black'
-                : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
+                : 'bg-cdlp-card border border-cdlp-border text-foreground hover:border-cdlp-gold'
             }`}
           >
             All Documents
@@ -2127,7 +2127,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
             className={`px-3 py-1.5 text-xs font-bold uppercase rounded ${
               filter === 'suppliers'
                 ? 'bg-cdlp-gold text-cdlp-black'
-                : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
+                : 'bg-cdlp-card border border-cdlp-border text-foreground hover:border-cdlp-gold'
             }`}
           >
             Suppliers ({Object.keys(groupedDocs.suppliers).length})
@@ -2137,7 +2137,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
             className={`px-3 py-1.5 text-xs font-bold uppercase rounded ${
               filter === 'employees'
                 ? 'bg-cdlp-gold text-cdlp-black'
-                : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
+                : 'bg-cdlp-card border border-cdlp-border text-foreground hover:border-cdlp-gold'
             }`}
           >
             Employees ({Object.keys(groupedDocs.employees).length})
@@ -2147,7 +2147,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
             className={`px-3 py-1.5 text-xs font-bold uppercase rounded ${
               filter === 'pos'
                 ? 'bg-cdlp-gold text-cdlp-black'
-                : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
+                : 'bg-cdlp-card border border-cdlp-border text-foreground hover:border-cdlp-gold'
             }`}
           >
             POS Reports ({groupedDocs.posReports.length})
@@ -2191,7 +2191,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="font-bold text-white text-base mb-1 group-hover:text-cdlp-gold transition-colors">
+                    <h3 className="font-bold text-foreground text-base mb-1 group-hover:text-cdlp-gold transition-colors">
                       {entityName}
                     </h3>
                     <p className="text-xs text-cdlp-muted uppercase">
@@ -2203,7 +2203,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-cdlp-muted uppercase">Documents</span>
-                    <span className="text-sm font-bold text-white">{docCount}</span>
+                    <span className="text-sm font-bold text-foreground">{docCount}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-cdlp-muted uppercase">Total Amount</span>
