@@ -258,7 +258,7 @@ export const exportToPDF = async (data: ReportData) => {
     </head>
     <body>
       <div class="header">
-        <h1>CAFÉ DE LA PLACE</h1>
+        <h1>PAYSTACK</h1>
         <p>Financial Report - ${sessionName || 'All Sessions'}</p>
         ${dateFrom && dateTo ? `<p>Period: ${dateFrom} to ${dateTo}</p>` : ''}
         <p>Generated: ${new Date().toLocaleString()}</p>

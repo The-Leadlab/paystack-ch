@@ -52,63 +52,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isAllSessionsView, setAllSessionsView] = useState(false);
 
-  const fetchSessions = useCallback(async () => {
-    const uid = user?.uid;
-    if (!uid) {
-      setSessions([]);
-      setLoading(false);
-      return;
-    }
-    if (!db) {
-      setError('Firebase Firestore is not configured.');
-      setSessions([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      let snapshot;
-      try {
-        const orderedQuery = query(
-          collection(db, SESSIONS_COLLECTION),
-          where('restaurantId', '==', uid),
-          orderBy('createdAt', 'desc')
-        );
-        snapshot = await getDocs(orderedQuery);
-      } catch (orderedErr: any) {
-        // Fallback for missing index / transient query issues: fetch without orderBy and sort client-side.
-        const fallbackQuery = query(
-          collection(db, SESSIONS_COLLECTION),
-          where('restaurantId', '==', uid)
-        );
-        snapshot = await getDocs(fallbackQuery);
-        if (orderedErr?.code) {
-          console.warn('Ordered sessions query failed, using fallback query:', orderedErr.code);
-        }
-      }
-      const list: Session[] = [];
-      snapshot.forEach((doc) => {
-        list.push(docToSession(doc.id, doc.data()));
-      });
-      list.sort((a, b) => b.created_at.localeCompare(a.created_at));
-      setSessions(list);
-
-      // Resume last active session
-      if (list.length > 0 && !currentSession) {
-        const lastSessionId = localStorage.getItem(LAST_SESSION_KEY);
-        const lastSession = list.find(s => s.id === lastSessionId) || list[0];
-        setCurrentSessionState(lastSession);
-      }
-    } catch (err) {
-      console.error('fetchSessions error:', err);
-      setError(err instanceof Error ? err.message : String(err));
-      setSessions([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.uid, currentSession]);
-
   const addSession = useCallback(
     async (name?: string): Promise<Session | null> => {
       const uid = user?.uid;
@@ -118,7 +61,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
 
-      // Auto-generate name with timestamp if not provided
       const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
       const sessionName = name || timestamp;
 
@@ -142,14 +84,69 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setCurrentSessionState(newSession);
         localStorage.setItem(LAST_SESSION_KEY, ref.id);
         return newSession;
-      } catch (err: any) {
-        const message = err?.code ? `${err.code}: ${err.message}` : err instanceof Error ? err.message : String(err);
-        setError(message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
         return null;
       }
     },
     [user?.uid]
   );
+
+  const fetchSessions = useCallback(async () => {
+    const uid = user?.uid;
+    if (!uid) {
+      setSessions([]);
+      setLoading(false);
+      return;
+    }
+    if (!db) {
+      setError('Firebase Firestore is not configured.');
+      setSessions([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      let snapshot;
+      try {
+        snapshot = await getDocs(
+          query(
+            collection(db, SESSIONS_COLLECTION),
+            where('restaurantId', '==', uid),
+            orderBy('createdAt', 'desc')
+          )
+        );
+      } catch (orderedErr: any) {
+        snapshot = await getDocs(
+          query(
+            collection(db, SESSIONS_COLLECTION),
+            where('restaurantId', '==', uid)
+          )
+        );
+        console.warn('Ordered sessions query failed, using fallback query:', orderedErr?.code || orderedErr);
+      }
+      const list: Session[] = [];
+      snapshot.forEach((doc) => {
+        list.push(docToSession(doc.id, doc.data()));
+      });
+      list.sort((a, b) => b.created_at.localeCompare(a.created_at));
+      setSessions(list);
+
+      // Resume last active session
+      if (list.length > 0 && !currentSession) {
+        const lastSessionId = localStorage.getItem(LAST_SESSION_KEY);
+        const lastSession = list.find(s => s.id === lastSessionId) || list[0];
+        setCurrentSessionState(lastSession);
+      }
+    } catch (err) {
+      console.error('fetchSessions error:', err);
+      setError(err instanceof Error ? err.message : String(err));
+      setSessions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.uid, currentSession]);
 
   useEffect(() => {
     fetchSessions();
@@ -157,59 +154,55 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user?.uid || loading || sessions.length > 0) return;
-    const ensureInitialSession = async () => {
-      const created = await addSession();
-      if (!created) {
-        setError('Unable to create the first session. Check Firestore rules and indexes.');
-      }
+    const ensureFirstSession = async () => {
+      await addSession();
     };
-    ensureInitialSession();
+    ensureFirstSession();
   }, [user?.uid, loading, sessions.length, addSession]);
 
   const deleteSession = useCallback(
     async (id: string) => {
-      if (!db) return;
+      const uid = user?.uid;
+      if (!db || !uid) return;
       try {
-        const { writeBatch, collection, getDocs, query, where } = await import('firebase/firestore');
-        const batch = writeBatch(db);
-        
-        // Delete the session
-        batch.delete(doc(db, SESSIONS_COLLECTION, id));
-        
-        // Delete all income for this session
-        const incomeSnap = await getDocs(
-          query(collection(db, 'income'), where('sessionId', '==', id))
-        );
-        incomeSnap.forEach((doc) => {
-          batch.delete(doc.ref);
-        });
-        
-        // Delete all expenses for this session
-        const expensesSnap = await getDocs(
-          query(collection(db, 'expenses'), where('sessionId', '==', id))
-        );
-        expensesSnap.forEach((doc) => {
-          batch.delete(doc.ref);
-        });
-        
-        // Delete all POS readings for this session
-        const posSnap = await getDocs(
-          query(collection(db, 'pos_readings'), where('sessionId', '==', id))
-        );
-        posSnap.forEach((doc) => {
-          batch.delete(doc.ref);
-        });
-        
-        // Delete all documents for this session
-        const docsSnap = await getDocs(
-          query(collection(db, 'documents'), where('session_id', '==', id))
-        );
-        docsSnap.forEach((doc) => {
-          batch.delete(doc.ref);
-        });
-        
-        // Commit all deletions
-        await batch.commit();
+        const { collection, getDocs, query, where, deleteDoc: fsDeleteDoc } = await import('firebase/firestore');
+        const incomeIds = new Set<string>();
+        const expenseIds = new Set<string>();
+        const posIds = new Set<string>();
+        const documentIds = new Set<string>();
+        const collect = async (q: any, target: Set<string>) => {
+          const snap = await getDocs(q);
+          snap.forEach((d) => target.add(d.id));
+        };
+
+        // Income (new + legacy fields)
+        await collect(query(collection(db, 'income'), where('restaurantId', '==', uid), where('sessionId', '==', id)), incomeIds);
+        await collect(query(collection(db, 'income'), where('restaurantId', '==', uid), where('session_id', '==', id)), incomeIds);
+        // Expenses
+        await collect(query(collection(db, 'expenses'), where('restaurantId', '==', uid), where('sessionId', '==', id)), expenseIds);
+        await collect(query(collection(db, 'expenses'), where('restaurantId', '==', uid), where('session_id', '==', id)), expenseIds);
+        // POS
+        await collect(query(collection(db, 'pos_readings'), where('restaurant_id', '==', uid), where('session_id', '==', id)), posIds);
+        await collect(query(collection(db, 'pos_readings'), where('restaurantId', '==', uid), where('sessionId', '==', id)), posIds);
+        // Documents
+        await collect(query(collection(db, 'documents'), where('restaurantId', '==', uid), where('session_id', '==', id)), documentIds);
+        await collect(query(collection(db, 'documents'), where('restaurantId', '==', uid), where('sessionId', '==', id)), documentIds);
+
+        // Delete children first to satisfy strict rules.
+        for (const incomeId of incomeIds) {
+          await fsDeleteDoc(doc(db, 'income', incomeId)).catch(() => {});
+        }
+        for (const expenseId of expenseIds) {
+          await fsDeleteDoc(doc(db, 'expenses', expenseId)).catch(() => {});
+        }
+        for (const posId of posIds) {
+          await fsDeleteDoc(doc(db, 'pos_readings', posId)).catch(() => {});
+        }
+        for (const documentId of documentIds) {
+          await fsDeleteDoc(doc(db, 'documents', documentId)).catch(() => {});
+        }
+
+        await fsDeleteDoc(doc(db, SESSIONS_COLLECTION, id));
         
         setSessions((prev) => prev.filter((s) => s.id !== id));
         if (currentSession?.id === id) {
@@ -223,7 +216,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setError(err instanceof Error ? err.message : String(err));
       }
     },
-    [currentSession, sessions]
+    [currentSession, sessions, user?.uid]
   );
 
   const renameSession = useCallback(

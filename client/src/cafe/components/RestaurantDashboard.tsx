@@ -418,11 +418,11 @@ export function RestaurantDashboard() {
       {/* Mobile Header */}
       <div className="md:hidden bg-cdlp-black border-b border-cdlp-border p-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5">
-            <div className="w-6 h-px bg-cdlp-gold"></div>
-            <h1 className="font-serif text-base font-bold gold-text tracking-wide">CAFÉ DE LA PLACE</h1>
-            <div className="w-6 h-px bg-cdlp-gold"></div>
-          </div>
+          <img
+            src="/brand/paystack-final-logo.png"
+            alt="Paystack"
+            className="h-7 w-auto object-contain"
+          />
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -450,30 +450,11 @@ export function RestaurantDashboard() {
         {/* Desktop Header */}
         <div className="hidden md:block p-4 border-b border-cdlp-border">
           <div className="flex flex-col items-center mb-4">
-            <div className="w-20 h-20 mb-2 text-cdlp-gold">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none" className="w-full h-full">
-                <circle cx="200" cy="200" r="180" stroke="currentColor" strokeWidth="3" fill="none"/>
-                <circle cx="200" cy="200" r="130" stroke="currentColor" strokeWidth="3" fill="none"/>
-                <line x1="140" y1="140" x2="260" y2="260" stroke="currentColor" strokeWidth="3"/>
-                <line x1="260" y1="140" x2="140" y2="260" stroke="currentColor" strokeWidth="3"/>
-                <text x="170" y="190" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">C</text>
-                <text x="220" y="190" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">D</text>
-                <text x="170" y="240" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">L</text>
-                <text x="220" y="240" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">P</text>
-                <path id="topArc" d="M 60,200 A 140,140 0 0,1 340,200" fill="none"/>
-                <text fontFamily="Arial, sans-serif" fontSize="28" fontWeight="300" fill="currentColor" letterSpacing="6">
-                  <textPath href="#topArc" startOffset="50%" textAnchor="middle">
-                    CAFÉ DE LA PLACE
-                  </textPath>
-                </text>
-                <path id="bottomArc" d="M 340,200 A 140,140 0 0,1 60,200" fill="none"/>
-                <text fontFamily="Arial, sans-serif" fontSize="24" fontWeight="300" fill="currentColor" letterSpacing="4">
-                  <textPath href="#bottomArc" startOffset="50%" textAnchor="middle">
-                    BISTROT GENÈVE
-                  </textPath>
-                </text>
-              </svg>
-            </div>
+            <img
+              src="/brand/paystack-final-logo.png"
+              alt="Paystack"
+              className="h-10 w-auto object-contain mb-2"
+            />
           </div>
           
           {/* Master Reset Button */}
