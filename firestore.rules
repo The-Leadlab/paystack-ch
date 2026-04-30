@@ -28,14 +28,34 @@ service cloud.firestore {
       );
     }
 
+    function resourceSessionOwnedByUser() {
+      return signedIn() &&
+        resource.data.session_id is string &&
+        exists(/databases/$(database)/documents/sessions/$(resource.data.session_id)) &&
+        (
+          get(/databases/$(database)/documents/sessions/$(resource.data.session_id)).data.restaurantId == ownerUid() ||
+          get(/databases/$(database)/documents/sessions/$(resource.data.session_id)).data.restaurant_id == ownerUid()
+        );
+    }
+
+    function createSessionOwnedByUser() {
+      return signedIn() &&
+        request.resource.data.session_id is string &&
+        exists(/databases/$(database)/documents/sessions/$(request.resource.data.session_id)) &&
+        (
+          get(/databases/$(database)/documents/sessions/$(request.resource.data.session_id)).data.restaurantId == ownerUid() ||
+          get(/databases/$(database)/documents/sessions/$(request.resource.data.session_id)).data.restaurant_id == ownerUid()
+        );
+    }
+
     match /sessions/{id} {
       allow read, update, delete: if resourceOwnedByUser();
       allow create: if createOwnedByUser();
     }
 
     match /documents/{id} {
-      allow read, update, delete: if resourceOwnedByUser();
-      allow create: if createOwnedByUser();
+      allow read, update, delete: if resourceOwnedByUser() || resourceSessionOwnedByUser();
+      allow create: if createOwnedByUser() || createSessionOwnedByUser();
     }
 
     match /income/{id} {

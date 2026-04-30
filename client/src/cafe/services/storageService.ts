@@ -81,6 +81,12 @@ export async function deleteDocument(fileUrl: string): Promise<void> {
     await deleteObject(storageRef);
     console.log('✅ File deleted successfully');
   } catch (error) {
+    const err = error as { code?: string; message?: string };
+    if (err?.code === 'storage/object-not-found') {
+      // File already missing in storage; treat as successful cleanup so Firestore delete can proceed.
+      console.warn('⚠️ Storage object already missing, skipping delete:', err.message || fileUrl);
+      return;
+    }
     console.error('❌ Error deleting file:', error);
     throw error;
   }
