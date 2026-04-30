@@ -967,10 +967,10 @@ const VerificationHub: React.FC<{
 export const DocumentProcessor: React.FC<{ 
   documents: ProcessedDocument[], 
   updateDocument: (documentId: string, updates: Partial<ProcessedDocument>) => Promise<void>,
-  deleteDocument: (documentId: string) => Promise<void>,
+  onDeleteDocument: (documentId: string) => Promise<void>,
   onDataExtracted: (data: any, fileName: string, fileHash?: string, fileRaw?: File) => void,
   onDocumentUpdated?: (documentId: string, newData: FinancialData) => Promise<void>
-}> = ({ documents, updateDocument, deleteDocument, onDataExtracted, onDocumentUpdated }) => {
+}> = ({ documents, updateDocument, onDeleteDocument, onDataExtracted, onDocumentUpdated }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -1309,7 +1309,7 @@ export const DocumentProcessor: React.FC<{
                                   } catch (storageErr) {
                                     console.warn('Storage delete skipped/failed:', storageErr);
                                   }
-                                  await deleteDocument(doc.id);
+                                  await onDeleteDocument(doc.id);
                                 } else {
                                   // Remove from local state
                                   setLocalDocs(p => p.filter(d => d.id !== doc.id));

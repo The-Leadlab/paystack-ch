@@ -1283,7 +1283,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           <DocumentProcessor 
             documents={documents}
             updateDocument={updateDocument}
-            deleteDocument={deleteDocument}
+            onDeleteDocument={deleteDocument}
             onDataExtracted={onDocumentData}
             onDocumentUpdated={onDocumentUpdated}
           />
