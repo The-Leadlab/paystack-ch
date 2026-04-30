@@ -78,11 +78,11 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
   const displayUrl = docUrl;
 
   return (
-    <div className="w-full h-full flex flex-col bg-cdlp-dark text-cdlp-muted font-mono text-[10px]">
+    <div className="w-full h-full flex flex-col bg-slate-900 text-slate-300 font-mono text-[10px]">
       {/* Document Preview Section - Clickable to zoom */}
       {displayUrl && (
         <div 
-          className="flex-1 bg-cdlp-black border-b border-cdlp-border overflow-hidden cursor-pointer hover:opacity-90 transition-opacity relative group"
+          className="flex-1 bg-slate-950 border-b border-white/10 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity relative group"
           onClick={() => setShowZoom(true)}
           title="Click to zoom"
         >
@@ -100,7 +100,7 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
             />
           )}
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
-            <Eye className="w-8 h-8 text-foreground" />
+            <Eye className="w-8 h-8 text-white" />
           </div>
         </div>
       )}
@@ -137,7 +137,7 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
       
       {/* Extraction Steps */}
       <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between border-b border-cdlp-border pb-3">
+        <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <h5 className="flex items-center gap-2 text-emerald-400 font-black uppercase tracking-widest text-[9px] md:text-[10px]">
             <TerminalSquare className="w-3 h-3" /> Extraction Sequence
           </h5>
@@ -148,16 +148,16 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
           {steps.map((step, i) => (
             <div key={i} className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-500" style={{ animationDelay: step.delay }}>
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-              <step.icon className="w-3 h-3 text-cdlp-muted" />
-              <span className="uppercase tracking-tighter text-cdlp-muted">{step.label}</span>
+              <step.icon className="w-3 h-3 text-slate-500" />
+              <span className="uppercase tracking-tighter text-slate-400">{step.label}</span>
               <span className="ml-auto text-emerald-500 font-bold opacity-50 hidden sm:inline">COMPLETED</span>
             </div>
           ))}
         </div>
 
-        <div className="mt-4 border-t border-cdlp-border pt-4">
-          <h6 className="text-cdlp-muted uppercase tracking-widest font-black mb-3 text-[8px]">AI Interpretation Log:</h6>
-          <div className="bg-cdlp-card p-4 rounded-sm italic border-l-2 border-emerald-500/50 leading-relaxed text-cdlp-muted">
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <h6 className="text-slate-500 uppercase tracking-widest font-black mb-3 text-[8px]">AI Interpretation Log:</h6>
+          <div className="bg-white/5 p-4 rounded-sm italic border-l-2 border-emerald-500/50 leading-relaxed text-slate-200">
             {doc.data?.aiInterpretation || "Scanning document layers for semantic context."}
           </div>
         </div>
@@ -168,7 +168,7 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
             <button
               type="button"
               onClick={() => openDocumentInNewTab(doc)}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-foreground rounded-sm font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-lg text-[9px]"
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-sm font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-lg text-[9px]"
             >
               <ExternalLink className="w-4 h-4" /> Open Raw Trace
             </button>
@@ -591,7 +591,7 @@ const VerificationHub: React.FC<{
   return (
     <div className="bg-cdlp-black border-y border-cdlp-border animate-in slide-in-from-top-2 duration-400 overflow-hidden shadow-inner">
       <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row min-h-[500px]">
-        <div className="w-full lg:w-[320px] xl:w-[420px] bg-cdlp-dark border-r border-cdlp-border flex flex-col shadow-2xl overflow-hidden shrink-0">
+        <div className="w-full lg:w-[320px] xl:w-[420px] bg-slate-900 border-r border-cdlp-border flex flex-col shadow-2xl overflow-hidden shrink-0">
           <NeuralLog doc={doc} />
         </div>
         <div className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col bg-cdlp-black overflow-hidden">
@@ -979,7 +979,8 @@ export const DocumentProcessor: React.FC<{
   const stopProcessingRef = useRef(false);
   const dragCounter = useRef(0);
 
-  const CONCURRENCY_LIMIT = 5; // Increased from 3 for faster processing
+  // Large PDFs are slower with too much parallelism; keep modest concurrency for steadier throughput.
+  const CONCURRENCY_LIMIT = 2;
   
   // Combine Firestore documents with local processing documents
   const allDocs = useMemo(() => {
@@ -1079,12 +1080,6 @@ export const DocumentProcessor: React.FC<{
       }
     } catch (err: any) {
       console.error(`❌ Error: ${doc.fileName}`, err);
-      const message = String(err?.message || err || 'Unknown error');
-      if (message.includes('API_KEY_INVALID') || message.includes('API key not valid')) {
-        setUploadError('Gemini API key is invalid. Update VITE_GEMINI_API_KEY in deployment environment and redeploy.');
-        stopProcessingRef.current = true;
-        setIsProcessing(false);
-      }
       setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'error', error: err.message } : d));
     }
   };

@@ -5,6 +5,22 @@ import { useSession } from './SessionContext';
 import { db } from '../lib/firebase';
 import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, orderBy } from 'firebase/firestore';
 
+function removeUndefinedDeep<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => removeUndefinedDeep(item)) as T;
+  }
+  if (value && typeof value === 'object') {
+    const cleaned: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (v !== undefined) {
+        cleaned[k] = removeUndefinedDeep(v);
+      }
+    }
+    return cleaned as T;
+  }
+  return value;
+}
+
 type DocumentContextValue = {
   documents: ProcessedDocument[];
   loading: boolean;
@@ -44,54 +60,28 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
     
     try {
       const docsRef = collection(db, 'documents');
-      let snapshot;
-
+      let q;
+      
       if (isAllSessionsView) {
         // Show all documents for this restaurant
         console.log('Fetching ALL documents for restaurant');
-        try {
-          snapshot = await getDocs(
-            query(docsRef, where('restaurantId', '==', uid), orderBy('created_at', 'desc'))
-          );
-        } catch (orderedErr: any) {
-          // Fallback avoids blocking document list when index is missing.
-          snapshot = await getDocs(query(docsRef, where('restaurantId', '==', uid)));
-          console.warn('Documents ordered query failed, using fallback query:', orderedErr?.code || orderedErr);
-        }
+        q = query(docsRef, where('restaurantId', '==', uid), orderBy('created_at', 'desc'));
       } else if (currentSession) {
         // Show only documents for current session
         console.log('Fetching documents for session:', currentSession.id);
-        try {
-          snapshot = await getDocs(
-            query(
-              docsRef,
-              where('restaurantId', '==', uid),
-              where('session_id', '==', currentSession.id),
-              orderBy('created_at', 'desc')
-            )
-          );
-        } catch (orderedErr: any) {
-          snapshot = await getDocs(
-            query(
-              docsRef,
-              where('restaurantId', '==', uid),
-              where('session_id', '==', currentSession.id)
-            )
-          );
-          console.warn('Session documents ordered query failed, using fallback query:', orderedErr?.code || orderedErr);
-        }
+        q = query(docsRef, where('restaurantId', '==', uid), where('session_id', '==', currentSession.id), orderBy('created_at', 'desc'));
       } else {
         console.log('No session selected, skipping fetch');
         setDocuments([]);
         setLoading(false);
         return;
       }
-
+      
+      const snapshot = await getDocs(q);
       const docs: ProcessedDocument[] = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as ProcessedDocument));
-      docs.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
       
       console.log('Fetched documents:', docs.length);
       if (docs.length > 0) {
@@ -99,10 +89,9 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
       }
       
       setDocuments(docs);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching documents:', err);
-      const message = err?.code ? `${err.code}: ${err.message}` : err instanceof Error ? err.message : String(err);
-      setError(message);
+      setError(err instanceof Error ? err.message : String(err));
       setDocuments([]);
     } finally {
       setLoading(false);
@@ -123,13 +112,14 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const docData = {
+        const rawDocData = {
           ...document,
           restaurantId: uid,
           session_id: sessionId,
           created_at: new Date().toISOString(),
         };
-        
+        const docData = removeUndefinedDeep(rawDocData);
+
         const docRef = await addDoc(collection(db, 'documents'), docData);
         const newDoc = { ...docData, id: docRef.id };
         setDocuments((prev) => [newDoc, ...prev]);

@@ -38,23 +38,48 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     
     try {
       const posRef = collection(db, 'pos_readings');
-      let q;
+      let snapshot;
       
       if (isAllSessionsView) {
-        q = query(posRef, where('restaurant_id', '==', uid), orderBy('date', 'desc'));
+        try {
+          snapshot = await getDocs(
+            query(posRef, where('restaurant_id', '==', uid), orderBy('date', 'desc'))
+          );
+        } catch (orderedErr: any) {
+          snapshot = await getDocs(query(posRef, where('restaurant_id', '==', uid)));
+          console.warn('POS ordered query failed, using fallback query:', orderedErr?.code || orderedErr);
+        }
       } else if (currentSession) {
-        q = query(posRef, where('restaurant_id', '==', uid), where('session_id', '==', currentSession.id), orderBy('date', 'desc'));
+        try {
+          snapshot = await getDocs(
+            query(
+              posRef,
+              where('restaurant_id', '==', uid),
+              where('session_id', '==', currentSession.id),
+              orderBy('date', 'desc')
+            )
+          );
+        } catch (orderedErr: any) {
+          snapshot = await getDocs(
+            query(
+              posRef,
+              where('restaurant_id', '==', uid),
+              where('session_id', '==', currentSession.id)
+            )
+          );
+          console.warn('POS session ordered query failed, using fallback query:', orderedErr?.code || orderedErr);
+        }
       } else {
         setPOSReadings([]);
         setLoading(false);
         return;
       }
-      
-      const snapshot = await getDocs(q);
+
       const readings: POSReading[] = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as POSReading));
+      readings.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       
       setPOSReadings(readings);
     } catch (err) {

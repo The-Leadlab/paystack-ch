@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink } from 'lucide-react';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
@@ -17,7 +17,7 @@ type Tab = 'dashboard' | 'revenue' | 'reports' | 'documents';
 export function RestaurantDashboard() {
   const { employees, addEmployee, deleteEmployee } = useEmployee();
   const { income, expenses, addIncome, addExpense, updateIncome, updateExpense, deleteIncome, deleteExpense } = useFinance();
-  const { sessions, currentSession, addSession, deleteSession, renameSession, setCurrentSession, isAllSessionsView, setAllSessionsView, error: sessionError } = useSession();
+  const { sessions, currentSession, addSession, deleteSession, renameSession, setCurrentSession, isAllSessionsView, setAllSessionsView } = useSession();
   const { documents, addDocument, updateDocumentData } = useDocuments();
   const { signOut, user } = useAuth();
   const { language, setLanguage, t } = useLanguage();
@@ -32,6 +32,7 @@ export function RestaurantDashboard() {
   const [showMasterReset, setShowMasterReset] = useState(false);
   const [selectedDocumentFromFinance, setSelectedDocumentFromFinance] = useState<ProcessedDocument | null>(null);
   const [showEmployeePanel, setShowEmployeePanel] = useState(false);
+  const storageUploadEnabledRef = useRef(true);
 
   // Filter data by current session or show all
   // For "All Sessions" view, only show data from existing sessions (not orphaned data)
@@ -148,10 +149,7 @@ export function RestaurantDashboard() {
   };
 
   const handleAddSession = async () => {
-    const created = await addSession();
-    if (!created) {
-      alert(`Failed to create session.\n${sessionError ?? 'Please check Firebase Firestore permissions and try again.'}`);
-    }
+    await addSession();
   };
 
   const handleDeleteSession = async (id: string) => {
@@ -194,14 +192,19 @@ export function RestaurantDashboard() {
 
     // Upload file to Firebase Storage (FREE tier: 5GB storage, 1GB/day download)
     let fileUrl: string | undefined;
-    if (fileRaw && user?.uid) {
+    if (fileRaw && user?.uid && storageUploadEnabledRef.current) {
       try {
         console.log('📤 Uploading file to Firebase Storage...');
         const { uploadDocument } = await import('../services/storageService');
         fileUrl = await uploadDocument(fileRaw, user.uid, fileName);
         console.log('✅ File uploaded successfully:', fileUrl);
-      } catch (uploadError) {
+      } catch (uploadError: any) {
         console.error('⚠️ File upload failed:', uploadError);
+        // Stop retrying uploads in this session if storage rules are blocking access.
+        if (uploadError?.code === 'storage/unauthorized') {
+          storageUploadEnabledRef.current = false;
+          console.warn('Storage upload disabled for this session due to storage/unauthorized.');
+        }
         // Continue without file URL - document metadata will still be saved
       }
     }
@@ -215,8 +218,8 @@ export function RestaurantDashboard() {
         fileName,
         status: 'completed',
         data,
-        fileHash,
-        fileUrl, // Store Firebase Storage URL instead of base64
+        ...(fileHash ? { fileHash } : {}),
+        ...(fileUrl ? { fileUrl } : {}), // only persist when present
       });
       documentId = newDoc.id;
       console.log('✅ Document saved with ID:', documentId);
@@ -415,11 +418,11 @@ export function RestaurantDashboard() {
       {/* Mobile Header */}
       <div className="md:hidden bg-cdlp-black border-b border-cdlp-border p-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <img
-            src="/brand/paystack-final-logo.png"
-            alt="Paystack"
-            className="h-7 w-auto object-contain"
-          />
+          <div className="flex items-center gap-1.5">
+            <div className="w-6 h-px bg-cdlp-gold"></div>
+            <h1 className="font-serif text-base font-bold gold-text tracking-wide">CAFÉ DE LA PLACE</h1>
+            <div className="w-6 h-px bg-cdlp-gold"></div>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -447,16 +450,29 @@ export function RestaurantDashboard() {
         {/* Desktop Header */}
         <div className="hidden md:block p-4 border-b border-cdlp-border">
           <div className="flex flex-col items-center mb-4">
-            <div className="w-full flex items-center gap-3 px-2">
-              <img
-                src="/brand/paystack-final-logo.png"
-                alt="Paystack"
-                className="h-10 w-auto object-contain"
-              />
-              <div>
-                <p className="text-cdlp-gold font-black text-sm tracking-tight">Paystack</p>
-                <p className="text-cdlp-muted text-[10px] uppercase tracking-[0.2em]">System</p>
-              </div>
+            <div className="w-20 h-20 mb-2 text-cdlp-gold">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none" className="w-full h-full">
+                <circle cx="200" cy="200" r="180" stroke="currentColor" strokeWidth="3" fill="none"/>
+                <circle cx="200" cy="200" r="130" stroke="currentColor" strokeWidth="3" fill="none"/>
+                <line x1="140" y1="140" x2="260" y2="260" stroke="currentColor" strokeWidth="3"/>
+                <line x1="260" y1="140" x2="140" y2="260" stroke="currentColor" strokeWidth="3"/>
+                <text x="170" y="190" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">C</text>
+                <text x="220" y="190" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">D</text>
+                <text x="170" y="240" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">L</text>
+                <text x="220" y="240" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="300" fill="currentColor" letterSpacing="8">P</text>
+                <path id="topArc" d="M 60,200 A 140,140 0 0,1 340,200" fill="none"/>
+                <text fontFamily="Arial, sans-serif" fontSize="28" fontWeight="300" fill="currentColor" letterSpacing="6">
+                  <textPath href="#topArc" startOffset="50%" textAnchor="middle">
+                    CAFÉ DE LA PLACE
+                  </textPath>
+                </text>
+                <path id="bottomArc" d="M 340,200 A 140,140 0 0,1 60,200" fill="none"/>
+                <text fontFamily="Arial, sans-serif" fontSize="24" fontWeight="300" fill="currentColor" letterSpacing="4">
+                  <textPath href="#bottomArc" startOffset="50%" textAnchor="middle">
+                    BISTROT GENÈVE
+                  </textPath>
+                </text>
+              </svg>
             </div>
           </div>
           
@@ -618,7 +634,7 @@ export function RestaurantDashboard() {
               className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
                 activeTab === 'dashboard'
                   ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
-                  : 'text-cdlp-muted hover:text-foreground'
+                  : 'text-cdlp-muted hover:text-white'
               }`}
             >
               <LayoutDashboard className="w-4 h-4" /> {t('dashboard')}
@@ -628,7 +644,7 @@ export function RestaurantDashboard() {
               className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
                 activeTab === 'revenue'
                   ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
-                  : 'text-cdlp-muted hover:text-foreground'
+                  : 'text-cdlp-muted hover:text-white'
               }`}
             >
               <Receipt className="w-4 h-4" /> {t('revenue')}
@@ -638,7 +654,7 @@ export function RestaurantDashboard() {
               className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
                 activeTab === 'reports'
                   ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
-                  : 'text-cdlp-muted hover:text-foreground'
+                  : 'text-cdlp-muted hover:text-white'
               }`}
             >
               <BarChart3 className="w-4 h-4" /> {t('reports')}
@@ -648,7 +664,7 @@ export function RestaurantDashboard() {
               className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
                 activeTab === 'documents'
                   ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
-                  : 'text-cdlp-muted hover:text-foreground'
+                  : 'text-cdlp-muted hover:text-white'
               }`}
             >
               <FileText className="w-4 h-4" /> {t('documents')}
@@ -1826,11 +1842,11 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
         <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-12">
             {/* Document Preview Panel */}
-            <div className="lg:col-span-4 bg-cdlp-dark border-r border-cdlp-border">
-              <div className="p-4 border-b border-cdlp-border">
+            <div className="lg:col-span-4 bg-slate-900 border-r border-cdlp-border">
+              <div className="p-4 border-b border-white/10">
                 <h3 className="text-xs font-black uppercase text-emerald-400 tracking-widest">Document Preview</h3>
               </div>
-              <div className="aspect-[3/4] bg-cdlp-black overflow-hidden flex items-center justify-center">
+              <div className="aspect-[3/4] bg-slate-950 overflow-hidden flex items-center justify-center">
                 {(selectedDocument.fileUrl || selectedDocument.fileDataUrl || selectedDocument.fileRaw) ? (
                   selectedDocument.fileName.toLowerCase().endsWith('.pdf') ? (
                     <iframe 
@@ -1847,9 +1863,9 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                   )
                 ) : (
                   <div className="text-center p-8">
-                    <FileText className="w-16 h-16 text-cdlp-muted mx-auto mb-4" />
-                    <p className="text-sm text-cdlp-muted mb-2">Document file not available</p>
-                    <p className="text-xs text-cdlp-muted">The original file was not stored with this document</p>
+                    <FileText className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                    <p className="text-sm text-slate-400 mb-2">Document file not available</p>
+                    <p className="text-xs text-slate-500">The original file was not stored with this document</p>
                   </div>
                 )}
               </div>
@@ -1863,7 +1879,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     <ExternalLink className="w-4 h-4" /> Open Raw Trace
                   </button>
                 ) : (
-                  <div className="text-center text-xs text-cdlp-muted italic">
+                  <div className="text-center text-xs text-slate-500 italic">
                     Original file not available for viewing
                   </div>
                 )}
@@ -1879,11 +1895,11 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Issuer Entity</label>
-                      <p className="text-sm font-bold text-foreground">{selectedDocument.data?.issuer || 'N/A'}</p>
+                      <p className="text-sm font-bold text-white">{selectedDocument.data?.issuer || 'N/A'}</p>
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Date</label>
-                      <p className="text-sm font-bold text-foreground">{selectedDocument.data?.date || 'N/A'}</p>
+                      <p className="text-sm font-bold text-white">{selectedDocument.data?.date || 'N/A'}</p>
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Total Amount</label>
@@ -1891,7 +1907,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Document Type</label>
-                      <p className="text-sm font-bold text-foreground">{selectedDocument.data?.documentType || 'Unknown'}</p>
+                      <p className="text-sm font-bold text-white">{selectedDocument.data?.documentType || 'Unknown'}</p>
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">VAT Amount</label>
@@ -1903,12 +1919,12 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     </div>
                     <div className="col-span-2">
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Category</label>
-                      <p className="text-sm font-bold text-foreground">{selectedDocument.data?.expenseCategory || 'Uncategorized'}</p>
+                      <p className="text-sm font-bold text-white">{selectedDocument.data?.expenseCategory || 'Uncategorized'}</p>
                     </div>
                     {selectedDocument.data?.notes && (
                       <div className="col-span-2">
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Notes</label>
-                        <p className="text-sm text-foreground">{selectedDocument.data.notes}</p>
+                        <p className="text-sm text-white">{selectedDocument.data.notes}</p>
                       </div>
                     )}
                   </div>
@@ -1942,7 +1958,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                           {selectedDocument.data.lineItems.map((item, idx) => (
                             <tr key={idx} className="hover:bg-cdlp-card">
                               <td className="px-3 py-2 text-cdlp-muted">{item.date}</td>
-                              <td className="px-3 py-2 text-foreground font-bold">{item.description}</td>
+                              <td className="px-3 py-2 text-white font-bold">{item.description}</td>
                               <td className={`px-3 py-2 text-right font-bold ${item.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {item.amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
@@ -1968,11 +1984,11 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Employee</label>
-                        <p className="text-sm font-bold text-foreground">{selectedDocument.data.paySlip.employee?.name || 'N/A'}</p>
+                        <p className="text-sm font-bold text-white">{selectedDocument.data.paySlip.employee?.name || 'N/A'}</p>
                       </div>
                       <div>
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Employer</label>
-                        <p className="text-sm font-bold text-foreground">{selectedDocument.data.paySlip.employer?.name || 'N/A'}</p>
+                        <p className="text-sm font-bold text-white">{selectedDocument.data.paySlip.employer?.name || 'N/A'}</p>
                       </div>
                       <div>
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Gross Pay</label>
@@ -1996,7 +2012,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                           <tbody className="divide-y divide-cdlp-border">
                             {selectedDocument.data.paySlip.components.map((comp, idx) => (
                               <tr key={idx} className="hover:bg-cdlp-card">
-                                <td className="px-3 py-2 text-foreground font-bold">{comp.description}</td>
+                                <td className="px-3 py-2 text-white font-bold">{comp.description}</td>
                                 <td className={`px-3 py-2 text-right font-bold ${comp.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}>
                                   {comp.amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
@@ -2075,7 +2091,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                         onClick={() => setSelectedDocument(doc)}
                         className="flex-1 text-left"
                       >
-                        <p className="font-bold text-foreground text-sm group-hover:text-cdlp-gold transition-colors">{doc.fileName}</p>
+                        <p className="font-bold text-white text-sm group-hover:text-cdlp-gold transition-colors">{doc.fileName}</p>
                         <p className="text-xs text-cdlp-muted mt-1">{doc.data?.date}</p>
                         {doc.data?.notes && (
                           <p className="text-xs text-cdlp-muted mt-1">{doc.data.notes}</p>
@@ -2083,7 +2099,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                       </button>
                       <div className="text-right ml-4 flex items-center gap-3">
                         <div>
-                          <p className="font-black text-foreground text-base">{(doc.data?.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          <p className="font-black text-white text-base">{(doc.data?.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                           <p className="text-xs text-cdlp-muted">{doc.data?.originalCurrency || 'CHF'}</p>
                         </div>
                         <button
@@ -2120,7 +2136,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
             className={`px-3 py-1.5 text-xs font-bold uppercase rounded ${
               filter === 'all'
                 ? 'bg-cdlp-gold text-cdlp-black'
-                : 'bg-cdlp-card border border-cdlp-border text-foreground hover:border-cdlp-gold'
+                : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
             }`}
           >
             All Documents
@@ -2130,7 +2146,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
             className={`px-3 py-1.5 text-xs font-bold uppercase rounded ${
               filter === 'suppliers'
                 ? 'bg-cdlp-gold text-cdlp-black'
-                : 'bg-cdlp-card border border-cdlp-border text-foreground hover:border-cdlp-gold'
+                : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
             }`}
           >
             Suppliers ({Object.keys(groupedDocs.suppliers).length})
@@ -2140,7 +2156,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
             className={`px-3 py-1.5 text-xs font-bold uppercase rounded ${
               filter === 'employees'
                 ? 'bg-cdlp-gold text-cdlp-black'
-                : 'bg-cdlp-card border border-cdlp-border text-foreground hover:border-cdlp-gold'
+                : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
             }`}
           >
             Employees ({Object.keys(groupedDocs.employees).length})
@@ -2150,7 +2166,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
             className={`px-3 py-1.5 text-xs font-bold uppercase rounded ${
               filter === 'pos'
                 ? 'bg-cdlp-gold text-cdlp-black'
-                : 'bg-cdlp-card border border-cdlp-border text-foreground hover:border-cdlp-gold'
+                : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
             }`}
           >
             POS Reports ({groupedDocs.posReports.length})
@@ -2194,7 +2210,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="font-bold text-foreground text-base mb-1 group-hover:text-cdlp-gold transition-colors">
+                    <h3 className="font-bold text-white text-base mb-1 group-hover:text-cdlp-gold transition-colors">
                       {entityName}
                     </h3>
                     <p className="text-xs text-cdlp-muted uppercase">
@@ -2206,7 +2222,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-cdlp-muted uppercase">Documents</span>
-                    <span className="text-sm font-bold text-foreground">{docCount}</span>
+                    <span className="text-sm font-bold text-white">{docCount}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-cdlp-muted uppercase">Total Amount</span>
