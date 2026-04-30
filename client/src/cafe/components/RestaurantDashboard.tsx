@@ -18,7 +18,7 @@ export function RestaurantDashboard() {
   const { employees, addEmployee, deleteEmployee } = useEmployee();
   const { income, expenses, addIncome, addExpense, updateIncome, updateExpense, deleteIncome, deleteExpense } = useFinance();
   const { sessions, currentSession, addSession, deleteSession, renameSession, setCurrentSession, isAllSessionsView, setAllSessionsView } = useSession();
-  const { documents, addDocument, updateDocumentData, deleteDocument: removeDocument } = useDocuments();
+  const { documents, addDocument, updateDocumentData, deleteDocument: deleteDocumentFromContext } = useDocuments();
   const { signOut, user } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   
@@ -33,6 +33,10 @@ export function RestaurantDashboard() {
   const [selectedDocumentFromFinance, setSelectedDocumentFromFinance] = useState<ProcessedDocument | null>(null);
   const [showEmployeePanel, setShowEmployeePanel] = useState(false);
   const storageUploadEnabledRef = useRef(true);
+
+  const handleDeleteDocument = async (documentId: string) => {
+    await deleteDocumentFromContext(documentId);
+  };
 
   // Filter data by current session or show all
   // For "All Sessions" view, only show data from existing sessions (not orphaned data)
@@ -1283,7 +1287,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           <DocumentProcessor 
             documents={documents}
             updateDocument={updateDocument}
-            onDeleteDocument={removeDocument}
+            onDeleteDocument={handleDeleteDocument}
             onDataExtracted={onDocumentData}
             onDocumentUpdated={onDocumentUpdated}
           />
