@@ -1074,9 +1074,10 @@ export const DocumentProcessor: React.FC<{
   documents: ProcessedDocument[], 
   updateDocument: (documentId: string, updates: Partial<ProcessedDocument>) => Promise<void>,
   onDeleteDocument: (documentId: string) => Promise<void>,
-  onDataExtracted: (data: any, fileName: string, fileHash?: string, fileRaw?: File) => void,
+  onDocumentQueued?: (fileName: string, fileHash?: string, fileRaw?: File) => Promise<string>,
+  onDataExtracted: (data: any, fileName: string, fileHash?: string, fileRaw?: File, persistedDocumentId?: string) => void,
   onDocumentUpdated?: (documentId: string, newData: FinancialData) => Promise<void>
-}> = ({ documents, updateDocument, onDeleteDocument, onDataExtracted, onDocumentUpdated }) => {
+}> = ({ documents, updateDocument, onDeleteDocument, onDocumentQueued, onDataExtracted, onDocumentUpdated }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -1152,12 +1153,29 @@ export const DocumentProcessor: React.FC<{
     const news: ProcessedDocument[] = await Promise.all(
       uniqueFiles.map(async (f: File) => {
         const hash = await generateFileHash(f);
+        let persistedDocumentId: string | undefined;
+        try {
+          if (onDocumentQueued) {
+            persistedDocumentId = await onDocumentQueued(f.name, hash, f);
+          }
+        } catch (queueErr: any) {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            fileName: f.name,
+            status: 'error' as const,
+            fileRaw: f,
+            fileHash: hash,
+            error: `Failed to queue save: ${queueErr?.message || 'Unknown error'}`,
+          };
+        }
+
         return {
           id: Math.random().toString(36).substr(2,9), 
           fileName: f.name, 
           status: 'pending' as const, 
           fileRaw: f,
-          fileHash: hash
+          fileHash: hash,
+          persistedDocumentId
         };
       })
     );
@@ -1178,7 +1196,7 @@ export const DocumentProcessor: React.FC<{
       // Auto-extract data and save to Firestore with file metadata
       try {
         console.log(`💾 Saving document: ${doc.fileName}`);
-        await onDataExtracted(res, doc.fileName, doc.fileHash, doc.fileRaw);
+        await onDataExtracted(res, doc.fileName, doc.fileHash, doc.fileRaw, doc.persistedDocumentId);
         console.log(`✅ Document saved successfully: ${doc.fileName}`);
       } catch (saveErr: any) {
         console.error(`❌ Failed to save document: ${doc.fileName}`, saveErr);

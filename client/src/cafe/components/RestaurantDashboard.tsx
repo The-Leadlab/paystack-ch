@@ -175,9 +175,7 @@ export function RestaurantDashboard() {
     setRenameValue(currentName);
   };
 
-  const handleDocumentData = async (data: FinancialData, fileName: string, fileHash?: string, fileRaw?: File) => {
-    console.log('🔵 handleDocumentData called:', { fileName, hasData: !!data, currentSession: currentSession?.id });
-    
+  const handleQueueDocument = async (fileName: string, fileHash?: string, fileRaw?: File): Promise<string> => {
     if (!currentSession) {
       console.error('❌ No session selected');
       alert('Please select a session first');
@@ -213,20 +211,55 @@ export function RestaurantDashboard() {
       }
     }
 
-    // Save the document with file URL
-    let documentId: string;
     try {
-      console.log('💾 Saving document to Firestore...');
+      console.log('💾 Queue-saving document to Firestore...');
       const newDoc = await addDocument({
         id: Math.random().toString(36).substr(2, 9),
         fileName,
-        status: 'completed',
-        data,
+        status: 'pending',
         ...(fileHash ? { fileHash } : {}),
-        ...(fileUrl ? { fileUrl } : {}), // only persist when present
+        ...(fileUrl ? { fileUrl } : {}),
       });
-      documentId = newDoc.id;
-      console.log('✅ Document saved with ID:', documentId);
+      console.log('✅ Document queue-saved with ID:', newDoc.id);
+      return newDoc.id;
+    } catch (error) {
+      console.error('❌ Error queue-saving document:', error);
+      alert('Failed to queue-save document: ' + (error as Error).message);
+      throw error;
+    }
+  };
+
+  const handleDocumentData = async (data: FinancialData, fileName: string, fileHash?: string, fileRaw?: File, persistedDocumentId?: string) => {
+    console.log('🔵 handleDocumentData called:', { fileName, hasData: !!data, currentSession: currentSession?.id, persistedDocumentId });
+
+    if (!currentSession) {
+      console.error('❌ No session selected');
+      alert('Please select a session first');
+      throw new Error('No session selected');
+    }
+
+    let documentId: string;
+    try {
+      if (persistedDocumentId) {
+        await updateDocumentData(persistedDocumentId, {
+          status: 'completed',
+          data,
+          ...(fileHash ? { fileHash } : {}),
+        });
+        documentId = persistedDocumentId;
+        console.log('✅ Document updated to completed with ID:', documentId);
+      } else {
+        console.log('💾 Saving document to Firestore (legacy path)...');
+        const newDoc = await addDocument({
+          id: Math.random().toString(36).substr(2, 9),
+          fileName,
+          status: 'completed',
+          data,
+          ...(fileHash ? { fileHash } : {}),
+        });
+        documentId = newDoc.id;
+        console.log('✅ Document saved with ID:', documentId);
+      }
     } catch (error) {
       console.error('❌ Error saving document:', error);
       alert('Failed to save document: ' + (error as Error).message);
@@ -674,6 +707,7 @@ export function RestaurantDashboard() {
               filteredExpenses={filteredExpenses}
               onAddIncome={() => setShowAddIncome(true)}
               onAddExpense={() => setShowAddExpense(true)}
+              onDocumentQueued={handleQueueDocument}
               onDocumentData={handleDocumentData}
               onDocumentUpdated={handleDocumentUpdated}
               language={language}
@@ -1178,7 +1212,7 @@ function IncomeExpenseSection({
 }
 
 // Dashboard Tab Component
-function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentData, onDocumentUpdated, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument, onShowEmployeePanel }: any) {
+function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument, onShowEmployeePanel }: any) {
   const handleItemClick = (item: any) => {
     if (item.document_id && onNavigateToDocument) {
       const doc = documents.find((d: any) => d.id === item.document_id);
@@ -1289,6 +1323,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             documents={documents}
             updateDocument={updateDocument}
             onDeleteDocument={onDeleteDocument}
+            onDocumentQueued={onDocumentQueued}
             onDataExtracted={onDocumentData}
             onDocumentUpdated={onDocumentUpdated}
           />

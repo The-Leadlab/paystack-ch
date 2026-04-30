@@ -186,6 +186,7 @@ export interface ProcessedDocument {
   session_id?: string;
   created_at?: string;
   fileHash?: string; // SHA-256 hash for duplicate detection
+  persistedDocumentId?: string; // Firestore document id created at upload-time
 }
 
 export interface BankStatementAnalysis {
