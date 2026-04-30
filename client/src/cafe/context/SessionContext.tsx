@@ -6,7 +6,6 @@ import {
   orderBy,
   addDoc,
   getDocs,
-  deleteDoc,
   updateDoc,
   doc,
   serverTimestamp,
@@ -110,21 +109,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.uid, currentSession]);
 
-  useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
-
-  useEffect(() => {
-    if (!user?.uid || loading || sessions.length > 0) return;
-    const ensureInitialSession = async () => {
-      const created = await addSession();
-      if (!created) {
-        setError('Unable to create the first session. Check Firestore rules and indexes.');
-      }
-    };
-    ensureInitialSession();
-  }, [user?.uid, loading, sessions.length, addSession]);
-
   const addSession = useCallback(
     async (name?: string): Promise<Session | null> => {
       const uid = user?.uid;
@@ -166,6 +150,21 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     },
     [user?.uid]
   );
+
+  useEffect(() => {
+    fetchSessions();
+  }, [fetchSessions]);
+
+  useEffect(() => {
+    if (!user?.uid || loading || sessions.length > 0) return;
+    const ensureInitialSession = async () => {
+      const created = await addSession();
+      if (!created) {
+        setError('Unable to create the first session. Check Firestore rules and indexes.');
+      }
+    };
+    ensureInitialSession();
+  }, [user?.uid, loading, sessions.length, addSession]);
 
   const deleteSession = useCallback(
     async (id: string) => {

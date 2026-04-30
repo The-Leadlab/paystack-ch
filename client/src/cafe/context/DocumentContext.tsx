@@ -44,28 +44,54 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
     
     try {
       const docsRef = collection(db, 'documents');
-      let q;
-      
+      let snapshot;
+
       if (isAllSessionsView) {
         // Show all documents for this restaurant
         console.log('Fetching ALL documents for restaurant');
-        q = query(docsRef, where('restaurantId', '==', uid), orderBy('created_at', 'desc'));
+        try {
+          snapshot = await getDocs(
+            query(docsRef, where('restaurantId', '==', uid), orderBy('created_at', 'desc'))
+          );
+        } catch (orderedErr: any) {
+          // Fallback avoids blocking document list when index is missing.
+          snapshot = await getDocs(query(docsRef, where('restaurantId', '==', uid)));
+          console.warn('Documents ordered query failed, using fallback query:', orderedErr?.code || orderedErr);
+        }
       } else if (currentSession) {
         // Show only documents for current session
         console.log('Fetching documents for session:', currentSession.id);
-        q = query(docsRef, where('restaurantId', '==', uid), where('session_id', '==', currentSession.id), orderBy('created_at', 'desc'));
+        try {
+          snapshot = await getDocs(
+            query(
+              docsRef,
+              where('restaurantId', '==', uid),
+              where('session_id', '==', currentSession.id),
+              orderBy('created_at', 'desc')
+            )
+          );
+        } catch (orderedErr: any) {
+          snapshot = await getDocs(
+            query(
+              docsRef,
+              where('restaurantId', '==', uid),
+              where('session_id', '==', currentSession.id)
+            )
+          );
+          console.warn('Session documents ordered query failed, using fallback query:', orderedErr?.code || orderedErr);
+        }
       } else {
         console.log('No session selected, skipping fetch');
         setDocuments([]);
         setLoading(false);
         return;
       }
-      
-      const snapshot = await getDocs(q);
+
       const docs: ProcessedDocument[] = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as ProcessedDocument));
+      docs.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
       
       console.log('Fetched documents:', docs.length);
       if (docs.length > 0) {
@@ -73,9 +99,10 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
       }
       
       setDocuments(docs);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching documents:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      const message = err?.code ? `${err.code}: ${err.message}` : err instanceof Error ? err.message : String(err);
+      setError(message);
       setDocuments([]);
     } finally {
       setLoading(false);
