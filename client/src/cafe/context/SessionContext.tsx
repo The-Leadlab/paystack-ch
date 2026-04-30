@@ -69,16 +69,30 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const q = query(
-        collection(db, SESSIONS_COLLECTION),
-        where('restaurantId', '==', uid),
-        orderBy('createdAt', 'desc')
-      );
-      const snapshot = await getDocs(q);
+      let snapshot;
+      try {
+        const orderedQuery = query(
+          collection(db, SESSIONS_COLLECTION),
+          where('restaurantId', '==', uid),
+          orderBy('createdAt', 'desc')
+        );
+        snapshot = await getDocs(orderedQuery);
+      } catch (orderedErr: any) {
+        // Fallback for missing index / transient query issues: fetch without orderBy and sort client-side.
+        const fallbackQuery = query(
+          collection(db, SESSIONS_COLLECTION),
+          where('restaurantId', '==', uid)
+        );
+        snapshot = await getDocs(fallbackQuery);
+        if (orderedErr?.code) {
+          console.warn('Ordered sessions query failed, using fallback query:', orderedErr.code);
+        }
+      }
       const list: Session[] = [];
       snapshot.forEach((doc) => {
         list.push(docToSession(doc.id, doc.data()));
       });
+      list.sort((a, b) => b.created_at.localeCompare(a.created_at));
       setSessions(list);
 
       // Resume last active session
@@ -97,18 +111,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [user?.uid, currentSession]);
 
   useEffect(() => {
-    const initSessions = async () => {
-      await fetchSessions();
-      
-      // Auto-create first session if none exist
-      if (user?.uid && sessions.length === 0 && !loading) {
-        console.log('Auto-creating first session...');
-        await addSession();
+    fetchSessions();
+  }, [fetchSessions]);
+
+  useEffect(() => {
+    if (!user?.uid || loading || sessions.length > 0) return;
+    const ensureInitialSession = async () => {
+      const created = await addSession();
+      if (!created) {
+        setError('Unable to create the first session. Check Firestore rules and indexes.');
       }
     };
-    
-    initSessions();
-  }, [user?.uid]);
+    ensureInitialSession();
+  }, [user?.uid, loading, sessions.length, addSession]);
 
   const addSession = useCallback(
     async (name?: string): Promise<Session | null> => {
@@ -143,8 +158,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setCurrentSessionState(newSession);
         localStorage.setItem(LAST_SESSION_KEY, ref.id);
         return newSession;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+      } catch (err: any) {
+        const message = err?.code ? `${err.code}: ${err.message}` : err instanceof Error ? err.message : String(err);
+        setError(message);
         return null;
       }
     },

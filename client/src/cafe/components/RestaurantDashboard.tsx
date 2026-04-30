@@ -17,7 +17,7 @@ type Tab = 'dashboard' | 'revenue' | 'reports' | 'documents';
 export function RestaurantDashboard() {
   const { employees, addEmployee, deleteEmployee } = useEmployee();
   const { income, expenses, addIncome, addExpense, updateIncome, updateExpense, deleteIncome, deleteExpense } = useFinance();
-  const { sessions, currentSession, addSession, deleteSession, renameSession, setCurrentSession, isAllSessionsView, setAllSessionsView } = useSession();
+  const { sessions, currentSession, addSession, deleteSession, renameSession, setCurrentSession, isAllSessionsView, setAllSessionsView, error: sessionError } = useSession();
   const { documents, addDocument, updateDocumentData } = useDocuments();
   const { signOut, user } = useAuth();
   const { language, setLanguage, t } = useLanguage();
@@ -148,7 +148,10 @@ export function RestaurantDashboard() {
   };
 
   const handleAddSession = async () => {
-    await addSession();
+    const created = await addSession();
+    if (!created) {
+      alert(`Failed to create session.\n${sessionError ?? 'Please check Firebase Firestore permissions and try again.'}`);
+    }
   };
 
   const handleDeleteSession = async (id: string) => {
