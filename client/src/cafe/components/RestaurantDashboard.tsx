@@ -18,7 +18,7 @@ export function RestaurantDashboard() {
   const { employees, addEmployee, deleteEmployee } = useEmployee();
   const { income, expenses, addIncome, addExpense, updateIncome, updateExpense, deleteIncome, deleteExpense } = useFinance();
   const { sessions, currentSession, addSession, deleteSession, renameSession, setCurrentSession, isAllSessionsView, setAllSessionsView } = useSession();
-  const { documents, addDocument, updateDocumentData, deleteDocument } = useDocuments();
+  const { documents, addDocument, updateDocumentData, deleteDocument: removeDocument } = useDocuments();
   const { signOut, user } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   
@@ -1283,7 +1283,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           <DocumentProcessor 
             documents={documents}
             updateDocument={updateDocument}
-            onDeleteDocument={deleteDocument}
+            onDeleteDocument={removeDocument}
             onDataExtracted={onDocumentData}
             onDocumentUpdated={onDocumentUpdated}
           />
