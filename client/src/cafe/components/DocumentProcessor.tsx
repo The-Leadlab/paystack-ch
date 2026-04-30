@@ -1300,6 +1300,11 @@ export const DocumentProcessor: React.FC<{
                               onClick={async (e) => { 
                                 e.stopPropagation();
                                 if (!confirm(`Delete "${doc.fileName}"?`)) return;
+                                if (typeof onDeleteDocument !== 'function') {
+                                  console.error('Document delete handler is unavailable');
+                                  alert('Delete action is temporarily unavailable. Please refresh and try again.');
+                                  return;
+                                }
                                 if ((doc as any).source === 'firestore') {
                                   try {
                                     if (doc.fileUrl) {
@@ -1309,7 +1314,12 @@ export const DocumentProcessor: React.FC<{
                                   } catch (storageErr) {
                                     console.warn('Storage delete skipped/failed:', storageErr);
                                   }
-                                  await onDeleteDocument(doc.id);
+                                  try {
+                                    await onDeleteDocument(doc.id);
+                                  } catch (deleteErr) {
+                                    console.error('Failed to delete document record:', deleteErr);
+                                    alert('Could not delete the document record. Please try again.');
+                                  }
                                 } else {
                                   // Remove from local state
                                   setLocalDocs(p => p.filter(d => d.id !== doc.id));

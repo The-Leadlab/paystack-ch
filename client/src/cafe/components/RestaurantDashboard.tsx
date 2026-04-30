@@ -685,6 +685,7 @@ export function RestaurantDashboard() {
               updateExpense={updateExpense}
               addIncome={addIncome}
               addExpense={addExpense}
+              onDeleteDocument={handleDeleteDocument}
               onNavigateToDocument={handleNavigateToDocument}
               onShowEmployeePanel={() => setShowEmployeePanel(true)}
               t={t}
@@ -1177,7 +1178,7 @@ function IncomeExpenseSection({
 }
 
 // Dashboard Tab Component
-function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentData, onDocumentUpdated, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, t, user, onNavigateToDocument, onShowEmployeePanel }: any) {
+function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentData, onDocumentUpdated, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument, onShowEmployeePanel }: any) {
   const handleItemClick = (item: any) => {
     if (item.document_id && onNavigateToDocument) {
       const doc = documents.find((d: any) => d.id === item.document_id);
@@ -1287,7 +1288,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           <DocumentProcessor 
             documents={documents}
             updateDocument={updateDocument}
-            onDeleteDocument={handleDeleteDocument}
+            onDeleteDocument={onDeleteDocument}
             onDataExtracted={onDocumentData}
             onDocumentUpdated={onDocumentUpdated}
           />
