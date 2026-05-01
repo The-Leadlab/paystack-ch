@@ -37,13 +37,13 @@ export default function Navbar() {
             : "bg-transparent"
         }`}
       >
-        <div className="container flex items-center justify-between h-16 lg:h-20">
+        <div className="container flex items-center justify-between h-20 lg:h-24">
           {/* Logo */}
-          <a href="#" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-brand-charcoal flex items-center justify-center">
-              <span className="font-display font-bold text-sm text-white">P</span>
+          <a href="#" className="flex items-center gap-3 group">
+            <div className="w-16 h-16 rounded-xl bg-brand-charcoal flex items-center justify-center">
+              <span className="font-display font-bold text-xl text-white">P</span>
             </div>
-            <span className="font-display font-semibold text-lg tracking-tight text-foreground">
+            <span className="font-display font-semibold text-2xl tracking-tight text-foreground">
               paystack<span className="text-brand-red">.ch</span>
             </span>
           </a>
@@ -62,13 +62,13 @@ export default function Navbar() {
           </div>
 
           {/* Desktop CTA */}
-          <div className="hidden lg:flex items-center gap-4">
+          <div className="hidden lg:flex items-center gap-3">
             <button
               onClick={() => setLanguage(language === "en" ? "fr" : "en")}
-              className="font-display text-xs text-muted-foreground hover:text-foreground transition-colors duration-300"
+              className="font-display text-xs text-muted-foreground hover:text-foreground transition-colors duration-300 border border-border rounded-md px-2.5 py-1.5"
               aria-label={language === "en" ? t("navSwitchToFrench") : t("navSwitchToEnglish")}
             >
-              {language === "en" ? "FR" : "EN"}
+              {t("navChangeLanguage")}: {language === "en" ? "FR" : "EN"}
             </button>
             <a
               href="#contact"

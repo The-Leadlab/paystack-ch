@@ -90,6 +90,7 @@ const translations = {
     navGetStarted: 'Get Started',
     navSwitchToFrench: 'Switch to French',
     navSwitchToEnglish: 'Switch to English',
+    navChangeLanguage: 'Change Language',
 
     // Landing - Hero
     heroBadge: 'Built for Switzerland',
@@ -249,6 +250,7 @@ const translations = {
     navGetStarted: 'Commencer',
     navSwitchToFrench: 'Passer en francais',
     navSwitchToEnglish: 'Passer en anglais',
+    navChangeLanguage: 'Changer la langue',
 
     // Landing - Hero
     heroBadge: 'Concu pour la Suisse',
