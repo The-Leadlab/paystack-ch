@@ -108,15 +108,7 @@ export default function HowItWorksSection() {
                   alt="AI document scanning process — from paper invoice to structured digital data"
                   className="w-full h-auto"
                   loading="lazy"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                    const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
-                    if (fallback) fallback.style.display = "flex";
-                  }}
                 />
-                <div className="hidden h-[320px] w-full items-center justify-center bg-gradient-to-br from-secondary to-background text-muted-foreground">
-                  Document scan preview unavailable
-                </div>
               </div>
             </div>
           </ScrollReveal>

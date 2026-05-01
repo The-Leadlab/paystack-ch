@@ -9,10 +9,6 @@ import ScrollReveal from "./ScrollReveal";
 import SectionLabel from "./SectionLabel";
 
 export default function CTASection() {
-  const goToSystem = () => {
-    window.location.href = "/app";
-  };
-
   return (
     <section id="contact" className="relative py-24 lg:py-32 border-t border-border bg-secondary/30">
       <div className="container">
@@ -34,7 +30,6 @@ export default function CTASection() {
             <div className="flex flex-wrap gap-4 mb-12">
               <Button
                 size="lg"
-                onClick={goToSystem}
                 className="font-display bg-brand-red text-white hover:bg-brand-red/90 rounded-lg px-8 h-12 text-sm gap-2 group"
               >
                 Start Free Trial
@@ -43,7 +38,6 @@ export default function CTASection() {
               <Button
                 size="lg"
                 variant="outline"
-                onClick={goToSystem}
                 className="font-display rounded-lg px-8 h-12 text-sm border-border hover:border-brand-red/30 hover:text-brand-red bg-transparent"
               >
                 Book a Demo

@@ -192,25 +192,6 @@ export function RestaurantDashboard() {
       }
     }
 
-    // Upload file to Firebase Storage (FREE tier: 5GB storage, 1GB/day download)
-    let fileUrl: string | undefined;
-    if (fileRaw && user?.uid && storageUploadEnabledRef.current) {
-      try {
-        console.log('📤 Uploading file to Firebase Storage...');
-        const { uploadDocument } = await import('../services/storageService');
-        fileUrl = await uploadDocument(fileRaw, user.uid, fileName);
-        console.log('✅ File uploaded successfully:', fileUrl);
-      } catch (uploadError: any) {
-        console.error('⚠️ File upload failed:', uploadError);
-        // Stop retrying uploads in this session if storage rules are blocking access.
-        if (uploadError?.code === 'storage/unauthorized') {
-          storageUploadEnabledRef.current = false;
-          console.warn('Storage upload disabled for this session due to storage/unauthorized.');
-        }
-        // Continue without file URL - document metadata will still be saved
-      }
-    }
-
     try {
       console.log('💾 Queue-saving document to Firestore...');
       const newDoc = await addDocument({
@@ -218,10 +199,30 @@ export function RestaurantDashboard() {
         fileName,
         status: 'pending',
         ...(fileHash ? { fileHash } : {}),
-        ...(fileUrl ? { fileUrl } : {}),
       });
-      console.log('✅ Document queue-saved with ID:', newDoc.id);
-      return newDoc.id;
+      const createdId = newDoc.id;
+      console.log('✅ Document queue-saved with ID:', createdId);
+
+      // Background storage upload so listing in Firestore returns immediately.
+      if (fileRaw && user?.uid && storageUploadEnabledRef.current) {
+        void (async () => {
+          try {
+            console.log('📤 Background uploading file to Firebase Storage...');
+            const { uploadDocument } = await import('../services/storageService');
+            const fileUrl = await uploadDocument(fileRaw, user.uid, fileName);
+            await updateDocumentData(createdId, { fileUrl });
+            console.log('✅ File URL attached to document:', createdId);
+          } catch (uploadError: any) {
+            console.error('⚠️ Background file upload failed:', uploadError);
+            if (uploadError?.code === 'storage/unauthorized') {
+              storageUploadEnabledRef.current = false;
+              console.warn('Storage upload disabled for this session due to storage/unauthorized.');
+            }
+          }
+        })();
+      }
+
+      return createdId;
     } catch (error) {
       console.error('❌ Error queue-saving document:', error);
       alert('Failed to queue-save document: ' + (error as Error).message);

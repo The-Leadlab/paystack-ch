@@ -10,10 +10,6 @@ import { ArrowRight, Play } from "lucide-react";
 import AnimatedCounter from "./AnimatedCounter";
 
 export default function HeroSection() {
-  const goToSystem = () => {
-    window.location.href = "/app";
-  };
-
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Light background gradient */}
@@ -81,7 +77,6 @@ export default function HeroSection() {
             >
               <Button
                 size="lg"
-                onClick={goToSystem}
                 className="font-display bg-brand-red text-white hover:bg-brand-red/90 rounded-lg px-7 h-12 text-sm gap-2 group"
               >
                 Start Free Trial
@@ -90,7 +85,6 @@ export default function HeroSection() {
               <Button
                 size="lg"
                 variant="outline"
-                onClick={goToSystem}
                 className="font-display rounded-lg px-7 h-12 text-sm gap-2 border-border hover:border-brand-red/40 hover:text-brand-red bg-transparent"
               >
                 <Play size={14} />
@@ -144,15 +138,7 @@ export default function HeroSection() {
                 alt="Paystack.ch Financial Dashboard showing income, expenses, salary summaries and AI document processing"
                 className="w-full h-auto"
                 loading="eager"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                  const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
-                  if (fallback) fallback.style.display = "flex";
-                }}
               />
-              <div className="hidden h-[320px] w-full items-center justify-center bg-gradient-to-br from-secondary to-background text-muted-foreground">
-                Dashboard preview unavailable
-              </div>
             </div>
 
             {/* Floating badge */}

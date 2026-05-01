@@ -64,10 +64,6 @@ const plans = [
 ];
 
 export default function PricingSection() {
-  const goToSystem = () => {
-    window.location.href = "/app";
-  };
-
   return (
     <section id="pricing" className="relative py-24 lg:py-32 border-t border-border">
       <div className="container">
@@ -136,7 +132,6 @@ export default function PricingSection() {
                 </ul>
 
                 <Button
-                  onClick={goToSystem}
                   className={`w-full font-display text-sm rounded-lg h-11 gap-2 group ${
                     plan.highlighted
                       ? "bg-brand-red text-white hover:bg-brand-red/90"

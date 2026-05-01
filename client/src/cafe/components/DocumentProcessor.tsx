@@ -504,6 +504,77 @@ const EditablePaySlipTable: React.FC<{
   );
 };
 
+/** Optional page-range hint from multi-page invoice extraction */
+type SubDocPageRange = FinancialData & { pageRange?: string };
+
+function repairSubTotals(sub: FinancialData): FinancialData {
+  let total = Number(sub.totalAmount ?? 0);
+  let net = Number(sub.netAmount ?? 0);
+  let vat = Number(sub.vatAmount ?? 0);
+  const sum = Math.round((net + vat) * 100) / 100;
+  if (total <= 0 && net + vat > 1e-6) total = sum;
+  else if (Math.abs(total - sum) > 0.051 && net + vat > 1e-6) total = sum;
+  else if (total > 0 && Math.abs(net) < 1e-6 && vat <= total + 1e-6) {
+    net = Math.round((total - vat) * 100) / 100;
+  }
+  return { ...sub, totalAmount: total, netAmount: net, vatAmount: vat };
+}
+
+function rollUpMultiInvoiceTotals(data: FinancialData): FinancialData {
+  const rawSubs = Array.isArray(data.subDocuments) ? data.subDocuments : [];
+  if (rawSubs.length === 0) return data;
+
+  const subs = rawSubs.map((s) => repairSubTotals({ ...(s as FinancialData) }));
+
+  const totalAmount = subs.reduce((s, x) => s + Number(x.totalAmount || 0), 0);
+  const vatAmount = subs.reduce((s, x) => s + Number(x.vatAmount || 0), 0);
+  const netAmount = subs.reduce((s, x) => s + Number(x.netAmount || 0), 0);
+
+  const dates = subs.map((x) => x.date).filter(Boolean).sort();
+
+  const lineItems: BankTransaction[] = subs.map((sub) => {
+    const pr = (sub as SubDocPageRange).pageRange;
+    return {
+      date: sub.date || data.date || new Date().toISOString().slice(0, 10),
+      description: `${sub.issuer || 'Unknown issuer'}${pr ? ` (pages ${pr})` : ''}`,
+      amount: Number(sub.totalAmount || 0),
+      type: 'EXPENSE',
+      category: sub.expenseCategory || data.expenseCategory || 'OTHER',
+      notes: `VAT Amount ${Number(sub.vatAmount || 0)}`,
+    };
+  });
+
+  const existingIncome = (data.lineItems || []).filter((i) => i.type === 'INCOME');
+  const mergedLineItems = [...existingIncome, ...lineItems];
+
+  const calculatedTotalIncome = mergedLineItems
+    .filter((item) => item.type === 'INCOME')
+    .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const calculatedTotalExpense = mergedLineItems
+    .filter((item) => item.type === 'EXPENSE')
+    .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+
+  const rate = Number(data.conversionRateUsed ?? 1) || 1;
+  const amountInCHF = rate !== 1 ? totalAmount * rate : totalAmount;
+
+  const issuer =
+    subs.length > 1 ? `${subs.length} invoices detected` : subs[0]?.issuer || data.issuer;
+
+  return {
+    ...data,
+    subDocuments: subs,
+    totalAmount,
+    vatAmount,
+    netAmount,
+    lineItems: mergedLineItems,
+    issuer,
+    date: (dates[0] as string) ?? data.date,
+    calculatedTotalIncome,
+    calculatedTotalExpense,
+    amountInCHF,
+  };
+}
+
 // Verification Hub - Main editing interface
 const VerificationHub: React.FC<{ 
   doc: ProcessedDocument; 
@@ -515,8 +586,28 @@ const VerificationHub: React.FC<{
   const hasViewableSource = Boolean(doc.fileUrl || doc.fileDataUrl || doc.fileRaw);
 
   const handleFieldChange = (field: keyof FinancialData, value: any) => {
+    if (field === 'subDocuments') {
+      onUpdate(
+        rollUpMultiInvoiceTotals({
+          ...doc.data!,
+          subDocuments: value as FinancialData[],
+        })
+      );
+      return;
+    }
+
     let newData = { ...doc.data!, [field]: value };
-    
+
+    const subsEarly = Array.isArray(newData.subDocuments) ? newData.subDocuments : [];
+    if (field === 'expenseCategory' && subsEarly.length > 1) {
+      newData.subDocuments = subsEarly.map((s) => ({
+        ...(s as FinancialData),
+        expenseCategory: value as string,
+      })) as FinancialData[];
+      onUpdate(rollUpMultiInvoiceTotals(newData));
+      return;
+    }
+
     // When line items change, recalculate totals
     if (field === 'lineItems') {
       const lineItems = value as BankTransaction[];
@@ -585,6 +676,39 @@ const VerificationHub: React.FC<{
   const isPaySlip = editedData.documentType === DocumentType.PAY_SLIP;
   const isZeroValue = Number(editedData.totalAmount) === 0;
   const subDocuments = Array.isArray(editedData.subDocuments) ? editedData.subDocuments : [];
+  const hasMultipleSubs = subDocuments.length > 1;
+
+  const patchSubDocument = (idx: number, patch: Partial<FinancialData>) => {
+    const next = subDocuments.map((s, i) =>
+      i === idx ? { ...(s as FinancialData), ...patch } : { ...(s as FinancialData) }
+    );
+    handleFieldChange('subDocuments', next);
+  };
+
+  const lineIncomeSum =
+    editedData.lineItems?.filter((i) => i.type === 'INCOME').reduce((s, i) => s + (Number(i.amount) || 0), 0) ?? 0;
+  const lineExpenseSum =
+    editedData.lineItems?.filter((i) => i.type === 'EXPENSE').reduce((s, i) => s + (Number(i.amount) || 0), 0) ?? 0;
+  const subExpenseSum = subDocuments.reduce(
+    (s, sd) => s + Number((sd as FinancialData).totalAmount || 0),
+    0
+  );
+  const hasLineItems = (editedData.lineItems?.length ?? 0) > 0;
+  const totalExpensesDisplay = hasLineItems
+    ? lineExpenseSum
+    : subExpenseSum > 0
+      ? subExpenseSum
+      : Number(editedData.calculatedTotalExpense ?? 0);
+  const documentTotalDisplay = isBankStatement
+    ? Number(editedData.totalAmount ?? 0)
+    : hasLineItems
+      ? lineExpenseSum
+      : subExpenseSum > 0
+        ? subExpenseSum
+        : Number(editedData.totalAmount ?? 0);
+  const showLiveCalculation =
+    Boolean(subDocuments.length > 0 || (editedData.lineItems && editedData.lineItems.length > 0));
+
   const currentPaySlip: PaySlipAnalysis = editedData.paySlip ?? { employee: { name: '' }, employer: { name: '' }, components: [] };
   const paySlipComponents = currentPaySlip.components ?? [];
   const computedGrossPay = paySlipComponents.filter((c) => c.type === 'INCOME').reduce((s, x) => s + (Number(x.amount) || 0), 0);
@@ -771,8 +895,20 @@ const VerificationHub: React.FC<{
            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8">
               <div className="space-y-5">
                  <div>
-                    <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Issuer Entity</label>
-                    <input value={editedData.issuer} onChange={e => handleFieldChange('issuer', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-foreground outline-none focus:border-cdlp-gold transition-colors" />
+                    <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">
+                      Issuer Entity
+                      {hasMultipleSubs && (
+                        <span className="block text-[8px] font-bold text-cdlp-muted/70 normal-case tracking-normal mt-0.5">
+                          Rolled up from invoices below — edit each sub-invoice issuer.
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      value={editedData.issuer}
+                      onChange={(e) => handleFieldChange('issuer', e.target.value)}
+                      readOnly={hasMultipleSubs}
+                      className={`w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-foreground outline-none focus:border-cdlp-gold transition-colors ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`}
+                    />
                  </div>
                  {subDocuments.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -819,15 +955,20 @@ const VerificationHub: React.FC<{
               <div className="space-y-5">
                  <div>
                     <label className={`text-[9px] font-black uppercase tracking-[0.2em] block mb-2 flex justify-between ${isZeroValue ? 'text-red-600' : 'text-cdlp-muted'}`}>
-                       <span>Total Amount {isZeroValue && <AlertTriangle className="w-3 h-3 inline ml-1 align-text-top" />}</span>
+                       <span>
+                         Total Amount
+                         {hasMultipleSubs && <span className="text-[8px] font-bold text-cdlp-muted ml-2">(rollup)</span>}
+                         {isZeroValue && <AlertTriangle className="w-3 h-3 inline ml-1 align-text-top" />}
+                       </span>
                     </label>
                     <div className="relative">
                       <input 
                         type="number" 
                         step="0.01" 
                         value={editedData.totalAmount} 
-                        onChange={e => handleFieldChange('totalAmount', parseFloat(e.target.value) || 0)} 
-                        className={`w-full h-11 px-4 rounded-sm text-xs font-black text-foreground outline-none transition-all ${isZeroValue ? 'bg-red-600/10 border-2 border-red-600' : 'bg-cdlp-card border border-cdlp-border'}`} 
+                        onChange={e => handleFieldChange('totalAmount', parseFloat(e.target.value) || 0)}
+                        readOnly={hasMultipleSubs}
+                        className={`w-full h-11 px-4 rounded-sm text-xs font-black text-foreground outline-none transition-all ${isZeroValue ? 'bg-red-600/10 border-2 border-red-600' : 'bg-cdlp-card border border-cdlp-border'} ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`} 
                       />
                       {isZeroValue && (
                         <div className="absolute -bottom-5 left-0 text-[8px] font-black text-red-600 uppercase tracking-widest animate-pulse">Value cannot be zero</div>
@@ -836,31 +977,45 @@ const VerificationHub: React.FC<{
                  </div>
                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                       <label className="text-[9px] font-black uppercase text-blue-600 tracking-[0.2em] block mb-2">VAT Amount</label>
+                       <label className="text-[9px] font-black uppercase text-blue-600 tracking-[0.2em] block mb-2">
+                         VAT Amount{hasMultipleSubs && <span className="text-[8px] text-cdlp-muted ml-1">(rollup)</span>}
+                       </label>
                        <input 
                          type="number" 
                          step="0.01" 
                          value={editedData.vatAmount || 0} 
-                         onChange={e => handleFieldChange('vatAmount', parseFloat(e.target.value) || 0)} 
-                        className="w-full h-11 px-4 bg-blue-600/10 border border-blue-600/20 rounded-sm text-xs font-bold text-foreground outline-none focus:border-blue-600 transition-colors" 
+                         onChange={e => handleFieldChange('vatAmount', parseFloat(e.target.value) || 0)}
+                         readOnly={hasMultipleSubs}
+                        className={`w-full h-11 px-4 bg-blue-600/10 border border-blue-600/20 rounded-sm text-xs font-bold text-foreground outline-none focus:border-blue-600 transition-colors ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`} 
                        />
                     </div>
                     <div>
-                       <label className="text-[9px] font-black uppercase text-emerald-600 tracking-[0.2em] block mb-2">Net Amount</label>
+                       <label className="text-[9px] font-black uppercase text-emerald-600 tracking-[0.2em] block mb-2">
+                         Net Amount{hasMultipleSubs && <span className="text-[8px] text-cdlp-muted ml-1">(rollup)</span>}
+                       </label>
                        <input 
                          type="number" 
                          step="0.01" 
                          value={editedData.netAmount || 0} 
-                         onChange={e => handleFieldChange('netAmount', parseFloat(e.target.value) || 0)} 
-                        className="w-full h-11 px-4 bg-emerald-600/10 border border-emerald-600/20 rounded-sm text-xs font-bold text-foreground outline-none focus:border-emerald-600 transition-colors" 
+                         onChange={e => handleFieldChange('netAmount', parseFloat(e.target.value) || 0)}
+                         readOnly={hasMultipleSubs}
+                        className={`w-full h-11 px-4 bg-emerald-600/10 border border-emerald-600/20 rounded-sm text-xs font-bold text-foreground outline-none focus:border-emerald-600 transition-colors ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`} 
                        />
                     </div>
                  </div>
               </div>
               <div className="space-y-5 md:col-span-2 xl:col-span-1">
                  <div>
-                    <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Date</label>
-                    <input type="date" value={editedData.date} onChange={e => handleFieldChange('date', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-foreground outline-none" />
+                    <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">
+                      Date{hasMultipleSubs && <span className="text-[8px] font-bold text-cdlp-muted/80 ml-2">(earliest)</span>}
+                    </label>
+                    <input
+                      type="date"
+                      value={editedData.date}
+                      onChange={(e) => handleFieldChange('date', e.target.value)}
+                      readOnly={hasMultipleSubs}
+                      className={`w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-foreground outline-none ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`}
+                    />
                  </div>
                  <div className="pt-1 sm:pt-0">
                     <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Category</label>
@@ -899,8 +1054,150 @@ const VerificationHub: React.FC<{
               </div>
            </div>
 
-           {/* Computed Totals Summary - Shows real-time calculation from line items */}
-           {editedData.lineItems && editedData.lineItems.length > 0 && (
+           {subDocuments.length > 0 && !isPaySlip && (
+             <div className="mt-8 mb-6 space-y-3">
+               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-cdlp-border pb-2">
+                 <h5 className="text-[10px] font-black uppercase tracking-widest text-cdlp-gold flex items-center gap-2">
+                   <ListOrdered className="w-3.5 h-3.5" /> Document verification — per invoice
+                 </h5>
+                 <span className="text-[8px] text-cdlp-muted uppercase tracking-tight">
+                   Each block is one detected invoice; totals above stay in sync.
+                 </span>
+               </div>
+               <div className="space-y-2">
+                 {subDocuments.map((raw, idx) => {
+                   const sub = raw as FinancialData;
+                   const pageRange = (sub as SubDocPageRange).pageRange;
+                   return (
+                     <details
+                       key={`sub-doc-${idx}-${sub.issuer || idx}-${sub.date || ''}`}
+                       className="group border border-cdlp-border rounded-sm bg-cdlp-card/35 open:bg-cdlp-card/55"
+                       open={idx === 0}
+                     >
+                       <summary className="cursor-pointer list-none flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs font-black uppercase text-foreground tracking-tight [&::-webkit-details-marker]:hidden">
+                         <span className="flex flex-wrap items-center gap-2">
+                           <ChevronRight className="w-4 h-4 text-cdlp-gold group-open:rotate-90 transition-transform shrink-0" />
+                           <span className="text-cdlp-gold">#{idx + 1}</span>
+                           <span className="truncate max-w-[220px]">{sub.issuer || `Invoice ${idx + 1}`}</span>
+                           {pageRange && (
+                             <span className="text-[9px] font-bold text-cdlp-muted normal-case">Pages {pageRange}</span>
+                           )}
+                         </span>
+                         <span className="font-mono text-[11px] text-cdlp-gold shrink-0">
+                           {(Number(sub.totalAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+                           {editedData.originalCurrency || 'CHF'}
+                         </span>
+                       </summary>
+                       <div className="px-4 pb-4 pt-0 border-t border-cdlp-border/50 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                         <div className="space-y-2 md:col-span-2 xl:col-span-1">
+                           <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Issuer</label>
+                           <input
+                             value={sub.issuer ?? ''}
+                             onChange={(e) => patchSubDocument(idx, { issuer: e.target.value })}
+                             className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[11px] font-bold text-foreground outline-none focus:border-cdlp-gold"
+                           />
+                         </div>
+                         <div className="space-y-2">
+                           <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Pages (range)</label>
+                           <input
+                             value={pageRange ?? ''}
+                             onChange={(e) => {
+                               const next: SubDocPageRange = { ...(sub as SubDocPageRange), pageRange: e.target.value };
+                               patchSubDocument(idx, next as FinancialData);
+                             }}
+                             className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[11px] font-bold text-foreground outline-none focus:border-cdlp-gold"
+                             placeholder="e.g. 1–2"
+                           />
+                         </div>
+                         <div className="space-y-2">
+                           <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Date</label>
+                           <input
+                             type="date"
+                             value={sub.date ?? ''}
+                             onChange={(e) => patchSubDocument(idx, { date: e.target.value })}
+                             className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[11px] font-bold text-foreground outline-none"
+                           />
+                         </div>
+                         <div className="space-y-2 md:col-span-2 xl:col-span-3">
+                           <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Category</label>
+                           <select
+                             value={sub.expenseCategory || ''}
+                             onChange={(e) => patchSubDocument(idx, { expenseCategory: e.target.value })}
+                             className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-foreground uppercase outline-none"
+                           >
+                             <option value="">— Uncategorized —</option>
+                             {CATEGORY_GROUPS.map((group) => (
+                               <optgroup key={group.id} label={group.label}>
+                                 {RESTAURANT_CATEGORIES.filter((cat) => cat.group === group.id).map((cat) => (
+                                   <option key={cat.id} value={cat.id}>
+                                     {cat.label}
+                                   </option>
+                                 ))}
+                               </optgroup>
+                             ))}
+                           </select>
+                         </div>
+                         <div className="space-y-2">
+                           <label className="text-[8px] font-black uppercase text-emerald-600 tracking-widest">Net</label>
+                           <input
+                             type="number"
+                             step="0.01"
+                             value={sub.netAmount ?? 0}
+                             onChange={(e) => {
+                               const net = parseFloat(e.target.value) || 0;
+                               const vat = Number(sub.vatAmount || 0);
+                               patchSubDocument(idx, {
+                                 netAmount: net,
+                                 totalAmount: Math.round((net + vat) * 100) / 100,
+                               });
+                             }}
+                             className="w-full h-10 px-3 bg-emerald-600/10 border border-emerald-600/25 rounded-sm text-[11px] font-bold outline-none"
+                           />
+                         </div>
+                         <div className="space-y-2">
+                           <label className="text-[8px] font-black uppercase text-blue-600 tracking-widest">VAT</label>
+                           <input
+                             type="number"
+                             step="0.01"
+                             value={sub.vatAmount ?? 0}
+                             onChange={(e) => {
+                               const vat = parseFloat(e.target.value) || 0;
+                               const net = Number(sub.netAmount || 0);
+                               patchSubDocument(idx, {
+                                 vatAmount: vat,
+                                 totalAmount: Math.round((net + vat) * 100) / 100,
+                               });
+                             }}
+                             className="w-full h-10 px-3 bg-blue-600/10 border border-blue-600/25 rounded-sm text-[11px] font-bold outline-none"
+                           />
+                         </div>
+                         <div className="space-y-2">
+                           <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Total (gross)</label>
+                           <input
+                             type="number"
+                             step="0.01"
+                             value={sub.totalAmount ?? 0}
+                             onChange={(e) => {
+                               const gross = parseFloat(e.target.value) || 0;
+                               const vat = Number(sub.vatAmount || 0);
+                               patchSubDocument(idx, {
+                                 totalAmount: gross,
+                                 netAmount: Math.round((gross - vat) * 100) / 100,
+                               });
+                             }}
+                             className="w-full h-10 px-3 bg-cdlp-card border border-cdlp-border rounded-sm text-[11px] font-black outline-none"
+                           />
+                         </div>
+                       </div>
+                     </details>
+                   );
+                 })}
+               </div>
+             </div>
+           )}
+
+           {/* Live totals: aligned with rolled-up expense lines or sub-documents */}
+           {showLiveCalculation && !isPaySlip && (
              <div className="mt-6 mb-4 p-4 bg-gradient-to-r from-emerald-900/20 to-red-900/20 border border-cdlp-border rounded-lg">
                <div className="flex items-center justify-between mb-3">
                  <h5 className="text-[10px] font-black uppercase tracking-widest text-cdlp-gold flex items-center gap-2">
@@ -912,28 +1209,28 @@ const VerificationHub: React.FC<{
                  <div className="bg-emerald-900/20 border border-emerald-600/30 rounded p-3">
                    <p className="text-[8px] font-black uppercase text-emerald-600 mb-1">Total Income</p>
                    <p className="text-lg font-black text-emerald-400">
-                     {(editedData.lineItems.filter(i => i.type === 'INCOME').reduce((s, i) => s + (Number(i.amount) || 0), 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                     {lineIncomeSum.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                    </p>
                    <p className="text-[8px] text-emerald-600/60">{editedData.originalCurrency || 'CHF'}</p>
                  </div>
                  <div className="bg-red-900/20 border border-red-600/30 rounded p-3">
                    <p className="text-[8px] font-black uppercase text-red-600 mb-1">Total Expenses</p>
                    <p className="text-lg font-black text-red-400">
-                     {(editedData.lineItems.filter(i => i.type === 'EXPENSE').reduce((s, i) => s + (Number(i.amount) || 0), 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                     {totalExpensesDisplay.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                    </p>
                    <p className="text-[8px] text-red-600/60">{editedData.originalCurrency || 'CHF'}</p>
                  </div>
                  <div className="bg-cdlp-gold/20 border border-cdlp-gold/30 rounded p-3">
                    <p className="text-[8px] font-black uppercase text-cdlp-gold mb-1">Document Total</p>
                    <p className="text-lg font-black text-cdlp-gold">
-                     {(editedData.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                     {documentTotalDisplay.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                    </p>
                    <p className="text-[8px] text-cdlp-gold/60">{editedData.originalCurrency || 'CHF'}</p>
                  </div>
                </div>
                <div className="mt-3 text-center">
                  <p className="text-[9px] text-cdlp-muted">
-                   ℹ️ These totals update automatically as you edit line items. Click save button below to apply changes to dashboard.
+                   Totals stay aligned with invoice line items. Use Save below to sync the dashboard.
                  </p>
                </div>
              </div>
@@ -1038,24 +1335,102 @@ const VerificationHub: React.FC<{
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {subDocuments.map((subDoc: any, idx: number) => (
-                    <tr key={`${subDoc.issuer || 'invoice'}-${idx}`} className="text-foreground">
-                      <td className="px-3 py-2">{idx + 1}</td>
-                      <td className="px-3 py-2 font-semibold">{subDoc.issuer || `Invoice ${idx + 1}`}</td>
-                      <td className="px-3 py-2">{subDoc.pageRange || '-'}</td>
-                      <td className="px-3 py-2">{subDoc.date || '-'}</td>
-                      <td className="px-3 py-2">{subDoc.expenseCategory || '-'}</td>
-                      <td className="px-3 py-2 text-right">
-                        {(Number(subDoc.totalAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        {(Number(subDoc.netAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        {(Number(subDoc.vatAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                    </tr>
-                  ))}
+                  {subDocuments.map((raw, idx) => {
+                    const subDoc = raw as FinancialData;
+                    const pr = (subDoc as SubDocPageRange).pageRange;
+                    return (
+                      <tr key={`modal-${subDoc.issuer || 'invoice'}-${idx}`} className="text-foreground align-top">
+                        <td className="px-2 py-2 font-bold">{idx + 1}</td>
+                        <td className="px-2 py-2 min-w-[140px]">
+                          <input
+                            value={subDoc.issuer ?? ''}
+                            onChange={(e) => patchSubDocument(idx, { issuer: e.target.value })}
+                            className="w-full min-w-[120px] bg-background border border-border rounded px-2 py-1 text-[11px] font-semibold"
+                          />
+                        </td>
+                        <td className="px-2 py-2 w-24">
+                          <input
+                            value={pr ?? ''}
+                            onChange={(e) => {
+                              const next: SubDocPageRange = { ...(subDoc as SubDocPageRange), pageRange: e.target.value };
+                              patchSubDocument(idx, next as FinancialData);
+                            }}
+                            className="w-full bg-background border border-border rounded px-2 py-1 text-[11px]"
+                          />
+                        </td>
+                        <td className="px-2 py-2 w-36">
+                          <input
+                            type="date"
+                            value={subDoc.date ?? ''}
+                            onChange={(e) => patchSubDocument(idx, { date: e.target.value })}
+                            className="w-full bg-background border border-border rounded px-1 py-1 text-[10px]"
+                          />
+                        </td>
+                        <td className="px-2 py-2 min-w-[120px]">
+                          <select
+                            value={subDoc.expenseCategory || ''}
+                            onChange={(e) => patchSubDocument(idx, { expenseCategory: e.target.value })}
+                            className="w-full bg-background border border-border rounded px-1 py-1 text-[10px] font-bold uppercase"
+                          >
+                            <option value="">—</option>
+                            {RESTAURANT_CATEGORIES.map((cat) => (
+                              <option key={cat.id} value={cat.id}>
+                                {cat.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-2 py-2 text-right w-28">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={subDoc.totalAmount ?? 0}
+                            onChange={(e) => {
+                              const gross = parseFloat(e.target.value) || 0;
+                              const vat = Number(subDoc.vatAmount || 0);
+                              patchSubDocument(idx, {
+                                totalAmount: gross,
+                                netAmount: Math.round((gross - vat) * 100) / 100,
+                              });
+                            }}
+                            className="w-full bg-background border border-border rounded px-2 py-1 text-[11px] text-right font-mono"
+                          />
+                        </td>
+                        <td className="px-2 py-2 text-right w-28">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={subDoc.netAmount ?? 0}
+                            onChange={(e) => {
+                              const net = parseFloat(e.target.value) || 0;
+                              const vat = Number(subDoc.vatAmount || 0);
+                              patchSubDocument(idx, {
+                                netAmount: net,
+                                totalAmount: Math.round((net + vat) * 100) / 100,
+                              });
+                            }}
+                            className="w-full bg-background border border-border rounded px-2 py-1 text-[11px] text-right font-mono"
+                          />
+                        </td>
+                        <td className="px-2 py-2 text-right w-28">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={subDoc.vatAmount ?? 0}
+                            onChange={(e) => {
+                              const vat = parseFloat(e.target.value) || 0;
+                              const net = Number(subDoc.netAmount || 0);
+                              patchSubDocument(idx, {
+                                vatAmount: vat,
+                                totalAmount: Math.round((net + vat) * 100) / 100,
+                              });
+                            }}
+                            className="w-full bg-background border border-border rounded px-2 py-1 text-[11px] text-right font-mono"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

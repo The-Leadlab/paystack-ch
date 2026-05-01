@@ -20,9 +20,6 @@ const navLinks = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const goToSystem = () => {
-    window.location.href = "/app";
-  };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
@@ -42,12 +39,12 @@ export default function Navbar() {
         <div className="container flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
           <a href="#" className="flex items-center gap-2.5 group">
-            <img
-              src="/brand/paystack-final-logo.png"
-              alt="Paystack"
-              className="h-8 w-auto object-contain"
-            />
-            <span className="sr-only">Paystack</span>
+            <div className="w-8 h-8 rounded-lg bg-brand-charcoal flex items-center justify-center">
+              <span className="font-display font-bold text-sm text-white">P</span>
+            </div>
+            <span className="font-display font-semibold text-lg tracking-tight text-foreground">
+              paystack<span className="text-brand-red">.ch</span>
+            </span>
           </a>
 
           {/* Desktop Nav Links */}
@@ -66,14 +63,13 @@ export default function Navbar() {
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-4">
             <a
-              href="/app"
+              href="#contact"
               className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
             >
-              Sign In
+              Contact
             </a>
             <Button
               size="sm"
-              onClick={goToSystem}
               className="font-display text-sm bg-brand-red text-white hover:bg-brand-red/90 rounded-lg px-5"
             >
               Get Started
@@ -113,15 +109,14 @@ export default function Navbar() {
               ))}
               <div className="ruled-line my-4" />
               <a
-                href="/app"
+                href="#contact"
                 onClick={() => setMobileOpen(false)}
                 className="font-display text-2xl font-light text-foreground hover:text-brand-red transition-colors"
               >
-                Sign In
+                Contact
               </a>
               <Button
                 size="lg"
-                onClick={goToSystem}
                 className="font-display bg-brand-red text-white hover:bg-brand-red/90 rounded-lg mt-4 w-full"
               >
                 Get Started

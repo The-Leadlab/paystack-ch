@@ -184,27 +184,69 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
 
   if (mergedSubDocs.length === 0) return parsed;
 
-  const subTotal = mergedSubDocs.reduce((sum: number, sub: any) => sum + Number(sub.totalAmount || 0), 0);
-  const subVat = mergedSubDocs.reduce((sum: number, sub: any) => sum + Number(sub.vatAmount || 0), 0);
-  const subNet = mergedSubDocs.reduce((sum: number, sub: any) => sum + Number(sub.netAmount || 0), 0);
+  // Per-invoice amount consistency + aggregate totals must match SUM(sub-invoices).
+  const repairedSubs = mergedSubDocs.map((sub: any) => {
+    let total = Number(sub.totalAmount ?? 0);
+    let net = Number(sub.netAmount ?? 0);
+    let vat = Number(sub.vatAmount ?? 0);
+    if (total <= 0 && net + vat > 0) total = net + vat;
+    else if (Math.abs(total - (net + vat)) > 0.03 && net + vat > 0) {
+      total = Math.round((net + vat) * 100) / 100;
+    } else if (total > 0 && net <= 0 && vat >= 0 && vat <= total) net = Math.round((total - vat) * 100) / 100;
+    return { ...sub, totalAmount: total, netAmount: net, vatAmount: vat };
+  });
+
+  let subTotal = repairedSubs.reduce((sum: number, sub: any) => sum + Number(sub.totalAmount || 0), 0);
+  const subVat = repairedSubs.reduce((sum: number, sub: any) => sum + Number(sub.vatAmount || 0), 0);
+  const subNet = repairedSubs.reduce((sum: number, sub: any) => sum + Number(sub.netAmount || 0), 0);
+
+  const rebasedItems: BankTransaction[] = repairedSubs.map((sub: any) => ({
+    date: sub.date || parsed.date || new Date().toISOString().slice(0, 10),
+    description: `${sub.issuer || 'Unknown issuer'}${sub.pageRange ? ` (pages ${sub.pageRange})` : ''}`,
+    amount: Number(sub.totalAmount || 0),
+    type: 'EXPENSE',
+    category: sub.expenseCategory || 'OTHER',
+    notes: `VAT ${Number(sub.vatRate || 0)}% | VAT Amount ${Number(sub.vatAmount || 0)} ${sub.originalCurrency || parsed.originalCurrency || 'CHF'}`,
+  }));
+
+  const expenseSumGenerated = rebasedItems
+    .filter((i) => i.type === 'EXPENSE')
+    .reduce((s, i) => s + Number(i.amount || 0), 0);
+  const lineSumMatch =
+    normalizedLineItems.length === rebasedItems.length &&
+    Math.abs(expenseSumGenerated - normalizedLineItems.filter((i) => i.type === 'EXPENSE').reduce((s, i) => s + Number(i.amount || 0), 0)) < 1;
+
   const finalLineItems =
-    normalizedLineItems.length >= mergedSubDocs.length && normalizedLineItems.length > 0
+    normalizedLineItems.length > 0 && lineSumMatch && normalizedLineItems.length >= repairedSubs.length
       ? normalizedLineItems
-      : generatedLineItems;
+      : rebasedItems;
+
+  const rollupFromLines = finalLineItems
+    .filter((i) => i.type === 'EXPENSE')
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+  /** Prefer line-item rollup when model header totals drift from summed expenses. */
+  const aggregatedTotal =
+    rollupFromLines > 0 && Math.abs(subTotal - rollupFromLines) > 0.06 ? rollupFromLines : subTotal;
+  const aggregatedVat = repairedSubs.reduce((sum: number, sub: any) => sum + Number(sub.vatAmount || 0), 0);
+  const aggregatedNet = repairedSubs.reduce((sum: number, sub: any) => sum + Number(sub.netAmount || 0), 0);
+
+  const sortedDates = repairedSubs.map((s: any) => s.date).filter(Boolean).sort();
 
   return {
     ...parsed,
-    subDocuments: mergedSubDocs as any,
-    totalAmount: parsed.totalAmount && parsed.totalAmount > 0 ? parsed.totalAmount : subTotal,
-    vatAmount: parsed.vatAmount && parsed.vatAmount > 0 ? parsed.vatAmount : subVat,
-    netAmount: parsed.netAmount && parsed.netAmount > 0 ? parsed.netAmount : subNet,
-    issuer: parsed.issuer && parsed.issuer !== 'Multiple Issuers'
-      ? parsed.issuer
-      : `${mergedSubDocs.length} invoices detected`,
+    subDocuments: repairedSubs as any,
+    totalAmount: aggregatedTotal,
+    vatAmount: aggregatedVat,
+    netAmount: aggregatedNet,
+    issuer:
+      repairedSubs.length > 1 ? `${repairedSubs.length} invoices detected` : parsed.issuer || repairedSubs[0]?.issuer || 'Unknown',
     lineItems: finalLineItems,
-    aiInterpretation: parsed.aiInterpretation || `Detected ${mergedSubDocs.length} invoice blocks across all pages.`
+    date: (sortedDates[0] as string) || parsed.date,
+    aiInterpretation: parsed.aiInterpretation || `Detected ${repairedSubs.length} invoice blocks across all pages.`,
   };
 }
+
 
 export const analyzeFinancialDocument = async (
   file: File, 
