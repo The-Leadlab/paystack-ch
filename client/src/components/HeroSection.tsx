@@ -8,8 +8,11 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play } from "lucide-react";
 import AnimatedCounter from "./AnimatedCounter";
+import { useLanguage } from "@/cafe/context/LanguageContext";
 
 export default function HeroSection() {
+  const { t } = useLanguage();
+
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Light background gradient */}
@@ -40,7 +43,7 @@ export default function HeroSection() {
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-brand-red/20 bg-brand-red/5 mb-8"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-brand-red animate-pulse" />
-              <span className="font-data text-xs text-brand-red">Built for Switzerland</span>
+              <span className="font-data text-xs text-brand-red">{t("heroBadge")}</span>
             </motion.div>
 
             {/* Headline */}
@@ -50,11 +53,11 @@ export default function HeroSection() {
               transition={{ duration: 0.7, delay: 0.1 }}
               className="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-bold leading-[1.1] tracking-tight mb-6 text-foreground"
             >
-              Your Finances,{" "}
-              <span className="text-gradient-red">Automated</span>
+              {t("heroTitleLine1")}{" "}
+              <span className="text-gradient-red">{t("heroTitleHighlight")}</span>
               <br />
               <span className="font-editorial font-normal italic text-[0.85em] text-muted-foreground">
-                with Swiss Precision
+                {t("heroTitleLine2")}
               </span>
             </motion.h1>
 
@@ -65,7 +68,7 @@ export default function HeroSection() {
               transition={{ duration: 0.7, delay: 0.2 }}
               className="font-editorial text-lg text-muted-foreground leading-relaxed mb-8 max-w-md"
             >
-              Upload any document — invoice, receipt, payslip — and let AI extract, categorize, and organize your financial data. Income, expenses, salaries, and reports in one platform.
+              {t("heroDescription")}
             </motion.p>
 
             {/* CTAs */}
@@ -79,7 +82,7 @@ export default function HeroSection() {
                 size="lg"
                 className="font-display bg-brand-red text-white hover:bg-brand-red/90 rounded-lg px-7 h-12 text-sm gap-2 group"
               >
-                Start Free Trial
+                {t("heroStartTrial")}
                 <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
               </Button>
               <Button
@@ -88,7 +91,7 @@ export default function HeroSection() {
                 className="font-display rounded-lg px-7 h-12 text-sm gap-2 border-border hover:border-brand-red/40 hover:text-brand-red bg-transparent"
               >
                 <Play size={14} />
-                Watch Demo
+                {t("heroWatchDemo")}
               </Button>
             </motion.div>
 
@@ -103,21 +106,21 @@ export default function HeroSection() {
                 <div className="text-2xl font-bold text-foreground">
                   <AnimatedCounter end={95} suffix="%" />
                 </div>
-                <p className="font-display text-xs text-muted-foreground mt-1">OCR Accuracy</p>
+                <p className="font-display text-xs text-muted-foreground mt-1">{t("heroStatAccuracy")}</p>
               </div>
               <div className="h-8 w-px bg-border" />
               <div>
                 <div className="text-2xl font-bold text-foreground">
                   <AnimatedCounter end={10} suffix="x" />
                 </div>
-                <p className="font-display text-xs text-muted-foreground mt-1">Faster Processing</p>
+                <p className="font-display text-xs text-muted-foreground mt-1">{t("heroStatSpeed")}</p>
               </div>
               <div className="h-8 w-px bg-border" />
               <div>
                 <div className="text-2xl font-bold text-foreground">
                   <AnimatedCounter end={500} suffix="+" />
                 </div>
-                <p className="font-display text-xs text-muted-foreground mt-1">Businesses</p>
+                <p className="font-display text-xs text-muted-foreground mt-1">{t("heroStatBusinesses")}</p>
               </div>
             </motion.div>
           </div>
@@ -135,7 +138,7 @@ export default function HeroSection() {
             <div className="relative rounded-xl overflow-hidden border border-border shadow-xl shadow-black/8">
               <img
                 src="/manus-storage/Image28.04.2026at01.15_01_307b72f8.png"
-                alt="Paystack.ch Financial Dashboard showing income, expenses, salary summaries and AI document processing"
+                alt={t("heroImageAlt")}
                 className="w-full h-auto"
                 loading="eager"
               />
@@ -153,8 +156,8 @@ export default function HeroSection() {
                   <span className="font-data text-sm text-brand-red font-bold">AI</span>
                 </div>
                 <div>
-                  <p className="font-display text-xs font-medium text-foreground">Document Processed</p>
-                  <p className="font-data text-xs text-brand-red">CHF 2'486.63 extracted</p>
+                  <p className="font-display text-xs font-medium text-foreground">{t("heroDocumentProcessed")}</p>
+                  <p className="font-data text-xs text-brand-red">{t("heroExtractedAmount")}</p>
                 </div>
               </div>
             </motion.div>

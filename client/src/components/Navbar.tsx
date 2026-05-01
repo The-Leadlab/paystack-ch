@@ -7,19 +7,20 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-const navLinks = [
-  { label: "Features", href: "#features" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Modules", href: "#modules" },
-  { label: "Platform", href: "#platform" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "Security", href: "#security" },
-];
+import { useLanguage } from "@/cafe/context/LanguageContext";
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { language, setLanguage, t } = useLanguage();
+  const navLinks = [
+    { label: t("navFeatures"), href: "#features" },
+    { label: t("navHowItWorks"), href: "#how-it-works" },
+    { label: t("navModules"), href: "#modules" },
+    { label: t("navPlatform"), href: "#platform" },
+    { label: t("navPricing"), href: "#pricing" },
+    { label: t("navSecurity"), href: "#security" },
+  ];
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
@@ -62,17 +63,24 @@ export default function Navbar() {
 
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-4">
+            <button
+              onClick={() => setLanguage(language === "en" ? "fr" : "en")}
+              className="font-display text-xs text-muted-foreground hover:text-foreground transition-colors duration-300"
+              aria-label={language === "en" ? t("navSwitchToFrench") : t("navSwitchToEnglish")}
+            >
+              {language === "en" ? "FR" : "EN"}
+            </button>
             <a
               href="#contact"
               className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
             >
-              Contact
+              {t("navContact")}
             </a>
             <Button
               size="sm"
               className="font-display text-sm bg-brand-red text-white hover:bg-brand-red/90 rounded-lg px-5"
             >
-              Get Started
+              {t("navGetStarted")}
             </Button>
           </div>
 
@@ -113,13 +121,19 @@ export default function Navbar() {
                 onClick={() => setMobileOpen(false)}
                 className="font-display text-2xl font-light text-foreground hover:text-brand-red transition-colors"
               >
-                Contact
+                {t("navContact")}
               </a>
+              <button
+                onClick={() => setLanguage(language === "en" ? "fr" : "en")}
+                className="text-left font-display text-2xl font-light text-foreground hover:text-brand-red transition-colors"
+              >
+                {language === "en" ? "FR" : "EN"}
+              </button>
               <Button
                 size="lg"
                 className="font-display bg-brand-red text-white hover:bg-brand-red/90 rounded-lg mt-4 w-full"
               >
-                Get Started
+                {t("navGetStarted")}
               </Button>
             </div>
           </motion.div>

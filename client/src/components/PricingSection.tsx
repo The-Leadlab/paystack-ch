@@ -7,76 +7,78 @@ import { Button } from "@/components/ui/button";
 import { Check, ArrowRight } from "lucide-react";
 import ScrollReveal from "./ScrollReveal";
 import SectionLabel from "./SectionLabel";
-
-const plans = [
-  {
-    name: "Starter",
-    price: "29",
-    period: "/month",
-    description: "For freelancers and solo entrepreneurs getting started with financial automation.",
-    features: [
-      "Document Processing (50/mo)",
-      "Income & Expense Tracking",
-      "Basic Reports & Export",
-      "1 User",
-      "Email Support",
-      "2 Accounting Periods",
-    ],
-    cta: "Start Free Trial",
-    highlighted: false,
-  },
-  {
-    name: "Business",
-    price: "59",
-    period: "/month",
-    description: "For growing businesses that need full financial management with team access.",
-    features: [
-      "Document Processing (500/mo)",
-      "All Core Modules",
-      "Payroll & Salary Management",
-      "Advanced Analytics & Reports",
-      "Up to 10 Users",
-      "Unlimited Periods",
-      "Priority Support",
-      "API Access",
-    ],
-    cta: "Start Free Trial",
-    highlighted: true,
-  },
-  {
-    name: "Enterprise",
-    price: "Custom",
-    period: "",
-    description: "For large organizations requiring custom integrations, SLA, and dedicated support.",
-    features: [
-      "Unlimited Document Processing",
-      "All Modules (Current + Future)",
-      "Custom Integrations",
-      "White-label Option",
-      "Unlimited Users",
-      "Dedicated Account Manager",
-      "SLA & Uptime Guarantee",
-      "On-premise Deployment Option",
-    ],
-    cta: "Contact Sales",
-    highlighted: false,
-  },
-];
+import { useLanguage } from "@/cafe/context/LanguageContext";
 
 export default function PricingSection() {
+  const { t } = useLanguage();
+  const plans = [
+    {
+      name: t("planStarterName"),
+      price: "29",
+      period: "/month",
+      description: t("planStarterDescription"),
+      features: [
+        t("planStarterFeature1"),
+        t("planStarterFeature2"),
+        t("planStarterFeature3"),
+        t("planStarterFeature4"),
+        t("planStarterFeature5"),
+        t("planStarterFeature6"),
+      ],
+      cta: t("ctaStartTrial"),
+      highlighted: false,
+    },
+    {
+      name: t("planBusinessName"),
+      price: "59",
+      period: "/month",
+      description: t("planBusinessDescription"),
+      features: [
+        t("planBusinessFeature1"),
+        t("planBusinessFeature2"),
+        t("planBusinessFeature3"),
+        t("planBusinessFeature4"),
+        t("planBusinessFeature5"),
+        t("planBusinessFeature6"),
+        t("planBusinessFeature7"),
+        t("planBusinessFeature8"),
+      ],
+      cta: t("ctaStartTrial"),
+      highlighted: true,
+    },
+    {
+      name: t("planEnterpriseName"),
+      price: t("pricingCustom"),
+      period: "",
+      description: t("planEnterpriseDescription"),
+      features: [
+        t("planEnterpriseFeature1"),
+        t("planEnterpriseFeature2"),
+        t("planEnterpriseFeature3"),
+        t("planEnterpriseFeature4"),
+        t("planEnterpriseFeature5"),
+        t("planEnterpriseFeature6"),
+        t("planEnterpriseFeature7"),
+        t("planEnterpriseFeature8"),
+      ],
+      cta: t("ctaContactSales"),
+      highlighted: false,
+    },
+  ];
+
   return (
     <section id="pricing" className="relative py-24 lg:py-32 border-t border-border">
       <div className="container">
-        <SectionLabel number="06" label="Pricing" />
+        <SectionLabel number="06" label={t("pricingTitle")} />
 
         <ScrollReveal>
           <div className="max-w-2xl mb-16">
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5 text-foreground">
-              Simple, transparent{" "}
-              <span className="font-editorial italic font-normal text-gradient-gold">pricing</span>
+              {t("pricingHeadingStart")}{" "}
+              <span className="font-editorial italic font-normal text-gradient-gold">{t("pricingHeadingHighlight")}</span>
             </h2>
             <p className="font-editorial text-lg text-muted-foreground leading-relaxed">
-              All prices in CHF. Start with a 14-day free trial, no credit card required. Scale as your business grows.
+              {t("pricingDescription")}
             </p>
           </div>
         </ScrollReveal>
@@ -93,7 +95,7 @@ export default function PricingSection() {
               >
                 {plan.highlighted && (
                   <div className="absolute -top-3 left-6 px-3 py-1 rounded-full bg-brand-red text-white font-display text-xs font-medium">
-                    Most Popular
+                    {t("pricingMostPopular")}
                   </div>
                 )}
 
@@ -105,8 +107,8 @@ export default function PricingSection() {
                 </p>
 
                 <div className="flex items-baseline gap-1 mb-6">
-                  {plan.price !== "Custom" && (
-                    <span className="font-data text-xs text-muted-foreground">CHF</span>
+                  {plan.price !== t("pricingCustom") && (
+                    <span className="font-data text-xs text-muted-foreground">{t("pricingCurrency")}</span>
                   )}
                   <span className="font-display text-4xl font-bold text-foreground">
                     {plan.price}
