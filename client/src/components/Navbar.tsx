@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -39,14 +40,14 @@ export default function Navbar() {
       >
         <div className="container flex items-center justify-between h-20 lg:h-24">
           {/* Logo */}
-          <a href="#" className="flex items-center gap-3 group">
+          <Link href="/" className="flex items-center gap-3 group">
             <div className="w-16 h-16 rounded-xl bg-brand-charcoal flex items-center justify-center">
               <span className="font-display font-bold text-xl text-white">P</span>
             </div>
             <span className="font-display font-semibold text-2xl tracking-tight text-foreground">
               paystack<span className="text-brand-red">.ch</span>
             </span>
-          </a>
+          </Link>
 
           {/* Desktop Nav Links */}
           <div className="hidden lg:flex items-center gap-8">
@@ -77,10 +78,11 @@ export default function Navbar() {
               {t("navContact")}
             </a>
             <Button
+              asChild
               size="sm"
               className="font-display text-sm bg-brand-red text-white hover:bg-brand-red/90 rounded-lg px-5"
             >
-              {t("navGetStarted")}
+              <Link href="/sign-up">{t("navGetStarted")}</Link>
             </Button>
           </div>
 
@@ -130,10 +132,13 @@ export default function Navbar() {
                 {language === "en" ? "FR" : "EN"}
               </button>
               <Button
+                asChild
                 size="lg"
                 className="font-display bg-brand-red text-white hover:bg-brand-red/90 rounded-lg mt-4 w-full"
               >
-                {t("navGetStarted")}
+                <Link href="/sign-up" onClick={() => setMobileOpen(false)}>
+                  {t("navGetStarted")}
+                </Link>
               </Button>
             </div>
           </motion.div>

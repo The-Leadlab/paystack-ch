@@ -6,10 +6,10 @@
 import ScrollReveal from "./ScrollReveal";
 
 const footerLinks = {
-  Product: ["Features", "Pricing", "Modules", "Roadmap", "Changelog"],
-  Company: ["About", "Careers", "Blog", "Press Kit"],
-  Resources: ["Documentation", "API Reference", "Help Center", "Community"],
-  Legal: ["Privacy Policy", "Terms of Service", "Data Processing", "Imprint"],
+  Produit: ["Fonctionnalites", "Tarifs", "Modules", "Feuille de route", "Journal des versions"],
+  Entreprise: ["A propos", "Carrieres", "Blog", "Kit presse"],
+  Ressources: ["Documentation", "Reference API", "Centre d'aide", "Communaute"],
+  Juridique: ["Politique de confidentialite", "Conditions d'utilisation", "Traitement des donnees", "Mentions legales"],
 };
 
 export default function Footer() {
@@ -29,13 +29,13 @@ export default function Footer() {
                 </span>
               </a>
               <p className="font-editorial text-sm text-muted-foreground leading-relaxed max-w-xs">
-                AI-powered financial management built with Swiss precision. Trusted by businesses across Switzerland.
+                Gestion financiere propulsee par l'IA, concue avec precision suisse. Adoptee par des entreprises dans toute la Suisse.
               </p>
               <div className="flex items-center gap-2 mt-5">
                 <div className="w-5 h-5 rounded bg-brand-red flex items-center justify-center">
                   <span className="text-white text-[8px] font-bold">+</span>
                 </div>
-                <span className="font-data text-xs text-muted-foreground">Swiss Made Software</span>
+                <span className="font-data text-xs text-muted-foreground">Logiciel suisse</span>
               </div>
             </div>
 
@@ -66,19 +66,19 @@ export default function Footer() {
         <div className="ruled-line mt-12 mb-8" />
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="font-display text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Paystack.ch — All rights reserved.
+            &copy; {new Date().getFullYear()} Paystack.ch — Tous droits reserves.
           </p>
           <div className="flex items-center gap-6">
             <span className="font-data text-xs text-muted-foreground">
-              GDPR Compliant
+              Conforme RGPD
             </span>
             <span className="text-border">|</span>
             <span className="font-data text-xs text-muted-foreground">
-              Swiss Data Protection
+              Protection des donnees suisses
             </span>
             <span className="text-border">|</span>
             <span className="font-data text-xs text-muted-foreground">
-              SOC 2 Ready
+              SOC 2 pret
             </span>
           </div>
         </div>

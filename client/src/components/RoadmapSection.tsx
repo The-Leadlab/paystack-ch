@@ -12,8 +12,8 @@ const phases = [
     icon: Check,
     status: "complete",
     label: "Phase 1",
-    title: "Core Features",
-    items: ["Document Processing", "Income/Expense Tracking", "Session Management", "Basic Reports", "Authentication"],
+    title: "Fonctionnalites essentielles",
+    items: ["Traitement des documents", "Suivi revenus/depenses", "Gestion des sessions", "Rapports de base", "Authentification"],
     color: "text-emerald-600",
     borderColor: "border-emerald-500/30",
     bgColor: "bg-emerald-500/10",
@@ -22,8 +22,8 @@ const phases = [
     icon: Loader2,
     status: "progress",
     label: "Phase 2",
-    title: "Enhanced Features",
-    items: ["Advanced Analytics", "Inventory Tracking", "Employee Management", "Supplier Management"],
+    title: "Fonctionnalites ameliorees",
+    items: ["Analyses avancees", "Suivi des stocks", "Gestion employes", "Gestion fournisseurs"],
     color: "text-brand-red",
     borderColor: "border-brand-red/30",
     bgColor: "bg-brand-red/10",
@@ -32,8 +32,8 @@ const phases = [
     icon: Clock,
     status: "planned",
     label: "Phase 3",
-    title: "Advanced Features",
-    items: ["Customer Management", "Project Management", "Invoice Generation", "Mobile Apps"],
+    title: "Fonctionnalites avancees",
+    items: ["Gestion clients", "Gestion projets", "Generation de factures", "Applications mobiles"],
     color: "text-amber-600",
     borderColor: "border-amber-500/30",
     bgColor: "bg-amber-500/10",
@@ -42,8 +42,8 @@ const phases = [
     icon: Sparkles,
     status: "future",
     label: "Phase 4",
-    title: "Enterprise Features",
-    items: ["Multi-company Support", "Advanced Integrations", "Custom Workflows", "API Marketplace"],
+    title: "Fonctionnalites entreprise",
+    items: ["Support multi-societes", "Integrations avancees", "Workflows sur mesure", "Marketplace API"],
     color: "text-muted-foreground",
     borderColor: "border-border",
     bgColor: "bg-secondary",
@@ -54,16 +54,16 @@ export default function RoadmapSection() {
   return (
     <section className="relative py-24 lg:py-32 border-t border-border">
       <div className="container">
-        <SectionLabel number="09" label="Roadmap" />
+        <SectionLabel number="09" label="Feuille de route" />
 
         <ScrollReveal>
           <div className="max-w-2xl mb-16">
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5 text-foreground">
-              Built for the{" "}
-              <span className="text-gradient-red">long term</span>
+              Construit pour le{" "}
+              <span className="text-gradient-red">long terme</span>
             </h2>
             <p className="font-editorial text-lg text-muted-foreground leading-relaxed">
-              Our development roadmap is driven by customer needs. From core financial management to enterprise-grade features — we are building the complete platform.
+              Notre feuille de route evolue selon les besoins clients. De la gestion financiere essentielle aux fonctions entreprise, nous construisons une plateforme complete.
             </p>
           </div>
         </ScrollReveal>

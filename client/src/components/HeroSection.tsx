@@ -5,6 +5,7 @@
  */
 
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play } from "lucide-react";
 import AnimatedCounter from "./AnimatedCounter";
@@ -79,19 +80,25 @@ export default function HeroSection() {
               className="flex flex-wrap items-center gap-4 mb-12"
             >
               <Button
+                asChild
                 size="lg"
                 className="font-display bg-brand-red text-white hover:bg-brand-red/90 rounded-lg px-7 h-12 text-sm gap-2 group"
               >
-                {t("heroStartTrial")}
-                <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                <Link href="/sign-up" className="inline-flex items-center gap-2">
+                  {t("heroStartTrial")}
+                  <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                </Link>
               </Button>
               <Button
+                asChild
                 size="lg"
                 variant="outline"
                 className="font-display rounded-lg px-7 h-12 text-sm gap-2 border-border hover:border-brand-red/40 hover:text-brand-red bg-transparent"
               >
-                <Play size={14} />
-                {t("heroWatchDemo")}
+                <a href="#platform" className="inline-flex items-center gap-2">
+                  <Play size={14} />
+                  {t("heroWatchDemo")}
+                </a>
               </Button>
             </motion.div>
 

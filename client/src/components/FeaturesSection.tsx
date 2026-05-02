@@ -17,67 +17,67 @@ import SectionLabel from "./SectionLabel";
 const features = [
   {
     icon: FileText,
-    title: "AI Document Processing",
+    title: "Traitement IA des documents",
     description:
       "Upload invoices, receipts, bank statements, or payslips in any format. Our AI extracts data with 95%+ accuracy, automatically categorizes entries, and detects duplicates — turning paper into structured financial data in seconds.",
     stats: [
-      { label: "Accuracy", value: "95%+" },
+      { label: "Precision", value: "95%+" },
       { label: "Formats", value: "PDF, JPG, PNG" },
-      { label: "Processing", value: "3x Parallel" },
+      { label: "Traitement", value: "3x parallele" },
     ],
   },
   {
     icon: TrendingUp,
-    title: "Income Tracking",
+    title: "Suivi des revenus",
     description:
       "Track every revenue stream — from daily sales and service fees to subscriptions and commissions. Automatic income creation from processed documents with real-time dashboard updates and period-based organization.",
     stats: [
-      { label: "Categories", value: "Unlimited" },
-      { label: "Updates", value: "Real-time" },
-      { label: "Sources", value: "Auto + Manual" },
+      { label: "Categories", value: "Illimitees" },
+      { label: "Mises a jour", value: "Temps reel" },
+      { label: "Sources", value: "Auto + Manuel" },
     ],
   },
   {
     icon: Wallet,
-    title: "Expense Management",
+    title: "Gestion des depenses",
     description:
       "Comprehensive multi-category expense tracking organized by supplier. From rent and utilities to payroll and marketing — every franc is accounted for with automatic expense creation from uploaded documents.",
     stats: [
-      { label: "Categories", value: "12+ Built-in" },
-      { label: "Tracking", value: "By Supplier" },
+      { label: "Categories", value: "12+ integrees" },
+      { label: "Suivi", value: "Par fournisseur" },
       { label: "Export", value: "Excel + PDF" },
     ],
   },
   {
     icon: Users,
-    title: "Payroll & Salary",
+    title: "Paie et salaires",
     description:
       "Process employee payslips with Swiss-format support including AVS, LPP, and AC deductions. Track gross and net salaries, manage deduction breakdowns, and generate monthly payroll summaries automatically.",
     stats: [
-      { label: "Format", value: "Swiss (AVS/LPP)" },
-      { label: "Deductions", value: "Customizable" },
-      { label: "Reports", value: "Monthly" },
+      { label: "Format", value: "Suisse (AVS/LPP)" },
+      { label: "Deductions", value: "Personnalisables" },
+      { label: "Rapports", value: "Mensuels" },
     ],
   },
   {
     icon: Calendar,
-    title: "Session & Period Management",
+    title: "Gestion des sessions et periodes",
     description:
       "Create unlimited accounting periods — daily, weekly, monthly, quarterly, or project-based. Switch between periods instantly, maintain data isolation, and generate period-specific reports for any timeframe.",
     stats: [
-      { label: "Periods", value: "Unlimited" },
-      { label: "Types", value: "7+ Options" },
-      { label: "Switching", value: "Instant" },
+      { label: "Periodes", value: "Illimitees" },
+      { label: "Types", value: "7+ options" },
+      { label: "Bascule", value: "Instantanee" },
     ],
   },
   {
     icon: BarChart3,
-    title: "Reports & Analytics",
+    title: "Rapports et analyses",
     description:
       "Monthly revenue analysis, income vs. expense breakdowns, top supplier insights, and advanced filtering. Export print-ready PDF reports or CSV data with complete audit trails for compliance.",
     stats: [
-      { label: "Report Types", value: "7+" },
-      { label: "Filters", value: "Advanced" },
+      { label: "Types de rapports", value: "7+" },
+      { label: "Filtres", value: "Avances" },
       { label: "Export", value: "CSV + PDF" },
     ],
   },
@@ -87,19 +87,18 @@ export default function FeaturesSection() {
   return (
     <section id="features" className="relative py-24 lg:py-32">
       <div className="container">
-        <SectionLabel number="01" label="Core Features" />
+        <SectionLabel number="01" label="Fonctionnalites principales" />
 
         <ScrollReveal>
           <div className="max-w-2xl mb-16">
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5 text-foreground">
-              Everything you need to{" "}
+              Tout ce qu'il faut pour{" "}
               <span className="font-editorial italic font-normal text-gradient-gold">
-                manage finances
+                gerer vos finances
               </span>
             </h2>
             <p className="font-editorial text-lg text-muted-foreground leading-relaxed">
-              Six powerful modules working together to automate your financial
-              operations. Toggle features on or off based on your business needs.
+              Six modules puissants travaillent ensemble pour automatiser vos operations financieres. Activez seulement les fonctionnalites utiles a votre activite.
             </p>
           </div>
         </ScrollReveal>

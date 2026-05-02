@@ -3,6 +3,7 @@
  * CTA: Contact section with editorial layout. Geneva Red + Gold accents.
  */
 
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Mail, Phone, MapPin, CheckCircle } from "lucide-react";
 import ScrollReveal from "./ScrollReveal";
@@ -32,11 +33,14 @@ export default function CTASection() {
 
             <div className="flex flex-wrap gap-4 mb-12">
               <Button
+                asChild
                 size="lg"
                 className="font-display bg-brand-red text-white hover:bg-brand-red/90 rounded-lg px-8 h-12 text-sm gap-2 group"
               >
-                {t("ctaStartTrial")}
-                <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                <Link href="/sign-up" className="inline-flex items-center gap-2">
+                  {t("ctaStartTrial")}
+                  <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                </Link>
               </Button>
               <Button
                 size="lg"

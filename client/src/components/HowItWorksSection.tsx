@@ -11,32 +11,32 @@ const steps = [
   {
     icon: Upload,
     number: "01",
-    title: "Upload",
-    subtitle: "Capture any document",
+    title: "Importer",
+    subtitle: "Capturez n'importe quel document",
     description:
       "Snap a photo, upload a PDF, or drag-and-drop any financial document. Invoices, receipts, bank statements, payslips — we handle them all.",
   },
   {
     icon: Cpu,
     number: "02",
-    title: "Extract",
-    subtitle: "AI reads and understands",
+    title: "Extraire",
+    subtitle: "L'IA lit et comprend",
     description:
       "Our AI engine processes your document with 95%+ OCR accuracy, extracting amounts, dates, vendors, categories, and line items automatically.",
   },
   {
     icon: CheckCircle,
     number: "03",
-    title: "Verify",
-    subtitle: "Data is organized and verified",
+    title: "Verifier",
+    subtitle: "Les donnees sont organisees et validees",
     description:
       "Review extracted data in a clean interface. Edit if needed, approve, and the system automatically categorizes entries into income, expenses, or payroll.",
   },
   {
     icon: FileBarChart,
     number: "04",
-    title: "Report",
-    subtitle: "Ready to use in your systems",
+    title: "Rapporter",
+    subtitle: "Pret a utiliser dans vos systemes",
     description:
       "Access real-time dashboards, generate reports, export to Excel or PDF. Your financial data is structured, searchable, and audit-ready.",
   },
@@ -46,16 +46,16 @@ export default function HowItWorksSection() {
   return (
     <section id="how-it-works" className="relative py-24 lg:py-32 border-t border-border">
       <div className="container">
-        <SectionLabel number="02" label="How It Works" />
+        <SectionLabel number="02" label="Comment ca marche" />
 
         <ScrollReveal>
           <div className="max-w-2xl mb-16">
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5 text-foreground">
-              From paper to{" "}
-              <span className="text-gradient-red">structured data</span>
+              Du papier aux{" "}
+              <span className="text-gradient-red">donnees structurees</span>
               <br />
               <span className="font-editorial italic font-normal text-[0.8em] text-muted-foreground">
-                in four simple steps
+                en quatre etapes simples
               </span>
             </h2>
           </div>

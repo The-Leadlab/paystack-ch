@@ -10,32 +10,32 @@ import { Shield, Lock, Eye, Server, RefreshCw, Globe } from "lucide-react";
 const securityFeatures = [
   {
     icon: Lock,
-    title: "End-to-End Encryption",
+    title: "Chiffrement de bout en bout",
     description: "All data is encrypted in transit and at rest using AES-256 encryption standards.",
   },
   {
     icon: Shield,
-    title: "Role-Based Access",
+    title: "Acces base sur les roles",
     description: "Granular permissions ensure team members only see what they need to see.",
   },
   {
     icon: Eye,
-    title: "Audit Logging",
+    title: "Journal d'audit",
     description: "Every action is logged with timestamps for complete traceability and compliance.",
   },
   {
     icon: Server,
-    title: "Swiss Data Hosting",
+    title: "Hebergement des donnees en Suisse",
     description: "Your financial data stays in Switzerland, compliant with Swiss data protection laws.",
   },
   {
     icon: RefreshCw,
-    title: "Automated Backups",
+    title: "Sauvegardes automatiques",
     description: "Continuous backups with disaster recovery ensure your data is never lost.",
   },
   {
     icon: Globe,
-    title: "GDPR Compliant",
+    title: "Conforme RGPD",
     description: "Full compliance with European data protection regulations and Swiss FADP.",
   },
 ];
@@ -44,7 +44,7 @@ export default function SecuritySection() {
   return (
     <section id="security" className="relative py-24 lg:py-32 border-t border-border">
       <div className="container">
-        <SectionLabel number="07" label="Security & Compliance" />
+        <SectionLabel number="07" label="Securite et conformite" />
 
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
           {/* Left — Badge + Trust */}
@@ -53,17 +53,17 @@ export default function SecuritySection() {
               <div className="w-48 h-48 mb-8">
                 <img
                   src="/manus-storage/swiss-trust-badge_68c2163c.png"
-                  alt="Swiss Made Data Protection — Precision, Security, Trust"
+                  alt="Protection des donnees suisse - Precision, securite, confiance"
                   className="w-full h-full object-contain"
                   loading="lazy"
                 />
               </div>
               <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mb-4 text-foreground">
-                Swiss-grade{" "}
-                <span className="text-gradient-red">security</span>
+                Securite{" "}
+                <span className="text-gradient-red">niveau suisse</span>
               </h2>
               <p className="font-editorial text-base text-muted-foreground leading-relaxed max-w-sm">
-                Your financial data deserves the same level of protection as Swiss banking. We deliver enterprise-grade security with Swiss precision.
+                Vos donnees financieres meritent un niveau de protection bancaire. Nous offrons une securite entreprise avec precision suisse.
               </p>
             </div>
           </ScrollReveal>

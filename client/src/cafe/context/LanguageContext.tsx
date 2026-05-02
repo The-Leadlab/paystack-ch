@@ -168,6 +168,25 @@ const translations = {
     contactLocation: 'Location',
     contactCityCountry: 'Geneva, Switzerland',
     swissMadeGeneva: 'Swiss Made Software - Geneva, CH',
+
+    // Auth pages
+    authTagline: 'Financial tracking',
+    authSignInTitle: 'Sign in',
+    authSignUpTitle: 'Create account',
+    authDisplayName: 'Display name',
+    authEmailLabel: 'Email',
+    authPasswordLabel: 'Password',
+    authContinueGoogle: 'Continue with Google',
+    authSubmitSignIn: 'Sign in',
+    authSubmitSignUp: 'Create account',
+    authNeedAccount: "Don't have an account?",
+    authSignUpLink: 'Sign up',
+    authHaveAccount: 'Already have an account?',
+    authSignInLink: 'Sign in',
+    authBackHome: 'Back to home',
+    authFooterSecure: 'Secure access · Your data stays yours',
+    authWorking: 'Please wait…',
+    authFirebaseMissingShort: 'Firebase is not configured. Add VITE_FIREBASE_* to your environment.',
   },
   fr: {
     // Header
@@ -328,19 +347,35 @@ const translations = {
     contactLocation: 'Adresse',
     contactCityCountry: 'Geneve, Suisse',
     swissMadeGeneva: 'Logiciel suisse - Geneve, CH',
+
+    // Auth pages
+    authTagline: 'Suivi financier',
+    authSignInTitle: 'Connexion',
+    authSignUpTitle: 'Creer un compte',
+    authDisplayName: 'Nom affiche',
+    authEmailLabel: 'E-mail',
+    authPasswordLabel: 'Mot de passe',
+    authContinueGoogle: 'Continuer avec Google',
+    authSubmitSignIn: 'Se connecter',
+    authSubmitSignUp: 'Creer mon compte',
+    authNeedAccount: 'Pas encore de compte ?',
+    authSignUpLink: 'S\'inscrire',
+    authHaveAccount: 'Deja un compte ?',
+    authSignInLink: 'Se connecter',
+    authBackHome: 'Retour a l\'accueil',
+    authFooterSecure: 'Acces securise — vos donnees vous appartiennent',
+    authWorking: 'Patience…',
+    authFirebaseMissingShort: 'Firebase n\'est pas configure. Ajoutez les variables VITE_FIREBASE_* a votre environnement.',
   },
 };
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(() => {
-    const saved = localStorage.getItem('language');
-    return (saved === 'en' || saved === 'fr') ? saved : 'en';
-  });
+  // Swiss product: always open in French; language toggle applies for the current session only.
+  const [language, setLanguageState] = useState<Language>('fr');
 
   useEffect(() => {
-    localStorage.setItem('language', language);
     document.documentElement.lang = language;
   }, [language]);
 

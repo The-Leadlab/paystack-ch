@@ -6,13 +6,13 @@
 import ScrollReveal from "./ScrollReveal";
 
 const industries = [
-  "Retail & Commerce",
-  "Restaurants & Hospitality",
-  "Professional Services",
-  "Consulting & Freelance",
-  "Manufacturing",
-  "Healthcare",
-  "E-Commerce",
+  "Commerce de detail",
+  "Restaurants et hotellerie",
+  "Services professionnels",
+  "Conseil et freelance",
+  "Industrie",
+  "Sante",
+  "E-commerce",
   "Education",
 ];
 
@@ -23,7 +23,7 @@ export default function TrustedBySection() {
         <ScrollReveal>
           <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
             <p className="font-display text-xs tracking-widest text-muted-foreground uppercase whitespace-nowrap">
-              Trusted across industries
+              Adopte dans plusieurs secteurs
             </p>
             <div className="h-px w-8 bg-border hidden md:block" />
             <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">

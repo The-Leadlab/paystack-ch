@@ -25,34 +25,34 @@ import {
 const modules = [
   {
     id: "core",
-    label: "Core",
+    label: "Essentiel",
     items: [
-      { icon: FileText, name: "Document Processing", status: "live", description: "AI-powered extraction from any document format" },
-      { icon: TrendingUp, name: "Income Tracking", status: "live", description: "Multi-category revenue tracking with auto-creation" },
-      { icon: Wallet, name: "Expense Management", status: "live", description: "Supplier-based expense organization and categorization" },
-      { icon: Users, name: "Payroll & Salary", status: "live", description: "Swiss-format payslip processing with AVS/LPP support" },
-      { icon: Calendar, name: "Session Management", status: "live", description: "Unlimited accounting periods with instant switching" },
-      { icon: BarChart3, name: "Reports & Analytics", status: "live", description: "Comprehensive financial reports with export options" },
+      { icon: FileText, name: "Traitement des documents", status: "live", description: "Extraction assistee par IA depuis tout format" },
+      { icon: TrendingUp, name: "Suivi des revenus", status: "live", description: "Suivi multi-categories avec creation automatique" },
+      { icon: Wallet, name: "Gestion des depenses", status: "live", description: "Classement des depenses par fournisseur" },
+      { icon: Users, name: "Paie et salaires", status: "live", description: "Traitement des fiches de paie suisses AVS/LPP" },
+      { icon: Calendar, name: "Gestion des sessions", status: "live", description: "Periodes comptables illimitees avec bascule instantanee" },
+      { icon: BarChart3, name: "Rapports et analyses", status: "live", description: "Rapports financiers complets avec options d'export" },
     ],
   },
   {
     id: "enhanced",
-    label: "Enhanced",
+    label: "Avance",
     items: [
-      { icon: Archive, name: "Document Library", status: "live", description: "Entity-based document archiving with search and filter" },
-      { icon: ShoppingCart, name: "POS Module", status: "partial", description: "Z-reading entry with AI extraction, full POS coming soon" },
-      { icon: Package, name: "Inventory Tracking", status: "coming", description: "Stock management with FIFO/LIFO costing and barcode scanning" },
-      { icon: UserCheck, name: "Employee Management", status: "coming", description: "Complete employee profiles, attendance, and leave management" },
-      { icon: Building2, name: "Supplier Management", status: "coming", description: "Supplier profiles, payment terms, and performance tracking" },
-      { icon: Receipt, name: "Invoice Generation", status: "coming", description: "Custom templates, automatic numbering, and recurring invoices" },
+      { icon: Archive, name: "Bibliotheque documents", status: "live", description: "Archivage par entite avec recherche et filtres" },
+      { icon: ShoppingCart, name: "Module POS", status: "partial", description: "Saisie Z-reading avec extraction IA, POS complet bientot" },
+      { icon: Package, name: "Suivi de stock", status: "coming", description: "Gestion de stock FIFO/LIFO et scan code-barres" },
+      { icon: UserCheck, name: "Gestion employes", status: "coming", description: "Profils employes, presence et conges" },
+      { icon: Building2, name: "Gestion fournisseurs", status: "coming", description: "Profils fournisseurs, conditions et suivi performance" },
+      { icon: Receipt, name: "Generation de factures", status: "coming", description: "Modeles, numerotation automatique et factures recurrentes" },
     ],
   },
 ];
 
 const statusColors: Record<string, { bg: string; text: string; label: string }> = {
-  live: { bg: "bg-emerald-500/10", text: "text-emerald-600", label: "Live" },
-  partial: { bg: "bg-brand-gold/15", text: "text-amber-600", label: "Partial" },
-  coming: { bg: "bg-muted", text: "text-muted-foreground", label: "Coming Soon" },
+  live: { bg: "bg-emerald-500/10", text: "text-emerald-600", label: "Actif" },
+  partial: { bg: "bg-brand-gold/15", text: "text-amber-600", label: "Partiel" },
+  coming: { bg: "bg-muted", text: "text-muted-foreground", label: "Bientot" },
 };
 
 export default function ModulesSection() {
@@ -63,18 +63,18 @@ export default function ModulesSection() {
   return (
     <section id="modules" className="relative py-24 lg:py-32 border-t border-border">
       <div className="container">
-        <SectionLabel number="03" label="Modular Architecture" />
+        <SectionLabel number="03" label="Architecture modulaire" />
 
         <ScrollReveal>
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
             {/* Left — Content */}
             <div>
               <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5 text-foreground">
-                Toggle what you{" "}
-                <span className="font-editorial italic font-normal text-gradient-gold">need</span>
+                Activez ce dont vous{" "}
+                <span className="font-editorial italic font-normal text-gradient-gold">avez besoin</span>
               </h2>
               <p className="font-editorial text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
-                Every business is different. Enable only the modules you need — from basic document processing to full enterprise financial management. Scale as you grow.
+                Chaque entreprise est differente. Activez uniquement les modules necessaires, du traitement documentaire a la gestion financiere complete.
               </p>
 
               {/* Tab Switcher */}

@@ -3,6 +3,7 @@
  * Pricing: Three-tier pricing with editorial layout. Placeholder pricing pending final decision.
  */
 
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Check, ArrowRight } from "lucide-react";
 import ScrollReveal from "./ScrollReveal";
@@ -134,14 +135,17 @@ export default function PricingSection() {
                 </ul>
 
                 <Button
+                  asChild
                   className={`w-full font-display text-sm rounded-lg h-11 gap-2 group ${
                     plan.highlighted
                       ? "bg-brand-red text-white hover:bg-brand-red/90"
                       : "bg-secondary text-foreground hover:bg-secondary/80"
                   }`}
                 >
-                  {plan.cta}
-                  <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                  <Link href="/sign-up" className="inline-flex items-center justify-center gap-2">
+                    {plan.cta}
+                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
                 </Button>
               </div>
             </ScrollReveal>

@@ -13,7 +13,7 @@ import { LayoutDashboard, TrendingUp, BarChart3, FolderOpen } from "lucide-react
 const views = [
   {
     id: "dashboard",
-    label: "Dashboard",
+    label: "Tableau de bord",
     icon: LayoutDashboard,
     title: "Financial Overview at a Glance",
     description:
@@ -23,7 +23,7 @@ const views = [
   },
   {
     id: "revenue",
-    label: "Revenue & POS",
+    label: "Revenus et POS",
     icon: TrendingUp,
     title: "Income Tracking & Z-Readings",
     description:
@@ -33,7 +33,7 @@ const views = [
   },
   {
     id: "reports",
-    label: "Reports",
+    label: "Rapports",
     icon: BarChart3,
     title: "Monthly Revenue Analysis",
     description:
@@ -61,18 +61,18 @@ export default function PlatformTourSection() {
   return (
     <section id="platform" className="relative py-24 lg:py-32 border-t border-border bg-secondary/30">
       <div className="container">
-        <SectionLabel number="05" label="Platform Tour" />
+        <SectionLabel number="05" label="Visite de la plateforme" />
 
         <ScrollReveal>
           <div className="max-w-2xl mb-12">
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5 text-foreground">
-              See it{" "}
+              Voyez-la{" "}
               <span className="font-editorial italic font-normal text-gradient-gold">
-                in action
+                en action
               </span>
             </h2>
             <p className="font-editorial text-lg text-muted-foreground leading-relaxed">
-              Real screenshots from a live deployment. No mockups, no prototypes — this is the actual platform managing finances for Swiss businesses today.
+              Captures reelles d'un deploiement en production. Pas de maquettes: c'est la plateforme utilisee aujourd'hui par des entreprises suisses.
             </p>
           </div>
         </ScrollReveal>
@@ -152,10 +152,10 @@ export default function PlatformTourSection() {
                 </p>
                 <div className="p-4 rounded-lg bg-brand-gold/8 border border-brand-gold/20">
                   <p className="font-display text-xs font-medium text-foreground mb-1">
-                    White-label Ready
+                    Pret pour marque blanche
                   </p>
                   <p className="font-editorial text-xs text-muted-foreground leading-relaxed">
-                    Every deployment is fully branded for your business — custom logo, colors, and domain. This example shows a live deployment for Café de la Place.
+                    Chaque deploiement est personnalise pour votre entreprise - logo, couleurs et domaine. Cet exemple montre un deploiement en direct pour Cafe de la Place.
                   </p>
                 </div>
               </div>
