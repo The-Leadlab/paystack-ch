@@ -624,20 +624,34 @@ const VerificationHub: React.FC<{
       
       // For invoices/bills, total amount is the sum of all line items
       // For bank statements, it's income - expense
+      const rateAmt = Number(newData.conversionRateUsed ?? 1) || 1;
       if (newData.documentType === DocumentType.BANK_STATEMENT) {
-        newData.totalAmount = totalIncome - totalExpense;
+        const net = Math.round((totalIncome - totalExpense) * 100) / 100;
+        newData.totalAmount = net;
+        newData.amountInCHF = net;
       } else {
-        // For invoices, sum all amounts
-        newData.totalAmount = lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+        const signedSum = Math.round(lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 100) / 100;
+        newData.totalAmount = signedSum;
+        newData.amountInCHF =
+          rateAmt !== 1 ? Math.round(signedSum * rateAmt * 100) / 100 : signedSum;
       }
-      
-      newData.amountInCHF = newData.totalAmount;
       
       console.log('📊 Line items changed - recalculated totals:', {
         totalIncome,
         totalExpense,
         totalAmount: newData.totalAmount
       });
+    }
+
+    // Keep CHF rollup + live strip aligned when user edits Total Amount directly (single-doc mode).
+    if (
+      field === 'totalAmount' &&
+      newData.documentType !== DocumentType.BANK_STATEMENT &&
+      newData.documentType !== DocumentType.PAY_SLIP
+    ) {
+      const v = Number(value) || 0;
+      const r = Number(newData.conversionRateUsed ?? 1) || 1;
+      newData.amountInCHF = r !== 1 ? Math.round(v * r * 100) / 100 : Math.round(v * 100) / 100;
     }
     
     // Pay slips: net pay is derived from earnings (INCOME) minus deductions (EXPENSE)
@@ -699,13 +713,16 @@ const VerificationHub: React.FC<{
     : subExpenseSum > 0
       ? subExpenseSum
       : Number(editedData.calculatedTotalExpense ?? 0);
+
+  /** Live "document total" must mirror the Total Amount field (rollup/sub-edits/not CHF conversions). */
+  const lineSignedSum =
+    editedData.lineItems?.reduce((s, i) => s + (Number(i.amount) || 0), 0) ?? 0;
+  const primaryTotal = Number(editedData.totalAmount ?? editedData.amountInCHF ?? 0);
   const documentTotalDisplay = isBankStatement
     ? Number(editedData.totalAmount ?? 0)
-    : hasLineItems
-      ? lineExpenseSum
-      : subExpenseSum > 0
-        ? subExpenseSum
-        : Number(editedData.totalAmount ?? 0);
+    : Math.abs(primaryTotal) > 1e-9 || !hasLineItems
+      ? primaryTotal
+      : Math.round(lineSignedSum * 100) / 100;
   const showLiveCalculation =
     Boolean(subDocuments.length > 0 || (editedData.lineItems && editedData.lineItems.length > 0));
 
@@ -1230,7 +1247,7 @@ const VerificationHub: React.FC<{
                </div>
                <div className="mt-3 text-center">
                  <p className="text-[9px] text-cdlp-muted">
-                   Totals stay aligned with invoice line items. Use Save below to sync the dashboard.
+                   Document total mirrors the Total Amount field (above). Income and expenses columns come from live line types. Save to sync the dashboard.
                  </p>
                </div>
              </div>
