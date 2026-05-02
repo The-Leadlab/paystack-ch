@@ -4,12 +4,13 @@ import { UserPlus, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import { useAuth } from "@/cafe/context/AuthContext";
 import { firebaseReady } from "@/cafe/lib/firebase";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { AuthLayout } from "./auth/AuthLayout";
+import { GoogleGIcon } from "@/components/icons/GoogleGIcon";
 
 function sanitizeRedirect(search: string): string {
   const redirect = new URLSearchParams(search).get("redirect");
@@ -21,7 +22,7 @@ function sanitizeRedirect(search: string): string {
 
 export default function SignUpPage() {
   const { t } = useLanguage();
-  const { user, loading, signUp } = useAuth();
+  const { user, loading, signUp, signInWithGoogle } = useAuth();
   const [, setLocation] = useLocation();
   const search = useSearch();
 
@@ -30,6 +31,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const nextPath = sanitizeRedirect(search);
 
@@ -67,11 +69,43 @@ export default function SignUpPage() {
     }
   };
 
+  const handleGoogle = async () => {
+    setError(null);
+    setGoogleLoading(true);
+    try {
+      const { error: err } = await signInWithGoogle();
+      if (err) setError(err.message);
+      else setLocation(nextPath);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   return (
     <AuthLayout heading={t("authSignUpTitle")}>
       <Card className="border-border shadow-sm">
-        <CardContent className="pt-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <CardHeader className="pb-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full font-display gap-2 border-border bg-background hover:bg-secondary/80"
+            onClick={handleGoogle}
+            disabled={googleLoading || submitting}
+          >
+            <GoogleGIcon className="size-[18px] shrink-0" />
+            {googleLoading ? t("authWorking") : t("authContinueGoogle")}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="relative py-2">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground font-display">email</span>
+            </div>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label htmlFor="signup-name" className="font-display text-xs">
                 {t("authDisplayName")}
@@ -123,7 +157,7 @@ export default function SignUpPage() {
             <Button
               type="submit"
               className="w-full font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2"
-              disabled={submitting}
+              disabled={submitting || googleLoading}
             >
               <UserPlus className="size-4" />
               {submitting ? t("authWorking") : t("authSubmitSignUp")}

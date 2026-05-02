@@ -47,6 +47,16 @@
   --color-brand-gold: #FFD730;
   --color-brand-red-light: oklch(0.65 0.2 25 / 0.1);
   --color-brand-gold-light: oklch(0.85 0.15 85 / 0.1);
+  --color-cdlp-black: #ffffff;
+  --color-cdlp-dark: #fcfaf4;
+  --color-cdlp-card: #ffffff;
+  --color-cdlp-border: color-mix(in srgb, var(--color-brand-charcoal) 20%, #ffffff);
+  --color-cdlp-gold: #e8423f;
+  --color-cdlp-gold-light: #f26a67;
+  --color-cdlp-gold-pale: #f8a3a1;
+  --color-cdlp-cream: #fff5f4;
+  --color-cdlp-muted: #6f6669;
+  --color-cdlp-red: #ffd730;
 
   /* Typography */
   --font-display: 'Sora', system-ui, sans-serif;
@@ -90,6 +100,160 @@
   --sidebar-accent-foreground: oklch(0.18 0.01 60);
   --sidebar-border: oklch(0.91 0.005 90);
   --sidebar-ring: oklch(0.55 0.2 25);
+}
+
+.dark {
+  --background: #160f12;
+  --foreground: #f7f3f4;
+  --card: #1f161a;
+  --card-foreground: #f7f3f4;
+  --popover: #1f161a;
+  --popover-foreground: #f7f3f4;
+  --primary: #e8423f;
+  --primary-foreground: #ffffff;
+  --secondary: #2a1e23;
+  --secondary-foreground: #f7f3f4;
+  --muted: #2a1e23;
+  --muted-foreground: #c6aeb0;
+  --accent: #e8423f;
+  --accent-foreground: #ffffff;
+  --destructive: #e8423f;
+  --destructive-foreground: #ffffff;
+  --border: #4a2a31;
+  --input: #4a2a31;
+  --ring: #e8423f;
+  --chart-1: #e8423f;
+  --chart-2: #ffd730;
+  --chart-3: #f7f3f4;
+  --chart-4: #ff7a78;
+  --chart-5: #ffd730;
+  --sidebar: #1a1215;
+  --sidebar-foreground: #f7f3f4;
+  --sidebar-primary: #e8423f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #2a1e23;
+  --sidebar-accent-foreground: #f7f3f4;
+  --sidebar-border: #4a2a31;
+  --sidebar-ring: #e8423f;
+  --color-cdlp-black: #120d0f;
+  --color-cdlp-dark: #160f12;
+  --color-cdlp-card: #1f161a;
+  --color-cdlp-border: #4a2a31;
+  --color-cdlp-gold: #e8423f;
+  --color-cdlp-gold-light: #f26a67;
+  --color-cdlp-gold-pale: #f6a3a1;
+  --color-cdlp-cream: #24191d;
+  --color-cdlp-muted: #c6aeb0;
+  --color-cdlp-red: #ffd730;
+}
+
+/* Scoped cafe app palettes used by /app route wrapper */
+.cafe-shell.cafe-theme-light {
+  --color-cdlp-black: #ffffff;
+  --color-cdlp-dark: #fcfaf4;
+  --color-cdlp-card: #ffffff;
+  --color-cdlp-border: color-mix(in srgb, var(--color-brand-charcoal) 20%, #ffffff);
+  --color-cdlp-gold: #e8423f;
+  --color-cdlp-gold-light: #f26a67;
+  --color-cdlp-gold-pale: #f8a3a1;
+  --color-cdlp-cream: #fff5f4;
+  --color-cdlp-muted: #6f6669;
+  --color-cdlp-red: #ffd730;
+}
+
+.cafe-shell.cafe-theme-dark {
+  --color-cdlp-black: #120d0f;
+  --color-cdlp-dark: #160f12;
+  --color-cdlp-card: #1f161a;
+  --color-cdlp-border: #4a2a31;
+  --color-cdlp-gold: #e8423f;
+  --color-cdlp-gold-light: #f26a67;
+  --color-cdlp-gold-pale: #f6a3a1;
+  --color-cdlp-cream: #24191d;
+  --color-cdlp-muted: #c6aeb0;
+  --color-cdlp-red: #ffd730;
+}
+
+/* Force visible visual change for the cafe dashboard shells */
+.cafe-shell.cafe-theme-dark .bg-cdlp-dark {
+  background-color: #160f12 !important;
+}
+.cafe-shell.cafe-theme-dark .bg-cdlp-black {
+  background-color: #120d0f !important;
+}
+.cafe-shell.cafe-theme-dark .bg-cdlp-card {
+  background-color: #1f161a !important;
+}
+.cafe-shell.cafe-theme-dark .border-cdlp-border {
+  border-color: #4a2a31 !important;
+}
+.cafe-shell.cafe-theme-dark .text-cdlp-muted {
+  color: #c6aeb0 !important;
+}
+
+.cafe-shell.cafe-theme-light .bg-cdlp-dark {
+  background-color: #fcfaf4 !important;
+}
+.cafe-shell.cafe-theme-light .bg-cdlp-black {
+  background-color: #ffffff !important;
+}
+.cafe-shell.cafe-theme-light .bg-cdlp-card {
+  background-color: #ffffff !important;
+}
+.cafe-shell.cafe-theme-light .border-cdlp-border {
+  border-color: color-mix(in srgb, var(--color-brand-charcoal) 20%, #ffffff) !important;
+}
+
+/* Improve readability in light mode for legacy hardcoded dark-theme utilities */
+.cafe-shell.cafe-theme-light .bg-cdlp-black,
+.cafe-shell.cafe-theme-light .bg-cdlp-card,
+.cafe-shell.cafe-theme-light .bg-cdlp-dark {
+  color: #2b2b2b;
+}
+
+.cafe-shell.cafe-theme-light .bg-cdlp-card.text-white,
+.cafe-shell.cafe-theme-light .bg-cdlp-black.text-white,
+.cafe-shell.cafe-theme-light .bg-cdlp-dark.text-white,
+.cafe-shell.cafe-theme-light .text-white.bg-cdlp-card,
+.cafe-shell.cafe-theme-light .text-white.bg-cdlp-black,
+.cafe-shell.cafe-theme-light .text-white.bg-cdlp-dark {
+  color: #2b2b2b !important;
+}
+
+.cafe-shell.cafe-theme-light .bg-cdlp-card .text-white,
+.cafe-shell.cafe-theme-light .bg-cdlp-black .text-white,
+.cafe-shell.cafe-theme-light .bg-cdlp-dark .text-white {
+  color: #2b2b2b !important;
+}
+
+/* Preserve intended white text on high-contrast action backgrounds */
+.cafe-shell.cafe-theme-light .bg-red-600.text-white,
+.cafe-shell.cafe-theme-light .bg-emerald-600.text-white,
+.cafe-shell.cafe-theme-light .bg-cdlp-gold.text-white {
+  color: #ffffff !important;
+}
+
+.cafe-shell.cafe-theme-light input.bg-cdlp-card,
+.cafe-shell.cafe-theme-light input.bg-cdlp-black,
+.cafe-shell.cafe-theme-light textarea.bg-cdlp-card,
+.cafe-shell.cafe-theme-light textarea.bg-cdlp-black,
+.cafe-shell.cafe-theme-light select.bg-cdlp-card,
+.cafe-shell.cafe-theme-light select.bg-cdlp-black {
+  color: #2b2b2b !important;
+}
+
+.cafe-shell.cafe-theme-light .bg-slate-950,
+.cafe-shell.cafe-theme-light .bg-slate-900 {
+  background-color: #fcfaf4 !important;
+}
+.cafe-shell.cafe-theme-light .text-slate-600,
+.cafe-shell.cafe-theme-light .text-slate-500,
+.cafe-shell.cafe-theme-light .text-slate-400,
+.cafe-shell.cafe-theme-light .text-slate-300 {
+  color: #6f6669 !important;
+}
+.cafe-shell.cafe-theme-light .border-white\/10 {
+  border-color: color-mix(in srgb, var(--color-brand-charcoal) 18%, #ffffff) !important;
 }
 
 @layer base {
@@ -215,3 +379,4 @@
 html {
   scroll-behavior: smooth;
 }
+

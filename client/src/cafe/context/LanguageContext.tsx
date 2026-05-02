@@ -91,6 +91,9 @@ const translations = {
     navSwitchToFrench: 'Switch to French',
     navSwitchToEnglish: 'Switch to English',
     navChangeLanguage: 'Change Language',
+    /** Navbar: one-click toggle to the other language (landing defaults to FR) */
+    navTranslateEnglish: 'English',
+    navTranslateFrench: 'Français',
 
     // Landing - Hero
     heroBadge: 'Built for Switzerland',
@@ -270,6 +273,8 @@ const translations = {
     navSwitchToFrench: 'Passer en francais',
     navSwitchToEnglish: 'Passer en anglais',
     navChangeLanguage: 'Changer la langue',
+    navTranslateEnglish: 'English',
+    navTranslateFrench: 'Francais',
 
     // Landing - Hero
     heroBadge: 'Concu pour la Suisse',

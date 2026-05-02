@@ -8,6 +8,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 
 export default function Navbar() {
@@ -40,14 +41,7 @@ export default function Navbar() {
       >
         <div className="container flex items-center justify-between h-20 lg:h-24">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-16 h-16 rounded-xl bg-brand-charcoal flex items-center justify-center">
-              <span className="font-display font-bold text-xl text-white">P</span>
-            </div>
-            <span className="font-display font-semibold text-2xl tracking-tight text-foreground">
-              paystack<span className="text-brand-red">.ch</span>
-            </span>
-          </Link>
+          <BrandLogo href="/" />
 
           {/* Desktop Nav Links */}
           <div className="hidden lg:flex items-center gap-8">
@@ -64,13 +58,17 @@ export default function Navbar() {
 
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-3">
-            <button
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => setLanguage(language === "en" ? "fr" : "en")}
-              className="font-display text-xs text-muted-foreground hover:text-foreground transition-colors duration-300 border border-border rounded-md px-2.5 py-1.5"
+              className="font-display text-xs border-border rounded-lg px-3"
               aria-label={language === "en" ? t("navSwitchToFrench") : t("navSwitchToEnglish")}
+              title={language === "en" ? t("navSwitchToFrench") : t("navSwitchToEnglish")}
             >
-              {t("navChangeLanguage")}: {language === "en" ? "FR" : "EN"}
-            </button>
+              {language === "fr" ? t("navTranslateEnglish") : t("navTranslateFrench")}
+            </Button>
             <a
               href="#contact"
               className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
@@ -126,10 +124,14 @@ export default function Navbar() {
                 {t("navContact")}
               </a>
               <button
-                onClick={() => setLanguage(language === "en" ? "fr" : "en")}
+                type="button"
+                onClick={() => {
+                  setLanguage(language === "en" ? "fr" : "en");
+                  setMobileOpen(false);
+                }}
                 className="text-left font-display text-2xl font-light text-foreground hover:text-brand-red transition-colors"
               >
-                {language === "en" ? "FR" : "EN"}
+                {language === "fr" ? t("navTranslateEnglish") : t("navTranslateFrench")}
               </button>
               <Button
                 asChild

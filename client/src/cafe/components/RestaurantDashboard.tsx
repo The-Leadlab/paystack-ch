@@ -11,6 +11,7 @@ import { DocumentProcessor } from './DocumentProcessor';
 import { POSManager } from './POSManager';
 import type { FinancialData, ProcessedDocument, POSReading } from '../types';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
+import { BRAND_LOGO_SRC } from '@/const/branding';
 
 type Tab = 'dashboard' | 'revenue' | 'reports' | 'documents';
 
@@ -457,9 +458,9 @@ export function RestaurantDashboard() {
       <div className="md:hidden bg-cdlp-black border-b border-cdlp-border p-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <img
-            src="/brand/paystack-final-logo.png"
-            alt="Paystack"
-            className="h-7 w-auto object-contain"
+            src={BRAND_LOGO_SRC}
+            alt="Paystack.ch"
+            className="h-11 w-auto max-w-[200px] object-contain shrink-0"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -489,9 +490,9 @@ export function RestaurantDashboard() {
         <div className="hidden md:block p-4 border-b border-cdlp-border">
           <div className="flex flex-col items-center mb-4">
             <img
-              src="/brand/paystack-final-logo.png"
-              alt="Paystack"
-              className="h-10 w-auto object-contain mb-2"
+              src={BRAND_LOGO_SRC}
+              alt="Paystack.ch"
+              className="h-[3.75rem] w-auto max-w-[220px] object-contain mb-3 shrink-0 mx-auto"
             />
           </div>
           

@@ -10,6 +10,7 @@ import { useAuth } from "@/cafe/context/AuthContext";
 import { firebaseReady } from "@/cafe/lib/firebase";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { AuthLayout } from "./auth/AuthLayout";
+import { GoogleGIcon } from "@/components/icons/GoogleGIcon";
 
 function sanitizeRedirect(search: string): string {
   const redirect = new URLSearchParams(search).get("redirect");
@@ -94,10 +95,11 @@ export default function SignInPage() {
           <Button
             type="button"
             variant="outline"
-            className="w-full font-display gap-2"
+            className="w-full font-display gap-2 border-border bg-background hover:bg-secondary/80"
             onClick={handleGoogle}
             disabled={googleLoading || submitting}
           >
+            <GoogleGIcon className="size-[18px] shrink-0" />
             {googleLoading ? t("authWorking") : t("authContinueGoogle")}
           </Button>
         </CardHeader>

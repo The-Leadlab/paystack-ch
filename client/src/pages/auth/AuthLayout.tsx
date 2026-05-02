@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "wouter";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 
 type AuthLayoutProps = {
@@ -14,14 +15,7 @@ export function AuthLayout({ children, heading, description }: AuthLayoutProps) 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-[oklch(0.97_0.01_85)] text-foreground">
       <header className="container flex items-center justify-between pt-8 pb-4">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-12 h-12 rounded-xl bg-brand-charcoal flex items-center justify-center">
-            <span className="font-display font-bold text-lg text-white">P</span>
-          </div>
-          <span className="font-display font-semibold text-xl tracking-tight">
-            paystack<span className="text-brand-red">.ch</span>
-          </span>
-        </Link>
+        <BrandLogo href="/" markClassName="h-11 w-auto object-contain shrink-0" />
         <Link
           href="/"
           className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors"
