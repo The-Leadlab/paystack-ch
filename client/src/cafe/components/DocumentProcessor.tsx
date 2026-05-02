@@ -1461,6 +1461,13 @@ const VerificationHub: React.FC<{
   );
 };
 
+/** Firestore `documents/{id}` path — use queue-time id when present so delete/update never uses a stale client-generated id */
+function firestoreRecordId(doc: ProcessedDocument): string {
+  const p = doc.persistedDocumentId;
+  if (typeof p === 'string' && p.length > 0) return p;
+  return doc.id;
+}
+
 // Main Document Processor Component
 export const DocumentProcessor: React.FC<{ 
   documents: ProcessedDocument[], 
@@ -1822,6 +1829,7 @@ export const DocumentProcessor: React.FC<{
                                   return;
                                 }
                                 if ((doc as any).source === 'firestore') {
+                                  const recordId = firestoreRecordId(doc);
                                   try {
                                     if (doc.fileUrl) {
                                       const { deleteDocument: deleteStoredFile } = await import('../services/storageService');
@@ -1831,7 +1839,7 @@ export const DocumentProcessor: React.FC<{
                                     console.warn('Storage delete skipped/failed:', storageErr);
                                   }
                                   try {
-                                    await onDeleteDocument(doc.id);
+                                    await onDeleteDocument(recordId);
                                   } catch (deleteErr) {
                                     console.error('Failed to delete document record:', deleteErr);
                                     alert('Could not delete the document record. Please try again.');
@@ -1856,7 +1864,7 @@ export const DocumentProcessor: React.FC<{
                               doc={doc}
                               onUpdate={(newData) => {
                                 if ((doc as any).source === 'firestore') {
-                                  updateDocument(doc.id, { data: newData });
+                                  updateDocument(firestoreRecordId(doc), { data: newData });
                                 } else {
                                   setLocalDocs((prev) =>
                                     prev.map((d) => (d.id === doc.id ? { ...d, data: newData } : d))
@@ -1865,12 +1873,13 @@ export const DocumentProcessor: React.FC<{
                               }}
                               onSave={async (newData) => {
                                 if ((doc as any).source === 'firestore') {
+                                  const recordId = firestoreRecordId(doc);
                                   // Update document in Firestore
-                                  await updateDocument(doc.id, { data: newData });
+                                  await updateDocument(recordId, { data: newData });
                                   
                                   // Update related income/expenses in dashboard
                                   if (onDocumentUpdated) {
-                                    await onDocumentUpdated(doc.id, newData);
+                                    await onDocumentUpdated(recordId, newData);
                                   }
                                 } else {
                                   setLocalDocs((prev) =>

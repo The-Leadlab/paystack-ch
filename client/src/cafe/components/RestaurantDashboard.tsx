@@ -12,8 +12,42 @@ import { POSManager } from './POSManager';
 import type { FinancialData, ProcessedDocument, POSReading } from '../types';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
 import { BRAND_LOGO_SRC } from '@/const/branding';
+import type { DocumentReference } from 'firebase/firestore';
 
 type Tab = 'dashboard' | 'revenue' | 'reports' | 'documents';
+
+const FIRESTORE_BATCH_MAX = 450;
+
+function dedupeSnapshots(...snapshots: { forEach: (fn: (d: { ref: DocumentReference }) => void) => void }[]): DocumentReference[] {
+  const seen = new Set<string>();
+  const out: DocumentReference[] = [];
+  for (const snap of snapshots) {
+    snap.forEach((d) => {
+      const p = d.ref.path;
+      if (seen.has(p)) return;
+      seen.add(p);
+      out.push(d.ref);
+    });
+  }
+  return out;
+}
+
+async function commitDeletesInChunks(
+  db: import('firebase/firestore').Firestore,
+  refs: DocumentReference[],
+  batchSize = FIRESTORE_BATCH_MAX
+): Promise<number> {
+  const { writeBatch } = await import('firebase/firestore');
+  let n = 0;
+  for (let i = 0; i < refs.length; i += batchSize) {
+    const batch = writeBatch(db);
+    const slice = refs.slice(i, i + batchSize);
+    slice.forEach((ref) => batch.delete(ref));
+    await batch.commit();
+    n += slice.length;
+  }
+  return n;
+}
 
 export function RestaurantDashboard() {
   const { employees, addEmployee, deleteEmployee } = useEmployee();
@@ -88,60 +122,52 @@ export function RestaurantDashboard() {
     }
 
     try {
-      const { writeBatch, collection, getDocs, query, where } = await import('firebase/firestore');
+      const { collection, getDocs, query, where } = await import('firebase/firestore');
       const { db } = await import('../lib/firebase');
-      
+
       if (!db || !user?.uid) {
         throw new Error('Database not available');
       }
 
-      const batch = writeBatch(db);
-      let deleteCount = 0;
+      const uid = user.uid;
+      const c = collection;
+      const w = where;
 
-      // Delete all sessions
-      const sessionsSnap = await getDocs(query(collection(db, 'sessions'), where('restaurantId', '==', user.uid)));
-      sessionsSnap.forEach((doc) => {
-        batch.delete(doc.ref);
-        deleteCount++;
-      });
+      const sessionsRefs = dedupeSnapshots(
+        await getDocs(query(c(db, 'sessions'), w('restaurantId', '==', uid))),
+        await getDocs(query(c(db, 'sessions'), w('restaurant_id', '==', uid)))
+      );
+      const employeesRefs = dedupeSnapshots(
+        await getDocs(query(c(db, 'employees'), w('restaurantId', '==', uid))),
+        await getDocs(query(c(db, 'employees'), w('restaurant_id', '==', uid)))
+      );
+      const incomeRefs = dedupeSnapshots(
+        await getDocs(query(c(db, 'income'), w('restaurantId', '==', uid))),
+        await getDocs(query(c(db, 'income'), w('restaurant_id', '==', uid)))
+      );
+      const expenseRefs = dedupeSnapshots(
+        await getDocs(query(c(db, 'expenses'), w('restaurantId', '==', uid))),
+        await getDocs(query(c(db, 'expenses'), w('restaurant_id', '==', uid)))
+      );
+      const posRefs = dedupeSnapshots(
+        await getDocs(query(c(db, 'pos_readings'), w('restaurantId', '==', uid))),
+        await getDocs(query(c(db, 'pos_readings'), w('restaurant_id', '==', uid)))
+      );
+      const docsRefs = dedupeSnapshots(
+        await getDocs(query(c(db, 'documents'), w('restaurantId', '==', uid))),
+        await getDocs(query(c(db, 'documents'), w('restaurant_id', '==', uid)))
+      );
 
-      // Delete all employees
-      const employeesSnap = await getDocs(query(collection(db, 'employees'), where('restaurantId', '==', user.uid)));
-      employeesSnap.forEach((doc) => {
-        batch.delete(doc.ref);
-        deleteCount++;
-      });
+      const allRefs = [
+        ...sessionsRefs,
+        ...employeesRefs,
+        ...incomeRefs,
+        ...expenseRefs,
+        ...posRefs,
+        ...docsRefs,
+      ];
 
-      // Delete all income
-      const incomeSnap = await getDocs(query(collection(db, 'income'), where('restaurantId', '==', user.uid)));
-      incomeSnap.forEach((doc) => {
-        batch.delete(doc.ref);
-        deleteCount++;
-      });
-
-      // Delete all expenses
-      const expensesSnap = await getDocs(query(collection(db, 'expenses'), where('restaurantId', '==', user.uid)));
-      expensesSnap.forEach((doc) => {
-        batch.delete(doc.ref);
-        deleteCount++;
-      });
-
-      // Delete all POS readings
-      const posSnap = await getDocs(query(collection(db, 'pos_readings'), where('restaurantId', '==', user.uid)));
-      posSnap.forEach((doc) => {
-        batch.delete(doc.ref);
-        deleteCount++;
-      });
-
-      // Delete all documents
-      const docsSnap = await getDocs(query(collection(db, 'documents'), where('restaurantId', '==', user.uid)));
-      docsSnap.forEach((doc) => {
-        batch.delete(doc.ref);
-        deleteCount++;
-      });
-
-      // Commit batch
-      await batch.commit();
+      const deleteCount = await commitDeletesInChunks(db, allRefs);
       
       alert(`✅ Master Reset Complete!\n\nDeleted ${deleteCount} records.\n\nThe page will now reload.`);
       

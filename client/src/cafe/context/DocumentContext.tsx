@@ -91,10 +91,17 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const docs: ProcessedDocument[] = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as ProcessedDocument));
+      const docs: ProcessedDocument[] = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data() as Record<string, unknown>;
+        const firestoreId = docSnap.id;
+        const storedPersisted = data.persistedDocumentId;
+        return {
+          ...data,
+          id: firestoreId,
+          persistedDocumentId:
+            typeof storedPersisted === 'string' && storedPersisted.length > 0 ? storedPersisted : firestoreId,
+        } as ProcessedDocument;
+      });
       docs.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
       
       console.log('Fetched documents:', docs.length);
@@ -126,8 +133,9 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
+        const { id: _clientId, ...documentFields } = document;
         const rawDocData = {
-          ...document,
+          ...documentFields,
           restaurantId: uid,
           restaurant_id: uid,
           userId: uid,
@@ -138,7 +146,8 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
         const docData = removeUndefinedDeep(rawDocData);
 
         const docRef = await addDoc(collection(db, 'documents'), docData);
-        const newDoc = { ...docData, id: docRef.id };
+        const firestoreId = docRef.id;
+        const newDoc = { ...docData, id: firestoreId, persistedDocumentId: firestoreId };
         setDocuments((prev) => [newDoc, ...prev]);
         return newDoc; // Return the document with its ID
       } catch (err) {
