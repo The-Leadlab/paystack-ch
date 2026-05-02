@@ -2,6 +2,91 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { DocumentType, FinancialData, BankTransaction, BankStatementAnalysis } from "../types";
 
+function getGeminiApiKey(): string {
+  const key = import.meta.env.VITE_GEMINI_API_KEY?.trim();
+  if (!key) {
+    throw new Error(
+      "Missing VITE_GEMINI_API_KEY. Add it in your host environment (e.g. Vercel → Environment Variables) or .env.local, then redeploy."
+    );
+  }
+  return key;
+}
+
+/** Override with VITE_GEMINI_MODEL if a specific model works better for your API project. */
+function resolveDocumentModel(): string {
+  return import.meta.env.VITE_GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+}
+
+function resolveBankStatementModel(): string {
+  return import.meta.env.VITE_GEMINI_BANK_MODEL?.trim() || resolveDocumentModel();
+}
+
+type GeminiDiagnostics = { httpStatus: number | null; apiMessage: string; raw: string };
+
+function diagnoseGeminiError(error: unknown): GeminiDiagnostics {
+  const err = error as Record<string, unknown>;
+  const raw =
+    error instanceof Error ? error.message : typeof err?.message === "string" ? (err.message as string) : String(error);
+
+  let httpStatus: number | null = typeof err?.status === "number" ? (err.status as number) : null;
+  let apiMessage = raw;
+
+  const jsonStart = raw.indexOf("{");
+  if (jsonStart >= 0) {
+    try {
+      const j = JSON.parse(raw.slice(jsonStart)) as { error?: { code?: number; message?: string; status?: string } };
+      if (j?.error?.code !== undefined && !Number.isNaN(Number(j.error.code))) httpStatus = Number(j.error.code);
+      if (typeof j?.error?.message === "string") apiMessage = j.error.message;
+    } catch {
+      const codeMatch = raw.match(/"code"\s*:\s*(\d{3})/);
+      if (codeMatch) httpStatus = Number(codeMatch[1]);
+    }
+  }
+
+  return { httpStatus, apiMessage, raw };
+}
+
+/** Do not backoff-retry deterministic client failures (slow + pointless). */
+function geminiErrorIsRetryable(error: unknown): boolean {
+  const { httpStatus, raw } = diagnoseGeminiError(error);
+  if (httpStatus === 403 || httpStatus === 401 || httpStatus === 400 || httpStatus === 404) return false;
+  if (httpStatus === 429 || (httpStatus !== null && httpStatus >= 500)) return true;
+  if (httpStatus !== null) return false;
+  return /failed to fetch|networkerror|econnreset|etimedout|load failed/i.test(raw);
+}
+
+function toReadableGeminiError(error: unknown): Error {
+  const { httpStatus, apiMessage } = diagnoseGeminiError(error);
+
+  if (httpStatus === 403) {
+    return new Error(
+      `Gemini API access denied (403). Google blocked this API key/project (billing paused, restricted region, abuse flag, or “denied access”). ` +
+        `Fix: https://aistudio.google.com/apikey — create a new key, confirm the Gemini / Generative Language API is enabled for that Google Cloud project, ` +
+        `link billing if Google requires it, set VITE_GEMINI_API_KEY on your deployment, redeploy. Google said: ${apiMessage}`
+    );
+  }
+  if (httpStatus === 401) {
+    return new Error(`Gemini rejected the API key (401). Check VITE_GEMINI_API_KEY. Details: ${apiMessage}`);
+  }
+  if (httpStatus === 429) {
+    return new Error(`Gemini quota / rate limited (429). Wait and retry, or raise quota. Details: ${apiMessage}`);
+  }
+
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+const withRetry = async <T>(fn: () => Promise<T>, retries = 2, delayMs = 800): Promise<T> => {
+  try {
+    return await fn();
+  } catch (error: unknown) {
+    if (retries > 0 && geminiErrorIsRetryable(error)) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      return withRetry(fn, retries - 1, delayMs * 2);
+    }
+    throw toReadableGeminiError(error);
+  }
+};
+
 export const fileToBase64 = (file: Blob): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -26,18 +111,6 @@ export const getLiveExchangeRate = async (from: string, to: string): Promise<num
   }
 };
 
-const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> => {
-  try {
-    return await fn();
-  } catch (error: any) {
-    if (retries > 0) {
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return withRetry(fn, retries - 1, delay * 2);
-    }
-    throw error;
-  }
-};
-
 type ExhaustiveInvoicePass = {
   detectedInvoiceCount?: number;
   subDocuments?: Array<{
@@ -59,12 +132,13 @@ async function extractInvoiceBreakdownExhaustive(
   ai: GoogleGenAI,
   base64: string,
   mimeType: string,
+  model: string,
   userHint?: string
 ): Promise<ExhaustiveInvoicePass | null> {
   const hintSection = userHint ? `USER HINT: "${userHint}".` : "";
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model,
       contents: {
         parts: [
           { inlineData: { mimeType, data: base64 } },
@@ -253,14 +327,15 @@ export const analyzeFinancialDocument = async (
   targetCurrency: string = 'CHF', 
   userHint?: string
 ): Promise<FinancialData> => {
+  const apiKey = getGeminiApiKey();
+  const model = resolveDocumentModel();
   const base64 = await fileToBase64(file);
   const mimeType = file.type;
 
   console.log(`📄 Analyzing: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
-  console.log(`🔑 API Key configured: ${import.meta.env.VITE_GEMINI_API_KEY ? 'Yes' : 'No'}`);
 
   return withRetry(async () => {
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     
     console.log(`🤖 Calling Gemini API...`);
     const startTime = Date.now();
@@ -380,7 +455,7 @@ export const analyzeFinancialDocument = async (
 
     // Simplified, faster prompt
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash', // Fast and current model
+      model,
       contents: {
         parts: [
           { inlineData: { mimeType: mimeType, data: base64 } },
@@ -445,7 +520,7 @@ Return JSON only.`
     // Second-pass exhaustive extraction for PDFs to avoid undercounting invoices on later pages.
     const isPdf = mimeType === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     if (isPdf) {
-      const exhaustive = await extractInvoiceBreakdownExhaustive(ai, base64, mimeType, userHint);
+      const exhaustive = await extractInvoiceBreakdownExhaustive(ai, base64, mimeType, model, userHint);
       if (exhaustive?.subDocuments && exhaustive.subDocuments.length > 0) {
         const currentSubCount = Array.isArray(normalized.subDocuments) ? normalized.subDocuments.length : 0;
         const exhaustiveSubCount = exhaustive.subDocuments.length;
@@ -475,14 +550,16 @@ Return JSON only.`
 
 // Fixed analyzeBankStatement to properly handle the GenAI response and return BankStatementAnalysis
 export const analyzeBankStatement = async (file: File, targetCurrency: string = 'CHF'): Promise<BankStatementAnalysis> => {
+  const apiKey = getGeminiApiKey();
+  const model = resolveBankStatementModel();
   const base64 = await fileToBase64(file);
   const mimeType = file.type;
 
   return withRetry(async () => {
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
-    
+    const ai = new GoogleGenAI({ apiKey });
+
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview', 
+      model,
       contents: {
         parts: [
           { inlineData: { mimeType: mimeType, data: base64 } },
