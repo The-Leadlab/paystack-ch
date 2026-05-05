@@ -1496,6 +1496,12 @@ export const DocumentProcessor: React.FC<{
     return [...firestoreDocs, ...localProcessing];
   }, [documents, localDocs]);
 
+  const isQueuedStatus = (status?: ProcessedDocument['status']) =>
+    status === 'pending' || status === 'error' || status === 'skipped';
+
+  const canProcessDoc = (doc: ProcessedDocument & { source?: 'firestore' | 'local' }) =>
+    Boolean(doc.fileRaw || doc.fileUrl || (doc as any).source !== 'firestore');
+
   const stats = useMemo(() => {
     const total = allDocs.length;
     const completed = allDocs.filter(d => d.status === 'completed').length;
@@ -1582,12 +1588,33 @@ export const DocumentProcessor: React.FC<{
     setLocalDocs((p) => [...p, ...news]);
   };
 
-  const processDoc = async (doc: ProcessedDocument) => {
+  const processDoc = async (doc: ProcessedDocument & { source?: 'firestore' | 'local' }) => {
+    const isFirestoreDoc = (doc as any).source === 'firestore';
+    const firestoreId = isFirestoreDoc ? firestoreRecordId(doc) : undefined;
+
     setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'processing', error: undefined } : d));
+    if (isFirestoreDoc && firestoreId) {
+      await updateDocument(firestoreId, { status: 'processing', error: undefined });
+    }
+
     try {
       console.log(`Processing: ${doc.fileName}`);
-      
-      const res = await analyzeFinancialDocument(doc.fileRaw!, reportingCurrency);
+
+      let inputFile: File | undefined = doc.fileRaw;
+      if (!inputFile && doc.fileUrl) {
+        // Rehydrate persisted documents after page refresh.
+        const response = await fetch(doc.fileUrl);
+        if (!response.ok) {
+          throw new Error(`Could not fetch stored file (${response.status})`);
+        }
+        const blob = await response.blob();
+        inputFile = new File([blob], doc.fileName, { type: blob.type || 'application/octet-stream' });
+      }
+      if (!inputFile) {
+        throw new Error('Missing source file. Re-upload this document to process it.');
+      }
+
+      const res = await analyzeFinancialDocument(inputFile, reportingCurrency);
       console.log(`✅ Completed: ${doc.fileName}`);
       
       setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'completed', data: res } : d));
@@ -1595,16 +1622,22 @@ export const DocumentProcessor: React.FC<{
       // Auto-extract data and save to Firestore with file metadata
       try {
         console.log(`💾 Saving document: ${doc.fileName}`);
-        await onDataExtracted(res, doc.fileName, doc.fileHash, doc.fileRaw, doc.persistedDocumentId);
+        await onDataExtracted(res, doc.fileName, doc.fileHash, inputFile, doc.persistedDocumentId);
         console.log(`✅ Document saved successfully: ${doc.fileName}`);
       } catch (saveErr: any) {
         console.error(`❌ Failed to save document: ${doc.fileName}`, saveErr);
         // Mark as error but keep the analyzed data
         setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'error', error: `Failed to save: ${saveErr.message}` } : d));
+        if (isFirestoreDoc && firestoreId) {
+          await updateDocument(firestoreId, { status: 'error', error: `Failed to save: ${saveErr.message}` });
+        }
       }
     } catch (err: any) {
       console.error(`❌ Error: ${doc.fileName}`, err);
       setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'error', error: err.message } : d));
+      if (isFirestoreDoc && firestoreId) {
+        await updateDocument(firestoreId, { status: 'error', error: err.message });
+      }
     }
   };
 
@@ -1625,7 +1658,7 @@ export const DocumentProcessor: React.FC<{
     setIsProcessing(true);
     stopProcessingRef.current = false;
     
-    const pending = localDocs.filter(d => d.status === 'pending' || d.status === 'error' || d.status === 'skipped');
+    const pending = allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any));
     let index = 0;
     const activeTasks = new Set<Promise<void>>();
 
@@ -1694,10 +1727,10 @@ export const DocumentProcessor: React.FC<{
             ) : (
               <button 
                 onClick={processAll} 
-                disabled={localDocs.filter(d => d.status === 'pending' || d.status === 'error' || d.status === 'skipped').length === 0} 
+                disabled={allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any)).length === 0} 
                 className="w-full h-12 bg-cdlp-gold text-cdlp-black rounded font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-30 hover:bg-cdlp-gold-light"
               >
-                <ShieldCheck className="w-4 h-4" /> Start Processing ({localDocs.filter(d => d.status === 'pending' || d.status === 'error' || d.status === 'skipped').length})
+                <ShieldCheck className="w-4 h-4" /> Start Processing ({allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any)).length})
               </button>
             )}
           </div>
