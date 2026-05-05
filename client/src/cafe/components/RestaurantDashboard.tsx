@@ -230,12 +230,22 @@ export function RestaurantDashboard() {
       const createdId = newDoc.id;
       console.log('✅ Document queue-saved with ID:', createdId);
 
-      // Background storage upload so listing in Firestore returns immediately.
-      if (fileRaw && user?.uid && storageUploadEnabledRef.current) {
+      // Always keep a local backup for resilient reprocessing even if remote storage is unstable/disabled.
+      if (fileRaw) {
         void (async () => {
           try {
             const { cacheDocumentFile } = await import('../services/storageService');
             await cacheDocumentFile(createdId, fileRaw);
+          } catch (cacheErr) {
+            console.warn('⚠️ Local cache backup failed:', cacheErr);
+          }
+        })();
+      }
+
+      // Background storage upload so listing in Firestore returns immediately.
+      if (fileRaw && user?.uid && storageUploadEnabledRef.current) {
+        void (async () => {
+          try {
             console.log('📤 Background uploading file to Firebase Storage...');
             const { uploadDocument } = await import('../services/storageService');
             const fileUrl = await uploadDocument(fileRaw, user.uid, fileName);

@@ -1488,6 +1488,7 @@ export const DocumentProcessor: React.FC<{
 
   // Large PDFs are slower with too much parallelism; keep modest concurrency for steadier throughput.
   const CONCURRENCY_LIMIT = 2;
+  const PROCESSING_TIMEOUT_MS = 120000;
   
   // Combine Firestore documents with local processing documents
   const allDocs = useMemo(() => {
@@ -1605,16 +1606,31 @@ export const DocumentProcessor: React.FC<{
         const { getCachedDocumentFile } = await import('../services/storageService');
         inputFile = (await getCachedDocumentFile(doc.persistedDocumentId, doc.fileName)) || undefined;
       }
+      if (!inputFile && doc.fileDataUrl) {
+        try {
+          const dataUrlResp = await fetch(doc.fileDataUrl);
+          const blob = await dataUrlResp.blob();
+          inputFile = new File([blob], doc.fileName, { type: blob.type || 'application/octet-stream' });
+        } catch (dataUrlErr) {
+          console.warn('⚠️ fileDataUrl fallback failed:', dataUrlErr);
+        }
+      }
       if (!inputFile && doc.fileUrl) {
         // Rehydrate persisted documents after page refresh.
         const { downloadDocumentFile } = await import('../services/storageService');
         inputFile = await downloadDocumentFile(doc.fileUrl, doc.fileName);
       }
       if (!inputFile) {
-        throw new Error('Missing source file. Re-upload this document to process it.');
+        throw new Error('Missing source file or storage unreachable. Re-upload this document once to create local backup, then retry.');
       }
 
-      const res = await analyzeFinancialDocument(inputFile, reportingCurrency);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Processing timeout (120s). Please retry the document.')), PROCESSING_TIMEOUT_MS)
+      );
+      const res = await Promise.race([
+        analyzeFinancialDocument(inputFile, reportingCurrency),
+        timeoutPromise,
+      ]);
       console.log(`✅ Completed: ${doc.fileName}`);
       
       setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'completed', data: res } : d));

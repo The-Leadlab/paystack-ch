@@ -322,6 +322,21 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
   };
 }
 
+function shouldRunExhaustivePdfPass(file: File, parsed: FinancialData, userHint?: string): boolean {
+  const hint = (userHint || '').toLowerCase();
+  const name = (file.name || '').toLowerCase();
+  const hasMultiHint =
+    hint.includes('multi') ||
+    hint.includes('bulk') ||
+    hint.includes('all pages') ||
+    name.includes('multi') ||
+    name.includes('bulk') ||
+    name.includes('z2');
+  const extractedSubDocs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments.length : 0;
+  // Run second pass only when likely beneficial; otherwise it doubles latency.
+  return hasMultiHint || extractedSubDocs > 1;
+}
+
 
 export const analyzeFinancialDocument = async (
   file: File, 
@@ -524,9 +539,9 @@ Return JSON only.`
 
     let normalized = normalizeMultiInvoiceData(parsed);
 
-    // Second-pass exhaustive extraction for PDFs to avoid undercounting invoices on later pages.
+    // Second-pass exhaustive extraction is expensive; keep it for likely multi-invoice files only.
     const isPdf = mimeType === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    if (isPdf) {
+    if (isPdf && shouldRunExhaustivePdfPass(file, normalized, userHint)) {
       const exhaustive = await extractInvoiceBreakdownExhaustive(ai, base64, mimeType, model, userHint);
       if (exhaustive?.subDocuments && exhaustive.subDocuments.length > 0) {
         const currentSubCount = Array.isArray(normalized.subDocuments) ? normalized.subDocuments.length : 0;
@@ -543,6 +558,8 @@ Return JSON only.`
           console.log(`📚 Exhaustive pass increased invoice blocks: ${currentSubCount} -> ${exhaustiveSubCount}`);
         }
       }
+    } else if (isPdf) {
+      console.log('⏩ Skipping exhaustive PDF pass (single-document fast path)');
     }
 
     if (normalized.totalAmount !== undefined && (!normalized.amountInCHF || normalized.amountInCHF === 0)) {
