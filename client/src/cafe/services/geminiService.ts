@@ -49,6 +49,10 @@ function diagnoseGeminiError(error: unknown): GeminiDiagnostics {
 
 /** Do not backoff-retry deterministic client failures (slow + pointless). */
 function geminiErrorIsRetryable(error: unknown): boolean {
+  if (error instanceof SyntaxError) return true;
+  const em = error instanceof Error ? error.message : String(error);
+  if (/unterminated string|invalid json|unexpected token|json\.parse/i.test(em)) return true;
+
   const { httpStatus, raw } = diagnoseGeminiError(error);
   if (httpStatus === 403 || httpStatus === 401 || httpStatus === 400 || httpStatus === 404) return false;
   if (httpStatus === 429 || (httpStatus !== null && httpStatus >= 500)) return true;
@@ -74,6 +78,84 @@ function toReadableGeminiError(error: unknown): Error {
   }
 
   return error instanceof Error ? error : new Error(String(error));
+}
+
+/** Max completion tokens for document JSON (large multi-invoice PDFs need headroom; override with VITE_GEMINI_MAX_OUTPUT_TOKENS). */
+function resolveMaxOutputTokens(defaultTokens = 32768): number {
+  const env = import.meta.env.VITE_GEMINI_MAX_OUTPUT_TOKENS?.trim();
+  const n = env ? Number(env) : NaN;
+  if (!Number.isNaN(n) && n >= 2048) return Math.min(n, 65536);
+  return defaultTokens;
+}
+
+/** Strip ```json fences if the model wraps JSON. */
+function stripJsonMarkdownFence(raw: string): string {
+  let t = raw.trim();
+  const fenced = /^```(?:json)?\s*\r?\n?([\s\S]*?)\r?\n?```\s*$/im.exec(t);
+  if (fenced) return fenced[1].trim();
+  if (t.startsWith("```")) {
+    t = t.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
+  }
+  return t.trim();
+}
+
+/** Extract outermost `{...}` using string-aware brace counting (ignores braces inside strings). */
+function extractBalancedJsonObject(raw: string): string | null {
+  const start = raw.indexOf("{");
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < raw.length; i++) {
+    const c = raw[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (c === "\\" && inString) {
+      escape = true;
+      continue;
+    }
+    if (c === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (c === "{") depth++;
+      else if (c === "}") {
+        depth--;
+        if (depth === 0) return raw.slice(start, i + 1);
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Parse Gemini JSON output: handle fences, stray prose, and mildly corrupted boundaries.
+ * Throws SyntaxError so withRetry can rerun the request when output was truncated.
+ */
+function parseModelJsonResponse<T>(raw: string | undefined | null, label: string): T {
+  if (raw == null || String(raw).trim() === "") {
+    throw new SyntaxError(`Empty model response (${label})`);
+  }
+  const cleaned = stripJsonMarkdownFence(String(raw));
+  const candidates: string[] = [cleaned];
+  const balanced = extractBalancedJsonObject(cleaned);
+  if (balanced && balanced !== cleaned) candidates.push(balanced);
+
+  let lastErr: unknown;
+  for (const c of candidates) {
+    try {
+      return JSON.parse(c) as T;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
+  throw new SyntaxError(
+    `Invalid JSON from model (${label}): ${msg}. Preview: ${cleaned.slice(0, 320).replace(/\s+/g, " ")}`
+  );
 }
 
 const withRetry = async <T>(fn: () => Promise<T>, retries = 2, delayMs = 800): Promise<T> => {
@@ -155,6 +237,7 @@ MANDATORY:
 5. Extract per-invoice: issuer (supplier name), invoice/reference number if visible (append to issuer as "Name | Ref 12345"), date, pageRange, originalCurrency, netAmount, vatAmount, vatRate, totalAmount (gross including VAT).
 6. lineItems: one EXPENSE row per sub-invoice (amount = that invoice gross total, description = issuer + pages).
 7. After extraction, verify detectedInvoiceCount matches len(subDocuments); if not, fix before returning.
+8. JSON only: no raw newlines or unescaped " inside strings; keep descriptions short.
 
 Return JSON only matching schema.`
           }
@@ -204,11 +287,11 @@ Return JSON only matching schema.`
         temperature: 0.05,
         topP: 0.9,
         topK: 20,
-        maxOutputTokens: 8192,
+        maxOutputTokens: resolveMaxOutputTokens(24576),
       }
     });
 
-    const parsed = JSON.parse(response.text || '{}') as ExhaustiveInvoicePass;
+    const parsed = parseModelJsonResponse<ExhaustiveInvoicePass>(response.text, "exhaustive-invoice-pass");
     return parsed;
   } catch (error) {
     console.warn('Exhaustive invoice pass failed:', error);
@@ -550,6 +633,7 @@ CRITICAL RULES:
 20. Always return valid JSON that strictly matches the schema and contains no markdown/comments.
 21. MULTI-INVOICE PDFs: If subDocuments has 2+ entries, top-level totalAmount MUST equal the sum of every subDocument.totalAmount (gross). Top-level vatAmount and netAmount MUST equal the sums of sub-invoice VAT and net respectively. Do not use only the first page total as the document total.
 22. SINGLE PDF FILE: Even when the top-level documentType looks like one "Invoice", still scan the full PDF for multiple separate invoices and populate subDocuments accordingly.
+23. JSON SAFETY: Output must be one valid JSON object only. Do not put raw line breaks or unescaped double-quotes inside string values. Keep aiInterpretation under 400 characters. Keep each lineItems[].description under 120 characters (abbreviate if needed). Escape any quote inside a string as backslash-quote.
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings
@@ -571,14 +655,14 @@ Return JSON only.`
         temperature: 0.1, // Lower temperature for faster, more consistent results
         topP: 0.8,
         topK: 20,
-        maxOutputTokens: 8192,
+        maxOutputTokens: resolveMaxOutputTokens(32768),
       }
     });
 
     const elapsed = Date.now() - startTime;
     console.log(`✅ Gemini API responded in ${elapsed}ms`);
 
-    const parsed = JSON.parse(response.text) as FinancialData;
+    const parsed = parseModelJsonResponse<FinancialData>(response.text, "analyze-financial-document");
     console.log(`📊 Parsed data:`, parsed);
 
     if (parsed.subDocuments && parsed.subDocuments.length > 0) {
@@ -682,12 +766,13 @@ export const analyzeBankStatement = async (file: File, targetCurrency: string = 
             period: { type: Type.STRING }
           },
           required: ["transactions", "calculatedTotalIncome", "calculatedTotalExpense", "currency"]
-        }
+        },
+        maxOutputTokens: resolveMaxOutputTokens(24576),
       }
     });
 
     const text = response.text;
     if (!text) throw new Error("Empty response from AI engine");
-    return JSON.parse(text) as BankStatementAnalysis;
+    return parseModelJsonResponse<BankStatementAnalysis>(text, "analyze-bank-statement");
   });
 };
