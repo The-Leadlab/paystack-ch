@@ -165,7 +165,8 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
       
       try {
         const docRef = doc(db, 'documents', documentId);
-        await updateDoc(docRef, updates as any);
+        const cleanedUpdates = removeUndefinedDeep(updates);
+        await updateDoc(docRef, cleanedUpdates as any);
         setDocuments((prev) =>
           prev.map((d) => (d.id === documentId ? { ...d, ...updates } : d))
         );
