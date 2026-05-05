@@ -1,6 +1,32 @@
 import { storage } from '../lib/firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject, getBytes } from 'firebase/storage';
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function withRetry<T>(fn: () => Promise<T>, attempts = 3, baseDelayMs = 500): Promise<T> {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (i < attempts - 1) {
+        await wait(baseDelayMs * Math.pow(2, i));
+      }
+    }
+  }
+  throw lastError;
+}
+
+async function fetchAsFile(url: string, fileName: string): Promise<File> {
+  const response = await withRetry(() => fetch(url, { cache: 'no-store' }), 3, 600);
+  if (!response.ok) {
+    throw new Error(`Could not fetch stored file (${response.status})`);
+  }
+  const blob = await response.blob();
+  return new File([blob], fileName || 'document.bin', { type: blob.type || 'application/octet-stream' });
+}
+
 /**
  * Upload a file to Firebase Storage
  * @param file - The file to upload
@@ -105,24 +131,29 @@ export async function downloadDocumentFile(fileUrl: string, fileName: string): P
   const safeName = fileName || 'document.bin';
 
   if (storage) {
-    try {
-      const storageRef = normalized.startsWith('http://') || normalized.startsWith('https://') || normalized.startsWith('gs://')
+    const storageRef =
+      normalized.startsWith('http://') || normalized.startsWith('https://') || normalized.startsWith('gs://')
         ? ref(storage, normalized)
         : ref(storage, normalized.replace(/^\/+/, ''));
-      const bytes = await getBytes(storageRef);
+
+    try {
+      // Attempt authenticated SDK download first.
+      const bytes = await withRetry(() => getBytes(storageRef), 3, 700);
       const contentType = storageRef.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream';
       return new File([bytes], safeName, { type: contentType });
     } catch (sdkError) {
-      console.warn('⚠️ SDK download failed, falling back to fetch:', sdkError);
+      console.warn('⚠️ SDK download failed, trying fresh download URL:', sdkError);
+      try {
+        // Generate a fresh URL in case stored URL token is stale.
+        const freshUrl = await withRetry(() => getDownloadURL(storageRef), 2, 400);
+        return await fetchAsFile(freshUrl, safeName);
+      } catch (freshUrlError) {
+        console.warn('⚠️ Fresh download URL failed, falling back to stored URL:', freshUrlError);
+      }
     }
   }
 
-  const response = await fetch(normalized);
-  if (!response.ok) {
-    throw new Error(`Could not fetch stored file (${response.status})`);
-  }
-  const blob = await response.blob();
-  return new File([blob], safeName, { type: blob.type || 'application/octet-stream' });
+  return fetchAsFile(normalized, safeName);
 }
 
 /**
