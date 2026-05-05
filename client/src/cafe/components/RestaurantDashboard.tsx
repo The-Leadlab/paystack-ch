@@ -234,6 +234,8 @@ export function RestaurantDashboard() {
       if (fileRaw && user?.uid && storageUploadEnabledRef.current) {
         void (async () => {
           try {
+            const { cacheDocumentFile } = await import('../services/storageService');
+            await cacheDocumentFile(createdId, fileRaw);
             console.log('📤 Background uploading file to Firebase Storage...');
             const { uploadDocument } = await import('../services/storageService');
             const fileUrl = await uploadDocument(fileRaw, user.uid, fileName);

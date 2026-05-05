@@ -1601,6 +1601,10 @@ export const DocumentProcessor: React.FC<{
       console.log(`Processing: ${doc.fileName}`);
 
       let inputFile: File | undefined = doc.fileRaw;
+      if (!inputFile && doc.persistedDocumentId) {
+        const { getCachedDocumentFile } = await import('../services/storageService');
+        inputFile = (await getCachedDocumentFile(doc.persistedDocumentId, doc.fileName)) || undefined;
+      }
       if (!inputFile && doc.fileUrl) {
         // Rehydrate persisted documents after page refresh.
         const { downloadDocumentFile } = await import('../services/storageService');
@@ -1860,6 +1864,10 @@ export const DocumentProcessor: React.FC<{
                                 if ((doc as any).source === 'firestore') {
                                   const recordId = firestoreRecordId(doc);
                                   try {
+                                    if (doc.persistedDocumentId) {
+                                      const { deleteCachedDocumentFile } = await import('../services/storageService');
+                                      await deleteCachedDocumentFile(doc.persistedDocumentId);
+                                    }
                                     if (doc.fileUrl) {
                                       const { deleteDocument: deleteStoredFile } = await import('../services/storageService');
                                       await deleteStoredFile(doc.fileUrl);

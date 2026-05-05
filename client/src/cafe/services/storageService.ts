@@ -1,6 +1,8 @@
 import { storage } from '../lib/firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject, getBytes } from 'firebase/storage';
 
+const DOC_CACHE_NAME = 'paystack-doc-cache-v1';
+const CACHE_PREFIX = '/__doc-cache__/';
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function withRetry<T>(fn: () => Promise<T>, attempts = 3, baseDelayMs = 500): Promise<T> {
@@ -25,6 +27,64 @@ async function fetchAsFile(url: string, fileName: string): Promise<File> {
   }
   const blob = await response.blob();
   return new File([blob], fileName || 'document.bin', { type: blob.type || 'application/octet-stream' });
+}
+
+function buildCacheKey(id: string): string {
+  return `${CACHE_PREFIX}${encodeURIComponent(id)}`;
+}
+
+/**
+ * Store a browser-local backup copy of uploaded files for resilient reprocessing.
+ */
+export async function cacheDocumentFile(id: string, file: File): Promise<void> {
+  if (!id || !file || typeof caches === 'undefined') return;
+  try {
+    const cache = await caches.open(DOC_CACHE_NAME);
+    const body = await file.arrayBuffer();
+    await cache.put(
+      new Request(buildCacheKey(id)),
+      new Response(body, {
+        headers: {
+          'content-type': file.type || 'application/octet-stream',
+          'x-file-name': encodeURIComponent(file.name),
+        },
+      })
+    );
+  } catch (error) {
+    console.warn('⚠️ Could not cache document locally:', error);
+  }
+}
+
+/**
+ * Read browser-local cached document backup.
+ */
+export async function getCachedDocumentFile(id: string, fallbackName: string): Promise<File | null> {
+  if (!id || typeof caches === 'undefined') return null;
+  try {
+    const cache = await caches.open(DOC_CACHE_NAME);
+    const hit = await cache.match(new Request(buildCacheKey(id)));
+    if (!hit) return null;
+    const blob = await hit.blob();
+    const encodedName = hit.headers.get('x-file-name');
+    const name = encodedName ? decodeURIComponent(encodedName) : fallbackName;
+    return new File([blob], name || 'document.bin', { type: blob.type || 'application/octet-stream' });
+  } catch (error) {
+    console.warn('⚠️ Could not read cached document:', error);
+    return null;
+  }
+}
+
+/**
+ * Remove browser-local cached backup for a document.
+ */
+export async function deleteCachedDocumentFile(id: string): Promise<void> {
+  if (!id || typeof caches === 'undefined') return;
+  try {
+    const cache = await caches.open(DOC_CACHE_NAME);
+    await cache.delete(new Request(buildCacheKey(id)));
+  } catch (error) {
+    console.warn('⚠️ Could not delete cached document:', error);
+  }
 }
 
 /**
