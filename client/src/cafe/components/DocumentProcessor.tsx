@@ -1483,6 +1483,8 @@ export const DocumentProcessor: React.FC<{
   const [reportingCurrency] = useState('CHF');
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [localDocs, setLocalDocs] = useState<ProcessedDocument[]>([]);
+  const [reattachTargetId, setReattachTargetId] = useState<string | null>(null);
+  const reattachInputRef = useRef<HTMLInputElement>(null);
   const stopProcessingRef = useRef(false);
   const dragCounter = useRef(0);
 
@@ -1666,6 +1668,35 @@ export const DocumentProcessor: React.FC<{
     if (doc) {
       setLocalDocs((prev) => prev.map((d) => d.id === docId ? { ...d, status: 'pending', error: undefined } : d));
       await processDoc(doc);
+    }
+  };
+
+  const startReattach = (docId: string) => {
+    setReattachTargetId(docId);
+    reattachInputRef.current?.click();
+  };
+
+  const onReattachFileSelected = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file || !reattachTargetId) return;
+    const target = allDocs.find((d) => d.id === reattachTargetId);
+    setReattachTargetId(null);
+    if (!target) return;
+
+    try {
+      if (target.persistedDocumentId) {
+        const { cacheDocumentFile } = await import('../services/storageService');
+        await cacheDocumentFile(target.persistedDocumentId, file);
+      }
+
+      await processDoc({
+        ...target,
+        fileRaw: file,
+        status: 'pending',
+        error: undefined,
+      } as ProcessedDocument & { source?: 'firestore' | 'local' });
+    } catch (err) {
+      console.error('Reattach and process failed:', err);
     }
   };
 
@@ -1854,6 +1885,20 @@ export const DocumentProcessor: React.FC<{
                                 <span className="hidden lg:inline">Retry</span>
                               </button>
                             )}
+
+                            {doc.status === 'error' && (doc as any).source === 'firestore' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startReattach(doc.id);
+                                }}
+                                className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
+                                title="Reattach the file and retry processing"
+                              >
+                                <Upload className="w-3 h-3" />
+                                <span className="hidden lg:inline">Reattach</span>
+                              </button>
+                            )}
                             
                             {doc.fileRaw && (
                               <button 
@@ -1973,6 +2018,16 @@ export const DocumentProcessor: React.FC<{
           </div>
         </div>
       )}
+      <input
+        ref={reattachInputRef}
+        type="file"
+        className="hidden"
+        accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp"
+        onChange={(e) => {
+          void onReattachFileSelected(e.target.files);
+          e.currentTarget.value = '';
+        }}
+      />
     </div>
   );
 };
