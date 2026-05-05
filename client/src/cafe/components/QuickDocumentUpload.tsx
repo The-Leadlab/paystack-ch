@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, FileText, Loader, CheckCircle, XCircle, Play, StopCircle, Trash2 } from 'lucide-react';
+import { resolveDocumentProcessingTimeoutMs } from '../lib/documentProcessingTimeout';
 import { analyzeFinancialDocument } from '../services/geminiService';
 import type { FinancialData } from '../types';
 
@@ -111,9 +112,13 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
     try {
       console.log(`Calling Gemini AI for: ${fileItem.name}`);
       
-      // Add timeout wrapper (90 seconds for large files)
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Processing timeout (90s)')), 90000)
+      const timeoutMs = resolveDocumentProcessingTimeoutMs(fileItem.file);
+      const timeoutSec = Math.round(timeoutMs / 1000);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`Processing timeout (${timeoutSec}s). Retry or set VITE_DOCUMENT_PROCESSING_TIMEOUT_MS.`)),
+          timeoutMs
+        )
       );
       
       const data = await Promise.race([

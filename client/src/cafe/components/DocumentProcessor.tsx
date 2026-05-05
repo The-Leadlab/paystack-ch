@@ -10,6 +10,7 @@ import {
 import { analyzeFinancialDocument } from '../services/geminiService';
 import { exportToExcel } from '../services/excelService';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
+import { resolveDocumentProcessingTimeoutMs } from '../lib/documentProcessingTimeout';
 import { detectCategory } from '../services/categoryDetectionService';
 import { ProcessedDocument, BankTransaction, FinancialData, DocumentType, PaySlipAnalysis } from '../types';
 
@@ -1516,8 +1517,7 @@ export const DocumentProcessor: React.FC<{
 
   // Large PDFs are slower with too much parallelism; keep modest concurrency for steadier throughput.
   const CONCURRENCY_LIMIT = 2;
-  const PROCESSING_TIMEOUT_MS = 120000;
-  
+
   // Combine Firestore documents with local processing documents
   const allDocs = useMemo(() => {
     const firestoreDocs = documents.map(d => ({ ...d, source: 'firestore' as const }));
@@ -1652,8 +1652,18 @@ export const DocumentProcessor: React.FC<{
         throw new Error('Missing source file or storage unreachable. Re-upload this document once to create local backup, then retry.');
       }
 
+      const processingTimeoutMs = resolveDocumentProcessingTimeoutMs(inputFile);
+      const timeoutSec = Math.round(processingTimeoutMs / 1000);
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Processing timeout (120s). Please retry the document.')), PROCESSING_TIMEOUT_MS)
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                `Processing timeout (${timeoutSec}s). Very large PDFs can exceed this—click retry or set VITE_DOCUMENT_PROCESSING_TIMEOUT_MS (milliseconds) and redeploy.`
+              )
+            ),
+          processingTimeoutMs
+        )
       );
       const res = await Promise.race([
         analyzeFinancialDocument(inputFile, reportingCurrency),
