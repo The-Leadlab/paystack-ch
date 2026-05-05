@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   Upload, CheckCircle, Loader2, Trash2, 
   ChevronDown, ChevronRight, AlertTriangle, 
@@ -583,7 +583,12 @@ const VerificationHub: React.FC<{
 }> = ({ doc, onUpdate, onSave }) => {
   const [isAddingCustom, setIsAddingCustom] = useState(false);
   const [showSubInvoiceModal, setShowSubInvoiceModal] = useState(false);
+  const [activeSubInvoiceTab, setActiveSubInvoiceTab] = useState(0);
   const hasViewableSource = Boolean(doc.fileUrl || doc.fileDataUrl || doc.fileRaw);
+
+  useEffect(() => {
+    setActiveSubInvoiceTab(0);
+  }, [doc.id, doc.data?.subDocuments?.length ?? 0]);
 
   const handleFieldChange = (field: keyof FinancialData, value: any) => {
     if (field === 'subDocuments') {
@@ -691,6 +696,8 @@ const VerificationHub: React.FC<{
   const isZeroValue = Number(editedData.totalAmount) === 0;
   const subDocuments = Array.isArray(editedData.subDocuments) ? editedData.subDocuments : [];
   const hasMultipleSubs = subDocuments.length > 1;
+
+  const subInvoiceTabIdx = Math.min(activeSubInvoiceTab, Math.max(0, subDocuments.length - 1));
 
   const patchSubDocument = (idx: number, patch: Partial<FinancialData>) => {
     const next = subDocuments.map((s, i) =>
@@ -1078,138 +1085,157 @@ const VerificationHub: React.FC<{
                    <ListOrdered className="w-3.5 h-3.5" /> Document verification — per invoice
                  </h5>
                  <span className="text-[8px] text-cdlp-muted uppercase tracking-tight">
-                   Each block is one detected invoice; totals above stay in sync.
+                   One tab per invoice; header Total = sum of all tabs.
                  </span>
                </div>
-               <div className="space-y-2">
+               <div className="flex flex-wrap gap-2 pb-2 overflow-x-auto border-b border-cdlp-border/80">
                  {subDocuments.map((raw, idx) => {
                    const sub = raw as FinancialData;
-                   const pageRange = (sub as SubDocPageRange).pageRange;
+                   const active = idx === subInvoiceTabIdx;
                    return (
-                     <details
-                       key={`sub-doc-${idx}-${sub.issuer || idx}-${sub.date || ''}`}
-                       className="group border border-cdlp-border rounded-sm bg-cdlp-card/35 open:bg-cdlp-card/55"
-                       open={idx === 0}
+                     <button
+                       key={`inv-tab-${idx}-${sub.issuer || 'inv'}`}
+                       type="button"
+                       onClick={() => setActiveSubInvoiceTab(idx)}
+                       className={`shrink-0 text-left px-3 py-2 rounded-sm border transition-colors min-w-[120px] max-w-[200px] ${
+                         active
+                           ? 'bg-cdlp-gold text-cdlp-black border-cdlp-gold shadow-md'
+                           : 'bg-cdlp-card/40 text-foreground border-cdlp-border hover:border-cdlp-gold/40'
+                       }`}
                      >
-                       <summary className="cursor-pointer list-none flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs font-black uppercase text-foreground tracking-tight [&::-webkit-details-marker]:hidden">
-                         <span className="flex flex-wrap items-center gap-2">
-                           <ChevronRight className="w-4 h-4 text-cdlp-gold group-open:rotate-90 transition-transform shrink-0" />
-                           <span className="text-cdlp-gold">#{idx + 1}</span>
-                           <span className="truncate max-w-[220px]">{sub.issuer || `Invoice ${idx + 1}`}</span>
-                           {pageRange && (
-                             <span className="text-[9px] font-bold text-cdlp-muted normal-case">Pages {pageRange}</span>
-                           )}
-                         </span>
-                         <span className="font-mono text-[11px] text-cdlp-gold shrink-0">
-                           {(Number(sub.totalAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
-                           {editedData.originalCurrency || 'CHF'}
-                         </span>
-                       </summary>
-                       <div className="px-4 pb-4 pt-0 border-t border-cdlp-border/50 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                         <div className="space-y-2 md:col-span-2 xl:col-span-1">
-                           <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Issuer</label>
-                           <input
-                             value={sub.issuer ?? ''}
-                             onChange={(e) => patchSubDocument(idx, { issuer: e.target.value })}
-                             className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[11px] font-bold text-foreground outline-none focus:border-cdlp-gold"
-                           />
-                         </div>
-                         <div className="space-y-2">
-                           <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Pages (range)</label>
-                           <input
-                             value={pageRange ?? ''}
-                             onChange={(e) => {
-                               const next: SubDocPageRange = { ...(sub as SubDocPageRange), pageRange: e.target.value };
-                               patchSubDocument(idx, next as FinancialData);
-                             }}
-                             className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[11px] font-bold text-foreground outline-none focus:border-cdlp-gold"
-                             placeholder="e.g. 1–2"
-                           />
-                         </div>
-                         <div className="space-y-2">
-                           <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Date</label>
-                           <input
-                             type="date"
-                             value={sub.date ?? ''}
-                             onChange={(e) => patchSubDocument(idx, { date: e.target.value })}
-                             className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[11px] font-bold text-foreground outline-none"
-                           />
-                         </div>
-                         <div className="space-y-2 md:col-span-2 xl:col-span-3">
-                           <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Category</label>
-                           <select
-                             value={sub.expenseCategory || ''}
-                             onChange={(e) => patchSubDocument(idx, { expenseCategory: e.target.value })}
-                             className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-foreground uppercase outline-none"
-                           >
-                             <option value="">— Uncategorized —</option>
-                             {CATEGORY_GROUPS.map((group) => (
-                               <optgroup key={group.id} label={group.label}>
-                                 {RESTAURANT_CATEGORIES.filter((cat) => cat.group === group.id).map((cat) => (
-                                   <option key={cat.id} value={cat.id}>
-                                     {cat.label}
-                                   </option>
-                                 ))}
-                               </optgroup>
-                             ))}
-                           </select>
-                         </div>
-                         <div className="space-y-2">
-                           <label className="text-[8px] font-black uppercase text-emerald-600 tracking-widest">Net</label>
-                           <input
-                             type="number"
-                             step="0.01"
-                             value={sub.netAmount ?? 0}
-                             onChange={(e) => {
-                               const net = parseFloat(e.target.value) || 0;
-                               const vat = Number(sub.vatAmount || 0);
-                               patchSubDocument(idx, {
-                                 netAmount: net,
-                                 totalAmount: Math.round((net + vat) * 100) / 100,
-                               });
-                             }}
-                             className="w-full h-10 px-3 bg-emerald-600/10 border border-emerald-600/25 rounded-sm text-[11px] font-bold outline-none"
-                           />
-                         </div>
-                         <div className="space-y-2">
-                           <label className="text-[8px] font-black uppercase text-blue-600 tracking-widest">VAT</label>
-                           <input
-                             type="number"
-                             step="0.01"
-                             value={sub.vatAmount ?? 0}
-                             onChange={(e) => {
-                               const vat = parseFloat(e.target.value) || 0;
-                               const net = Number(sub.netAmount || 0);
-                               patchSubDocument(idx, {
-                                 vatAmount: vat,
-                                 totalAmount: Math.round((net + vat) * 100) / 100,
-                               });
-                             }}
-                             className="w-full h-10 px-3 bg-blue-600/10 border border-blue-600/25 rounded-sm text-[11px] font-bold outline-none"
-                           />
-                         </div>
-                         <div className="space-y-2">
-                           <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Total (gross)</label>
-                           <input
-                             type="number"
-                             step="0.01"
-                             value={sub.totalAmount ?? 0}
-                             onChange={(e) => {
-                               const gross = parseFloat(e.target.value) || 0;
-                               const vat = Number(sub.vatAmount || 0);
-                               patchSubDocument(idx, {
-                                 totalAmount: gross,
-                                 netAmount: Math.round((gross - vat) * 100) / 100,
-                               });
-                             }}
-                             className="w-full h-10 px-3 bg-cdlp-card border border-cdlp-border rounded-sm text-[11px] font-black outline-none"
-                           />
-                         </div>
-                       </div>
-                     </details>
+                       <span className="block text-[9px] font-black uppercase tracking-tight truncate">
+                         #{idx + 1} {sub.issuer || 'Invoice'}
+                       </span>
+                       <span className="block font-mono text-[10px] mt-1 opacity-90">
+                         {(Number(sub.totalAmount || 0)).toLocaleString('en-CH', {
+                           minimumFractionDigits: 2,
+                           maximumFractionDigits: 2,
+                         })}{' '}
+                         {editedData.originalCurrency || 'CHF'}
+                       </span>
+                     </button>
                    );
                  })}
                </div>
+               {subDocuments.length > 0 && (() => {
+                 const idx = subInvoiceTabIdx;
+                 const raw = subDocuments[idx];
+                 const sub = raw as FinancialData;
+                 const pageRange = (sub as SubDocPageRange).pageRange;
+                 return (
+                   <div className="border border-cdlp-border rounded-sm bg-cdlp-card/35 p-4 mt-3">
+                     <div className="flex items-center justify-between gap-2 mb-4 pb-2 border-b border-cdlp-border/50">
+                       <span className="text-[10px] font-black uppercase text-cdlp-gold tracking-widest">
+                         Invoice {idx + 1} of {subDocuments.length}
+                       </span>
+                       {pageRange && (
+                         <span className="text-[9px] font-bold text-cdlp-muted">Pages {pageRange}</span>
+                       )}
+                     </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                       <div className="space-y-2 md:col-span-2 xl:col-span-1">
+                         <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Issuer</label>
+                         <input
+                           value={sub.issuer ?? ''}
+                           onChange={(e) => patchSubDocument(idx, { issuer: e.target.value })}
+                           className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[11px] font-bold text-foreground outline-none focus:border-cdlp-gold"
+                         />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Pages (range)</label>
+                         <input
+                           value={pageRange ?? ''}
+                           onChange={(e) => {
+                             const next: SubDocPageRange = { ...(sub as SubDocPageRange), pageRange: e.target.value };
+                             patchSubDocument(idx, next as FinancialData);
+                           }}
+                           className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[11px] font-bold text-foreground outline-none focus:border-cdlp-gold"
+                           placeholder="e.g. 1–2"
+                         />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Date</label>
+                         <input
+                           type="date"
+                           value={sub.date ?? ''}
+                           onChange={(e) => patchSubDocument(idx, { date: e.target.value })}
+                           className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[11px] font-bold text-foreground outline-none"
+                         />
+                       </div>
+                       <div className="space-y-2 md:col-span-2 xl:col-span-3">
+                         <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Category</label>
+                         <select
+                           value={sub.expenseCategory || ''}
+                           onChange={(e) => patchSubDocument(idx, { expenseCategory: e.target.value })}
+                           className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-foreground uppercase outline-none"
+                         >
+                           <option value="">— Uncategorized —</option>
+                           {CATEGORY_GROUPS.map((group) => (
+                             <optgroup key={group.id} label={group.label}>
+                               {RESTAURANT_CATEGORIES.filter((cat) => cat.group === group.id).map((cat) => (
+                                 <option key={cat.id} value={cat.id}>
+                                   {cat.label}
+                                 </option>
+                               ))}
+                             </optgroup>
+                           ))}
+                         </select>
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[8px] font-black uppercase text-emerald-600 tracking-widest">Net</label>
+                         <input
+                           type="number"
+                           step="0.01"
+                           value={sub.netAmount ?? 0}
+                           onChange={(e) => {
+                             const net = parseFloat(e.target.value) || 0;
+                             const vat = Number(sub.vatAmount || 0);
+                             patchSubDocument(idx, {
+                               netAmount: net,
+                               totalAmount: Math.round((net + vat) * 100) / 100,
+                             });
+                           }}
+                           className="w-full h-10 px-3 bg-emerald-600/10 border border-emerald-600/25 rounded-sm text-[11px] font-bold outline-none"
+                         />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[8px] font-black uppercase text-blue-600 tracking-widest">VAT</label>
+                         <input
+                           type="number"
+                           step="0.01"
+                           value={sub.vatAmount ?? 0}
+                           onChange={(e) => {
+                             const vat = parseFloat(e.target.value) || 0;
+                             const net = Number(sub.netAmount || 0);
+                             patchSubDocument(idx, {
+                               vatAmount: vat,
+                               totalAmount: Math.round((net + vat) * 100) / 100,
+                             });
+                           }}
+                           className="w-full h-10 px-3 bg-blue-600/10 border border-blue-600/25 rounded-sm text-[11px] font-bold outline-none"
+                         />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Total (gross)</label>
+                         <input
+                           type="number"
+                           step="0.01"
+                           value={sub.totalAmount ?? 0}
+                           onChange={(e) => {
+                             const gross = parseFloat(e.target.value) || 0;
+                             const vat = Number(sub.vatAmount || 0);
+                             patchSubDocument(idx, {
+                               totalAmount: gross,
+                               netAmount: Math.round((gross - vat) * 100) / 100,
+                             });
+                           }}
+                           className="w-full h-10 px-3 bg-cdlp-card border border-cdlp-border rounded-sm text-[11px] font-black outline-none"
+                         />
+                       </div>
+                     </div>
+                   </div>
+                 );
+               })()}
              </div>
            )}
 

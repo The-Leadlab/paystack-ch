@@ -1818,6 +1818,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
   const [filter, setFilter] = useState<'all' | 'suppliers' | 'employees' | 'pos'>('all');
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<ProcessedDocument | null>(initialSelectedDocument || null);
+  const [invoiceBreakdownTab, setInvoiceBreakdownTab] = useState(0);
 
   // Update selectedDocument when initialSelectedDocument changes
   React.useEffect(() => {
@@ -1825,6 +1826,10 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
       setSelectedDocument(initialSelectedDocument);
     }
   }, [initialSelectedDocument]);
+
+  React.useEffect(() => {
+    setInvoiceBreakdownTab(0);
+  }, [selectedDocument?.id, selectedDocument?.data?.subDocuments?.length ?? 0]);
 
   // Group documents by entity (supplier or employee)
   const groupedDocs = useMemo(() => {
@@ -2008,56 +2013,78 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">
                       Invoice Breakdown ({selectedDocument.data.subDocuments.length})
                     </h3>
-                    <div className="space-y-2">
-                      {selectedDocument.data.subDocuments.map((subDoc: any, idx) => (
-                        <details key={`subdoc-${idx}`} className="bg-cdlp-card border border-cdlp-border rounded p-3">
-                          <summary className="cursor-pointer list-none flex items-center justify-between">
-                            <span className="text-sm font-bold text-foreground">
-                              {subDoc.issuer || `Invoice ${idx + 1}`}
+                    <p className="text-[10px] text-cdlp-muted mb-3">
+                      Document total above is the sum of all invoices in this PDF. Use tabs to review each issuer and VAT block.
+                    </p>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {selectedDocument.data.subDocuments.map((subDoc: any, idx: number) => {
+                        const active = idx === invoiceBreakdownTab;
+                        return (
+                          <button
+                            key={`doc-inv-tab-${idx}`}
+                            type="button"
+                            onClick={() => setInvoiceBreakdownTab(idx)}
+                            className={`px-3 py-2 rounded border text-left text-xs max-w-[200px] transition-colors ${
+                              active ? 'border-cdlp-gold bg-cdlp-gold/15 text-white' : 'border-cdlp-border bg-cdlp-card text-cdlp-muted hover:border-cdlp-gold/40'
+                            }`}
+                          >
+                            <span className="font-bold block truncate">{subDoc.issuer || `Invoice ${idx + 1}`}</span>
+                            <span className="font-mono text-[10px] text-cdlp-gold">
+                              {(Number(subDoc.totalAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2 })}
                             </span>
-                            <span className="text-xs text-cdlp-muted">
-                              {subDoc.pageRange ? `Pages ${subDoc.pageRange}` : `Invoice ${idx + 1}`}
-                            </span>
-                          </summary>
-                          <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                            <div>
-                              <p className="text-cdlp-muted uppercase">Date</p>
-                              <p className="font-bold text-foreground">{subDoc.date || 'N/A'}</p>
-                            </div>
-                            <div>
-                              <p className="text-cdlp-muted uppercase">Currency</p>
-                              <p className="font-bold text-foreground">{subDoc.originalCurrency || selectedDocument.data?.originalCurrency || 'CHF'}</p>
-                            </div>
-                            <div>
-                              <p className="text-cdlp-muted uppercase">Gross Total</p>
-                              <p className="font-black text-cdlp-gold">
-                                {(Number(subDoc.totalAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-cdlp-muted uppercase">Net Amount</p>
-                              <p className="font-bold text-foreground">
-                                {(Number(subDoc.netAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-cdlp-muted uppercase">VAT Amount</p>
-                              <p className="font-bold text-foreground">
-                                {(Number(subDoc.vatAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-cdlp-muted uppercase">VAT Rate</p>
-                              <p className="font-bold text-foreground">{Number(subDoc.vatRate || 0)}%</p>
-                            </div>
-                            <div className="col-span-2">
-                              <p className="text-cdlp-muted uppercase">Category</p>
-                              <p className="font-bold text-foreground">{subDoc.expenseCategory || 'OTHER'}</p>
-                            </div>
-                          </div>
-                        </details>
-                      ))}
+                          </button>
+                        );
+                      })}
                     </div>
+                    {(() => {
+                      const subs = selectedDocument.data!.subDocuments!;
+                      const idx = Math.min(invoiceBreakdownTab, Math.max(0, subs.length - 1));
+                      const subDoc = subs[idx];
+                      return (
+                        <div className="bg-cdlp-card border border-cdlp-border rounded p-4 grid grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <p className="text-cdlp-muted uppercase">Date</p>
+                            <p className="font-bold text-foreground">{subDoc.date || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-cdlp-muted uppercase">Currency</p>
+                            <p className="font-bold text-foreground">{subDoc.originalCurrency || selectedDocument.data?.originalCurrency || 'CHF'}</p>
+                          </div>
+                          <div>
+                            <p className="text-cdlp-muted uppercase">Gross Total</p>
+                            <p className="font-black text-cdlp-gold">
+                              {(Number(subDoc.totalAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-cdlp-muted uppercase">Net Amount</p>
+                            <p className="font-bold text-foreground">
+                              {(Number(subDoc.netAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-cdlp-muted uppercase">VAT Amount</p>
+                            <p className="font-bold text-foreground">
+                              {(Number(subDoc.vatAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-cdlp-muted uppercase">VAT Rate</p>
+                            <p className="font-bold text-foreground">{Number(subDoc.vatRate || 0)}%</p>
+                          </div>
+                          {subDoc.pageRange && (
+                            <div className="col-span-2">
+                              <p className="text-cdlp-muted uppercase">Pages</p>
+                              <p className="font-bold text-foreground">{subDoc.pageRange}</p>
+                            </div>
+                          )}
+                          <div className="col-span-2">
+                            <p className="text-cdlp-muted uppercase">Category</p>
+                            <p className="font-bold text-foreground">{subDoc.expenseCategory || 'OTHER'}</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 

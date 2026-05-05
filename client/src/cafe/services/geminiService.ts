@@ -144,16 +144,17 @@ async function extractInvoiceBreakdownExhaustive(
         parts: [
           { inlineData: { mimeType, data: base64 } },
           {
-            text: `You are auditing a multi-page PDF containing multiple invoices/receipts.
+            text: `You are auditing a multi-page PDF that may contain MULTIPLE separate invoices or receipts bound together.
 ${hintSection}
 
 MANDATORY:
-1. Read EVERY page from first to last.
-2. Return one subDocuments entry per distinct invoice/receipt block found.
-3. NEVER stop after first 2 pages.
-4. If one invoice spans multiple pages, merge it into one entry with a pageRange like "3-4".
-5. If there are 5 or 6 invoices, return all 5 or 6 entries.
-6. Keep lineItems aligned with all detected invoice entries.
+1. Read EVERY page from first to last. Never assume a single invoice.
+2. Return one subDocuments entry per DISTINCT invoice/receipt (different issuer, invoice number, or dated block).
+3. NEVER stop after the first page or first two invoices.
+4. If one invoice spans multiple pages, merge into ONE entry with pageRange like "3-4".
+5. Extract per-invoice: issuer (supplier name), invoice/reference number if visible (append to issuer as "Name | Ref 12345"), date, pageRange, originalCurrency, netAmount, vatAmount, vatRate, totalAmount (gross including VAT).
+6. lineItems: one EXPENSE row per sub-invoice (amount = that invoice gross total, description = issuer + pages).
+7. After extraction, verify detectedInvoiceCount matches len(subDocuments); if not, fix before returning.
 
 Return JSON only matching schema.`
           }
@@ -213,6 +214,33 @@ Return JSON only matching schema.`
     console.warn('Exhaustive invoice pass failed:', error);
     return null;
   }
+}
+
+/** When multiple invoices exist, force header totals to equal the sum of each sub-invoice (gross/VAT/net). */
+function syncGrandTotalsFromSubDocuments(data: FinancialData): FinancialData {
+  const subs = Array.isArray(data.subDocuments) ? data.subDocuments : [];
+  if (subs.length < 2) return data;
+
+  const gross =
+    Math.round(subs.reduce((s, x: FinancialData) => s + Number(x.totalAmount || 0), 0) * 100) / 100;
+  const vat =
+    Math.round(subs.reduce((s, x: FinancialData) => s + Number(x.vatAmount || 0), 0) * 100) / 100;
+  const net =
+    Math.round(subs.reduce((s, x: FinancialData) => s + Number(x.netAmount || 0), 0) * 100) / 100;
+  const rate = Number(data.conversionRateUsed ?? 1) || 1;
+  const amountInCHF = Math.round(gross * rate * 100) / 100;
+
+  const note = `Grand total (${subs.length} invoices): ${gross} ${data.originalCurrency || 'CHF'}.`;
+  const interp = data.aiInterpretation?.includes('Grand total') ? data.aiInterpretation : `${data.aiInterpretation || ''} ${note}`.trim();
+
+  return {
+    ...data,
+    totalAmount: gross,
+    vatAmount: vat,
+    netAmount: net,
+    amountInCHF,
+    aiInterpretation: interp,
+  };
 }
 
 function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
@@ -329,12 +357,33 @@ function shouldRunExhaustivePdfPass(file: File, parsed: FinancialData, userHint?
     hint.includes('multi') ||
     hint.includes('bulk') ||
     hint.includes('all pages') ||
+    hint.includes('several') ||
+    hint.includes('multiple invoice') ||
     name.includes('multi') ||
     name.includes('bulk') ||
     name.includes('z2');
+
   const extractedSubDocs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments.length : 0;
-  // Run second pass only when likely beneficial; otherwise it doubles latency.
-  return hasMultiHint || extractedSubDocs > 1;
+  const docType = String(parsed.documentType ?? '');
+
+  const expenseBundle =
+    docType === DocumentType.INVOICE ||
+    docType === DocumentType.RECEIPT ||
+    docType === DocumentType.UNKNOWN ||
+    docType === 'Invoice' ||
+    docType === 'Ticket/Receipt' ||
+    docType === 'Unknown';
+
+  const lineCount = Array.isArray(parsed.lineItems) ? parsed.lineItems.length : 0;
+  const suspiciousUnderSplit = extractedSubDocs <= 1 && lineCount >= 4;
+
+  return (
+    hasMultiHint ||
+    extractedSubDocs > 1 ||
+    extractedSubDocs === 0 ||
+    expenseBundle ||
+    suspiciousUnderSplit
+  );
 }
 
 
@@ -499,6 +548,8 @@ CRITICAL RULES:
 18. Prefer exact numeric copying from document totals over inferred arithmetic when both are present.
 19. Keep sign consistency: INCOME amounts positive, EXPENSE amounts positive (classification carries direction).
 20. Always return valid JSON that strictly matches the schema and contains no markdown/comments.
+21. MULTI-INVOICE PDFs: If subDocuments has 2+ entries, top-level totalAmount MUST equal the sum of every subDocument.totalAmount (gross). Top-level vatAmount and netAmount MUST equal the sums of sub-invoice VAT and net respectively. Do not use only the first page total as the document total.
+22. SINGLE PDF FILE: Even when the top-level documentType looks like one "Invoice", still scan the full PDF for multiple separate invoices and populate subDocuments accordingly.
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings
@@ -538,6 +589,7 @@ Return JSON only.`
     }
 
     let normalized = normalizeMultiInvoiceData(parsed);
+    normalized = syncGrandTotalsFromSubDocuments(normalized);
 
     // Second-pass exhaustive extraction is expensive; keep it for likely multi-invoice files only.
     const isPdf = mimeType === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
@@ -556,11 +608,22 @@ Return JSON only.`
             issuer: `${exhaustiveSubCount} invoices detected`
           });
           console.log(`📚 Exhaustive pass increased invoice blocks: ${currentSubCount} -> ${exhaustiveSubCount}`);
+        } else if (exhaustiveSubCount > 0 && exhaustiveSubCount === currentSubCount) {
+          normalized = normalizeMultiInvoiceData({
+            ...normalized,
+            subDocuments: exhaustive.subDocuments as any,
+            lineItems: (Array.isArray(exhaustive.lineItems) && exhaustive.lineItems.length > 0)
+              ? exhaustive.lineItems
+              : normalized.lineItems,
+          });
+          console.log(`📚 Exhaustive pass refreshed ${exhaustiveSubCount} invoice blocks`);
         }
       }
     } else if (isPdf) {
       console.log('⏩ Skipping exhaustive PDF pass (single-document fast path)');
     }
+
+    normalized = syncGrandTotalsFromSubDocuments(normalized);
 
     if (normalized.totalAmount !== undefined && (!normalized.amountInCHF || normalized.amountInCHF === 0)) {
       const rate = await getLiveExchangeRate(normalized.originalCurrency || 'CHF', targetCurrency);
