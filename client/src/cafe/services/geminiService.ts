@@ -2,11 +2,12 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { DocumentType, FinancialData, BankTransaction, BankStatementAnalysis } from "../types";
 
-function getGeminiApiKey(): string {
-  const key = import.meta.env.VITE_GEMINI_API_KEY?.trim();
+export function getGeminiApiKey(): string {
+  // Support both names to avoid silent breakage across old/new deployments.
+  const key = (import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY)?.trim();
   if (!key) {
     throw new Error(
-      "Missing VITE_GEMINI_API_KEY. Add it in your host environment (e.g. Vercel → Environment Variables) or .env.local, then redeploy."
+      "Missing Gemini key. Set VITE_GEMINI_API_KEY (or VITE_API_KEY) in your host environment or .env.local, then rebuild/redeploy."
     );
   }
   return key;

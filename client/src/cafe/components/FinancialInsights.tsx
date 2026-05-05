@@ -12,7 +12,7 @@ import {
   ArrowUpRight, ArrowDownRight, Target, 
   LayoutGrid, BarChart3, Activity, Tag
 } from 'lucide-react';
-import { fileToBase64 } from '../services/geminiService';
+import { fileToBase64, getGeminiApiKey } from '../services/geminiService';
 
 interface FinancialInsightsProps {
   documents: ProcessedDocument[];
@@ -227,7 +227,7 @@ export const FinancialInsights: React.FC<FinancialInsightsProps> = ({ documents 
     setIsAsking(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
       const context = JSON.stringify(stats.flattenedItems.map(item => ({ 
         issuer: item.issuer, 
         total: item.amount, 
@@ -237,7 +237,7 @@ export const FinancialInsights: React.FC<FinancialInsightsProps> = ({ documents 
       })));
       
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: import.meta.env.VITE_GEMINI_CHAT_MODEL?.trim() || 'gemini-2.5-flash',
         contents: [
           ...chatHistory.map(h => ({ role: h.role, parts: [{ text: h.text }] })),
           { role: 'user', parts: [{ text: `Audit Intelligent Ledger Context: ${context}. User Inquiry: ${userMsg || "Scan dataset"}` }] }
