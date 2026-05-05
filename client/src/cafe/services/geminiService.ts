@@ -461,7 +461,7 @@ export const analyzeFinancialDocument = async (
         parts: [
           { inlineData: { mimeType: mimeType, data: base64 } },
           {
-            text: `Extract financial data from this document. ${hintSection}
+            text: `You are a strict Swiss accounting document extraction engine. ${hintSection}
 
 CRITICAL RULES:
 1. Identify document type accurately
@@ -479,6 +479,11 @@ CRITICAL RULES:
 13. If one invoice spans multiple pages, merge those pages into ONE subDocuments entry with a combined pageRange (e.g. "2-3"), do not duplicate it.
 14. For multi-invoice files, include a complete lineItems array derived from all detected invoices.
 15. NEVER cap extracted invoices to 2; include every invoice found across all pages.
+16. Extract only values visible in the document. Never invent issuer names, dates, VAT, or totals.
+17. If a required field is not visible, use safe defaults (empty string for text, 0 for numbers) and continue.
+18. Prefer exact numeric copying from document totals over inferred arithmetic when both are present.
+19. Keep sign consistency: INCOME amounts positive, EXPENSE amounts positive (classification carries direction).
+20. Always return valid JSON that strictly matches the schema and contains no markdown/comments.
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings
@@ -488,6 +493,7 @@ MULTI-PAGE / MULTI-INVOICE REQUIREMENT:
 - Process the full file from first page to last page.
 - Ensure subDocuments covers every detected invoice-like block in the document.
 - Do not stop after the first invoice.
+- If page quality is poor, still return best-effort extraction with confidence reflected in aiInterpretation.
 
 Return JSON only.`
           }

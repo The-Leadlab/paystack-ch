@@ -1603,12 +1603,8 @@ export const DocumentProcessor: React.FC<{
       let inputFile: File | undefined = doc.fileRaw;
       if (!inputFile && doc.fileUrl) {
         // Rehydrate persisted documents after page refresh.
-        const response = await fetch(doc.fileUrl);
-        if (!response.ok) {
-          throw new Error(`Could not fetch stored file (${response.status})`);
-        }
-        const blob = await response.blob();
-        inputFile = new File([blob], doc.fileName, { type: blob.type || 'application/octet-stream' });
+        const { downloadDocumentFile } = await import('../services/storageService');
+        inputFile = await downloadDocumentFile(doc.fileUrl, doc.fileName);
       }
       if (!inputFile) {
         throw new Error('Missing source file. Re-upload this document to process it.');

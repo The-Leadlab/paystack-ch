@@ -1,5 +1,5 @@
 import { storage } from '../lib/firebase';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject, getBytes } from 'firebase/storage';
 
 /**
  * Upload a file to Firebase Storage
@@ -90,6 +90,39 @@ export async function deleteDocument(fileUrl: string): Promise<void> {
     console.error('❌ Error deleting file:', error);
     throw error;
   }
+}
+
+/**
+ * Download a stored document and reconstruct it as a File for re-processing.
+ * Uses Firebase Storage SDK (authenticated) first, then falls back to fetch.
+ */
+export async function downloadDocumentFile(fileUrl: string, fileName: string): Promise<File> {
+  if (!fileUrl || typeof fileUrl !== 'string') {
+    throw new Error('Invalid file URL');
+  }
+
+  const normalized = fileUrl.trim();
+  const safeName = fileName || 'document.bin';
+
+  if (storage) {
+    try {
+      const storageRef = normalized.startsWith('http://') || normalized.startsWith('https://') || normalized.startsWith('gs://')
+        ? ref(storage, normalized)
+        : ref(storage, normalized.replace(/^\/+/, ''));
+      const bytes = await getBytes(storageRef);
+      const contentType = storageRef.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream';
+      return new File([bytes], safeName, { type: contentType });
+    } catch (sdkError) {
+      console.warn('⚠️ SDK download failed, falling back to fetch:', sdkError);
+    }
+  }
+
+  const response = await fetch(normalized);
+  if (!response.ok) {
+    throw new Error(`Could not fetch stored file (${response.status})`);
+  }
+  const blob = await response.blob();
+  return new File([blob], safeName, { type: blob.type || 'application/octet-stream' });
 }
 
 /**
