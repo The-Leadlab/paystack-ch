@@ -238,6 +238,7 @@ MANDATORY:
 6. lineItems: one EXPENSE row per sub-invoice (amount = that invoice gross total, description = issuer + pages).
 7. After extraction, verify detectedInvoiceCount matches len(subDocuments); if not, fix before returning.
 8. JSON only: no raw newlines or unescaped " inside strings; keep descriptions short.
+9. DISTINCT-INVOICE RULE: invoices with different dates/page blocks are separate entries, even if supplier and amounts look similar.
 
 Return JSON only matching schema.`
           }
@@ -340,8 +341,9 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
     notes: `VAT ${Number(sub.vatRate || 0)}% | VAT Amount ${Number(sub.vatAmount || 0)} ${sub.originalCurrency || parsed.originalCurrency || 'CHF'}`
   }));
 
-  // If model under-fills subDocuments, derive additional invoice blocks from expense line items.
-  const inferredSubDocsFromLineItems = normalizedLineItems
+  // If model under-fills subDocuments (single-invoice case), derive additional blocks from expense lines.
+  // For true multi-invoice documents, never infer from product-level lines because it inflates totals.
+  const inferredSubDocsFromLineItems = (subDocs.length <= 1 ? normalizedLineItems : [])
     .filter((item) => item.type === 'EXPENSE' && Number(item.amount || 0) > 0)
     .map((item) => ({
       pageRange: '',
@@ -403,17 +405,23 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
     Math.abs(expenseSumGenerated - normalizedLineItems.filter((i) => i.type === 'EXPENSE').reduce((s, i) => s + Number(i.amount || 0), 0)) < 1;
 
   const finalLineItems =
-    normalizedLineItems.length > 0 && lineSumMatch && normalizedLineItems.length >= repairedSubs.length
-      ? normalizedLineItems
-      : rebasedItems;
+    repairedSubs.length > 1
+      ? rebasedItems
+      : normalizedLineItems.length > 0 && lineSumMatch && normalizedLineItems.length >= repairedSubs.length
+        ? normalizedLineItems
+        : rebasedItems;
 
   const rollupFromLines = finalLineItems
     .filter((i) => i.type === 'EXPENSE')
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
-  /** Prefer line-item rollup when model header totals drift from summed expenses. */
+  /** For multi-invoice documents, grand total is ALWAYS the sum of invoice-level gross totals. */
   const aggregatedTotal =
-    rollupFromLines > 0 && Math.abs(subTotal - rollupFromLines) > 0.06 ? rollupFromLines : subTotal;
+    repairedSubs.length > 1
+      ? subTotal
+      : rollupFromLines > 0 && Math.abs(subTotal - rollupFromLines) > 0.06
+        ? rollupFromLines
+        : subTotal;
   const aggregatedVat = repairedSubs.reduce((sum: number, sub: any) => sum + Number(sub.vatAmount || 0), 0);
   const aggregatedNet = repairedSubs.reduce((sum: number, sub: any) => sum + Number(sub.netAmount || 0), 0);
 
@@ -624,7 +632,7 @@ CRITICAL RULES:
 11. If multiple invoices/receipts exist in one PDF, create one subDocuments entry per invoice/receipt with issuer, VAT, net, gross, currency, and pageRange.
 12. If VAT is missing for a sub-document, set vatAmount=0 and vatRate=0 (never omit fields).
 13. If one invoice spans multiple pages, merge those pages into ONE subDocuments entry with a combined pageRange (e.g. "2-3"), do not duplicate it.
-14. For multi-invoice files, include a complete lineItems array derived from all detected invoices.
+14. For multi-invoice files, include lineItems with ONE row per invoice (gross total per invoice), not per product/ticket line.
 15. NEVER cap extracted invoices to 2; include every invoice found across all pages.
 16. Extract only values visible in the document. Never invent issuer names, dates, VAT, or totals.
 17. If a required field is not visible, use safe defaults (empty string for text, 0 for numbers) and continue.
@@ -634,6 +642,7 @@ CRITICAL RULES:
 21. MULTI-INVOICE PDFs: If subDocuments has 2+ entries, top-level totalAmount MUST equal the sum of every subDocument.totalAmount (gross). Top-level vatAmount and netAmount MUST equal the sums of sub-invoice VAT and net respectively. Do not use only the first page total as the document total.
 22. SINGLE PDF FILE: Even when the top-level documentType looks like one "Invoice", still scan the full PDF for multiple separate invoices and populate subDocuments accordingly.
 23. JSON SAFETY: Output must be one valid JSON object only. Do not put raw line breaks or unescaped double-quotes inside string values. Keep aiInterpretation under 400 characters. Keep each lineItems[].description under 120 characters (abbreviate if needed). Escape any quote inside a string as backslash-quote.
+24. DISTINCT-INVOICE RULE: Two visually similar invoices on different dates/pages are DISTINCT entries. Do not merge them unless they are clearly the same invoice continued across pages.
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings
