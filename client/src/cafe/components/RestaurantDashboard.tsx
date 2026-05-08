@@ -1502,6 +1502,7 @@ function ReportsPlaceholder() {
   const [filterActive, setFilterActive] = React.useState(false);
   const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
   const [supplierFilter, setSupplierFilter] = React.useState<string>('all');
+  const [vatPeriodMode, setVatPeriodMode] = React.useState<'month' | 'semester' | 'year' | 'allYears'>('month');
 
   // Filter data by current session
   // For "All Sessions" view, only show data from existing sessions (not orphaned data)
@@ -1641,6 +1642,25 @@ function ReportsPlaceholder() {
     }
   };
 
+  const handleVatExport = async (format: 'csv' | 'pdf') => {
+    const { exportSwissVatCSV, exportSwissVatPDF } = await import('../services/reportExportService');
+    const reportData = {
+      income: dateFilteredIncome,
+      expenses: dateFilteredExpenses,
+      monthlyData,
+      supplierData,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+      sessionName: isAllSessionsView ? 'All Sessions' : currentSession?.name
+    };
+
+    if (format === 'csv') {
+      exportSwissVatCSV(reportData, vatPeriodMode);
+    } else {
+      await exportSwissVatPDF(reportData, vatPeriodMode);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Filters */}
@@ -1719,24 +1739,58 @@ function ReportsPlaceholder() {
 
       {/* Download Section */}
       <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h3 className="text-sm font-bold text-cdlp-gold uppercase mb-1">Export Report</h3>
-            <p className="text-xs text-cdlp-muted">Download filtered data in your preferred format</p>
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="space-y-3 w-full lg:w-auto">
+            <div>
+              <h3 className="text-sm font-bold text-cdlp-gold uppercase mb-1">Export Report</h3>
+              <p className="text-xs text-cdlp-muted">Download filtered data in your preferred format</p>
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-1">Swiss TVA Statement</h4>
+              <p className="text-[11px] text-cdlp-muted">
+                TVA collected from clients minus TVA paid to suppliers, with warnings when TVA is missing.
+              </p>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleExport('csv')}
-              className="flex items-center gap-2 px-4 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light transition-colors"
-            >
-              <Download className="w-4 h-4" /> Download CSV
-            </button>
-            <button
-              onClick={() => handleExport('pdf')}
-              className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-gold text-cdlp-gold text-xs font-bold uppercase rounded hover:bg-cdlp-gold/10 transition-colors"
-            >
-              <Download className="w-4 h-4" /> Download PDF
-            </button>
+          <div className="w-full lg:w-auto space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleExport('csv')}
+                className="flex items-center gap-2 px-4 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light transition-colors"
+              >
+                <Download className="w-4 h-4" /> Download CSV
+              </button>
+              <button
+                onClick={() => handleExport('pdf')}
+                className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-gold text-cdlp-gold text-xs font-bold uppercase rounded hover:bg-cdlp-gold/10 transition-colors"
+              >
+                <Download className="w-4 h-4" /> Download PDF
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2 items-center">
+              <select
+                value={vatPeriodMode}
+                onChange={(e) => setVatPeriodMode(e.target.value as 'month' | 'semester' | 'year' | 'allYears')}
+                className="px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-xs font-bold uppercase text-white"
+              >
+                <option value="month">TVA by Month</option>
+                <option value="semester">TVA by 6 Months</option>
+                <option value="year">TVA by Year</option>
+                <option value="allYears">TVA Every Year</option>
+              </select>
+              <button
+                onClick={() => handleVatExport('csv')}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold uppercase rounded hover:bg-blue-700 transition-colors"
+              >
+                <Download className="w-4 h-4" /> TVA CSV
+              </button>
+              <button
+                onClick={() => handleVatExport('pdf')}
+                className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-blue-500 text-blue-400 text-xs font-bold uppercase rounded hover:bg-blue-500/10 transition-colors"
+              >
+                <Download className="w-4 h-4" /> TVA PDF
+              </button>
+            </div>
           </div>
         </div>
       </div>

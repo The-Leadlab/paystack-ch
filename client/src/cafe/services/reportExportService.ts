@@ -11,6 +11,154 @@ interface ReportData {
   sessionName?: string;
 }
 
+export type SwissVatPeriodMode = 'month' | 'semester' | 'year' | 'allYears';
+
+type SwissVatPeriodRow = {
+  periodKey: string;
+  periodLabel: string;
+  turnover: number;
+  purchases: number;
+  vatCollected: number;
+  vatPaid: number;
+  netVatDue: number;
+  salesWithoutVatCount: number;
+  purchasesWithoutVatCount: number;
+};
+
+type SwissVatStatementData = {
+  rows: SwissVatPeriodRow[];
+  totals: SwissVatPeriodRow;
+};
+
+type SwissVatFormMapping = {
+  code200_taxableTurnover: number;
+  code220_outputVat: number;
+  code400_inputVat: number;
+  code500_netVatPayable: number;
+};
+
+function round2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+function toPeriodKey(date: string, mode: SwissVatPeriodMode): string {
+  const year = date.substring(0, 4);
+  const month = Number(date.substring(5, 7));
+  if (mode === 'month') return `${year}-${String(month).padStart(2, '0')}`;
+  if (mode === 'semester') return `${year}-H${month <= 6 ? 1 : 2}`;
+  return year;
+}
+
+function toPeriodLabel(periodKey: string, mode: SwissVatPeriodMode): string {
+  if (mode === 'month') {
+    return new Date(`${periodKey}-01`).toLocaleDateString('en-CH', { year: 'numeric', month: 'long' });
+  }
+  if (mode === 'semester') {
+    const [year, half] = periodKey.split('-');
+    return `${half === 'H1' ? 'Jan-Jun' : 'Jul-Dec'} ${year}`;
+  }
+  return periodKey;
+}
+
+function buildSwissVatStatement(
+  income: Income[],
+  expenses: Expense[],
+  mode: SwissVatPeriodMode
+): SwissVatStatementData {
+  const normalizedMode: SwissVatPeriodMode = mode === 'allYears' ? 'year' : mode;
+  const buckets: Record<string, SwissVatPeriodRow> = {};
+
+  for (const i of income) {
+    const key = toPeriodKey(i.date, normalizedMode);
+    if (!buckets[key]) {
+      buckets[key] = {
+        periodKey: key,
+        periodLabel: toPeriodLabel(key, normalizedMode),
+        turnover: 0,
+        purchases: 0,
+        vatCollected: 0,
+        vatPaid: 0,
+        netVatDue: 0,
+        salesWithoutVatCount: 0,
+        purchasesWithoutVatCount: 0,
+      };
+    }
+    buckets[key].turnover += Number(i.amount || 0);
+    buckets[key].vatCollected += Number(i.vat_amount || 0);
+    if (Number(i.amount || 0) > 0 && Number(i.vat_amount || 0) <= 0) {
+      buckets[key].salesWithoutVatCount += 1;
+    }
+  }
+
+  for (const e of expenses) {
+    const key = toPeriodKey(e.date, normalizedMode);
+    if (!buckets[key]) {
+      buckets[key] = {
+        periodKey: key,
+        periodLabel: toPeriodLabel(key, normalizedMode),
+        turnover: 0,
+        purchases: 0,
+        vatCollected: 0,
+        vatPaid: 0,
+        netVatDue: 0,
+        salesWithoutVatCount: 0,
+        purchasesWithoutVatCount: 0,
+      };
+    }
+    buckets[key].purchases += Number(e.amount || 0);
+    buckets[key].vatPaid += Number(e.vat_amount || 0);
+    if (Number(e.amount || 0) > 0 && Number(e.vat_amount || 0) <= 0) {
+      buckets[key].purchasesWithoutVatCount += 1;
+    }
+  }
+
+  const rows = Object.values(buckets)
+    .map((row) => ({
+      ...row,
+      turnover: round2(row.turnover),
+      purchases: round2(row.purchases),
+      vatCollected: round2(row.vatCollected),
+      vatPaid: round2(row.vatPaid),
+      netVatDue: round2(row.vatCollected - row.vatPaid),
+    }))
+    .sort((a, b) => b.periodKey.localeCompare(a.periodKey));
+
+  const totals = rows.reduce<SwissVatPeriodRow>(
+    (acc, row) => ({
+      ...acc,
+      turnover: round2(acc.turnover + row.turnover),
+      purchases: round2(acc.purchases + row.purchases),
+      vatCollected: round2(acc.vatCollected + row.vatCollected),
+      vatPaid: round2(acc.vatPaid + row.vatPaid),
+      netVatDue: round2(acc.netVatDue + row.netVatDue),
+      salesWithoutVatCount: acc.salesWithoutVatCount + row.salesWithoutVatCount,
+      purchasesWithoutVatCount: acc.purchasesWithoutVatCount + row.purchasesWithoutVatCount,
+    }),
+    {
+      periodKey: 'TOTAL',
+      periodLabel: 'TOTAL',
+      turnover: 0,
+      purchases: 0,
+      vatCollected: 0,
+      vatPaid: 0,
+      netVatDue: 0,
+      salesWithoutVatCount: 0,
+      purchasesWithoutVatCount: 0,
+    }
+  );
+
+  return { rows, totals };
+}
+
+function buildSwissVatFormMapping(totals: SwissVatPeriodRow): SwissVatFormMapping {
+  return {
+    code200_taxableTurnover: round2(totals.turnover),
+    code220_outputVat: round2(totals.vatCollected),
+    code400_inputVat: round2(totals.vatPaid),
+    code500_netVatPayable: round2(totals.netVatDue),
+  };
+}
+
 /**
  * Export report data to CSV format
  */
@@ -486,6 +634,172 @@ export const exportToPDF = async (data: ReportData) => {
     printWindow.document.close();
     
     // Wait for content to load, then print
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    };
+  } else {
+    alert('Please allow pop-ups to download PDF');
+  }
+};
+
+export const exportSwissVatCSV = (data: ReportData, mode: SwissVatPeriodMode) => {
+  const statement = buildSwissVatStatement(data.income, data.expenses, mode);
+  const mapping = buildSwissVatFormMapping(statement.totals);
+  const modeLabel = mode === 'month' ? 'Monthly' : mode === 'semester' ? 'Semiannual' : 'Yearly';
+
+  let csvContent = '';
+  csvContent += `Swiss TVA Report - ${data.sessionName || 'All Sessions'}\n`;
+  csvContent += `Mode,${modeLabel}\n`;
+  if (data.dateFrom && data.dateTo) csvContent += `Filtered Period,${data.dateFrom} to ${data.dateTo}\n`;
+  csvContent += `Generated,${new Date().toLocaleString()}\n\n`;
+  csvContent += `Period,Turnover CHF (Sales),Purchases CHF,TVA Collected CHF (Clients),TVA Paid CHF (Suppliers),Net TVA Due CHF,Sales Missing TVA,Purchases Missing TVA\n`;
+
+  statement.rows.forEach((row) => {
+    csvContent += `${row.periodLabel},${row.turnover.toFixed(2)},${row.purchases.toFixed(2)},${row.vatCollected.toFixed(2)},${row.vatPaid.toFixed(2)},${row.netVatDue.toFixed(2)},${row.salesWithoutVatCount},${row.purchasesWithoutVatCount}\n`;
+  });
+
+  csvContent += `TOTAL,${statement.totals.turnover.toFixed(2)},${statement.totals.purchases.toFixed(2)},${statement.totals.vatCollected.toFixed(2)},${statement.totals.vatPaid.toFixed(2)},${statement.totals.netVatDue.toFixed(2)},${statement.totals.salesWithoutVatCount},${statement.totals.purchasesWithoutVatCount}\n`;
+  csvContent += `\n`;
+  csvContent += `SWISS VAT RETURN MAPPING (ACCOUNTANT REVIEW)\n`;
+  csvContent += `Form code,Description,Amount CHF\n`;
+  csvContent += `200,Taxable turnover (domestic supplies),${mapping.code200_taxableTurnover.toFixed(2)}\n`;
+  csvContent += `220,Output tax / TVA collected on clients,${mapping.code220_outputVat.toFixed(2)}\n`;
+  csvContent += `400,Input tax / TVA paid on suppliers,${mapping.code400_inputVat.toFixed(2)}\n`;
+  csvContent += `500,Net VAT payable (220 - 400),${mapping.code500_netVatPayable.toFixed(2)}\n`;
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `Swiss_TVA_${modeLabel}_${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+export const exportSwissVatPDF = async (data: ReportData, mode: SwissVatPeriodMode) => {
+  const statement = buildSwissVatStatement(data.income, data.expenses, mode);
+  const mapping = buildSwissVatFormMapping(statement.totals);
+  const modeLabel = mode === 'month' ? 'Monthly' : mode === 'semester' ? 'Semiannual' : 'Yearly';
+
+  const formatCHF = (num: number) =>
+    num.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; padding: 32px; color: #111; }
+        h1 { margin: 0 0 4px 0; color: #0f172a; }
+        .meta { color: #475569; font-size: 12px; margin-bottom: 16px; }
+        .warn { background: #fff7ed; border: 1px solid #fdba74; padding: 10px; border-radius: 6px; margin: 12px 0; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { border: 1px solid #e2e8f0; padding: 8px; font-size: 12px; }
+        th { background: #f8fafc; text-transform: uppercase; font-size: 11px; text-align: left; }
+        .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .total-row td { font-weight: bold; background: #f1f5f9; }
+      </style>
+    </head>
+    <body>
+      <h1>Swiss TVA Statement</h1>
+      <div class="meta">
+        Session: ${data.sessionName || 'All Sessions'}<br/>
+        Mode: ${modeLabel}<br/>
+        ${data.dateFrom && data.dateTo ? `Filtered period: ${data.dateFrom} to ${data.dateTo}<br/>` : ''}
+        Generated: ${new Date().toLocaleString()}
+      </div>
+      ${
+        statement.totals.salesWithoutVatCount > 0 || statement.totals.purchasesWithoutVatCount > 0
+          ? `<div class="warn"><strong>Warning:</strong> Missing TVA detected on ${statement.totals.salesWithoutVatCount} sales entries and ${statement.totals.purchasesWithoutVatCount} purchase entries.</div>`
+          : ''
+      }
+      <table>
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th class="num">Turnover (Clients)</th>
+            <th class="num">Purchases</th>
+            <th class="num">TVA Collected</th>
+            <th class="num">TVA Paid</th>
+            <th class="num">Net TVA Due</th>
+            <th class="num">Sales w/o TVA</th>
+            <th class="num">Purchases w/o TVA</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${statement.rows
+            .map(
+              (row) => `
+            <tr>
+              <td>${row.periodLabel}</td>
+              <td class="num">${formatCHF(row.turnover)}</td>
+              <td class="num">${formatCHF(row.purchases)}</td>
+              <td class="num">${formatCHF(row.vatCollected)}</td>
+              <td class="num">${formatCHF(row.vatPaid)}</td>
+              <td class="num">${formatCHF(row.netVatDue)}</td>
+              <td class="num">${row.salesWithoutVatCount}</td>
+              <td class="num">${row.purchasesWithoutVatCount}</td>
+            </tr>
+          `
+            )
+            .join('')}
+          <tr class="total-row">
+            <td>${statement.totals.periodLabel}</td>
+            <td class="num">${formatCHF(statement.totals.turnover)}</td>
+            <td class="num">${formatCHF(statement.totals.purchases)}</td>
+            <td class="num">${formatCHF(statement.totals.vatCollected)}</td>
+            <td class="num">${formatCHF(statement.totals.vatPaid)}</td>
+            <td class="num">${formatCHF(statement.totals.netVatDue)}</td>
+            <td class="num">${statement.totals.salesWithoutVatCount}</td>
+            <td class="num">${statement.totals.purchasesWithoutVatCount}</td>
+          </tr>
+        </tbody>
+      </table>
+      <h2 style="margin-top: 20px;">Swiss VAT Return Mapping (Accountant Review)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Form Code</th>
+            <th>Description</th>
+            <th class="num">Amount CHF</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>200</td>
+            <td>Taxable turnover (domestic supplies)</td>
+            <td class="num">${formatCHF(mapping.code200_taxableTurnover)}</td>
+          </tr>
+          <tr>
+            <td>220</td>
+            <td>Output tax / TVA collected on clients</td>
+            <td class="num">${formatCHF(mapping.code220_outputVat)}</td>
+          </tr>
+          <tr>
+            <td>400</td>
+            <td>Input tax / TVA paid on suppliers</td>
+            <td class="num">${formatCHF(mapping.code400_inputVat)}</td>
+          </tr>
+          <tr class="total-row">
+            <td>500</td>
+            <td>Net VAT payable (220 - 400)</td>
+            <td class="num">${formatCHF(mapping.code500_netVatPayable)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
     printWindow.onload = () => {
       setTimeout(() => {
         printWindow.print();

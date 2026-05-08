@@ -558,6 +558,50 @@ function shouldRunExhaustivePdfPass(file: File, parsed: FinancialData, userHint?
   );
 }
 
+function applySwissVatWarnings(data: FinancialData): FinancialData {
+  const alerts = new Set(Array.isArray(data.forensicAlerts) ? data.forensicAlerts : []);
+  const subDocs = Array.isArray(data.subDocuments) ? data.subDocuments : [];
+  const noVatAtHeader = Number(data.totalAmount || 0) > 0 && Number(data.vatAmount || 0) <= 0;
+  if (noVatAtHeader) {
+    alerts.add(
+      'Swiss TVA warning: This document has TVA = 0. Verify exemption status or complete VAT fields before filing.'
+    );
+  }
+
+  let missingSubVatCount = 0;
+  for (const sub of subDocs) {
+    const hasValue = Number(sub.totalAmount || 0) > 0;
+    const missingVat = Number(sub.vatAmount || 0) <= 0;
+    if (hasValue && missingVat) missingSubVatCount += 1;
+  }
+  if (missingSubVatCount > 0) {
+    alerts.add(
+      `Swiss TVA warning: ${missingSubVatCount} extracted supplier document block(s) have 0 TVA. Validate exemption reason or correct VAT fields.`
+    );
+  }
+
+  const withComputedRates = subDocs.map((sub) => {
+    const vatAmount = Number(sub.vatAmount || 0);
+    const netAmount = Number(sub.netAmount || 0);
+    const existingRate = Number((sub as any).vatRate || 0);
+    const inferredRate = netAmount > 0 && vatAmount > 0 ? Math.round((vatAmount / netAmount) * 10000) / 100 : 0;
+    return { ...sub, vatRate: existingRate > 0 ? existingRate : inferredRate } as any;
+  });
+
+  const interpreted = data.aiInterpretation || '';
+  const interpretationWithVatHint =
+    alerts.size > 0 && !/tva warning|vat warning/i.test(interpreted)
+      ? `${interpreted} TVA warning: validate zero-VAT entries before Swiss filing.`.trim()
+      : interpreted;
+
+  return {
+    ...data,
+    subDocuments: withComputedRates as any,
+    forensicAlerts: Array.from(alerts),
+    aiInterpretation: interpretationWithVatHint,
+  };
+}
+
 
 export const analyzeFinancialDocument = async (
   file: File, 
@@ -728,6 +772,9 @@ CRITICAL RULES:
 26. OCR MODE: If text is partially unreadable, return best-effort values for readable fields and safe defaults for unreadable fields. Never invent amounts or names.
 27. NUMBER SAFETY: Every numeric field must be a plain finite number (no currency symbols, commas, NaN, null, infinity, or strings).
 28. STRING SAFETY: Keep all string fields concise, plain text, and free of control characters.
+29. SWISS TVA ACCOUNTANT MODE: Extract TVA with accountant-level precision (TVA/VAT/MwSt labels), preserving values exactly as shown.
+30. If an invoice/receipt appears taxable but no explicit TVA is found, set vatAmount=0 and add a short warning sentence in forensicAlerts.
+31. For sales/revenue documents, TVA represents tax collected from clients. For supplier purchase documents, TVA represents input tax paid to suppliers.
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings
@@ -804,6 +851,7 @@ Return JSON only.`
     }
 
     normalized = sanitizeFinancialDataForUi(syncGrandTotalsFromSubDocuments(normalized));
+    normalized = sanitizeFinancialDataForUi(applySwissVatWarnings(normalized));
 
     if (normalized.totalAmount !== undefined && (!normalized.amountInCHF || normalized.amountInCHF === 0)) {
       const rate = await getLiveExchangeRate(normalized.originalCurrency || 'CHF', targetCurrency);
