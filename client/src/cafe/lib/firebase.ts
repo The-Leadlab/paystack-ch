@@ -6,7 +6,7 @@ import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? 'AIzaSyCNC-pw5NpEqQxVaOQsrJyXkQDoprqOj4M',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? 'paystack-ch.web.app',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? 'paystack-ch.firebaseapp.com',
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? 'paystack-ch',
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ?? 'paystack-ch.firebasestorage.app',
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? '18248522501',
