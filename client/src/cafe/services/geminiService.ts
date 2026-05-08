@@ -441,6 +441,87 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
   };
 }
 
+function toFiniteNumber(value: unknown, fallback = 0): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function sanitizeLooseText(value: unknown, maxLen = 200): string {
+  if (typeof value !== 'string') return '';
+  const cleaned = value
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned) return '';
+  return cleaned.length > maxLen ? `${cleaned.slice(0, maxLen - 1)}…` : cleaned;
+}
+
+function coerceDocumentType(value: unknown): DocumentType {
+  const normalized = sanitizeLooseText(value, 60);
+  const validValues = Object.values(DocumentType) as string[];
+  return (validValues.includes(normalized) ? normalized : DocumentType.UNKNOWN) as DocumentType;
+}
+
+function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
+  const safeLineItems: BankTransaction[] = (Array.isArray(data.lineItems) ? data.lineItems : [])
+    .map((item) => {
+      const amount = toFiniteNumber(item?.amount, 0);
+      return {
+        date: sanitizeLooseText(item?.date, 24),
+        description: sanitizeLooseText(item?.description, 220) || 'Unlabeled line item',
+        amount,
+        type: (item?.type === 'INCOME' ? 'INCOME' : 'EXPENSE') as 'INCOME' | 'EXPENSE',
+        category: sanitizeLooseText(item?.category, 80) || 'OTHER',
+        notes: sanitizeLooseText((item as any)?.notes, 220),
+        isHumanVerified: Boolean((item as any)?.isHumanVerified),
+      };
+    })
+    .filter((item) => item.amount >= 0);
+
+  const safeSubDocuments: FinancialData[] = (Array.isArray(data.subDocuments) ? data.subDocuments : [])
+    .map((sub) => ({
+      ...sub,
+      pageRange: sanitizeLooseText((sub as any)?.pageRange, 40),
+      date: sanitizeLooseText(sub?.date, 24),
+      issuer: sanitizeLooseText(sub?.issuer, 120) || 'Unknown issuer',
+      originalCurrency: sanitizeLooseText(sub?.originalCurrency, 10) || data.originalCurrency || 'CHF',
+      documentType: coerceDocumentType(sub?.documentType),
+      expenseCategory: sanitizeLooseText(sub?.expenseCategory, 80) || 'OTHER',
+      totalAmount: toFiniteNumber(sub?.totalAmount, 0),
+      vatAmount: toFiniteNumber(sub?.vatAmount, 0),
+      netAmount: toFiniteNumber(sub?.netAmount, 0),
+      aiInterpretation: sanitizeLooseText(sub?.aiInterpretation, 320),
+    }))
+    .filter((sub) => toFiniteNumber(sub.totalAmount, 0) >= 0);
+
+  return {
+    ...data,
+    documentType: coerceDocumentType(data.documentType),
+    date: sanitizeLooseText(data.date, 24),
+    issuer: sanitizeLooseText(data.issuer, 120) || 'Unknown issuer',
+    documentNumber: sanitizeLooseText(data.documentNumber, 80),
+    originalCurrency: sanitizeLooseText(data.originalCurrency, 10) || 'CHF',
+    expenseCategory: sanitizeLooseText(data.expenseCategory, 80) || 'OTHER',
+    notes: sanitizeLooseText(data.notes, 280),
+    aiInterpretation: sanitizeLooseText(data.aiInterpretation, 380),
+    totalAmount: toFiniteNumber(data.totalAmount, 0),
+    vatAmount: toFiniteNumber(data.vatAmount, 0),
+    netAmount: toFiniteNumber(data.netAmount, 0),
+    amountInCHF: toFiniteNumber(data.amountInCHF, 0),
+    confidenceScore: toFiniteNumber(data.confidenceScore, 0),
+    conversionRateUsed: toFiniteNumber(data.conversionRateUsed, 1),
+    openingBalance: toFiniteNumber(data.openingBalance, 0),
+    finalBalance: toFiniteNumber(data.finalBalance, 0),
+    calculatedTotalIncome: toFiniteNumber(data.calculatedTotalIncome, 0),
+    calculatedTotalExpense: toFiniteNumber(data.calculatedTotalExpense, 0),
+    forensicAlerts: (Array.isArray(data.forensicAlerts) ? data.forensicAlerts : [])
+      .map((msg) => sanitizeLooseText(msg, 180))
+      .filter(Boolean),
+    lineItems: safeLineItems,
+    subDocuments: safeSubDocuments,
+  };
+}
+
 function shouldRunExhaustivePdfPass(file: File, parsed: FinancialData, userHint?: string): boolean {
   const hint = (userHint || '').toLowerCase();
   const name = (file.name || '').toLowerCase();
@@ -643,6 +724,10 @@ CRITICAL RULES:
 22. SINGLE PDF FILE: Even when the top-level documentType looks like one "Invoice", still scan the full PDF for multiple separate invoices and populate subDocuments accordingly.
 23. JSON SAFETY: Output must be one valid JSON object only. Do not put raw line breaks or unescaped double-quotes inside string values. Keep aiInterpretation under 400 characters. Keep each lineItems[].description under 120 characters (abbreviate if needed). Escape any quote inside a string as backslash-quote.
 24. DISTINCT-INVOICE RULE: Two visually similar invoices on different dates/pages are DISTINCT entries. Do not merge them unless they are clearly the same invoice continued across pages.
+25. PHOTO MODE: If input is a smartphone photo/screenshot, first infer orientation, rotate mentally, then read all visible fields. Ignore background clutter, shadows, fingers, and perspective distortion.
+26. OCR MODE: If text is partially unreadable, return best-effort values for readable fields and safe defaults for unreadable fields. Never invent amounts or names.
+27. NUMBER SAFETY: Every numeric field must be a plain finite number (no currency symbols, commas, NaN, null, infinity, or strings).
+28. STRING SAFETY: Keep all string fields concise, plain text, and free of control characters.
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings
@@ -671,7 +756,9 @@ Return JSON only.`
     const elapsed = Date.now() - startTime;
     console.log(`✅ Gemini API responded in ${elapsed}ms`);
 
-    const parsed = parseModelJsonResponse<FinancialData>(response.text, "analyze-financial-document");
+    const parsed = sanitizeFinancialDataForUi(
+      parseModelJsonResponse<FinancialData>(response.text, "analyze-financial-document")
+    );
     console.log(`📊 Parsed data:`, parsed);
 
     if (parsed.subDocuments && parsed.subDocuments.length > 0) {
@@ -716,7 +803,7 @@ Return JSON only.`
       console.log('⏩ Skipping exhaustive PDF pass (single-document fast path)');
     }
 
-    normalized = syncGrandTotalsFromSubDocuments(normalized);
+    normalized = sanitizeFinancialDataForUi(syncGrandTotalsFromSubDocuments(normalized));
 
     if (normalized.totalAmount !== undefined && (!normalized.amountInCHF || normalized.amountInCHF === 0)) {
       const rate = await getLiveExchangeRate(normalized.originalCurrency || 'CHF', targetCurrency);
