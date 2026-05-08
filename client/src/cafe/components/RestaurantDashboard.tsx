@@ -1253,6 +1253,10 @@ function IncomeExpenseSection({
 
 // Dashboard Tab Component
 function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument, onShowEmployeePanel }: any) {
+  const vatOnSalesRate = totalIncome > 0 ? (vatReceived / totalIncome) * 100 : 0;
+  const expenseBaseForVat = totalExpenses + totalPayroll;
+  const vatOnPurchasesRate = expenseBaseForVat > 0 ? (vatPaid / expenseBaseForVat) * 100 : 0;
+
   const handleItemClick = (item: any) => {
     if (item.document_id && onNavigateToDocument) {
       const doc = documents.find((d: any) => d.id === item.document_id);
@@ -1327,7 +1331,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">VAT Received</span>
           </div>
           <p className="text-lg md:text-2xl font-black text-blue-400">{vatReceived.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <p className="text-xs text-cdlp-muted">From customers</p>
+          <p className="text-xs text-cdlp-muted">From customers ({vatOnSalesRate.toFixed(2)}% of sales)</p>
         </div>
 
         <div className="bg-cdlp-black border border-orange-500/30 p-3 md:p-4 rounded-lg shadow-card">
@@ -1336,7 +1340,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">VAT Paid</span>
           </div>
           <p className="text-lg md:text-2xl font-black text-orange-400">{vatPaid.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <p className="text-xs text-cdlp-muted">On expenses</p>
+          <p className="text-xs text-cdlp-muted">On purchases ({vatOnPurchasesRate.toFixed(2)}% effective)</p>
         </div>
 
         <div className="bg-cdlp-black border border-purple-500/30 p-3 md:p-4 rounded-lg shadow-card">
@@ -1347,7 +1351,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           <p className={`text-lg md:text-2xl font-black ${vatBalance >= 0 ? 'text-purple-400' : 'text-red-400'}`}>
             {vatBalance.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
-          <p className="text-xs text-cdlp-muted">{vatBalance >= 0 ? 'To pay' : 'Refund'}</p>
+          <p className="text-xs text-cdlp-muted">{vatBalance >= 0 ? 'To pay (received - paid)' : 'Refund (received - paid)'}</p>
         </div>
       </div>
 

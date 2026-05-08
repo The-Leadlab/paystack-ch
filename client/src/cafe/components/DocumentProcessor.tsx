@@ -1850,12 +1850,17 @@ export const DocumentProcessor: React.FC<{
                   <th className="px-4 py-3 text-left">Document</th>
                   <th className="px-4 py-3 text-left hidden md:table-cell">Date</th>
                   <th className="px-4 py-3 text-right hidden md:table-cell">Amount</th>
+                  <th className="px-4 py-3 text-right hidden lg:table-cell">TVA Calc</th>
                   <th className="px-4 py-3 text-right">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-cdlp-border">
                 {allDocs.map((doc) => {
                   const isExpanded = expandedRows.has(doc.id);
+                  const gross = Number(doc.data?.totalAmount || 0);
+                  const vat = Number(doc.data?.vatAmount || 0);
+                  const net = Number(doc.data?.netAmount || Math.max(gross - vat, 0));
+                  const vatRate = net > 0 && vat > 0 ? Math.round((vat / net) * 10000) / 100 : 0;
                   return (
                     <React.Fragment key={doc.id}>
                       <tr 
@@ -1878,6 +1883,20 @@ export const DocumentProcessor: React.FC<{
                         <td className="px-4 py-3 font-mono text-[10px] text-cdlp-muted hidden md:table-cell">{doc.data?.date || '---'}</td>
                         <td className="px-4 py-3 text-right font-bold font-mono text-[11px] text-white hidden md:table-cell">
                           {doc.data ? (doc.data.amountInCHF || doc.data.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                        </td>
+                        <td className="px-4 py-3 text-right hidden lg:table-cell">
+                          {doc.data ? (
+                            <div className="font-mono leading-tight">
+                              <p className={`text-[11px] font-bold ${vat > 0 ? 'text-blue-400' : 'text-amber-400'}`}>
+                                {vat.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </p>
+                              <p className="text-[9px] text-cdlp-muted">
+                                {vat > 0 ? `${vatRate.toFixed(2)}%` : '0.00% (warn)'}
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-cdlp-muted">---</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
@@ -1993,7 +2012,7 @@ export const DocumentProcessor: React.FC<{
                       </tr>
                       {isExpanded && doc.data && (
                         <tr onClick={(e) => e.stopPropagation()}>
-                          <td colSpan={4} className="p-0 bg-cdlp-card border-t border-cdlp-border">
+                          <td colSpan={5} className="p-0 bg-cdlp-card border-t border-cdlp-border">
                             <VerificationHub
                               doc={doc}
                               onUpdate={(newData) => {
