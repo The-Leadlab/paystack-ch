@@ -145,6 +145,29 @@ export interface PaySlipAnalysis {
   components?: BankTransaction[];
 }
 
+/** One Swiss TVA column (e.g. 0% / 2.6% / 8.1%) with HT base and TVA amount — receipt-style breakdown */
+export interface SwissVatRateLine {
+  ratePercent: number;
+  baseExclusive: number;
+  vatAmount: number;
+}
+
+/** Receipt footer: Total marchandise, Total TVA, Dépôt, Total CHF */
+export interface SwissVatReceiptTotals {
+  merchandiseSubtotal?: number;
+  vatTotal?: number;
+  deposit?: number;
+  totalInclVat?: number;
+}
+
+/** Preview mapping for accountant review (aligns with Swiss TVA statement export codes) */
+export interface SwissVatFormPreview {
+  code200?: number;
+  code220?: number;
+  code400?: number;
+  code500?: number;
+}
+
 export interface FinancialData {
   documentType: DocumentType;
   date: string;
@@ -154,6 +177,8 @@ export interface FinancialData {
   originalCurrency: string;
   vatAmount: number;
   netAmount: number;
+  /** Standard Swiss VAT rate % when a single rate applies (optional) */
+  vatRate?: number;
   expenseCategory: string;
   amountInCHF: number;
   conversionRateUsed: number;
@@ -166,6 +191,10 @@ export interface FinancialData {
   aiInterpretation?: string;
   confidenceScore?: number;
   isHumanVerified?: boolean;
+  /** Multi-rate Swiss TVA table (ticket caisse / facture) — editable in UI */
+  swissVatBreakdown?: SwissVatRateLine[];
+  swissVatReceiptTotals?: SwissVatReceiptTotals;
+  swissVatFormPreview?: SwissVatFormPreview;
   // Bank specific fields for audit
   openingBalance?: number;
   finalBalance?: number;

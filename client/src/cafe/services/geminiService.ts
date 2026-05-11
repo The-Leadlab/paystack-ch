@@ -1,6 +1,14 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { DocumentType, FinancialData, BankTransaction, BankStatementAnalysis } from "../types";
+import {
+  DocumentType,
+  FinancialData,
+  BankTransaction,
+  BankStatementAnalysis,
+  SwissVatRateLine,
+  SwissVatReceiptTotals,
+  SwissVatFormPreview,
+} from "../types";
 
 export function getGeminiApiKey(): string {
   // Support both names to avoid silent breakage across old/new deployments.
@@ -462,6 +470,112 @@ function coerceDocumentType(value: unknown): DocumentType {
   return (validValues.includes(normalized) ? normalized : DocumentType.UNKNOWN) as DocumentType;
 }
 
+function roundSwiss2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+function computeSwissVatFormPreview(expenseCategory: string, merchandise: number, vatTotal: number): SwissVatFormPreview {
+  const cat = (expenseCategory || "").toUpperCase();
+  const isRevenue =
+    cat.includes("REVENUE") || cat.includes("SALES") || cat.includes("RESERVATION") || cat.includes("INCOME");
+  const r200 = roundSwiss2(merchandise);
+  const r220 = isRevenue ? roundSwiss2(vatTotal) : 0;
+  const r400 = isRevenue ? 0 : roundSwiss2(vatTotal);
+  const r500 = roundSwiss2(r220 - r400);
+  return { code200: r200, code220: r220, code400: r400, code500: r500 };
+}
+
+/** Recompute header amounts, receipt totals coherence, and form-code preview from Swiss TVA rows + optional receipt row overrides. */
+export function syncSwissVatDerivedFields(data: FinancialData): FinancialData {
+  const lines = Array.isArray(data.swissVatBreakdown) ? [...data.swissVatBreakdown] : [];
+  const sumVat = lines.reduce((s, l) => s + roundSwiss2(toFiniteNumber(l.vatAmount, 0)), 0);
+  const sumBase = lines.reduce((s, l) => s + roundSwiss2(toFiniteNumber(l.baseExclusive, 0)), 0);
+  const rt = data.swissVatReceiptTotals || {};
+  const merchandise =
+    rt.merchandiseSubtotal != null && Number.isFinite(Number(rt.merchandiseSubtotal))
+      ? roundSwiss2(Number(rt.merchandiseSubtotal))
+      : sumBase;
+  const vatTotal =
+    lines.length > 0
+      ? sumVat
+      : rt.vatTotal != null && Number.isFinite(Number(rt.vatTotal))
+        ? roundSwiss2(Number(rt.vatTotal))
+        : sumVat;
+  const deposit =
+    rt.deposit != null && Number.isFinite(Number(rt.deposit)) ? roundSwiss2(Number(rt.deposit)) : 0;
+  const totalIncl =
+    rt.totalInclVat != null && Number.isFinite(Number(rt.totalInclVat))
+      ? roundSwiss2(Number(rt.totalInclVat))
+      : roundSwiss2(merchandise + vatTotal + deposit);
+  const form = computeSwissVatFormPreview(data.expenseCategory || "", merchandise, vatTotal);
+  const rate = Number(data.conversionRateUsed ?? 1) || 1;
+  const amountInCHF = rate !== 1 ? roundSwiss2(totalIncl * rate) : totalIncl;
+  return {
+    ...data,
+    swissVatBreakdown: lines.length > 0 ? lines : undefined,
+    swissVatReceiptTotals: {
+      merchandiseSubtotal: merchandise,
+      vatTotal,
+      deposit,
+      totalInclVat: totalIncl,
+    },
+    swissVatFormPreview: form,
+    vatAmount: vatTotal,
+    netAmount: merchandise,
+    totalAmount: totalIncl,
+    amountInCHF,
+  };
+}
+
+function sanitizeSwissVatFields(
+  source: Partial<FinancialData>,
+  expenseCategoryFallback: string
+): Pick<FinancialData, "swissVatBreakdown" | "swissVatReceiptTotals" | "swissVatFormPreview" | "vatRate"> {
+  const cat = sanitizeLooseText(source.expenseCategory || expenseCategoryFallback, 80) || "OTHER";
+  const linesRaw = Array.isArray(source.swissVatBreakdown) ? source.swissVatBreakdown : [];
+  const lines: SwissVatRateLine[] = linesRaw
+    .map((l) => ({
+      ratePercent: Math.round(toFiniteNumber((l as SwissVatRateLine).ratePercent, 0) * 1000) / 1000,
+      baseExclusive: roundSwiss2(toFiniteNumber((l as SwissVatRateLine).baseExclusive, 0)),
+      vatAmount: roundSwiss2(toFiniteNumber((l as SwissVatRateLine).vatAmount, 0)),
+    }))
+    .filter((l) => Number.isFinite(l.ratePercent));
+
+  const rt = source.swissVatReceiptTotals;
+  let receipt: SwissVatReceiptTotals | undefined;
+  if (rt && typeof rt === "object") {
+    const m = roundSwiss2(toFiniteNumber(rt.merchandiseSubtotal, 0));
+    const v = roundSwiss2(toFiniteNumber(rt.vatTotal, 0));
+    const d = roundSwiss2(toFiniteNumber(rt.deposit, 0));
+    const t = roundSwiss2(toFiniteNumber(rt.totalInclVat, 0));
+    if (m !== 0 || v !== 0 || d !== 0 || t !== 0) {
+      receipt = { merchandiseSubtotal: m, vatTotal: v, deposit: d, totalInclVat: t };
+    }
+  }
+
+  const vatR = toFiniteNumber(source.vatRate, 0);
+  const vatRateOut = vatR > 0 ? Math.round(vatR * 1000) / 1000 : undefined;
+
+  const sumVat = lines.reduce((s, l) => s + l.vatAmount, 0);
+  const sumBase = lines.reduce((s, l) => s + l.baseExclusive, 0);
+  const merch =
+    receipt && receipt.merchandiseSubtotal != null && receipt.merchandiseSubtotal > 0
+      ? receipt.merchandiseSubtotal
+      : sumBase;
+  const vatTot = lines.length > 0 ? sumVat : receipt?.vatTotal ?? sumVat;
+  const form =
+    lines.length > 0 || (receipt && (receipt.merchandiseSubtotal || receipt.vatTotal || receipt.totalInclVat))
+      ? computeSwissVatFormPreview(cat, merch, vatTot)
+      : undefined;
+
+  return {
+    vatRate: vatRateOut,
+    swissVatBreakdown: lines.length > 0 ? lines : undefined,
+    swissVatReceiptTotals: receipt,
+    swissVatFormPreview: form,
+  };
+}
+
 function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
   const safeLineItems: BankTransaction[] = (Array.isArray(data.lineItems) ? data.lineItems : [])
     .map((item) => {
@@ -478,30 +592,36 @@ function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
     })
     .filter((item) => item.amount >= 0);
 
+  const rootSwiss = sanitizeSwissVatFields(data, data.expenseCategory || "OTHER");
+
   const safeSubDocuments: FinancialData[] = (Array.isArray(data.subDocuments) ? data.subDocuments : [])
-    .map((sub) => ({
-      ...sub,
-      pageRange: sanitizeLooseText((sub as any)?.pageRange, 40),
-      date: sanitizeLooseText(sub?.date, 24),
-      issuer: sanitizeLooseText(sub?.issuer, 120) || 'Unknown issuer',
-      originalCurrency: sanitizeLooseText(sub?.originalCurrency, 10) || data.originalCurrency || 'CHF',
-      documentType: coerceDocumentType(sub?.documentType),
-      expenseCategory: sanitizeLooseText(sub?.expenseCategory, 80) || 'OTHER',
-      totalAmount: toFiniteNumber(sub?.totalAmount, 0),
-      vatAmount: toFiniteNumber(sub?.vatAmount, 0),
-      netAmount: toFiniteNumber(sub?.netAmount, 0),
-      aiInterpretation: sanitizeLooseText(sub?.aiInterpretation, 320),
-    }))
+    .map((sub) => {
+      const subCat = sanitizeLooseText(sub?.expenseCategory, 80) || data.expenseCategory || "OTHER";
+      const baseSub = {
+        ...sub,
+        pageRange: sanitizeLooseText((sub as any)?.pageRange, 40),
+        date: sanitizeLooseText(sub?.date, 24),
+        issuer: sanitizeLooseText(sub?.issuer, 120) || "Unknown issuer",
+        originalCurrency: sanitizeLooseText(sub?.originalCurrency, 10) || data.originalCurrency || "CHF",
+        documentType: coerceDocumentType(sub?.documentType),
+        expenseCategory: subCat || "OTHER",
+        totalAmount: toFiniteNumber(sub?.totalAmount, 0),
+        vatAmount: toFiniteNumber(sub?.vatAmount, 0),
+        netAmount: toFiniteNumber(sub?.netAmount, 0),
+        aiInterpretation: sanitizeLooseText(sub?.aiInterpretation, 320),
+      } as FinancialData;
+      return { ...baseSub, ...sanitizeSwissVatFields(baseSub, subCat) };
+    })
     .filter((sub) => toFiniteNumber(sub.totalAmount, 0) >= 0);
 
   return {
     ...data,
     documentType: coerceDocumentType(data.documentType),
     date: sanitizeLooseText(data.date, 24),
-    issuer: sanitizeLooseText(data.issuer, 120) || 'Unknown issuer',
+    issuer: sanitizeLooseText(data.issuer, 120) || "Unknown issuer",
     documentNumber: sanitizeLooseText(data.documentNumber, 80),
-    originalCurrency: sanitizeLooseText(data.originalCurrency, 10) || 'CHF',
-    expenseCategory: sanitizeLooseText(data.expenseCategory, 80) || 'OTHER',
+    originalCurrency: sanitizeLooseText(data.originalCurrency, 10) || "CHF",
+    expenseCategory: sanitizeLooseText(data.expenseCategory, 80) || "OTHER",
     notes: sanitizeLooseText(data.notes, 280),
     aiInterpretation: sanitizeLooseText(data.aiInterpretation, 380),
     totalAmount: toFiniteNumber(data.totalAmount, 0),
@@ -519,6 +639,7 @@ function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
       .filter(Boolean),
     lineItems: safeLineItems,
     subDocuments: safeSubDocuments,
+    ...rootSwiss,
   };
 }
 
@@ -559,9 +680,30 @@ function shouldRunExhaustivePdfPass(file: File, parsed: FinancialData, userHint?
 }
 
 function applySwissVatWarnings(data: FinancialData): FinancialData {
-  const alerts = new Set(Array.isArray(data.forensicAlerts) ? data.forensicAlerts : []);
-  const subDocs = Array.isArray(data.subDocuments) ? data.subDocuments : [];
-  const noVatAtHeader = Number(data.totalAmount || 0) > 0 && Number(data.vatAmount || 0) <= 0;
+  let dataIn = { ...data };
+  const lines = Array.isArray(dataIn.swissVatBreakdown) ? dataIn.swissVatBreakdown : [];
+  const sumLineVat = lines.reduce((s, l) => s + roundSwiss2(toFiniteNumber(l.vatAmount, 0)), 0);
+  if (lines.length > 0 && sumLineVat > 0.004 && Number(dataIn.vatAmount || 0) <= 0.004) {
+    dataIn = syncSwissVatDerivedFields(dataIn);
+  }
+
+  const subDocsRaw = Array.isArray(dataIn.subDocuments) ? dataIn.subDocuments : [];
+  const subDocsSynced = subDocsRaw.map((sub) => {
+    const sl = Array.isArray(sub.swissVatBreakdown) ? sub.swissVatBreakdown : [];
+    const sv = sl.reduce((s, l) => s + roundSwiss2(toFiniteNumber(l.vatAmount, 0)), 0);
+    if (sl.length > 0 && sv > 0.004 && Number(sub.vatAmount || 0) <= 0.004) {
+      return syncSwissVatDerivedFields({
+        ...sub,
+        conversionRateUsed: Number(sub as any).conversionRateUsed || dataIn.conversionRateUsed || 1,
+      } as FinancialData);
+    }
+    return sub;
+  });
+  dataIn = { ...dataIn, subDocuments: subDocsSynced };
+
+  const alerts = new Set(Array.isArray(dataIn.forensicAlerts) ? dataIn.forensicAlerts : []);
+  const subDocs = Array.isArray(dataIn.subDocuments) ? dataIn.subDocuments : [];
+  const noVatAtHeader = Number(dataIn.totalAmount || 0) > 0 && Number(dataIn.vatAmount || 0) <= 0;
   if (noVatAtHeader) {
     alerts.add(
       'Swiss TVA warning: This document has TVA = 0. Verify exemption status or complete VAT fields before filing.'
@@ -588,14 +730,14 @@ function applySwissVatWarnings(data: FinancialData): FinancialData {
     return { ...sub, vatRate: existingRate > 0 ? existingRate : inferredRate } as any;
   });
 
-  const interpreted = data.aiInterpretation || '';
+  const interpreted = dataIn.aiInterpretation || '';
   const interpretationWithVatHint =
     alerts.size > 0 && !/tva warning|vat warning/i.test(interpreted)
       ? `${interpreted} TVA warning: validate zero-VAT entries before Swiss filing.`.trim()
       : interpreted;
 
   return {
-    ...data,
+    ...dataIn,
     subDocuments: withComputedRates as any,
     forensicAlerts: Array.from(alerts),
     aiInterpretation: interpretationWithVatHint,
@@ -646,6 +788,30 @@ export const analyzeFinancialDocument = async (
         aiInterpretation: { type: Type.STRING, description: "Brief scan result" },
         confidenceScore: { type: Type.NUMBER },
         forensicAlerts: { type: Type.ARRAY, items: { type: Type.STRING } },
+        swissVatBreakdown: {
+          type: Type.ARRAY,
+          description:
+            "Swiss cash-register / receipt TVA table: one entry per VAT rate column (e.g. 0%, 2.6%, 8.1%) with HT base (exclusive) and TVA amount exactly as printed.",
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              ratePercent: { type: Type.NUMBER, description: "VAT % for this column (0, 2.6, 8.1, etc.)" },
+              baseExclusive: { type: Type.NUMBER, description: "HT base amount (du XXX) for this rate" },
+              vatAmount: { type: Type.NUMBER, description: "TVA amount for this column" },
+            },
+            required: ["ratePercent", "baseExclusive", "vatAmount"],
+          },
+        },
+        swissVatReceiptTotals: {
+          type: Type.OBJECT,
+          description: "Receipt totals row: Total marchandise (HT), Total TVA, Dépôt, Total CHF TTC",
+          properties: {
+            merchandiseSubtotal: { type: Type.NUMBER },
+            vatTotal: { type: Type.NUMBER },
+            deposit: { type: Type.NUMBER },
+            totalInclVat: { type: Type.NUMBER },
+          },
+        },
         openingBalance: { type: Type.NUMBER },
         finalBalance: { type: Type.NUMBER },
         calculatedTotalIncome: { type: Type.NUMBER },
@@ -724,6 +890,28 @@ export const analyzeFinancialDocument = async (
               vatAmount: { type: Type.NUMBER },
               vatRate: { type: Type.NUMBER },
               netAmount: { type: Type.NUMBER },
+              swissVatBreakdown: {
+                type: Type.ARRAY,
+                description: "Per-invoice Swiss multi-rate TVA columns when visible on that block.",
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    ratePercent: { type: Type.NUMBER },
+                    baseExclusive: { type: Type.NUMBER },
+                    vatAmount: { type: Type.NUMBER },
+                  },
+                  required: ["ratePercent", "baseExclusive", "vatAmount"],
+                },
+              },
+              swissVatReceiptTotals: {
+                type: Type.OBJECT,
+                properties: {
+                  merchandiseSubtotal: { type: Type.NUMBER },
+                  vatTotal: { type: Type.NUMBER },
+                  deposit: { type: Type.NUMBER },
+                  totalInclVat: { type: Type.NUMBER },
+                },
+              },
             },
             required: ["pageRange", "issuer", "date", "totalAmount", "originalCurrency", "expenseCategory", "vatAmount", "vatRate", "netAmount"]
           }
@@ -775,6 +963,10 @@ CRITICAL RULES:
 29. SWISS TVA ACCOUNTANT MODE: Extract TVA with accountant-level precision (TVA/VAT/MwSt labels), preserving values exactly as shown.
 30. If an invoice/receipt appears taxable but no explicit TVA is found, set vatAmount=0 and add a short warning sentence in forensicAlerts.
 31. For sales/revenue documents, TVA represents tax collected from clients. For supplier purchase documents, TVA represents input tax paid to suppliers.
+32. SWISS TVA TABLE: If the document shows a multi-rate TVA block (columns like 0.00%, 2.60%, 8.10% with bases and TVA per column), populate swissVatBreakdown with one object per column (ratePercent, baseExclusive, vatAmount). Match printed numbers.
+33. SWISS TOTALS ROW: If printed, set swissVatReceiptTotals.merchandiseSubtotal (Total marchandise HT), vatTotal (Total TVA), deposit (Dépôt), totalInclVat (Total CHF TTC). If unclear, derive totalInclVat = merchandiseSubtotal + vatTotal + deposit.
+34. After filling swissVatBreakdown, set top-level vatAmount to the sum of column TVA amounts and netAmount to merchandise HT when available.
+35. For each subDocuments entry that is a receipt/invoice with a printed multi-rate TVA grid, also populate that sub-entry's swissVatBreakdown and swissVatReceiptTotals when visible.
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings

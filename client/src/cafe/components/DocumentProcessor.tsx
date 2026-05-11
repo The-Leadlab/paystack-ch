@@ -7,12 +7,19 @@ import {
   SearchCode, Cpu, Landmark, TerminalSquare, ExternalLink,
   ArrowUpRight, ArrowDownRight, Scale as ScaleIcon, Eye, Plus
 } from 'lucide-react';
-import { analyzeFinancialDocument } from '../services/geminiService';
+import { analyzeFinancialDocument, syncSwissVatDerivedFields } from '../services/geminiService';
 import { exportToExcel } from '../services/excelService';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
 import { resolveDocumentProcessingTimeoutMs } from '../lib/documentProcessingTimeout';
 import { detectCategory } from '../services/categoryDetectionService';
-import { ProcessedDocument, BankTransaction, FinancialData, DocumentType, PaySlipAnalysis } from '../types';
+import {
+  ProcessedDocument,
+  BankTransaction,
+  FinancialData,
+  DocumentType,
+  PaySlipAnalysis,
+  SwissVatRateLine,
+} from '../types';
 
 // Restaurant-specific categories adapted from Ypsom - comprehensive categorization
 const RESTAURANT_CATEGORIES = [
@@ -508,6 +515,321 @@ const EditablePaySlipTable: React.FC<{
 /** Optional page-range hint from multi-page invoice extraction */
 type SubDocPageRange = FinancialData & { pageRange?: string };
 
+const DEFAULT_SWISS_VAT_LINES: SwissVatRateLine[] = [
+  { ratePercent: 0, baseExclusive: 0, vatAmount: 0 },
+  { ratePercent: 2.6, baseExclusive: 0, vatAmount: 0 },
+  { ratePercent: 8.1, baseExclusive: 0, vatAmount: 0 },
+];
+
+function roundDocAmount(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+function seedSwissTableFromDocument(data: FinancialData): FinancialData {
+  const gross = Number(data.totalAmount || 0);
+  const vat = Number(data.vatAmount || 0);
+  const net = Number(data.netAmount || 0) || Math.max(roundDocAmount(gross - vat), 0);
+  return syncSwissVatDerivedFields({
+    ...data,
+    swissVatBreakdown: [...DEFAULT_SWISS_VAT_LINES],
+    swissVatReceiptTotals: {
+      merchandiseSubtotal: net,
+      vatTotal: vat,
+      deposit: 0,
+      totalInclVat: gross || roundDocAmount(net + vat),
+    },
+  });
+}
+
+/** Editable Swiss cash-register TVA columns + receipt totals + read-only form-code preview (200/220/400/500). */
+const SwissVatBreakdownEditor: React.FC<{
+  data: FinancialData;
+  onApply: (next: FinancialData) => void;
+}> = ({ data, onApply }) => {
+  const lines = data.swissVatBreakdown ?? [];
+  const totals = data.swissVatReceiptTotals ?? {};
+  const preview = data.swissVatFormPreview;
+  const cr = Number(data.conversionRateUsed ?? 1) || 1;
+
+  const pushSynced = (patch: Partial<FinancialData>) => {
+    const merged = { ...data, ...patch, conversionRateUsed: cr } as FinancialData;
+    onApply(syncSwissVatDerivedFields(merged));
+  };
+
+  const updateLine = (idx: number, line: SwissVatRateLine) => {
+    const next = [...lines];
+    next[idx] = line;
+    pushSynced({ swissVatBreakdown: next });
+  };
+
+  const calcRowVat = (idx: number) => {
+    const l = lines[idx];
+    if (!l) return;
+    const vat = roundDocAmount((Number(l.baseExclusive) || 0) * ((Number(l.ratePercent) || 0) / 100));
+    updateLine(idx, { ...l, vatAmount: vat });
+  };
+
+  return (
+    <div className="mt-8 mb-2 space-y-4 border border-cdlp-border/80 rounded-sm bg-cdlp-card/25 p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <h5 className="text-[10px] font-black uppercase tracking-widest text-cdlp-gold flex items-center gap-2">
+            <ScaleIcon className="w-3.5 h-3.5" /> Swiss TVA — multi-rate & form mapping
+          </h5>
+          <p className="text-[9px] text-cdlp-muted mt-1 max-w-xl">
+            Mirror ticket / facture columns (TVA %, base HT, TVA). Totals and form codes update the document header and exports.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 shrink-0">
+          {lines.length === 0 ? (
+            <button
+              type="button"
+              onClick={() => onApply(seedSwissTableFromDocument(data))}
+              className="h-9 px-3 rounded-sm border border-cdlp-gold/50 bg-cdlp-gold/15 text-cdlp-gold text-[9px] font-black uppercase tracking-wider hover:bg-cdlp-gold/25"
+            >
+              Add Swiss TVA table
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() =>
+                  pushSynced({
+                    swissVatBreakdown: [
+                      ...lines,
+                      { ratePercent: 3.7, baseExclusive: 0, vatAmount: 0 },
+                    ],
+                  })
+                }
+                className="h-9 px-3 rounded-sm border border-cdlp-border bg-cdlp-black text-[9px] font-black uppercase text-foreground hover:border-cdlp-gold/40"
+              >
+                + Rate row
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  onApply({
+                    ...data,
+                    swissVatBreakdown: undefined,
+                    swissVatReceiptTotals: undefined,
+                    swissVatFormPreview: undefined,
+                  })
+                }
+                className="h-9 px-3 rounded-sm border border-red-600/30 bg-red-900/10 text-[9px] font-black uppercase text-red-400 hover:bg-red-900/20"
+              >
+                Remove table
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {lines.length > 0 && (
+        <>
+          <div className="overflow-x-auto custom-scrollbar -mx-1 px-1">
+            <table className="min-w-[640px] w-full text-[10px] border border-cdlp-border/60 rounded-sm overflow-hidden">
+              <thead className="bg-cdlp-gold/20 text-cdlp-black uppercase font-black tracking-tight">
+                <tr>
+                  <th className="px-2 py-2 text-left w-24">TVA %</th>
+                  <th className="px-2 py-2 text-right">Base HT</th>
+                  <th className="px-2 py-2 text-right">TVA</th>
+                  <th className="px-2 py-2 text-center w-28">Calc</th>
+                  <th className="px-2 py-2 w-10" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-cdlp-border/50 bg-cdlp-black/40">
+                {lines.map((line, idx) => (
+                  <tr key={`vat-line-${idx}`}>
+                    <td className="px-2 py-1.5">
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-full h-9 px-2 bg-cdlp-card border border-cdlp-border rounded-sm font-mono font-bold text-foreground"
+                        value={line.ratePercent}
+                        onChange={(e) =>
+                          updateLine(idx, {
+                            ...line,
+                            ratePercent: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-full h-9 px-2 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-right"
+                        value={line.baseExclusive}
+                        onChange={(e) =>
+                          updateLine(idx, {
+                            ...line,
+                            baseExclusive: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-full h-9 px-2 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-right text-blue-300"
+                        value={line.vatAmount}
+                        onChange={(e) =>
+                          updateLine(idx, {
+                            ...line,
+                            vatAmount: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="px-2 py-1.5 text-center">
+                      <button
+                        type="button"
+                        onClick={() => calcRowVat(idx)}
+                        className="h-8 px-2 rounded-sm border border-blue-600/40 text-[8px] font-black uppercase text-blue-300 hover:bg-blue-900/20"
+                        title="TVA = base × rate %"
+                      >
+                        Base×%
+                      </button>
+                    </td>
+                    <td className="px-1 py-1.5 text-center">
+                      <button
+                        type="button"
+                        onClick={() => pushSynced({ swissVatBreakdown: lines.filter((_, i) => i !== idx) })}
+                        className="p-1.5 rounded-sm text-cdlp-muted hover:text-red-400 hover:bg-red-900/20"
+                        title="Remove row"
+                        disabled={lines.length <= 1}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+            <div>
+              <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-1">
+                Total marchandise (HT)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                className="w-full h-10 px-3 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-[11px]"
+                value={totals.merchandiseSubtotal ?? ''}
+                onChange={(e) =>
+                  pushSynced({
+                    swissVatReceiptTotals: {
+                      ...totals,
+                      merchandiseSubtotal: parseFloat(e.target.value) || 0,
+                    },
+                  })
+                }
+              />
+            </div>
+            <div>
+              <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-1">
+                Total TVA
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                className="w-full h-10 px-3 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-[11px] text-blue-200"
+                value={totals.vatTotal ?? ''}
+                onChange={(e) =>
+                  pushSynced({
+                    swissVatReceiptTotals: {
+                      ...totals,
+                      vatTotal: parseFloat(e.target.value) || 0,
+                    },
+                  })
+                }
+              />
+              <p className="text-[8px] text-cdlp-muted mt-1">With rate rows, TVA follows column sum.</p>
+            </div>
+            <div>
+              <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-1">
+                Dépôt
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                className="w-full h-10 px-3 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-[11px]"
+                value={totals.deposit ?? ''}
+                onChange={(e) =>
+                  pushSynced({
+                    swissVatReceiptTotals: {
+                      ...totals,
+                      deposit: parseFloat(e.target.value) || 0,
+                    },
+                  })
+                }
+              />
+            </div>
+            <div>
+              <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-1">
+                Total CHF (TTC)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                className="w-full h-10 px-3 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-[11px] font-black text-cdlp-gold"
+                value={totals.totalInclVat ?? ''}
+                onChange={(e) =>
+                  pushSynced({
+                    swissVatReceiptTotals: {
+                      ...totals,
+                      totalInclVat: parseFloat(e.target.value) || 0,
+                    },
+                  })
+                }
+              />
+            </div>
+          </div>
+
+          {preview && (
+            <div className="overflow-x-auto">
+              <table className="min-w-[520px] w-full text-[9px] border border-cdlp-border/50 rounded-sm">
+                <thead className="bg-slate-800 text-slate-200 uppercase font-black">
+                  <tr>
+                    <th className="px-2 py-2 text-left">Form code</th>
+                    <th className="px-2 py-2 text-left">Description</th>
+                    <th className="px-2 py-2 text-right">CHF</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-cdlp-border/40 bg-cdlp-black/30">
+                  <tr>
+                    <td className="px-2 py-1.5 font-mono font-bold">200</td>
+                    <td className="px-2 py-1.5 text-cdlp-muted">Taxable turnover (HT)</td>
+                    <td className="px-2 py-1.5 text-right font-mono">{(preview.code200 ?? 0).toFixed(2)}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1.5 font-mono font-bold">220</td>
+                    <td className="px-2 py-1.5 text-cdlp-muted">TVA collected (sales)</td>
+                    <td className="px-2 py-1.5 text-right font-mono">{(preview.code220 ?? 0).toFixed(2)}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1.5 font-mono font-bold">400</td>
+                    <td className="px-2 py-1.5 text-cdlp-muted">TVA paid (purchases)</td>
+                    <td className="px-2 py-1.5 text-right font-mono">{(preview.code400 ?? 0).toFixed(2)}</td>
+                  </tr>
+                  <tr className="bg-cdlp-gold/10 font-black">
+                    <td className="px-2 py-1.5 font-mono">500</td>
+                    <td className="px-2 py-1.5 text-foreground">Net TVA (220 − 400)</td>
+                    <td className="px-2 py-1.5 text-right font-mono text-cdlp-gold">{(preview.code500 ?? 0).toFixed(2)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
 function repairSubTotals(sub: FinancialData): FinancialData {
   let total = Number(sub.totalAmount ?? 0);
   let net = Number(sub.netAmount ?? 0);
@@ -692,11 +1014,27 @@ const VerificationHub: React.FC<{
   };
 
   const editedData = doc.data!;
+  const applyFullFinancialData = (next: FinancialData) => {
+    const subs = Array.isArray(next.subDocuments) ? next.subDocuments : [];
+    if (subs.length > 1) {
+      onUpdate(rollUpMultiInvoiceTotals(next));
+      return;
+    }
+    onUpdate(next);
+  };
   const isBankStatement = editedData.documentType === DocumentType.BANK_STATEMENT;
   const isPaySlip = editedData.documentType === DocumentType.PAY_SLIP;
   const isZeroValue = Number(editedData.totalAmount) === 0;
   const subDocuments = Array.isArray(editedData.subDocuments) ? editedData.subDocuments : [];
   const hasMultipleSubs = subDocuments.length > 1;
+
+  const showSwissTvaSection =
+    !isBankStatement &&
+    !isPaySlip &&
+    (editedData.documentType === DocumentType.INVOICE ||
+      editedData.documentType === DocumentType.RECEIPT ||
+      editedData.documentType === DocumentType.UNKNOWN ||
+      editedData.documentType === DocumentType.Z2_BULK_REPORT);
 
   const subInvoiceTabIdx = Math.min(activeSubInvoiceTab, Math.max(0, subDocuments.length - 1));
 
@@ -746,7 +1084,7 @@ const VerificationHub: React.FC<{
         <div className="w-full lg:w-[320px] xl:w-[420px] bg-slate-900 border-r border-cdlp-border flex flex-col shadow-2xl overflow-hidden shrink-0">
           <NeuralLog doc={doc} />
         </div>
-        <div className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col bg-cdlp-black overflow-hidden">
+        <div className="flex-1 min-w-0 p-4 sm:p-6 md:p-10 flex flex-col bg-cdlp-black overflow-x-auto overflow-y-visible">
            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 border-b border-cdlp-border pb-5 gap-4">
               <div>
                  <h4 className="text-[12px] sm:text-[13px] font-black uppercase tracking-widest text-cdlp-gold flex items-center gap-3">
@@ -1079,6 +1417,10 @@ const VerificationHub: React.FC<{
               </div>
            </div>
 
+           {showSwissTvaSection && !hasMultipleSubs && (
+             <SwissVatBreakdownEditor data={editedData} onApply={applyFullFinancialData} />
+           )}
+
            {subDocuments.length > 0 && !isPaySlip && (
              <div className="mt-8 mb-6 space-y-3">
                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-cdlp-border pb-2">
@@ -1234,6 +1576,38 @@ const VerificationHub: React.FC<{
                          />
                        </div>
                      </div>
+                     {(() => {
+                       const dt = sub.documentType;
+                       const subSwissEligible =
+                         !isPaySlip &&
+                         dt !== DocumentType.BANK_STATEMENT &&
+                         dt !== DocumentType.PAY_SLIP &&
+                         (dt === DocumentType.INVOICE ||
+                           dt === DocumentType.RECEIPT ||
+                           dt === DocumentType.UNKNOWN ||
+                           dt === DocumentType.Z2_BULK_REPORT);
+                       if (!subSwissEligible) return null;
+                       const crSub = Number(sub.conversionRateUsed) || Number(editedData.conversionRateUsed) || 1;
+                       return (
+                         <div className="mt-4 pt-4 border-t border-cdlp-border/60">
+                           <SwissVatBreakdownEditor
+                             data={{ ...sub, conversionRateUsed: crSub }}
+                             onApply={(next) => {
+                               patchSubDocument(idx, {
+                                 swissVatBreakdown: next.swissVatBreakdown,
+                                 swissVatReceiptTotals: next.swissVatReceiptTotals,
+                                 swissVatFormPreview: next.swissVatFormPreview,
+                                 vatAmount: next.vatAmount,
+                                 netAmount: next.netAmount,
+                                 totalAmount: next.totalAmount,
+                                 amountInCHF: next.amountInCHF,
+                                 conversionRateUsed: next.conversionRateUsed ?? crSub,
+                               });
+                             }}
+                           />
+                         </div>
+                       );
+                     })()}
                    </div>
                  );
                })()}
@@ -1843,8 +2217,8 @@ export const DocumentProcessor: React.FC<{
       {/* Documents Table */}
       {allDocs.length > 0 && (
         <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card overflow-hidden">
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="min-w-full text-xs">
+          <div className="overflow-x-auto custom-scrollbar max-w-[100vw] sm:max-w-none">
+            <table className="min-w-[720px] w-full text-xs">
               <thead className="bg-cdlp-gold text-cdlp-black uppercase font-bold text-[10px] tracking-wider">
                 <tr>
                   <th className="px-4 py-3 text-left">Document</th>
@@ -1861,6 +2235,7 @@ export const DocumentProcessor: React.FC<{
                   const vat = Number(doc.data?.vatAmount || 0);
                   const net = Number(doc.data?.netAmount || Math.max(gross - vat, 0));
                   const vatRate = net > 0 && vat > 0 ? Math.round((vat / net) * 10000) / 100 : 0;
+                  const swissLines = doc.data?.swissVatBreakdown;
                   return (
                     <React.Fragment key={doc.id}>
                       <tr 
@@ -1884,16 +2259,34 @@ export const DocumentProcessor: React.FC<{
                         <td className="px-4 py-3 text-right font-bold font-mono text-[11px] text-white hidden md:table-cell">
                           {doc.data ? (doc.data.amountInCHF || doc.data.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
                         </td>
-                        <td className="px-4 py-3 text-right hidden lg:table-cell">
+                        <td className="px-4 py-3 text-right hidden lg:table-cell align-top max-w-[200px]">
                           {doc.data ? (
-                            <div className="font-mono leading-tight">
-                              <p className={`text-[11px] font-bold ${vat > 0 ? 'text-blue-400' : 'text-amber-400'}`}>
-                                {vat.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </p>
-                              <p className="text-[9px] text-cdlp-muted">
-                                {vat > 0 ? `${vatRate.toFixed(2)}%` : '0.00% (warn)'}
-                              </p>
-                            </div>
+                            swissLines && swissLines.length > 0 ? (
+                              <div className="font-mono leading-snug space-y-0.5">
+                                <p className={`text-[10px] font-bold ${vat > 0 ? 'text-blue-400' : 'text-amber-400'}`}>
+                                  Σ{' '}
+                                  {vat.toLocaleString('en-CH', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}
+                                </p>
+                                {swissLines.slice(0, 5).map((l, i) => (
+                                  <p key={i} className="text-[8px] text-cdlp-muted">
+                                    {l.ratePercent}% HT {(l.baseExclusive ?? 0).toFixed(0)} → TVA{' '}
+                                    {(l.vatAmount ?? 0).toFixed(2)}
+                                  </p>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="font-mono leading-tight">
+                                <p className={`text-[11px] font-bold ${vat > 0 ? 'text-blue-400' : 'text-amber-400'}`}>
+                                  {vat.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
+                                <p className="text-[9px] text-cdlp-muted">
+                                  {vat > 0 ? `${vatRate.toFixed(2)}%` : '0.00% (warn)'}
+                                </p>
+                              </div>
+                            )
                           ) : (
                             <span className="text-[10px] text-cdlp-muted">---</span>
                           )}
