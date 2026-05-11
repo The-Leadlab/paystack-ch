@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Loader2 } from 'lucide-react';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
@@ -56,11 +56,18 @@ export function RestaurantDashboard() {
   const { sessions, currentSession, addSession, deleteSession, renameSession, setCurrentSession, isAllSessionsView, setAllSessionsView } = useSession();
   const { documents, addDocument, updateDocumentData, deleteDocument: deleteDocumentFromContext } = useDocuments();
   const { signOut, user } = useAuth();
-  const { enforcementEnabled, inGoodStanding, openCustomerPortal } = useSubscription();
+  const { enforcementEnabled, inGoodStanding, openCustomerPortal, entitlements } = useSubscription();
   const { language, setLanguage, t } = useLanguage();
   const [billingBusy, setBillingBusy] = useState(false);
   
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const showRevenueTab = !enforcementEnabled || entitlements.allCoreModules;
+
+  useEffect(() => {
+    if (!showRevenueTab && activeTab === 'revenue') {
+      setActiveTab('dashboard');
+    }
+  }, [showRevenueTab, activeTab]);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [showAddIncome, setShowAddIncome] = useState(false);
@@ -494,9 +501,9 @@ export function RestaurantDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-cdlp-dark flex flex-col md:flex-row">
+    <div className="min-h-[100dvh] min-h-screen bg-cdlp-dark flex flex-col md:flex-row touch-manipulation overscroll-y-contain">
       {/* Mobile Header */}
-      <div className="md:hidden bg-cdlp-black border-b border-cdlp-border p-4 flex items-center justify-between">
+      <div className="md:hidden bg-cdlp-black border-b border-cdlp-border px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <img
             src={BRAND_LOGO_SRC}
@@ -506,15 +513,19 @@ export function RestaurantDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
-            className="p-2 hover:bg-cdlp-border rounded flex items-center gap-1"
+            className="min-h-11 min-w-11 shrink-0 flex items-center justify-center hover:bg-cdlp-border rounded-lg active:opacity-80"
           >
             <Globe className="w-4 h-4 text-cdlp-gold" />
             <span className="text-xs font-bold text-cdlp-gold uppercase">{language === 'en' ? 'FR' : 'EN'}</span>
           </button>
           <button
+            type="button"
             onClick={() => setShowSidebar(!showSidebar)}
-            className="p-2 hover:bg-cdlp-border rounded"
+            className="min-h-11 min-w-11 shrink-0 flex items-center justify-center hover:bg-cdlp-border rounded-lg active:opacity-80"
+            aria-expanded={showSidebar}
+            aria-label="Menu"
           >
             <Menu className="w-6 h-6 text-cdlp-gold" />
           </button>
@@ -710,8 +721,8 @@ export function RestaurantDashboard() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Tab Navigation */}
-        <div className="bg-cdlp-black border-b border-cdlp-border px-4 md:px-8 pt-4">
+        {/* Tab Navigation — desktop only; phones use bottom app bar */}
+        <div className="hidden md:block bg-cdlp-black border-b border-cdlp-border px-4 md:px-8 pt-4">
           <div className="flex gap-2 overflow-x-auto">
             <button
               onClick={() => setActiveTab('dashboard')}
@@ -723,16 +734,18 @@ export function RestaurantDashboard() {
             >
               <LayoutDashboard className="w-4 h-4" /> {t('dashboard')}
             </button>
-            <button
-              onClick={() => setActiveTab('revenue')}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
-                activeTab === 'revenue'
-                  ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
-                  : 'text-cdlp-muted hover:text-white'
-              }`}
-            >
-              <Receipt className="w-4 h-4" /> {t('revenue')}
-            </button>
+            {showRevenueTab ? (
+              <button
+                onClick={() => setActiveTab('revenue')}
+                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
+                  activeTab === 'revenue'
+                    ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
+                    : 'text-cdlp-muted hover:text-white'
+                }`}
+              >
+                <Receipt className="w-4 h-4" /> {t('revenue')}
+              </button>
+            ) : null}
             <button
               onClick={() => setActiveTab('reports')}
               className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
@@ -757,7 +770,7 @@ export function RestaurantDashboard() {
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-8 custom-scrollbar pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-8 [-webkit-overflow-scrolling:touch]">
           {activeTab === 'dashboard' && (
             <DashboardTab
               currentSession={currentSession}
@@ -792,11 +805,62 @@ export function RestaurantDashboard() {
               user={user}
             />
           )}
-          {activeTab === 'revenue' && <POSManager />}
+          {activeTab === 'revenue' && showRevenueTab ? <POSManager /> : null}
           {activeTab === 'reports' && <ReportsPlaceholder />}
           {activeTab === 'documents' && <DocumentsTab selectedDocument={selectedDocumentFromFinance} onClearSelection={() => setSelectedDocumentFromFinance(null)} />}
         </div>
       </div>
+
+      {/* Mobile: fixed bottom tab bar (app-style) */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-[45] border-t border-cdlp-border bg-cdlp-black/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] pt-1 shadow-[0_-8px_24px_rgba(0,0,0,0.25)]"
+        aria-label="Navigation principale"
+      >
+        <div className="flex max-w-lg mx-auto items-stretch justify-between gap-1 px-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
+              activeTab === 'dashboard' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
+            }`}
+          >
+            <LayoutDashboard className="w-5 h-5 shrink-0" aria-hidden />
+            <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('dashboard')}</span>
+          </button>
+          {showRevenueTab ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab('revenue')}
+              className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
+                activeTab === 'revenue' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
+              }`}
+            >
+              <Receipt className="w-5 h-5 shrink-0" aria-hidden />
+              <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('revenue')}</span>
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setActiveTab('reports')}
+            className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
+              activeTab === 'reports' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
+            }`}
+          >
+            <BarChart3 className="w-5 h-5 shrink-0" aria-hidden />
+            <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('reports')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('documents')}
+            className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
+              activeTab === 'documents' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
+            }`}
+          >
+            <FileText className="w-5 h-5 shrink-0" aria-hidden />
+            <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('documents')}</span>
+          </button>
+        </div>
+      </nav>
 
       {/* Modals */}
       {showAddEmployee && <AddEmployeeModal onClose={() => setShowAddEmployee(false)} onAdd={addEmployee} t={t} />}
@@ -1527,6 +1591,9 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
 function ReportsPlaceholder() {
   const { income, expenses } = useFinance();
   const { currentSession, isAllSessionsView, sessions } = useSession();
+  const { enforcementEnabled, entitlements } = useSubscription();
+  const { t } = useLanguage();
+  const advancedReports = !enforcementEnabled || entitlements.advancedAnalyticsAndReports;
   const [dateFrom, setDateFrom] = React.useState('');
   const [dateTo, setDateTo] = React.useState('');
   const [filterActive, setFilterActive] = React.useState(false);
@@ -1775,12 +1842,14 @@ function ReportsPlaceholder() {
               <h3 className="text-sm font-bold text-cdlp-gold uppercase mb-1">Export Report</h3>
               <p className="text-xs text-cdlp-muted">Download filtered data in your preferred format</p>
             </div>
-            <div>
-              <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-1">Swiss TVA Statement</h4>
-              <p className="text-[11px] text-cdlp-muted">
-                TVA collected from clients minus TVA paid to suppliers, with warnings when TVA is missing.
-              </p>
-            </div>
+            {advancedReports ? (
+              <div>
+                <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-1">Swiss TVA Statement</h4>
+                <p className="text-[11px] text-cdlp-muted">
+                  TVA collected from clients minus TVA paid to suppliers, with warnings when TVA is missing.
+                </p>
+              </div>
+            ) : null}
           </div>
           <div className="w-full lg:w-auto space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -1791,36 +1860,45 @@ function ReportsPlaceholder() {
                 <Download className="w-4 h-4" /> Download CSV
               </button>
               <button
-                onClick={() => handleExport('pdf')}
-                className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-gold text-cdlp-gold text-xs font-bold uppercase rounded hover:bg-cdlp-gold/10 transition-colors"
+                type="button"
+                disabled={!advancedReports}
+                title={!advancedReports ? t('reportsAdvancedLocked') : undefined}
+                onClick={() => advancedReports && handleExport('pdf')}
+                className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-gold text-cdlp-gold text-xs font-bold uppercase rounded hover:bg-cdlp-gold/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Download className="w-4 h-4" /> Download PDF
               </button>
             </div>
-            <div className="flex flex-wrap gap-2 items-center">
-              <select
-                value={vatPeriodMode}
-                onChange={(e) => setVatPeriodMode(e.target.value as 'month' | 'semester' | 'year' | 'allYears')}
-                className="px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-xs font-bold uppercase text-white"
-              >
-                <option value="month">TVA by Month</option>
-                <option value="semester">TVA by 6 Months</option>
-                <option value="year">TVA by Year</option>
-                <option value="allYears">TVA Every Year</option>
-              </select>
-              <button
-                onClick={() => handleVatExport('csv')}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold uppercase rounded hover:bg-blue-700 transition-colors"
-              >
-                <Download className="w-4 h-4" /> TVA CSV
-              </button>
-              <button
-                onClick={() => handleVatExport('pdf')}
-                className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-blue-500 text-blue-400 text-xs font-bold uppercase rounded hover:bg-blue-500/10 transition-colors"
-              >
-                <Download className="w-4 h-4" /> TVA PDF
-              </button>
-            </div>
+            {advancedReports ? (
+              <div className="flex flex-wrap gap-2 items-center">
+                <select
+                  value={vatPeriodMode}
+                  onChange={(e) => setVatPeriodMode(e.target.value as 'month' | 'semester' | 'year' | 'allYears')}
+                  className="px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-xs font-bold uppercase text-white"
+                >
+                  <option value="month">TVA by Month</option>
+                  <option value="semester">TVA by 6 Months</option>
+                  <option value="year">TVA by Year</option>
+                  <option value="allYears">TVA Every Year</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => handleVatExport('csv')}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold uppercase rounded hover:bg-blue-700 transition-colors"
+                >
+                  <Download className="w-4 h-4" /> TVA CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleVatExport('pdf')}
+                  className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-blue-500 text-blue-400 text-xs font-bold uppercase rounded hover:bg-blue-500/10 transition-colors"
+                >
+                  <Download className="w-4 h-4" /> TVA PDF
+                </button>
+              </div>
+            ) : (
+              <p className="text-[10px] text-cdlp-muted font-bold uppercase tracking-tight">{t('reportsAdvancedLocked')}</p>
+            )}
           </div>
         </div>
       </div>

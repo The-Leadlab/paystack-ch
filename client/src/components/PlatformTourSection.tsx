@@ -8,9 +8,19 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ScrollReveal from "./ScrollReveal";
 import SectionLabel from "./SectionLabel";
+import { LandingScreenshot } from "./LandingScreenshot";
+import type { LandingScreenKey } from "@/const/landingScreens";
 import { LayoutDashboard, TrendingUp, BarChart3, FolderOpen } from "lucide-react";
 
-const views = [
+const views: Array<{
+  id: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  title: string;
+  description: string;
+  screen: LandingScreenKey;
+  alt: string;
+}> = [
   {
     id: "dashboard",
     label: "Tableau de bord",
@@ -18,7 +28,7 @@ const views = [
     title: "Financial Overview at a Glance",
     description:
       "See your complete financial picture — revenue, expenses, salaries, and balance — updated in real-time. Upload documents directly, track processing status, and monitor VAT in one unified view.",
-    image: "/manus-storage/Image28.04.2026at01.15_01_307b72f8.png",
+    screen: "dashboard",
     alt: "Paystack.ch Dashboard — financial overview with revenue, expenses, salaries, VAT tracking, and document upload queue",
   },
   {
@@ -28,7 +38,7 @@ const views = [
     title: "Income Tracking & Z-Readings",
     description:
       "Track all revenue streams with auto-generated Z-readings from daily income data. Supports manual entry, photo upload, and AI auto-generation with Swiss VAT calculation (7.7%) and payment split estimation.",
-    image: "/manus-storage/Image28.04.2026at01.15(2)_7be623da.png",
+    screen: "revenue",
     alt: "Paystack.ch Revenue module — Z-reading generation with auto-generate, manual entry, and photo upload options",
   },
   {
@@ -38,7 +48,7 @@ const views = [
     title: "Monthly Revenue Analysis",
     description:
       "Filter by date range, category, or supplier. View monthly breakdowns of income vs. expenses with balance calculations. Export filtered data as CSV or print-ready PDF reports for your accountant.",
-    image: "/manus-storage/Image28.04.2026at01.15(1)_1cbde1c4.png",
+    screen: "reports",
     alt: "Paystack.ch Reports — monthly revenue analysis with income, expenses, and balance breakdown per period",
   },
   {
@@ -48,7 +58,7 @@ const views = [
     title: "Organized Document Library",
     description:
       "All processed documents organized by supplier, employee, or POS report. See document counts and total amounts per entity at a glance. Search, filter, and drill into any supplier's complete history.",
-    image: "/manus-storage/Image28.04.2026at01.15_b2574f4b.png",
+    screen: "documents",
     alt: "Paystack.ch Document Library — supplier cards showing document counts and total amounts in CHF",
   },
 ];
@@ -67,7 +77,7 @@ export default function PlatformTourSection() {
           <div className="max-w-2xl mb-12">
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5 text-foreground">
               Voyez-la{" "}
-              <span className="font-editorial italic font-normal text-gradient-gold">
+              <span className="font-editorial italic font-normal text-gradient-red">
                 en action
               </span>
             </h2>
@@ -114,7 +124,7 @@ export default function PlatformTourSection() {
                   <div className="bg-brand-charcoal rounded-t-xl px-4 py-3 flex items-center gap-2">
                     <div className="flex items-center gap-1.5">
                       <div className="w-3 h-3 rounded-full bg-brand-red/80" />
-                      <div className="w-3 h-3 rounded-full bg-brand-gold/80" />
+                      <div className="w-3 h-3 rounded-full bg-brand-red/70" />
                       <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
                     </div>
                     <div className="flex-1 mx-4">
@@ -150,7 +160,7 @@ export default function PlatformTourSection() {
                 <p className="font-editorial text-base text-muted-foreground leading-relaxed mb-6">
                   {current.description}
                 </p>
-                <div className="p-4 rounded-lg bg-brand-gold/8 border border-brand-gold/20">
+                <div className="p-4 rounded-lg bg-brand-red/8 border border-brand-red/20">
                   <p className="font-display text-xs font-medium text-foreground mb-1">
                     Pret pour marque blanche
                   </p>

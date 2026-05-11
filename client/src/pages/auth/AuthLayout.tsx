@@ -13,8 +13,8 @@ export function AuthLayout({ children, heading, description }: AuthLayoutProps) 
   const { t } = useLanguage();
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-[oklch(0.97_0.01_85)] text-foreground">
-      <header className="container flex items-center justify-between pt-8 pb-4">
+    <div className="min-h-[100dvh] min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-[oklch(0.97_0.01_85)] text-foreground touch-manipulation overscroll-y-contain">
+      <header className="container flex items-center justify-between pt-[max(2rem,env(safe-area-inset-top)+1rem)] pb-4">
         <BrandLogo href="/" markClassName="h-11 w-auto object-contain shrink-0" />
         <Link
           href="/"
@@ -24,7 +24,7 @@ export function AuthLayout({ children, heading, description }: AuthLayoutProps) 
         </Link>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-6 pb-16">
+      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 pb-[max(4rem,env(safe-area-inset-bottom)+2rem)]">
         <div className="w-full max-w-md">
           <p className="font-data text-xs text-muted-foreground uppercase tracking-[0.2em] text-center mb-2">
             {t("authTagline")}

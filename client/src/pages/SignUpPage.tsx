@@ -11,6 +11,7 @@ import { firebaseReady } from "@/cafe/lib/firebase";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { AuthLayout } from "./auth/AuthLayout";
 import { GoogleGIcon } from "@/components/icons/GoogleGIcon";
+import { isSelfServePlan, parsePaystackPlanId, SELECTED_PLAN_STORAGE_KEY } from "@shared/planCatalog";
 
 function sanitizeRedirect(search: string): string {
   const redirect = new URLSearchParams(search).get("redirect");
@@ -34,6 +35,15 @@ export default function SignUpPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const nextPath = sanitizeRedirect(search);
+
+  useEffect(() => {
+    const qs = search.startsWith("?") ? search.slice(1) : search;
+    const params = new URLSearchParams(qs);
+    const plan = parsePaystackPlanId(params.get("plan"));
+    if (plan && isSelfServePlan(plan) && typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, plan);
+    }
+  }, [search]);
 
   useEffect(() => {
     if (!loading && user) {

@@ -20,6 +20,9 @@ import {
   PaySlipAnalysis,
   SwissVatRateLine,
 } from '../types';
+import { useSubscription } from '../context/SubscriptionContext';
+import { useLanguage } from '../context/LanguageContext';
+import { countCompletedDocumentsThisMonth } from '@shared/planCatalog';
 
 // Restaurant-specific categories adapted from Ypsom - comprehensive categorization
 const RESTAURANT_CATEGORIES = [
@@ -1878,6 +1881,8 @@ export const DocumentProcessor: React.FC<{
   onDataExtracted: (data: any, fileName: string, fileHash?: string, fileRaw?: File, persistedDocumentId?: string) => void,
   onDocumentUpdated?: (documentId: string, newData: FinancialData) => Promise<void>
 }> = ({ documents, updateDocument, onDeleteDocument, onDocumentQueued, onDataExtracted, onDocumentUpdated }) => {
+  const { enforcementEnabled, entitlements } = useSubscription();
+  const { t } = useLanguage();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -2026,6 +2031,21 @@ export const DocumentProcessor: React.FC<{
         throw new Error('Missing source file or storage unreachable. Re-upload this document once to create local backup, then retry.');
       }
 
+      const cap = entitlements.maxDocumentsPerMonth;
+      if (enforcementEnabled && cap != null) {
+        const used = countCompletedDocumentsThisMonth(
+          [...documents, ...localDocs].map((d) => ({ status: d.status, created_at: d.created_at }))
+        );
+        if (used >= cap) {
+          const msg = t('planLimitDocuments').replace('{n}', String(cap));
+          setLocalDocs((prev) => prev.map((d) => (d.id === doc.id ? { ...d, status: 'error', error: msg } : d)));
+          if (isFirestoreDoc && firestoreId) {
+            await updateDocument(firestoreId, { status: 'error', error: msg });
+          }
+          return;
+        }
+      }
+
       const processingTimeoutMs = resolveDocumentProcessingTimeoutMs(inputFile);
       const timeoutSec = Math.round(processingTimeoutMs / 1000);
       const timeoutPromise = new Promise<never>((_, reject) =>
@@ -2045,7 +2065,12 @@ export const DocumentProcessor: React.FC<{
       ]);
       console.log(`✅ Completed: ${doc.fileName}`);
       
-      setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'completed', data: res } : d));
+      const completedAt = doc.created_at || new Date().toISOString();
+      setLocalDocs((prev) =>
+        prev.map((d) =>
+          d.id === doc.id ? { ...d, status: 'completed', data: res, created_at: completedAt } : d
+        )
+      );
       
       // Auto-extract data and save to Firestore with file metadata
       try {
@@ -2114,8 +2139,21 @@ export const DocumentProcessor: React.FC<{
     if (isProcessing) return;
     setIsProcessing(true);
     stopProcessingRef.current = false;
-    
-    const pending = allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any));
+
+    const cap = entitlements.maxDocumentsPerMonth;
+    let pending = allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any));
+    if (enforcementEnabled && cap != null) {
+      const used = countCompletedDocumentsThisMonth(
+        [...documents, ...localDocs].map((d) => ({ status: d.status, created_at: d.created_at }))
+      );
+      const remaining = Math.max(0, cap - used);
+      if (remaining === 0) {
+        setUploadError(t('planLimitDocuments').replace('{n}', String(cap)));
+        setIsProcessing(false);
+        return;
+      }
+      pending = pending.slice(0, remaining);
+    }
     let index = 0;
     const activeTasks = new Set<Promise<void>>();
 

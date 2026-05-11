@@ -7,6 +7,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ScrollReveal from "./ScrollReveal";
 import SectionLabel from "./SectionLabel";
+import { LandingScreenshot } from "./LandingScreenshot";
 import {
   FileText,
   TrendingUp,
@@ -51,7 +52,7 @@ const modules = [
 
 const statusColors: Record<string, { bg: string; text: string; label: string }> = {
   live: { bg: "bg-emerald-500/10", text: "text-emerald-600", label: "Actif" },
-  partial: { bg: "bg-brand-gold/15", text: "text-amber-600", label: "Partiel" },
+  partial: { bg: "bg-brand-red/10", text: "text-brand-red", label: "Partiel" },
   coming: { bg: "bg-muted", text: "text-muted-foreground", label: "Bientot" },
 };
 
@@ -71,7 +72,7 @@ export default function ModulesSection() {
             <div>
               <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5 text-foreground">
                 Activez ce dont vous{" "}
-                <span className="font-editorial italic font-normal text-gradient-gold">avez besoin</span>
+                <span className="font-editorial italic font-normal text-gradient-red">avez besoin</span>
               </h2>
               <p className="font-editorial text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
                 Chaque entreprise est differente. Activez uniquement les modules necessaires, du traitement documentaire a la gestion financiere complete.
@@ -137,11 +138,11 @@ export default function ModulesSection() {
             {/* Right — Visual */}
             <ScrollReveal delay={0.2}>
               <div className="relative lg:sticky lg:top-24">
-                <div className="absolute -inset-4 bg-gradient-to-br from-brand-gold-light via-transparent to-brand-red-light rounded-2xl blur-xl" />
+                <div className="absolute -inset-4 bg-gradient-to-br from-brand-red-light via-transparent to-brand-red-light/60 rounded-2xl blur-xl" />
                 <div className="relative rounded-xl overflow-hidden border border-border shadow-xl shadow-black/5">
-                  <img
-                    src="/manus-storage/Image28.04.2026at01.15(1)_1cbde1c4.png"
-                    alt="Paystack.ch Reports Overview — financial analytics dashboard with income, expenses, and profit tracking"
+                  <LandingScreenshot
+                    screen="reports"
+                    alt="Paystack.ch — rapports et analyses financières"
                     className="w-full h-auto"
                     loading="lazy"
                   />

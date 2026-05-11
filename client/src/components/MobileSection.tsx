@@ -26,7 +26,7 @@ export default function MobileSection() {
           <ScrollReveal className="lg:col-span-5 flex justify-center" direction="left">
             <div className="relative">
               {/* Soft glow */}
-              <div className="absolute inset-0 bg-gradient-to-b from-brand-red-light via-brand-gold-light to-transparent rounded-full blur-3xl scale-150" />
+              <div className="absolute inset-0 bg-gradient-to-b from-brand-red-light via-brand-red-light/50 to-transparent rounded-full blur-3xl scale-150" />
               <img
                 src="/manus-storage/mobile-app-mockup_869c6162.png"
                 alt="Paystack.ch mobile app — financial dashboard on iPhone showing CHF balance and recent transactions"
@@ -41,7 +41,7 @@ export default function MobileSection() {
             <ScrollReveal>
               <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5 text-foreground">
                 Vos finances,{" "}
-                <span className="font-editorial italic font-normal text-gradient-gold">
+                <span className="font-editorial italic font-normal text-gradient-red">
                   dans votre poche
                 </span>
               </h2>

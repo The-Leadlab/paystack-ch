@@ -26,7 +26,7 @@ export async function handleStripeWebhookExpress(req: Request, res: Response): P
 export async function handleCreateCheckoutSessionExpress(req: Request, res: Response): Promise<void> {
   const out = await runCreateCheckoutSession(
     req.headers.authorization,
-    (req.body || {}) as { priceId?: string },
+    (req.body || {}) as { priceId?: string; planId?: string },
     req.headers as Record<string, string | string[] | undefined>
   );
   res.status(out.status).json(out.json);

@@ -7,10 +7,19 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from './AuthContext';
+import {
+  SELECTED_PLAN_STORAGE_KEY,
+  UNRESTRICTED_ENTITLEMENTS,
+  entitlementsForPlan,
+  parsePaystackPlanId,
+  type PaystackPlanId,
+  type PlanEntitlements,
+} from '@shared/planCatalog';
 
 type UserBillingSnapshot = {
   subscriptionStatus: string | null;
   trialEndsAt: Date | null;
+  planId: PaystackPlanId | null;
 };
 
 type SubscriptionContextValue = {
@@ -20,7 +29,9 @@ type SubscriptionContextValue = {
   billing: UserBillingSnapshot | null;
   /** Access to dashboard modules (false → paywall). */
   inGoodStanding: boolean;
-  startCheckout: () => Promise<void>;
+  /** Effective limits and feature flags for the current plan (unrestricted when enforcement is off). */
+  entitlements: PlanEntitlements;
+  startCheckout: (planId?: PaystackPlanId | null) => Promise<void>;
   openCustomerPortal: () => Promise<void>;
 };
 
@@ -48,13 +59,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       ref,
       (snap) => {
         if (!snap.exists()) {
-          setBilling({ subscriptionStatus: 'none', trialEndsAt: null });
+          setBilling({ subscriptionStatus: 'none', trialEndsAt: null, planId: null });
         } else {
           const d = snap.data() as Record<string, unknown>;
           const ts = d.trialEndsAt as { toDate?: () => Date } | undefined;
           setBilling({
             subscriptionStatus: typeof d.subscriptionStatus === 'string' ? d.subscriptionStatus : 'none',
             trialEndsAt: ts && typeof ts.toDate === 'function' ? ts.toDate() : null,
+            planId: parsePaystackPlanId(d.planId),
           });
         }
         setLoading(false);
@@ -73,24 +85,35 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     return st === 'trialing' || st === 'active';
   }, [enforcementEnabled, billing?.subscriptionStatus]);
 
+  const entitlements = useMemo(() => {
+    if (!enforcementEnabled) return UNRESTRICTED_ENTITLEMENTS;
+    return entitlementsForPlan(billing?.planId ?? undefined);
+  }, [enforcementEnabled, billing?.planId]);
+
   const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') || '';
 
-  const startCheckout = useCallback(async () => {
-    if (!user) throw new Error('Not signed in');
-    const token = await user.getIdToken();
-    const res = await fetch(`${apiBase}/api/stripe/create-checkout-session`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: '{}',
-    });
-    const data = (await res.json()) as { url?: string; error?: string };
-    if (!res.ok) throw new Error(data.error || 'Checkout failed');
-    if (!data.url) throw new Error('No checkout URL returned');
-    window.location.href = data.url;
-  }, [user, apiBase]);
+  const startCheckout = useCallback(
+    async (planIdArg?: PaystackPlanId | null) => {
+      if (!user) throw new Error('Not signed in');
+      const fromStorage =
+        typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(SELECTED_PLAN_STORAGE_KEY) : null;
+      const resolved = planIdArg ?? parsePaystackPlanId(fromStorage);
+      const token = await user.getIdToken();
+      const res = await fetch(`${apiBase}/api/stripe/create-checkout-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ planId: resolved ?? undefined }),
+      });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok) throw new Error(data.error || 'Checkout failed');
+      if (!data.url) throw new Error('No checkout URL returned');
+      window.location.href = data.url;
+    },
+    [user, apiBase]
+  );
 
   const openCustomerPortal = useCallback(async () => {
     if (!user) throw new Error('Not signed in');
@@ -114,6 +137,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     loading,
     billing,
     inGoodStanding,
+    entitlements,
     startCheckout,
     openCustomerPortal,
   };

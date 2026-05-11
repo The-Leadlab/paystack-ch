@@ -20,7 +20,7 @@ import Footer from "@/components/Footer";
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="min-h-[100dvh] min-h-screen flex flex-col bg-background text-foreground touch-manipulation overscroll-y-contain">
       <Navbar />
       <main className="flex-1">
         <HeroSection />

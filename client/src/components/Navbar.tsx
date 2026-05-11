@@ -33,13 +33,13 @@ export default function Navbar() {
   return (
     <>
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 pt-[env(safe-area-inset-top)] ${
           scrolled
             ? "bg-background/90 backdrop-blur-xl border-b border-border shadow-sm"
             : "bg-transparent"
         }`}
       >
-        <div className="container flex items-center justify-between h-20 lg:h-24">
+        <div className="container flex items-center justify-between h-16 sm:h-20 lg:h-24">
           {/* Logo */}
           <BrandLogo href="/" />
 
@@ -102,7 +102,7 @@ export default function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-background/98 backdrop-blur-xl pt-20 lg:hidden"
+            className="fixed inset-0 z-40 bg-background/98 backdrop-blur-xl pt-[calc(5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)] lg:hidden overflow-y-auto"
           >
             <div className="container flex flex-col gap-6 py-8">
               {navLinks.map((link) => (

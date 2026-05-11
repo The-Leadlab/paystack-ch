@@ -44,9 +44,10 @@
   /* Palette F — "Jet d'Eau" brand colors */
   --color-brand-charcoal: #2B2B2B;
   --color-brand-red: #E8423F;
-  --color-brand-gold: #FFD730;
+  /* Marketing accent: align with Geneva Red (avoid yellow on landing) */
+  --color-brand-gold: #E8423F;
   --color-brand-red-light: oklch(0.65 0.2 25 / 0.1);
-  --color-brand-gold-light: oklch(0.85 0.15 85 / 0.1);
+  --color-brand-gold-light: oklch(0.65 0.2 25 / 0.1);
   --color-cdlp-black: #ffffff;
   --color-cdlp-dark: #fcfaf4;
   --color-cdlp-card: #ffffff;
@@ -80,7 +81,7 @@
   --secondary-foreground: oklch(0.35 0.01 60);
   --muted: oklch(0.96 0.005 90);
   --muted-foreground: oklch(0.5 0.015 60);
-  --accent: oklch(0.88 0.14 85);
+  --accent: oklch(0.65 0.2 25);
   --accent-foreground: oklch(0.18 0.01 60);
   --destructive: oklch(0.55 0.2 25);
   --destructive-foreground: oklch(0.99 0 0);
@@ -88,10 +89,10 @@
   --input: oklch(0.91 0.005 90);
   --ring: oklch(0.55 0.2 25);
   --chart-1: oklch(0.55 0.2 25);
-  --chart-2: oklch(0.88 0.14 85);
+  --chart-2: oklch(0.62 0.18 25);
   --chart-3: oklch(0.45 0.01 60);
   --chart-4: oklch(0.65 0.15 25);
-  --chart-5: oklch(0.75 0.12 85);
+  --chart-5: oklch(0.6 0.16 25);
   --sidebar: oklch(0.98 0.002 90);
   --sidebar-foreground: oklch(0.18 0.01 60);
   --sidebar-primary: oklch(0.55 0.2 25);
@@ -256,13 +257,25 @@
   border-color: color-mix(in srgb, var(--color-brand-charcoal) 18%, #ffffff) !important;
 }
 
+/* Full viewport on phones (Safari toolbar, PWA standalone) */
+.cafe-shell {
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  touch-action: manipulation;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
+    overflow-x: clip;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -297,8 +310,8 @@
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
   }
 
   .flex {
@@ -308,15 +321,15 @@
 
   @media (min-width: 640px) {
     .container {
-      padding-left: 1.5rem;
-      padding-right: 1.5rem;
+      padding-left: max(1.5rem, env(safe-area-inset-left));
+      padding-right: max(1.5rem, env(safe-area-inset-right));
     }
   }
 
   @media (min-width: 1024px) {
     .container {
-      padding-left: 2rem;
-      padding-right: 2rem;
+      padding-left: max(2rem, env(safe-area-inset-left));
+      padding-right: max(2rem, env(safe-area-inset-right));
       max-width: 1280px;
     }
   }
@@ -335,9 +348,9 @@
     background-clip: text;
   }
 
-  /* Gradient text — Geneva Gold */
+  /* Gradient text — same as red (legacy class name kept for compatibility) */
   .text-gradient-gold {
-    background: linear-gradient(135deg, #D4A020, #B8860B);
+    background: linear-gradient(135deg, #E8423F, #C73835);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -349,7 +362,7 @@
   }
 
   .glow-gold {
-    box-shadow: 0 4px 20px oklch(0.85 0.14 85 / 0.15), 0 0 40px oklch(0.85 0.14 85 / 0.05);
+    box-shadow: 0 4px 20px oklch(0.55 0.2 25 / 0.12), 0 0 40px oklch(0.55 0.2 25 / 0.05);
   }
 
   /* Noise texture overlay — very subtle on light */

@@ -14,6 +14,8 @@ import {
 import { db } from '../lib/firebase';
 import type { Employee } from '../types';
 import { useAuth } from './AuthContext';
+import { useSubscription } from './SubscriptionContext';
+import { useLanguage } from './LanguageContext';
 
 const EMPLOYEES_COLLECTION = 'employees';
 
@@ -42,6 +44,8 @@ const EmployeeContext = createContext<EmployeeContextValue | null>(null);
 
 export function EmployeeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { enforcementEnabled, entitlements } = useSubscription();
+  const { t } = useLanguage();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +99,14 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
       }
       const trimmed = name.trim();
       if (!trimmed) return null;
+      if (
+        enforcementEnabled &&
+        entitlements.maxEmployeeSlots != null &&
+        employees.length >= entitlements.maxEmployeeSlots
+      ) {
+        setError(t('planLimitEmployees').replace('{n}', String(entitlements.maxEmployeeSlots)));
+        return null;
+      }
       try {
         const ref = await addDoc(collection(db, EMPLOYEES_COLLECTION), {
           restaurantId: uid,
@@ -120,7 +132,7 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
     },
-    [user?.uid]
+    [user?.uid, enforcementEnabled, entitlements.maxEmployeeSlots, employees.length, t]
   );
 
   const deleteEmployee = useCallback(

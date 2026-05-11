@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Play } from "lucide-react";
 import AnimatedCounter from "./AnimatedCounter";
 import { useLanguage } from "@/cafe/context/LanguageContext";
+import { LandingScreenshot } from "./LandingScreenshot";
 
 export default function HeroSection() {
   const { t } = useLanguage();
@@ -30,9 +31,9 @@ export default function HeroSection() {
 
       {/* Soft radial accents */}
       <div className="absolute top-1/4 right-1/4 w-[600px] h-[600px] bg-brand-red-light rounded-full blur-[120px]" />
-      <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-brand-gold-light rounded-full blur-[100px]" />
+      <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-brand-red-light rounded-full blur-[100px]" />
 
-      <div className="container relative z-10 pt-24 lg:pt-32 pb-16">
+      <div className="container relative z-10 pt-[max(6rem,calc(env(safe-area-inset-top)+4.5rem))] sm:pt-24 lg:pt-32 pb-12 sm:pb-16">
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-8 items-center">
           {/* Left Content — 5 columns */}
           <div className="lg:col-span-5">
@@ -140,11 +141,11 @@ export default function HeroSection() {
             className="lg:col-span-7 relative"
           >
             {/* Soft glow behind image */}
-            <div className="absolute -inset-4 bg-gradient-to-r from-brand-red-light via-brand-gold-light to-brand-red-light rounded-2xl blur-2xl" />
+            <div className="absolute -inset-4 bg-gradient-to-r from-brand-red-light via-brand-red-light/80 to-brand-red-light rounded-2xl blur-2xl" />
             
             <div className="relative rounded-xl overflow-hidden border border-border shadow-xl shadow-black/8">
-              <img
-                src="/manus-storage/Image28.04.2026at01.15_01_307b72f8.png"
+              <LandingScreenshot
+                screen="dashboard"
                 alt={t("heroImageAlt")}
                 className="w-full h-auto"
                 loading="eager"

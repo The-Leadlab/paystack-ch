@@ -93,7 +93,7 @@ export default function FeaturesSection() {
           <div className="max-w-2xl mb-16">
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5 text-foreground">
               Tout ce qu'il faut pour{" "}
-              <span className="font-editorial italic font-normal text-gradient-gold">
+              <span className="font-editorial italic font-normal text-gradient-red">
                 gerer vos finances
               </span>
             </h2>

@@ -335,6 +335,89 @@ function syncGrandTotalsFromSubDocuments(data: FinancialData): FinancialData {
   };
 }
 
+/** True when this extraction should be treated as a Swiss payslip (never split like multi-invoice PDFs). */
+function isPaySlipFinancialData(data: FinancialData, file?: File): boolean {
+  const dt = String(data.documentType ?? "");
+  if (dt === DocumentType.PAY_SLIP) return true;
+  if (/pay\s*slip|payslip|bulletin\s+de\s+salaire|fiche\s+de\s+paie|lohnabrechnung|gehaltsabrechnung/i.test(dt)) return true;
+  const ps = data.paySlip;
+  if (ps && typeof ps === "object" && (Boolean(ps.employee?.name) || Boolean(ps.employer?.name))) return true;
+  const n = (file?.name || "").toLowerCase();
+  if (/(salaire|bulletin|payslip|pay[\s_-]*slip|fiche[\s_-]*paie|lohn|gehalt)/i.test(n)) return true;
+  return false;
+}
+
+/**
+ * Gemini sometimes emits 2+ subDocuments for a single payslip (duplicate "invoices"). Collapse to one payroll line
+ * and clear subDocuments so rollups match the printed salary once.
+ */
+function repairPaySlipMultiInvoiceBlocks(data: FinancialData, file?: File): FinancialData {
+  if (!isPaySlipFinancialData(data, file)) return data;
+
+  const ps = data.paySlip;
+  const subs = Array.isArray(data.subDocuments) ? data.subDocuments : [];
+  const badIssuer = /\d+\s*invoices?\s*detected/i.test(String(data.issuer ?? ""));
+  if (subs.length <= 1 && !badIssuer) {
+    if (badIssuer && ps?.employer?.name) {
+      return { ...data, issuer: sanitizeLooseText(ps.employer.name, 120) };
+    }
+    return data;
+  }
+
+  const gross = toFiniteNumber(ps?.grossPay, 0);
+  const net = toFiniteNumber(ps?.netPay, 0);
+  const sumSubGross = subs.reduce((s, x) => s + toFiniteNumber(x.totalAmount, 0), 0);
+
+  let headerGross = gross > 0 ? gross : toFiniteNumber(data.totalAmount, 0);
+  if (subs.length >= 2 && gross > 0 && Math.abs(sumSubGross - 2 * gross) < Math.max(2, gross * 0.02)) {
+    headerGross = gross;
+  } else if (subs.length >= 2 && gross <= 0 && net > 0 && Math.abs(sumSubGross - 2 * net) < Math.max(2, net * 0.02)) {
+    headerGross = sumSubGross / 2;
+  } else if (subs.length >= 2 && headerGross > 0 && Math.abs(sumSubGross - 2 * headerGross) < Math.max(2, headerGross * 0.02)) {
+    headerGross = headerGross;
+  } else if (subs.length >= 2 && sumSubGross > 0) {
+    const first = toFiniteNumber(subs[0]?.totalAmount, 0);
+    const allSame = subs.every((x) => Math.abs(toFiniteNumber(x.totalAmount, 0) - first) < 0.05);
+    headerGross = allSame && first > 0 ? first : sumSubGross / subs.length;
+  }
+
+  const headerNet = net > 0 ? net : toFiniteNumber(data.netAmount, 0);
+  const employer = ps?.employer?.name
+    ? sanitizeLooseText(ps.employer.name, 120)
+    : sanitizeLooseText(String(data.issuer || "").replace(/^\d+\s*invoices?\s*detected\s*/i, "").trim(), 120) ||
+      sanitizeLooseText(data.issuer, 120);
+  const empName = ps?.employee?.name ? sanitizeLooseText(ps.employee.name, 120) : "Employee";
+  const payDate = sanitizeLooseText(data.date, 24) || sanitizeLooseText(ps?.periodEnd, 24) || new Date().toISOString().slice(0, 10);
+
+  const amount = Math.round((headerGross > 0 ? headerGross : sumSubGross) * 100) / 100;
+  const lineItem: BankTransaction = {
+    date: payDate,
+    description: `Payslip - ${empName}`,
+    amount,
+    type: "EXPENSE",
+    category: "PAYROLL",
+    notes: sanitizeLooseText(`Net pay ${headerNet} ${data.originalCurrency || "CHF"}`, 220),
+  };
+
+  const note = sanitizeLooseText(
+    `Single payslip merged (${subs.length} duplicate blocks removed). ${data.aiInterpretation || ""}`,
+    380
+  );
+
+  return {
+    ...data,
+    documentType: DocumentType.PAY_SLIP,
+    subDocuments: [],
+    issuer: employer || data.issuer,
+    totalAmount: amount,
+    netAmount: headerNet,
+    vatAmount: 0,
+    expenseCategory: "PAYROLL",
+    lineItems: [lineItem],
+    aiInterpretation: note,
+  };
+}
+
 function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
   const subDocs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments : [];
   const normalizedLineItems = Array.isArray(parsed.lineItems) ? parsed.lineItems : [];
@@ -644,6 +727,8 @@ function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
 }
 
 function shouldRunExhaustivePdfPass(file: File, parsed: FinancialData, userHint?: string): boolean {
+  if (isPaySlipFinancialData(parsed, file)) return false;
+
   const hint = (userHint || '').toLowerCase();
   const name = (file.name || '').toLowerCase();
   const hasMultiHint =
@@ -940,7 +1025,7 @@ CRITICAL RULES:
 6. For bank statements: extract ALL transactions into lineItems
 7. For payslips: extract employee/employer info and components
 8. Extract VAT if shown (TVA, VAT, MwSt, Tax labels)
-9. For multi-document files: use subDocuments array
+9. For multi-document files (NOT pay slips): use subDocuments array — one entry per separate supplier invoice only
 10. READ ALL PAGES of the PDF. Do not summarize only the first page.
 11. If multiple invoices/receipts exist in one PDF, create one subDocuments entry per invoice/receipt with issuer, VAT, net, gross, currency, and pageRange.
 12. If VAT is missing for a sub-document, set vatAmount=0 and vatRate=0 (never omit fields).
@@ -967,6 +1052,8 @@ CRITICAL RULES:
 33. SWISS TOTALS ROW: If printed, set swissVatReceiptTotals.merchandiseSubtotal (Total marchandise HT), vatTotal (Total TVA), deposit (Dépôt), totalInclVat (Total CHF TTC). If unclear, derive totalInclVat = merchandiseSubtotal + vatTotal + deposit.
 34. After filling swissVatBreakdown, set top-level vatAmount to the sum of column TVA amounts and netAmount to merchandise HT when available.
 35. For each subDocuments entry that is a receipt/invoice with a printed multi-rate TVA grid, also populate that sub-entry's swissVatBreakdown and swissVatReceiptTotals when visible.
+36. PAY SLIPS ONLY: documentType MUST be "Pay Slip". Set subDocuments to an empty array []. Never emit multiple subDocuments for one payslip — it is ONE document, not multiple invoices.
+37. PAY SLIPS ONLY: Put totals in paySlip.grossPay / paySlip.netPay and top-level totalAmount = gross pay for payroll; do not duplicate the same salary as two invoice blocks.
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings
@@ -1008,6 +1095,7 @@ Return JSON only.`
     }
 
     let normalized = normalizeMultiInvoiceData(parsed);
+    normalized = repairPaySlipMultiInvoiceBlocks(normalized, file);
     normalized = syncGrandTotalsFromSubDocuments(normalized);
 
     // Second-pass exhaustive extraction is expensive; keep it for likely multi-invoice files only.
@@ -1042,6 +1130,7 @@ Return JSON only.`
       console.log('⏩ Skipping exhaustive PDF pass (single-document fast path)');
     }
 
+    normalized = repairPaySlipMultiInvoiceBlocks(normalized, file);
     normalized = sanitizeFinancialDataForUi(syncGrandTotalsFromSubDocuments(normalized));
     normalized = sanitizeFinancialDataForUi(applySwissVatWarnings(normalized));
 

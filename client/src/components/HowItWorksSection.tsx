@@ -5,6 +5,7 @@
 
 import ScrollReveal from "./ScrollReveal";
 import SectionLabel from "./SectionLabel";
+import { LandingScreenshot } from "./LandingScreenshot";
 import { Upload, Cpu, CheckCircle, FileBarChart } from "lucide-react";
 
 const steps = [
@@ -101,11 +102,11 @@ export default function HowItWorksSection() {
           {/* Visual — Right */}
           <ScrollReveal className="lg:col-span-7" delay={0.2}>
             <div className="relative">
-              <div className="absolute -inset-4 bg-gradient-to-br from-brand-red-light via-transparent to-brand-gold-light rounded-2xl blur-xl" />
+              <div className="absolute -inset-4 bg-gradient-to-br from-brand-red-light via-transparent to-brand-red-light/70 rounded-2xl blur-xl" />
               <div className="relative rounded-xl overflow-hidden border border-border shadow-xl shadow-black/5">
-                <img
-                  src="/manus-storage/ai-document-scan_f37e3ac0.png"
-                  alt="AI document scanning process — from paper invoice to structured digital data"
+                <LandingScreenshot
+                  screen="dashboard"
+                  alt="Paystack.ch — tableau de bord et traitement des documents"
                   className="w-full h-auto"
                   loading="lazy"
                 />

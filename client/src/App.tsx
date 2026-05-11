@@ -17,7 +17,7 @@ function CafeShellRoute() {
   const { theme } = useTheme();
   return (
     <div
-      className={`min-h-screen cafe-shell ${theme === "dark" ? "cafe-theme-dark" : "cafe-theme-light"}`}
+      className={`min-h-[100dvh] min-h-screen cafe-shell overscroll-y-contain ${theme === "dark" ? "cafe-theme-dark" : "cafe-theme-light"}`}
     >
       <PlatformPage />
     </div>

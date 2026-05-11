@@ -6,6 +6,12 @@ import Stripe from "stripe";
 import { cert, getApps, initializeApp, type ServiceAccount } from "firebase-admin/app";
 import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
+import {
+  isSelfServePlan,
+  parsePaystackPlanId,
+  stripePriceIdForPlan,
+  type PaystackPlanId,
+} from "../shared/planCatalog";
 
 export type HeaderMap = Record<string, string | string[] | undefined>;
 
@@ -47,11 +53,38 @@ export function trialDays(): number {
   return Number.isFinite(n) && n >= 0 ? Math.min(n, 730) : 7;
 }
 
+function firstSubscriptionPriceId(subscription: Stripe.Subscription): string | null {
+  const item = subscription.items?.data?.[0];
+  const p = item?.price;
+  if (!p) return null;
+  return typeof p === "string" ? p : p.id;
+}
+
+/** Resolve plan from subscription metadata or by matching configured Stripe Price IDs. */
+export function resolvePlanIdFromStripeSubscription(subscription: Stripe.Subscription): PaystackPlanId {
+  const fromMeta = parsePaystackPlanId(subscription.metadata?.planId);
+  if (fromMeta) return fromMeta;
+
+  const priceId = firstSubscriptionPriceId(subscription);
+  if (priceId) {
+    if (priceId === process.env.STRIPE_PRICE_STARTER?.trim()) return "starter";
+    if (priceId === process.env.STRIPE_PRICE_BUSINESS?.trim()) return "business";
+    if (priceId === process.env.STRIPE_PRICE_UNLIMITED?.trim()) return "unlimited";
+    const legacy = process.env.STRIPE_PRICE_ID?.trim();
+    if (legacy && priceId === legacy) {
+      const def = parsePaystackPlanId(process.env.STRIPE_DEFAULT_PLAN_ID) || "starter";
+      return def;
+    }
+  }
+  return "starter";
+}
+
 async function syncSubscriptionToFirestore(uid: string, subscription: Stripe.Subscription): Promise<void> {
   ensureFirebaseAdmin();
   const db = getFirestore();
   const customerId =
     typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id ?? null;
+  const planId = resolvePlanIdFromStripeSubscription(subscription);
   await db
     .collection("users")
     .doc(uid)
@@ -60,6 +93,7 @@ async function syncSubscriptionToFirestore(uid: string, subscription: Stripe.Sub
         stripeCustomerId: customerId,
         subscriptionId: subscription.id,
         subscriptionStatus: subscription.status,
+        planId,
         trialEndsAt:
           subscription.trial_end != null
             ? Timestamp.fromMillis(subscription.trial_end * 1000)
@@ -81,6 +115,9 @@ async function markSubscriptionCanceled(uid: string): Promise<void> {
       {
         subscriptionStatus: "canceled",
         subscriptionId: null,
+        planId: null,
+        trialEndsAt: null,
+        currentPeriodEnd: null,
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true }
@@ -113,8 +150,19 @@ export async function dispatchStripeEvent(event: Stripe.Event, stripe: Stripe): 
         console.warn("[stripe] checkout.session.completed without uid", session.id);
         break;
       }
-      if (!fullSub.metadata?.firebaseUid) {
-        await stripe.subscriptions.update(subId, { metadata: { ...fullSub.metadata, firebaseUid: uid } });
+      const planFromSession = parsePaystackPlanId(session.metadata?.planId);
+      const needsUid = !fullSub.metadata?.firebaseUid;
+      const needsPlan =
+        Boolean(planFromSession && isSelfServePlan(planFromSession)) &&
+        parsePaystackPlanId(fullSub.metadata?.planId) !== planFromSession;
+      if (needsUid || needsPlan) {
+        await stripe.subscriptions.update(subId, {
+          metadata: {
+            ...(fullSub.metadata ?? {}),
+            firebaseUid: uid,
+            ...(planFromSession && isSelfServePlan(planFromSession) ? { planId: planFromSession } : {}),
+          },
+        });
         fullSub = await stripe.subscriptions.retrieve(subId);
       }
       await handleStripeSubscription(fullSub);
@@ -174,17 +222,42 @@ export async function runStripeWebhook(
 
 export async function runCreateCheckoutSession(
   authorization: string | undefined,
-  body: { priceId?: string },
+  body: { priceId?: string; planId?: string },
   headers: HeaderMap
 ): Promise<{ status: number; json: Record<string, unknown> }> {
   const stripe = getStripe();
-  const priceId = (process.env.STRIPE_PRICE_ID || body?.priceId)?.trim();
-  if (!stripe || !priceId) {
+  if (!stripe) {
+    return { status: 503, json: { error: "Stripe checkout is not configured (STRIPE_SECRET_KEY)." } };
+  }
+  const requestedPlan = parsePaystackPlanId(body?.planId);
+  if (requestedPlan === "enterprise") {
+    return { status: 400, json: { error: "Enterprise plans are sold via sales — contact us instead of checkout." } };
+  }
+
+  let priceId: string | null = null;
+  let checkoutPlanId: PaystackPlanId = "starter";
+
+  if (requestedPlan && isSelfServePlan(requestedPlan)) {
+    priceId = stripePriceIdForPlan(requestedPlan);
+    checkoutPlanId = requestedPlan;
+  }
+  if (!priceId) {
+    priceId = (body?.priceId || process.env.STRIPE_PRICE_ID)?.trim() || null;
+    if (priceId === process.env.STRIPE_PRICE_STARTER?.trim()) checkoutPlanId = "starter";
+    else if (priceId === process.env.STRIPE_PRICE_BUSINESS?.trim()) checkoutPlanId = "business";
+    else if (priceId === process.env.STRIPE_PRICE_UNLIMITED?.trim()) checkoutPlanId = "unlimited";
+    else checkoutPlanId = parsePaystackPlanId(process.env.STRIPE_DEFAULT_PLAN_ID) || "starter";
+  }
+  if (!priceId) {
     return {
       status: 503,
-      json: { error: "Stripe checkout is not configured (STRIPE_SECRET_KEY / STRIPE_PRICE_ID)." },
+      json: {
+        error:
+          "Stripe checkout is not configured. Set STRIPE_PRICE_STARTER / STRIPE_PRICE_BUSINESS / STRIPE_PRICE_UNLIMITED or STRIPE_PRICE_ID.",
+      },
     };
   }
+
   const m = (authorization || "").match(/^Bearer\s+(.+)$/i);
   if (!m) {
     return { status: 401, json: { error: "Missing Authorization Bearer token" } };
@@ -202,9 +275,9 @@ export async function runCreateCheckoutSession(
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
         trial_period_days: trialDays(),
-        metadata: { firebaseUid: uid },
+        metadata: { firebaseUid: uid, planId: checkoutPlanId },
       },
-      metadata: { firebaseUid: uid },
+      metadata: { firebaseUid: uid, planId: checkoutPlanId },
       success_url: `${origin}/app?subscription=success`,
       cancel_url: `${origin}/app?subscription=cancel`,
       allow_promotion_codes: true,

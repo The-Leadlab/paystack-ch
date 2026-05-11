@@ -1,6 +1,6 @@
 /*
  * Palette F — "Jet d'Eau" Light Theme
- * Pricing: Three-tier pricing with editorial layout. Placeholder pricing pending final decision.
+ * Four-tier pricing (Starter, Business, Unlimited, Enterprise).
  */
 
 import { Link } from "wouter";
@@ -10,13 +10,16 @@ import ScrollReveal from "./ScrollReveal";
 import SectionLabel from "./SectionLabel";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 
+const ENTERPRISE_MAIL =
+  "mailto:info@paystack.ch?subject=Enterprise%20plan%20%E2%80%94%20Paystack.ch";
+
 export default function PricingSection() {
   const { t } = useLanguage();
   const plans = [
     {
       name: t("planStarterName"),
-      price: "29",
-      period: "/month",
+      price: t("pricingStarterAmount"),
+      period: t("pricingPerMonth"),
       description: t("planStarterDescription"),
       features: [
         t("planStarterFeature1"),
@@ -28,11 +31,12 @@ export default function PricingSection() {
       ],
       cta: t("ctaStartTrial"),
       highlighted: false,
+      href: "/sign-up?plan=starter",
     },
     {
       name: t("planBusinessName"),
-      price: "59",
-      period: "/month",
+      price: t("pricingBusinessAmount"),
+      period: t("pricingPerMonth"),
       description: t("planBusinessDescription"),
       features: [
         t("planBusinessFeature1"),
@@ -42,10 +46,27 @@ export default function PricingSection() {
         t("planBusinessFeature5"),
         t("planBusinessFeature6"),
         t("planBusinessFeature7"),
-        t("planBusinessFeature8"),
       ],
       cta: t("ctaStartTrial"),
       highlighted: true,
+      href: "/sign-up?plan=business",
+    },
+    {
+      name: t("planUnlimitedName"),
+      price: t("pricingUnlimitedAmount"),
+      period: t("pricingPerMonth"),
+      description: t("planUnlimitedDescription"),
+      features: [
+        t("planUnlimitedFeature1"),
+        t("planUnlimitedFeature2"),
+        t("planUnlimitedFeature3"),
+        t("planUnlimitedFeature4"),
+        t("planUnlimitedFeature5"),
+        t("planUnlimitedFeature6"),
+      ],
+      cta: t("ctaStartTrial"),
+      highlighted: false,
+      href: "/sign-up?plan=unlimited",
     },
     {
       name: t("planEnterpriseName"),
@@ -64,6 +85,8 @@ export default function PricingSection() {
       ],
       cta: t("ctaContactSales"),
       highlighted: false,
+      href: ENTERPRISE_MAIL,
+      external: true,
     },
   ];
 
@@ -76,7 +99,7 @@ export default function PricingSection() {
           <div className="max-w-2xl mb-16">
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5 text-foreground">
               {t("pricingHeadingStart")}{" "}
-              <span className="font-editorial italic font-normal text-gradient-gold">{t("pricingHeadingHighlight")}</span>
+              <span className="font-editorial italic font-normal text-gradient-red">{t("pricingHeadingHighlight")}</span>
             </h2>
             <p className="font-editorial text-lg text-muted-foreground leading-relaxed">
               {t("pricingDescription")}
@@ -84,7 +107,7 @@ export default function PricingSection() {
           </div>
         </ScrollReveal>
 
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-6 lg:gap-8">
           {plans.map((plan, index) => (
             <ScrollReveal key={plan.name} delay={index * 0.1}>
               <div
@@ -142,10 +165,20 @@ export default function PricingSection() {
                       : "bg-secondary text-foreground hover:bg-secondary/80"
                   }`}
                 >
-                  <Link href="/sign-up" className="inline-flex items-center justify-center gap-2">
-                    {plan.cta}
-                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                  </Link>
+                  {"external" in plan && plan.external ? (
+                    <a
+                      href={plan.href}
+                      className="inline-flex items-center justify-center gap-2 w-full"
+                    >
+                      {plan.cta}
+                      <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                    </a>
+                  ) : (
+                    <Link href={plan.href} className="inline-flex items-center justify-center gap-2">
+                      {plan.cta}
+                      <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                    </Link>
+                  )}
                 </Button>
               </div>
             </ScrollReveal>

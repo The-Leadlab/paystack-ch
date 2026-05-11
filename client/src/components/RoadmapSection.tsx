@@ -34,9 +34,9 @@ const phases = [
     label: "Phase 3",
     title: "Fonctionnalites avancees",
     items: ["Gestion clients", "Gestion projets", "Generation de factures", "Applications mobiles"],
-    color: "text-amber-600",
-    borderColor: "border-amber-500/30",
-    bgColor: "bg-amber-500/10",
+    color: "text-brand-red",
+    borderColor: "border-brand-red/30",
+    bgColor: "bg-brand-red/10",
   },
   {
     icon: Sparkles,

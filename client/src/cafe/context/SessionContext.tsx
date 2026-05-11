@@ -13,6 +13,8 @@ import {
 import { db } from '../lib/firebase';
 import type { Session } from '../types';
 import { useAuth } from './AuthContext';
+import { useSubscription } from './SubscriptionContext';
+import { useLanguage } from './LanguageContext';
 
 const SESSIONS_COLLECTION = 'sessions';
 const LAST_SESSION_KEY = 'cdlp_last_session_id';
@@ -46,6 +48,8 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { enforcementEnabled, entitlements } = useSubscription();
+  const { t } = useLanguage();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSession, setCurrentSessionState] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,6 +67,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
       const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
       const sessionName = name || timestamp;
+
+      if (enforcementEnabled && entitlements.maxSessions != null && sessions.length >= entitlements.maxSessions) {
+        setError(t('planLimitSessions').replace('{n}', String(entitlements.maxSessions)));
+        return null;
+      }
 
       try {
         const ref = await addDoc(collection(db, SESSIONS_COLLECTION), {
@@ -89,7 +98,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
     },
-    [user?.uid]
+    [user?.uid, enforcementEnabled, entitlements.maxSessions, sessions.length, t]
   );
 
   const fetchSessions = useCallback(async () => {
