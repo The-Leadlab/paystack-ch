@@ -8,5 +8,10 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/stripe/webhook.ts": {
+      "maxDuration": 30
+    }
+  }
 }

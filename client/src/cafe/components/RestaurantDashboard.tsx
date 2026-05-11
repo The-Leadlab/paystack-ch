@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Loader2 } from 'lucide-react';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
 import { useAuth } from '../context/AuthContext';
+import { useSubscription } from '../context/SubscriptionContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useDocuments } from '../context/DocumentContext';
 import { usePOS } from '../context/POSContext';
@@ -55,7 +56,9 @@ export function RestaurantDashboard() {
   const { sessions, currentSession, addSession, deleteSession, renameSession, setCurrentSession, isAllSessionsView, setAllSessionsView } = useSession();
   const { documents, addDocument, updateDocumentData, deleteDocument: deleteDocumentFromContext } = useDocuments();
   const { signOut, user } = useAuth();
+  const { enforcementEnabled, inGoodStanding, openCustomerPortal } = useSubscription();
   const { language, setLanguage, t } = useLanguage();
+  const [billingBusy, setBillingBusy] = useState(false);
   
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [showSidebar, setShowSidebar] = useState(false);
@@ -664,7 +667,30 @@ export function RestaurantDashboard() {
           )}
         </div>
 
-        <div className="p-4 border-t border-cdlp-border">
+        <div className="p-4 border-t border-cdlp-border space-y-2">
+          {enforcementEnabled && inGoodStanding ? (
+            <button
+              type="button"
+              disabled={billingBusy}
+              onClick={() => {
+                void (async () => {
+                  setBillingBusy(true);
+                  try {
+                    await openCustomerPortal();
+                  } catch (e) {
+                    console.error(e);
+                    alert(e instanceof Error ? e.message : String(e));
+                  } finally {
+                    setBillingBusy(false);
+                  }
+                })();
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-gold border border-cdlp-gold/40 rounded hover:bg-cdlp-gold/10 disabled:opacity-50"
+            >
+              {billingBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+              {t('subscriptionManageBilling')}
+            </button>
+          ) : null}
           <button
             onClick={signOut}
             className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-muted hover:text-cdlp-gold"

@@ -8,6 +8,8 @@ import { POSProvider } from "@/cafe/context/POSContext";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { EmailVerificationGate } from "@/cafe/components/EmailVerificationGate";
 import { RestaurantDashboard } from "@/cafe/components/RestaurantDashboard";
+import { SubscriptionProvider } from "@/cafe/context/SubscriptionContext";
+import { SubscriptionGate } from "@/cafe/components/SubscriptionGate";
 import { firebaseReady } from "@/cafe/lib/firebase";
 
 /**
@@ -46,16 +48,20 @@ function PlatformContent() {
   }
 
   return (
-    <SessionProvider>
-      <EmployeeProvider>
-        <FinanceProvider>
-          <POSProvider>
-            <DocumentProvider>
-              <RestaurantDashboard />
-            </DocumentProvider>
-          </POSProvider>
-        </FinanceProvider>
-      </EmployeeProvider>
-    </SessionProvider>
+    <SubscriptionProvider>
+      <SessionProvider>
+        <EmployeeProvider>
+          <FinanceProvider>
+            <POSProvider>
+              <DocumentProvider>
+                <SubscriptionGate>
+                  <RestaurantDashboard />
+                </SubscriptionGate>
+              </DocumentProvider>
+            </POSProvider>
+          </FinanceProvider>
+        </EmployeeProvider>
+      </SessionProvider>
+    </SubscriptionProvider>
   );
 }

@@ -117,7 +117,7 @@ const translations = {
     pricingHeadingStart: 'Simple, transparent',
     pricingHeadingHighlight: 'pricing',
     pricingDescription:
-      'All prices in CHF. Start with a 14-day free trial, no credit card required. Scale as your business grows.',
+      'All prices in CHF. Start with a 7-day trial (payment method on file), then recurring billing. Scale as your business grows.',
     pricingMostPopular: 'Most Popular',
     pricingCurrency: 'CHF',
     pricingCustom: 'Custom',
@@ -160,10 +160,10 @@ const translations = {
     ctaSectionHeadingStart: 'Ready to automate',
     ctaSectionHeadingHighlight: 'your finances?',
     ctaSectionDescription:
-      'Join Swiss businesses that have already transformed their financial management. Start with a free trial - no credit card required.',
+      'Join Swiss businesses that have already transformed their financial management. Start with a 7-day trial, then continue with a simple subscription.',
     ctaSectionBookDemo: 'Book a Demo',
-    ctaSectionTrust1: '14-day free trial',
-    ctaSectionTrust2: 'No credit card required',
+    ctaSectionTrust1: '7-day trial',
+    ctaSectionTrust2: 'Secure billing via Stripe',
     ctaSectionTrust3: 'Cancel anytime',
     ctaSectionContactUs: 'Contact Us',
     contactEmail: 'Email',
@@ -190,6 +190,15 @@ const translations = {
     authFooterSecure: 'Secure access · Your data stays yours',
     authWorking: 'Please wait…',
     authFirebaseMissingShort: 'Firebase is not configured. Add VITE_FIREBASE_* to your environment.',
+
+    subscriptionLoading: 'Checking subscription…',
+    subscriptionTitle: 'Subscribe to continue',
+    subscriptionBody:
+      'Your workspace requires an active plan. Start a 7-day trial (card required today), then you are billed automatically when the trial ends unless you cancel in the billing portal.',
+    subscriptionCta: 'Start 7-day trial & subscribe',
+    subscriptionUpdatePayment: 'Update payment method',
+    subscriptionTrialUntil: 'Trial access until {date}',
+    subscriptionManageBilling: 'Billing & plan',
   },
   fr: {
     // Header
@@ -298,7 +307,7 @@ const translations = {
     pricingHeadingStart: 'Tarification simple et',
     pricingHeadingHighlight: 'transparente',
     pricingDescription:
-      'Tous les prix sont en CHF. Commencez avec un essai gratuit de 14 jours, sans carte de credit. Evoluez au rythme de votre entreprise.',
+      'Tous les prix sont en CHF. Essai de 7 jours (carte enregistree), puis facturation recurrente. Evoluez au rythme de votre entreprise.',
     pricingMostPopular: 'Le plus populaire',
     pricingCurrency: 'CHF',
     pricingCustom: 'Sur mesure',
@@ -341,10 +350,10 @@ const translations = {
     ctaSectionHeadingStart: 'Pret a automatiser',
     ctaSectionHeadingHighlight: 'vos finances ?',
     ctaSectionDescription:
-      'Rejoignez les entreprises suisses qui ont deja transforme leur gestion financiere. Commencez avec un essai gratuit - sans carte de credit.',
+      'Rejoignez les entreprises suisses qui ont deja transforme leur gestion financiere. Essai 7 jours, puis abonnement simple.',
     ctaSectionBookDemo: 'Reserver une demo',
-    ctaSectionTrust1: 'Essai gratuit 14 jours',
-    ctaSectionTrust2: 'Sans carte de credit',
+    ctaSectionTrust1: 'Essai 7 jours',
+    ctaSectionTrust2: 'Paiement securise via Stripe',
     ctaSectionTrust3: 'Annulation a tout moment',
     ctaSectionContactUs: 'Contactez-nous',
     contactEmail: 'Email',
@@ -371,6 +380,15 @@ const translations = {
     authFooterSecure: 'Acces securise — vos donnees vous appartiennent',
     authWorking: 'Patience…',
     authFirebaseMissingShort: 'Firebase n\'est pas configure. Ajoutez les variables VITE_FIREBASE_* a votre environnement.',
+
+    subscriptionLoading: 'Verification de l\'abonnement…',
+    subscriptionTitle: 'Abonnez-vous pour continuer',
+    subscriptionBody:
+      'Cet espace necessite un abonnement actif. Demarrez un essai de 7 jours (carte requise), puis facturation automatique a la fin de l\'essai sauf annulation dans le portail Stripe.',
+    subscriptionCta: 'Essai 7 jours et abonnement',
+    subscriptionUpdatePayment: 'Mettre a jour le moyen de paiement',
+    subscriptionTrialUntil: 'Essai jusqu\'au {date}',
+    subscriptionManageBilling: 'Facturation et offre',
   },
 };
 

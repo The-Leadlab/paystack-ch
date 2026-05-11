@@ -205,6 +205,8 @@ function vitePluginStorageProxy(): Plugin {
 
 const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy()];
 
+const stripeDevProxy = process.env.STRIPE_DEV_PROXY === "1";
+
 export default defineConfig({
   plugins,
   resolve: {
@@ -224,6 +226,13 @@ export default defineConfig({
     port: 3000,
     strictPort: false, // Will find next available port if 3000 is busy
     host: true,
+    ...(stripeDevProxy
+      ? {
+          proxy: {
+            "/api/stripe": { target: "http://127.0.0.1:8787", changeOrigin: true },
+          },
+        }
+      : {}),
     allowedHosts: [
       ".manuspre.computer",
       ".manus.computer",
