@@ -119,28 +119,13 @@ export default function PlatformTourSection() {
             <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
               {/* Screenshot — 8 columns */}
               <div className="lg:col-span-8">
-                <div className="relative">
-                  {/* Browser chrome mockup */}
-                  <div className="bg-brand-charcoal rounded-t-xl px-4 py-3 flex items-center gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded-full bg-brand-red/80" />
-                      <div className="w-3 h-3 rounded-full bg-brand-red/70" />
-                      <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
-                    </div>
-                    <div className="flex-1 mx-4">
-                      <div className="bg-white/10 rounded-md px-3 py-1 max-w-xs">
-                        <span className="font-data text-[11px] text-white/60">cafe-la-place.web.app</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="rounded-b-xl overflow-hidden border border-t-0 border-border shadow-xl shadow-black/8">
-                    <img
-                      src={current.image}
-                      alt={current.alt}
-                      className="w-full h-auto"
-                      loading="lazy"
-                    />
-                  </div>
+                <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-xl shadow-black/8">
+                  <LandingScreenshot
+                    screen={current.screen}
+                    alt={current.alt}
+                    className="w-full h-auto block"
+                    loading="lazy"
+                  />
                 </div>
               </div>
 
