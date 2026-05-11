@@ -1,6 +1,6 @@
 /*
  * Palette F — "Jet d'Eau" Light Theme
- * Security: Swiss trust signals, compliance badges, data protection details.
+ * Security: Swiss trust copy and data protection feature grid (no badge image).
  */
 
 import ScrollReveal from "./ScrollReveal";
@@ -49,15 +49,7 @@ export default function SecuritySection() {
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
           {/* Left — Badge + Trust */}
           <ScrollReveal className="lg:col-span-4">
-            <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
-              <div className="w-48 h-48 mb-8">
-                <img
-                  src="/manus-storage/swiss-trust-badge_68c2163c.png"
-                  alt="Protection des donnees suisse - Precision, securite, confiance"
-                  className="w-full h-full object-contain"
-                  loading="lazy"
-                />
-              </div>
+            <div className="flex flex-col items-start text-left">
               <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mb-4 text-foreground">
                 Securite{" "}
                 <span className="text-gradient-red">niveau suisse</span>

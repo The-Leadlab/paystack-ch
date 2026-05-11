@@ -1,6 +1,6 @@
 /*
  * Palette F — "Jet d'Eau" Light Theme
- * Mobile: Showcase the upcoming mobile app with the phone mockup image.
+ * Mobile: Upcoming mobile app — copy and feature cards (no hero image).
  */
 
 import { Button } from "@/components/ui/button";
@@ -21,23 +21,8 @@ export default function MobileSection() {
       <div className="container">
         <SectionLabel number="08" label="Application mobile" />
 
-        <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          {/* Left — Phone Mockup */}
-          <ScrollReveal className="lg:col-span-5 flex justify-center" direction="left">
-            <div className="relative">
-              {/* Soft glow */}
-              <div className="absolute inset-0 bg-gradient-to-b from-brand-red-light via-brand-red-light/50 to-transparent rounded-full blur-3xl scale-150" />
-              <img
-                src="/manus-storage/mobile-app-mockup_869c6162.png"
-                alt="Paystack.ch mobile app — financial dashboard on iPhone showing CHF balance and recent transactions"
-                className="relative w-64 sm:w-72 lg:w-80 h-auto drop-shadow-xl"
-                loading="lazy"
-              />
-            </div>
-          </ScrollReveal>
-
-          {/* Right — Content */}
-          <div className="lg:col-span-7">
+        <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start">
+          <div className="lg:col-span-10 lg:col-start-2">
             <ScrollReveal>
               <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5 text-foreground">
                 Vos finances,{" "}

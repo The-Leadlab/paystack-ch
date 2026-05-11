@@ -92,8 +92,8 @@ export default function CTASection() {
                   </div>
                   <div>
                     <p className="font-display text-sm font-medium text-foreground">{t("contactPhone")}</p>
-                    <a href="tel:+41000000000" className="font-editorial text-sm text-muted-foreground hover:text-brand-red transition-colors">
-                      +41 (0) 00 000 00 00
+                    <a href="tel:+41767220995" className="font-editorial text-sm text-muted-foreground hover:text-brand-red transition-colors">
+                      +41 76 722 09 95
                     </a>
                   </div>
                 </div>
