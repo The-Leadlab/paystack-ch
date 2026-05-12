@@ -18,6 +18,7 @@ import {
   type HeaderMap,
   isAllowedBrowserOrigin,
   publicAppOriginFromHeaders,
+  stripeCheckoutLineItemForPlan,
   trialDays,
 } from "./stripeCore";
 
@@ -248,8 +249,13 @@ export async function runCreateCheckoutSession(
   }
 
   const checkoutPlanId: PaystackPlanId = requestedPlan && isSelfServePlan(requestedPlan) ? requestedPlan : "starter";
-  const priceId = stripePriceIdForPlan(checkoutPlanId) || process.env.STRIPE_PRICE_ID?.trim() || null;
-  if (!priceId) {
+  let lineItem: Stripe.Checkout.SessionCreateParams.LineItem | null = null;
+  try {
+    lineItem = stripeCheckoutLineItemForPlan(checkoutPlanId);
+  } catch (e) {
+    return { status: 503, json: { error: e instanceof Error ? e.message : "Invalid Stripe price configuration" } };
+  }
+  if (!lineItem) {
     return {
       status: 503,
       json: {
@@ -273,7 +279,7 @@ export async function runCreateCheckoutSession(
       mode: "subscription",
       client_reference_id: uid,
       customer_email: email,
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [lineItem],
       subscription_data: {
         trial_period_days: trialDays(),
         metadata: { firebaseUid: uid, planId: checkoutPlanId },

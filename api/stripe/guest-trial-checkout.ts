@@ -54,6 +54,47 @@ function stripePriceIdForPlan(planId: PaystackPlanId): string | null {
   return v || null;
 }
 
+function planDisplayName(planId: PaystackPlanId): string {
+  if (planId === "business") return "Paystack Business";
+  if (planId === "unlimited") return "Paystack Unlimited";
+  if (planId === "enterprise") return "Paystack Enterprise";
+  return "Paystack Starter";
+}
+
+function parseChfAmount(raw: string): number | null {
+  const normalized = raw.trim().replace(/^CHF\s*/i, "").replace(",", ".");
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return null;
+  const amount = Number(normalized);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  return Math.round(amount * 100);
+}
+
+function checkoutLineItemForPlan(planId: PaystackPlanId): Stripe.Checkout.SessionCreateParams.LineItem | null {
+  const raw = stripePriceIdForPlan(planId) || process.env.STRIPE_PRICE_ID?.trim() || null;
+  if (!raw) return null;
+
+  if (raw.startsWith("price_")) {
+    return { price: raw, quantity: 1 };
+  }
+
+  const unitAmount = parseChfAmount(raw);
+  if (unitAmount === null) {
+    throw new Error(
+      `Invalid Stripe price configuration for ${planId}. Use a Stripe Price ID (price_...) or a CHF amount like 29.`
+    );
+  }
+
+  return {
+    quantity: 1,
+    price_data: {
+      currency: "chf",
+      unit_amount: unitAmount,
+      recurring: { interval: "month" },
+      product_data: { name: planDisplayName(planId) },
+    },
+  };
+}
+
 const STRIPE_API_VERSION: Stripe.LatestApiVersion = "2025-02-24.acacia";
 
 let stripeSingleton: Stripe | null = null;
@@ -142,8 +183,13 @@ async function runCreateCheckoutSessionGuest(
   }
 
   const checkoutPlanId: PaystackPlanId = requestedPlan && isSelfServePlan(requestedPlan) ? requestedPlan : "starter";
-  const priceId = stripePriceIdForPlan(checkoutPlanId) || process.env.STRIPE_PRICE_ID?.trim() || null;
-  if (!priceId) {
+  let lineItem: Stripe.Checkout.SessionCreateParams.LineItem | null = null;
+  try {
+    lineItem = checkoutLineItemForPlan(checkoutPlanId);
+  } catch (e) {
+    return { status: 503, json: { error: e instanceof Error ? e.message : "Invalid Stripe price configuration" } };
+  }
+  if (!lineItem) {
     return {
       status: 503,
       json: {
@@ -157,7 +203,7 @@ async function runCreateCheckoutSessionGuest(
     const origin = publicAppOriginFromHeaders(headers);
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [lineItem],
       subscription_data: {
         trial_period_days: trialDays(),
         metadata: { planId: checkoutPlanId, pendingFirebaseLink: "1" },
