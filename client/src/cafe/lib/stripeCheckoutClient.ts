@@ -1,4 +1,21 @@
-const apiBase = () => (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") || "";
+function stripWww(hostname: string): string {
+  return hostname.replace(/^www\./i, "");
+}
+
+const apiBase = () => {
+  const configured = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") || "";
+  if (!configured || typeof window === "undefined") return configured;
+  try {
+    const configuredUrl = new URL(configured);
+    const currentUrl = new URL(window.location.origin);
+    const sameApex =
+      configuredUrl.protocol === currentUrl.protocol &&
+      stripWww(configuredUrl.hostname) === stripWww(currentUrl.hostname);
+    return sameApex ? "" : configured;
+  } catch {
+    return configured;
+  }
+};
 
 function truncateForMessage(text: string, maxLen: number): string {
   const t = text.replace(/\s+/g, " ").trim();

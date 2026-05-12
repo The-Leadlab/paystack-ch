@@ -10,10 +10,40 @@ import Stripe from "stripe";
 type PaystackPlanId = "starter" | "business" | "unlimited" | "enterprise";
 type HeaderMap = Record<string, string | string[] | undefined>;
 
+function normalizeOrigin(input: string | undefined): string | null {
+  if (!input) return null;
+  try {
+    const u = new URL(input);
+    return `${u.protocol}//${u.host}`.replace(/\/+$/, "");
+  } catch {
+    return null;
+  }
+}
+
+function allowedCorsOrigins(): string[] {
+  const fromEnv = (process.env.STRIPE_CORS_ORIGIN || "")
+    .split(",")
+    .map((s) => normalizeOrigin(s.trim()))
+    .filter((s): s is string => Boolean(s));
+  const publicOrigin = normalizeOrigin(process.env.PUBLIC_APP_URL);
+  const defaults = ["https://paystack.ch", "https://www.paystack.ch"];
+  return Array.from(new Set([...fromEnv, ...(publicOrigin ? [publicOrigin] : []), ...defaults]));
+}
+
+function requestOrigin(headers: HeaderMap): string | null {
+  const raw = headers.origin;
+  return normalizeOrigin(Array.isArray(raw) ? raw[0] : raw);
+}
+
+function stripeCorsApplyHeadersForOrigin(origin: string | null, res: VercelResponse): void {
+  if (!origin) return;
+  if (!allowedCorsOrigins().includes(origin)) return;
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
+}
+
 function stripeCorsPreflight(req: VercelRequest, res: VercelResponse): boolean {
-  const allow = process.env.STRIPE_CORS_ORIGIN?.trim();
-  if (!allow) return false;
-  res.setHeader("Access-Control-Allow-Origin", allow);
+  stripeCorsApplyHeadersForOrigin(requestOrigin(req.headers), res);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
   if (req.method === "OPTIONS") {
@@ -23,9 +53,8 @@ function stripeCorsPreflight(req: VercelRequest, res: VercelResponse): boolean {
   return false;
 }
 
-function stripeCorsApplyHeaders(res: VercelResponse): void {
-  const allow = process.env.STRIPE_CORS_ORIGIN?.trim();
-  if (allow) res.setHeader("Access-Control-Allow-Origin", allow);
+function stripeCorsApplyHeaders(req: VercelRequest, res: VercelResponse): void {
+  stripeCorsApplyHeadersForOrigin(requestOrigin(req.headers), res);
 }
 
 function parsePaystackPlanId(raw: unknown): PaystackPlanId | null {
@@ -109,16 +138,6 @@ function getStripe(): Stripe | null {
     });
   }
   return stripeSingleton;
-}
-
-function normalizeOrigin(input: string | undefined): string | null {
-  if (!input) return null;
-  try {
-    const u = new URL(input);
-    return `${u.protocol}//${u.host}`.replace(/\/+$/, "");
-  } catch {
-    return null;
-  }
 }
 
 function allowedOrigins(): string[] {
@@ -228,7 +247,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (stripeCorsPreflight(req, res)) return;
   try {
     if (req.method !== "POST") {
-      stripeCorsApplyHeaders(res);
+      stripeCorsApplyHeaders(req, res);
       res.status(405).json({ error: "Method not allowed" });
       return;
     }
@@ -243,13 +262,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       body = req.body as { planId?: string };
     }
     const out = await runCreateCheckoutSessionGuest(body, req.headers);
-    stripeCorsApplyHeaders(res);
+    stripeCorsApplyHeaders(req, res);
     res.status(out.status).json(out.json);
   } catch (e) {
     console.error("[api] guest-trial-checkout:", e);
     if (!res.headersSent) {
       try {
-        stripeCorsApplyHeaders(res);
+        stripeCorsApplyHeaders(req, res);
       } catch {
         /* ignore */
       }

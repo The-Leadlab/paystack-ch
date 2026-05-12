@@ -6,18 +6,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (stripeCorsPreflight(req, res)) return;
   try {
     if (req.method !== "POST") {
-      stripeCorsApplyHeaders(res);
+      stripeCorsApplyHeaders(req, res);
       res.status(405).json({ error: "Method not allowed" });
       return;
     }
     const out = await runCreatePortalSession(req.headers.authorization, req.headers);
-    stripeCorsApplyHeaders(res);
+    stripeCorsApplyHeaders(req, res);
     res.status(out.status).json(out.json);
   } catch (e) {
     console.error("[api] create-portal-session:", e);
     if (!res.headersSent) {
       try {
-        stripeCorsApplyHeaders(res);
+        stripeCorsApplyHeaders(req, res);
       } catch {
         /* ignore */
       }

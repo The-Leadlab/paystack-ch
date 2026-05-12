@@ -1,10 +1,40 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-/** When `STRIPE_CORS_ORIGIN` is set (e.g. your Firebase Hosting URL), allow browser calls from that origin. */
+function normalizeOrigin(input: string | undefined): string | null {
+  if (!input) return null;
+  try {
+    const u = new URL(input);
+    return `${u.protocol}//${u.host}`.replace(/\/+$/, "");
+  } catch {
+    return null;
+  }
+}
+
+function allowedCorsOrigins(): string[] {
+  const fromEnv = (process.env.STRIPE_CORS_ORIGIN || "")
+    .split(",")
+    .map((s) => normalizeOrigin(s.trim()))
+    .filter((s): s is string => Boolean(s));
+  const publicOrigin = normalizeOrigin(process.env.PUBLIC_APP_URL);
+  const defaults = ["https://paystack.ch", "https://www.paystack.ch"];
+  return Array.from(new Set([...fromEnv, ...(publicOrigin ? [publicOrigin] : []), ...defaults]));
+}
+
+function requestOrigin(req: VercelRequest): string | null {
+  const raw = req.headers.origin;
+  return normalizeOrigin(Array.isArray(raw) ? raw[0] : raw);
+}
+
+function applyCorsForRequest(req: VercelRequest, res: VercelResponse): void {
+  const origin = requestOrigin(req);
+  if (!origin || !allowedCorsOrigins().includes(origin)) return;
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
+}
+
+/** Allows browser calls from paystack.ch/www and any comma-separated STRIPE_CORS_ORIGIN entries. */
 export function stripeCorsPreflight(req: VercelRequest, res: VercelResponse): boolean {
-  const allow = process.env.STRIPE_CORS_ORIGIN?.trim();
-  if (!allow) return false;
-  res.setHeader("Access-Control-Allow-Origin", allow);
+  applyCorsForRequest(req, res);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
   if (req.method === "OPTIONS") {
@@ -14,7 +44,6 @@ export function stripeCorsPreflight(req: VercelRequest, res: VercelResponse): bo
   return false;
 }
 
-export function stripeCorsApplyHeaders(res: VercelResponse): void {
-  const allow = process.env.STRIPE_CORS_ORIGIN?.trim();
-  if (allow) res.setHeader("Access-Control-Allow-Origin", allow);
+export function stripeCorsApplyHeaders(req: VercelRequest, res: VercelResponse): void {
+  applyCorsForRequest(req, res);
 }
