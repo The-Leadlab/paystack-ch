@@ -50,6 +50,31 @@ async function commitDeletesInChunks(
   return n;
 }
 
+function resolveNetPayFromFinancialData(data: FinancialData): number {
+  const components = data.paySlip?.components ?? [];
+  const grossFromComponents = components
+    .filter((c) => c.type === 'INCOME')
+    .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+  const deductionsFromComponents = components
+    .filter((c) => c.type === 'EXPENSE')
+    .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+  const netFromComponents = grossFromComponents - deductionsFromComponents;
+  if (netFromComponents > 0) return netFromComponents;
+
+  const directNet = Number(data.paySlip?.netPay || 0);
+  if (directNet > 0) return directNet;
+
+  const netAmount = Number(data.netAmount || 0);
+  if (netAmount > 0) return netAmount;
+
+  const total = Number(data.totalAmount || 0);
+  const gross = Number(data.paySlip?.grossPay || 0);
+  // If total equals gross, treat as unresolved gross and avoid posting wrong payroll amount.
+  if (gross > 0 && Math.abs(total - gross) < 0.01) return 0;
+
+  return total > 0 ? total : 0;
+}
+
 export function RestaurantDashboard() {
   const { employees, addEmployee, deleteEmployee } = useEmployee();
   const { income, expenses, addIncome, addExpense, updateIncome, updateExpense, deleteIncome, deleteExpense } = useFinance();
@@ -346,7 +371,7 @@ export function RestaurantDashboard() {
         }
       }
     } else if (docType === 'Pay Slip') {
-      const netPay = data.paySlip?.netPay || data.totalAmount || 0;
+      const netPay = resolveNetPayFromFinancialData(data);
       const grossPay = data.paySlip?.grossPay || 0;
       const employeeName = data.paySlip?.employee?.name || 'Unknown Employee';
       const employeeId = data.paySlip?.employee?.idNumber || '';
@@ -465,8 +490,8 @@ export function RestaurantDashboard() {
             }
           }
         }
-      } else if (docType === 'Pay Slip') {
-        const netPay = newData.paySlip?.netPay || newData.totalAmount || 0;
+    } else if (docType === 'Pay Slip') {
+        const netPay = resolveNetPayFromFinancialData(newData);
         const employeeName = newData.paySlip?.employee?.name || 'Unknown Employee';
         
         console.log('💰 Re-processing payslip:', employeeName, 'Net Pay:', netPay);

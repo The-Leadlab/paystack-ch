@@ -1685,8 +1685,8 @@ const VerificationHub: React.FC<{
              )}
            </div>
            
-           {/* Sticky Save Button - Improved with clear messaging */}
-           <div className="sticky bottom-0 pt-6 pb-2 border-t-2 border-cdlp-gold/30 mt-6 bg-gradient-to-t from-cdlp-black via-cdlp-black to-transparent">
+          {/* Sticky Save Button - boosted contrast and visibility */}
+          <div className="sticky bottom-0 pt-6 pb-2 border-t-2 border-cdlp-gold/40 mt-6 bg-gradient-to-t from-cdlp-black via-cdlp-black/95 to-transparent">
               <div className="bg-cdlp-card border border-cdlp-border rounded-lg p-4 mb-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
@@ -1708,13 +1708,13 @@ const VerificationHub: React.FC<{
                   onSave({ ...editedData, isHumanVerified: true });
                 }} 
                 disabled={isZeroValue}
-                className={`w-full h-16 rounded-lg font-black text-[11px] sm:text-[12px] uppercase tracking-[0.3em] shadow-2xl transition-all flex items-center justify-center gap-3 ${isZeroValue ? 'bg-cdlp-card text-cdlp-muted cursor-not-allowed border-red-600/20 border' : 'bg-gradient-to-r from-emerald-600 to-cdlp-gold text-white hover:from-emerald-500 hover:to-cdlp-gold-light animate-pulse'}`}
+                className={`w-full h-16 rounded-lg font-black text-[11px] sm:text-[12px] uppercase tracking-[0.28em] shadow-[0_0_0_1px_rgba(255,255,255,0.2),0_18px_40px_rgba(0,0,0,0.45)] transition-all flex items-center justify-center gap-3 ${isZeroValue ? 'bg-cdlp-card text-cdlp-muted cursor-not-allowed border-red-600/30 border' : 'bg-cdlp-gold text-cdlp-black border border-cdlp-gold-light hover:bg-cdlp-gold-light hover:scale-[1.01]'}`}
               >
                 <ShieldCheck className="w-6 h-6" /> 
                 <span>Save & Update Dashboard</span>
                 <RefreshCcw className="w-5 h-5" />
               </button>
-              <p className="text-center text-[9px] text-cdlp-gold mt-3 uppercase tracking-wider font-bold">
+              <p className="text-center text-[9px] text-cdlp-gold-light mt-3 uppercase tracking-wider font-black">
                 ⚡ Click to apply all changes and sync with dashboard
               </p>
            </div>
@@ -1894,8 +1894,11 @@ export const DocumentProcessor: React.FC<{
   const stopProcessingRef = useRef(false);
   const dragCounter = useRef(0);
 
-  // Large PDFs are slower with too much parallelism; keep modest concurrency for steadier throughput.
-  const CONCURRENCY_LIMIT = 2;
+  // Processing throughput: configurable via env, capped to avoid overloading browsers/devices.
+  const CONCURRENCY_LIMIT = Math.min(
+    6,
+    Math.max(1, parseInt((import.meta.env.VITE_DOCUMENT_PROCESSING_CONCURRENCY || '3').trim(), 10) || 3)
+  );
 
   // Combine Firestore documents with local processing documents
   const allDocs = useMemo(() => {
@@ -2309,11 +2312,24 @@ export const DocumentProcessor: React.FC<{
               <tbody className="divide-y divide-cdlp-border">
                 {allDocs.map((doc) => {
                   const isExpanded = expandedRows.has(doc.id);
-                  const gross = Number(doc.data?.totalAmount || 0);
                   const vat = Number(doc.data?.vatAmount || 0);
-                  const net = Number(doc.data?.netAmount || Math.max(gross - vat, 0));
-                  const vatRate = net > 0 && vat > 0 ? Math.round((vat / net) * 10000) / 100 : 0;
                   const swissLines = doc.data?.swissVatBreakdown;
+                  const subDocs = Array.isArray(doc.data?.subDocuments) ? doc.data?.subDocuments : [];
+                  const extractedRateValues = (
+                    swissLines && swissLines.length > 0
+                      ? swissLines.map((l) => Number(l.ratePercent || 0))
+                      : subDocs.length > 0
+                        ? subDocs.map((s) => Number(s.vatRate || 0))
+                        : [Number(doc.data?.vatRate || 0)]
+                  )
+                    .filter((r) => Number.isFinite(r) && r > 0)
+                    .map((r) => Math.round(r * 100) / 100);
+                  const uniqueRateValues = Array.from(new Set(extractedRateValues));
+                  const extractedRateLabel =
+                    uniqueRateValues.length > 0
+                      ? uniqueRateValues.map((r) => `${r.toFixed(2)}%`).join(' / ')
+                      : '';
+                  const vatNeedsAttention = vat <= 0;
                   return (
                     <React.Fragment key={doc.id}>
                       <tr 
@@ -2381,11 +2397,13 @@ export const DocumentProcessor: React.FC<{
                               </div>
                             ) : (
                               <div className="font-mono leading-tight">
-                                <p className={`text-[11px] font-bold ${vat > 0 ? 'text-blue-400' : 'text-amber-400'}`}>
+                                <p className={`text-[11px] font-bold ${vatNeedsAttention ? 'text-amber-400' : 'text-blue-400'}`}>
                                   {vat.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </p>
                                 <p className="text-[9px] text-cdlp-muted">
-                                  {vat > 0 ? `${vatRate.toFixed(2)}%` : '0.00% (warn)'}
+                                  {vatNeedsAttention
+                                    ? 'Warning: VAT 0.00 — file needs attention'
+                                    : extractedRateLabel || 'Rate missing in source'}
                                 </p>
                               </div>
                             )
@@ -2528,6 +2546,22 @@ export const DocumentProcessor: React.FC<{
                                   {(Number(l.vatAmount || 0)).toFixed(2)}
                                 </p>
                               ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      {doc.data && !swissLines?.length && (
+                        <tr className="md:hidden">
+                          <td colSpan={6} className="px-4 pb-3">
+                            <div className="font-mono space-y-0.5 border border-cdlp-border rounded bg-cdlp-card/40 p-2">
+                              <p className={`text-[10px] font-bold ${vatNeedsAttention ? 'text-amber-400' : 'text-blue-400'}`}>
+                                TVA {vat.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </p>
+                              <p className="text-[8px] text-cdlp-muted">
+                                {vatNeedsAttention
+                                  ? 'Warning: VAT 0.00 — file needs attention'
+                                  : extractedRateLabel || 'Rate missing in source'}
+                              </p>
                             </div>
                           </td>
                         </tr>
