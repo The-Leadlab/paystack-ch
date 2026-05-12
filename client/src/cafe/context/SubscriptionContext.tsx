@@ -16,6 +16,7 @@ import {
   type PaystackPlanId,
   type PlanEntitlements,
 } from '@shared/planCatalog';
+import { parseStripeFetchResponse } from '../lib/stripeCheckoutClient';
 
 type UserBillingSnapshot = {
   subscriptionStatus: string | null;
@@ -111,10 +112,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         },
         body: JSON.stringify({ planId: resolved ?? undefined }),
       });
-      const data = (await res.json()) as { url?: string; error?: string };
-      if (!res.ok) throw new Error(data.error || 'Checkout failed');
-      if (!data.url) throw new Error('No checkout URL returned');
-      window.location.href = data.url;
+      const { json, errorMessage } = await parseStripeFetchResponse(res);
+      if (!json) throw new Error(errorMessage || 'Checkout failed');
+      if (!res.ok) throw new Error(errorMessage || 'Checkout failed');
+      const url = json.url;
+      if (typeof url !== 'string' || !url) {
+        throw new Error(typeof json.error === 'string' ? json.error : 'No checkout URL returned');
+      }
+      window.location.href = url;
     },
     [user, apiBase]
   );
@@ -130,10 +135,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       },
       body: '{}',
     });
-    const data = (await res.json()) as { url?: string; error?: string };
-    if (!res.ok) throw new Error(data.error || 'Billing portal failed');
-    if (!data.url) throw new Error('No portal URL returned');
-    window.location.href = data.url;
+    const { json, errorMessage } = await parseStripeFetchResponse(res);
+    if (!json) throw new Error(errorMessage || 'Billing portal failed');
+    if (!res.ok) throw new Error(errorMessage || 'Billing portal failed');
+    const url = json.url;
+    if (typeof url !== 'string' || !url) {
+      throw new Error(typeof json.error === 'string' ? json.error : 'No portal URL returned');
+    }
+    window.location.href = url;
   }, [user, apiBase]);
 
   const value: SubscriptionContextValue = {

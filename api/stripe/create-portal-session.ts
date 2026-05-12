@@ -4,11 +4,24 @@ import { stripeCorsApplyHeaders, stripeCorsPreflight } from "../lib/stripeCors";
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (stripeCorsPreflight(req, res)) return;
-  if (req.method !== "POST") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
+  try {
+    if (req.method !== "POST") {
+      stripeCorsApplyHeaders(res);
+      res.status(405).json({ error: "Method not allowed" });
+      return;
+    }
+    const out = await runCreatePortalSession(req.headers.authorization, req.headers);
+    stripeCorsApplyHeaders(res);
+    res.status(out.status).json(out.json);
+  } catch (e) {
+    console.error("[api] create-portal-session:", e);
+    if (!res.headersSent) {
+      try {
+        stripeCorsApplyHeaders(res);
+      } catch {
+        /* ignore */
+      }
+      res.status(500).json({ error: e instanceof Error ? e.message : "Internal server error" });
+    }
   }
-  const out = await runCreatePortalSession(req.headers.authorization, req.headers);
-  stripeCorsApplyHeaders(res);
-  res.status(out.status).json(out.json);
 }

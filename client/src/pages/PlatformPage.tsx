@@ -1,5 +1,6 @@
 import { Redirect } from "wouter";
 import { useAuth } from "@/cafe/context/AuthContext";
+import { useLanguage } from "@/cafe/context/LanguageContext";
 import { SessionProvider } from "@/cafe/context/SessionContext";
 import { EmployeeProvider } from "@/cafe/context/EmployeeContext";
 import { FinanceProvider } from "@/cafe/context/FinanceContext";
@@ -26,13 +27,12 @@ export default function PlatformPage() {
 
 function PlatformContent() {
   const { user, loading } = useAuth();
+  const { t } = useLanguage();
 
   if (loading) {
     return (
       <div className="min-h-screen bg-cdlp-dark flex items-center justify-center">
-        <div className="animate-pulse font-black text-cdlp-gold uppercase tracking-widest text-sm">
-          Loading…
-        </div>
+        <div className="animate-pulse font-black text-cdlp-gold uppercase tracking-widest text-sm">{t("appLoading")}</div>
       </div>
     );
   }

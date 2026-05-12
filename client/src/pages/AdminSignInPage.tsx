@@ -92,7 +92,7 @@ export default function AdminSignInPage() {
               <span className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground font-display">email</span>
+              <span className="bg-card px-2 text-muted-foreground font-display">{t("authDividerEmail")}</span>
             </div>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4 pt-2">
@@ -108,7 +108,7 @@ export default function AdminSignInPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="font-editorial"
-                placeholder="admin@paystack.ch"
+                placeholder={t("authPlaceholderAdminEmail")}
               />
             </div>
             <div className="space-y-2">
@@ -126,7 +126,12 @@ export default function AdminSignInPage() {
                 className="font-editorial"
               />
             </div>
-            {error ? <p className="text-sm text-destructive font-medium">{error}</p> : null}
+            {error ? (
+              <p className="text-sm text-destructive font-medium">
+                {t("authErrorPrefix")}
+                {error}
+              </p>
+            ) : null}
             <Button
               type="submit"
               className="w-full font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2"

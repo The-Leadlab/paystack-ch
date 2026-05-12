@@ -31,37 +31,65 @@ export async function handleStripeWebhookExpress(req: Request, res: Response): P
 }
 
 export async function handleCreateCheckoutSessionExpress(req: Request, res: Response): Promise<void> {
-  const out = await runCreateCheckoutSession(
-    req.headers.authorization,
-    (req.body || {}) as { priceId?: string; planId?: string },
-    req.headers as Record<string, string | string[] | undefined>
-  );
-  res.status(out.status).json(out.json);
+  try {
+    const out = await runCreateCheckoutSession(
+      req.headers.authorization,
+      (req.body || {}) as { priceId?: string; planId?: string },
+      req.headers as Record<string, string | string[] | undefined>
+    );
+    res.status(out.status).json(out.json);
+  } catch (e) {
+    console.error("[stripe] create-checkout-session express:", e);
+    if (!res.headersSent) {
+      res.status(500).json({ error: e instanceof Error ? e.message : "Internal server error" });
+    }
+  }
 }
 
 export async function handleCreatePortalSessionExpress(req: Request, res: Response): Promise<void> {
-  const out = await runCreatePortalSession(
-    req.headers.authorization,
-    req.headers as Record<string, string | string[] | undefined>
-  );
-  res.status(out.status).json(out.json);
+  try {
+    const out = await runCreatePortalSession(
+      req.headers.authorization,
+      req.headers as Record<string, string | string[] | undefined>
+    );
+    res.status(out.status).json(out.json);
+  } catch (e) {
+    console.error("[stripe] create-portal-session express:", e);
+    if (!res.headersSent) {
+      res.status(500).json({ error: e instanceof Error ? e.message : "Internal server error" });
+    }
+  }
 }
 
 export async function handleCreateCheckoutSessionGuestExpress(req: Request, res: Response): Promise<void> {
-  const out = await runCreateCheckoutSessionGuest(
-    (req.body || {}) as { planId?: string },
-    req.headers as Record<string, string | string[] | undefined>
-  );
-  res.status(out.status).json(out.json);
+  try {
+    const out = await runCreateCheckoutSessionGuest(
+      (req.body || {}) as { planId?: string },
+      req.headers as Record<string, string | string[] | undefined>
+    );
+    res.status(out.status).json(out.json);
+  } catch (e) {
+    console.error("[stripe] create-checkout-session-guest express:", e);
+    if (!res.headersSent) {
+      res.status(500).json({ error: e instanceof Error ? e.message : "Internal server error" });
+    }
+  }
 }
 
 export async function handleLinkCheckoutSessionExpress(req: Request, res: Response): Promise<void> {
-  const out = await runLinkCheckoutSession(
-    req.headers.authorization,
-    (req.body || {}) as { sessionId?: string },
-    req.headers as Record<string, string | string[] | undefined>
-  );
-  res.status(out.status).json(out.json);
+  try {
+    const out = await runLinkCheckoutSession(
+      req.headers.authorization,
+      (req.body || {}) as { sessionId?: string },
+      req.headers as Record<string, string | string[] | undefined>
+    );
+    res.status(out.status).json(out.json);
+  } catch (e) {
+    console.error("[stripe] link-checkout-session express:", e);
+    if (!res.headersSent) {
+      res.status(500).json({ error: e instanceof Error ? e.message : "Internal server error" });
+    }
+  }
 }
 
 const jsonParser = express.json({ limit: "256kb" });

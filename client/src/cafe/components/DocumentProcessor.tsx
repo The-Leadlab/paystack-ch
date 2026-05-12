@@ -754,7 +754,7 @@ const SwissVatBreakdownEditor: React.FC<{
             </div>
             <div>
               <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-1">
-                Dépôt
+                Deposit
               </label>
               <input
                 type="number"

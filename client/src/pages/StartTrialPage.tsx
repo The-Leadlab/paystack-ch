@@ -58,7 +58,12 @@ export default function StartTrialPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={onCheckout} className="space-y-4">
-            {err ? <p className="text-sm text-destructive font-medium">{err}</p> : null}
+            {err ? (
+              <p className="text-sm text-destructive font-medium">
+                {t("authErrorPrefix")}
+                {err}
+              </p>
+            ) : null}
             <Button
               type="submit"
               size="lg"

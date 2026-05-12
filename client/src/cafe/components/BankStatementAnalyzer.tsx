@@ -4,6 +4,7 @@ import { Upload, CheckCircle, Wallet, RefreshCcw, Download, Trash2, FileSpreadsh
 import { analyzeBankStatement } from '../services/geminiService';
 import { ProcessedBankStatement, BankStatementAnalysis, FinancialData } from '../types';
 import * as XLSX from 'xlsx';
+import { useLanguage } from '../context/LanguageContext';
 
 interface Notification {
   id: string;
@@ -20,6 +21,7 @@ interface BankStatementAnalyzerProps {
 }
 
 export const BankStatementAnalyzer: React.FC<BankStatementAnalyzerProps> = ({ supportingInvoices }) => {
+  const { t } = useLanguage();
   const [statements, setStatements] = useState<ProcessedBankStatement[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
@@ -67,7 +69,7 @@ export const BankStatementAnalyzer: React.FC<BankStatementAnalyzerProps> = ({ su
   const stopProcess = () => {
     stopProcessingRef.current = true;
     setIsStopping(true);
-    addNotification("Halting reconciliation...", "warning");
+    addNotification(t('bankNotifHalting'), 'warning');
   };
 
   const processQueue = async () => {
@@ -91,10 +93,10 @@ export const BankStatementAnalyzer: React.FC<BankStatementAnalyzerProps> = ({ su
 
       try {
         const result = await analyzeBankStatement(doc.fileRaw, reportingCurrency);
-        const reconciledTransactions = result.transactions.map(t => {
-          const match = supportingInvoices.find(inv => Math.abs(inv.totalAmount - t.amount) < 0.05);
-          if (match) return { ...t, notes: `Verified: ${match.issuer}`, category: match.expenseCategory };
-          return t;
+        const reconciledTransactions = result.transactions.map((txn) => {
+          const match = supportingInvoices.find(inv => Math.abs(inv.totalAmount - txn.amount) < 0.05);
+          if (match) return { ...txn, notes: `${t('bankVerifiedPrefix')}${match.issuer}`, category: match.expenseCategory };
+          return txn;
         });
 
         setStatements(prev => prev.map((d, i) => i === idx ? { ...d, status: 'completed', data: { ...result, transactions: reconciledTransactions } } : d));
@@ -139,28 +141,28 @@ export const BankStatementAnalyzer: React.FC<BankStatementAnalyzerProps> = ({ su
         <div className="bg-white p-6 rounded-sm shadow-sm border border-ypsom-alice space-y-6">
             <div className="flex flex-col md:flex-row gap-6">
                 <div className="flex-1">
-                    <h2 className="text-xl font-bold text-ypsom-deep mb-2 flex items-center"><Wallet className="w-6 h-6 mr-2" /> Reconciliation Workbench</h2>
-                    <p className="text-sm text-ypsom-slate mb-6">Automated matching with audit evidence.</p>
+                    <h2 className="text-xl font-bold text-ypsom-deep mb-2 flex items-center"><Wallet className="w-6 h-6 mr-2" /> {t('bankWorkbenchTitle')}</h2>
+                    <p className="text-sm text-ypsom-slate mb-6">{t('bankWorkbenchSubtitle')}</p>
                     <label className="flex items-center justify-center h-12 border-2 border-dashed border-ypsom-alice hover:bg-ypsom-alice/20 rounded-sm cursor-pointer transition-all">
                         <Upload className="w-4 h-4 mr-2 text-ypsom-slate" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-ypsom-slate">Upload Statements for Batch Linkage</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-ypsom-slate">{t('bankUploadLabel')}</span>
                         <input type="file" className="hidden" accept="application/pdf" multiple onChange={(e) => e.target.files && addFiles(Array.from(e.target.files))} />
                     </label>
                 </div>
                 <div className="w-full md:w-64 flex flex-col gap-3">
                     {isProcessing ? (
                       <button onClick={stopProcess} disabled={isStopping} className="w-full bg-red-600 text-white py-3 rounded-sm font-bold text-xs uppercase tracking-widest flex items-center justify-center shadow-md">
-                        <Ban className="w-4 h-4 mr-2" /> {isStopping ? 'Stopping...' : 'Stop Linking'}
+                        <Ban className="w-4 h-4 mr-2" /> {isStopping ? t('bankStopping') : t('bankStopLinking')}
                       </button>
                     ) : (
                       <button onClick={processQueue} disabled={stats.pending === 0} className="w-full bg-ypsom-deep text-white py-3 rounded-sm font-bold text-xs uppercase tracking-widest shadow-md flex items-center justify-center hover:bg-ypsom-shadow">
-                        <RefreshCcw className="w-4 h-4 mr-2" /> Turbo Linking
+                        <RefreshCcw className="w-4 h-4 mr-2" /> {t('bankTurboLinking')}
                       </button>
                     )}
                     {isProcessing && (
                       <div className="text-center">
                         <p className={`text-[9px] font-black uppercase tracking-widest ${isStopping ? 'text-red-500' : 'text-ypsom-deep'}`}>
-                          {isStopping ? 'Draining Workers' : '6 Active Workers'}
+                          {isStopping ? t('bankWorkersDraining') : t('bankWorkersActive')}
                         </p>
                       </div>
                     )}
@@ -175,13 +177,13 @@ export const BankStatementAnalyzer: React.FC<BankStatementAnalyzerProps> = ({ su
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div className="lg:col-span-1 bg-white rounded-sm border border-ypsom-alice h-fit max-h-[600px] overflow-y-auto custom-scrollbar">
-                <div className="p-4 bg-gray-50 border-b border-ypsom-alice font-bold text-[10px] text-ypsom-slate uppercase tracking-widest">Statement Queue</div>
+                <div className="p-4 bg-gray-50 border-b border-ypsom-alice font-bold text-[10px] text-ypsom-slate uppercase tracking-widest">{t('bankQueueTitle')}</div>
                 <ul className="divide-y divide-ypsom-alice">
                     {statements.map(s => (
                         <li key={s.id} onClick={() => setSelectedStatementId(s.id)} className={`p-4 cursor-pointer transition-colors flex justify-between items-center ${selectedStatementId === s.id ? 'bg-ypsom-alice/40 border-l-4 border-ypsom-deep pl-3' : 'hover:bg-gray-50'}`}>
                             <div className="flex flex-col">
                               <span className="text-xs font-bold text-ypsom-shadow truncate max-w-[120px]">{s.fileName}</span>
-                              <span className={`text-[9px] uppercase font-black mt-1 ${s.status === 'completed' ? 'text-green-600' : 'text-ypsom-slate'}`}>{s.status}</span>
+                              <span className={`text-[9px] uppercase font-black mt-1 ${s.status === 'completed' ? 'text-green-600' : 'text-ypsom-slate'}`}>{t(`bankStatus_${s.status}`)}</span>
                             </div>
                             {s.status === 'processing' && <Loader2 className="w-3 h-3 animate-spin text-ypsom-deep" />}
                         </li>
@@ -193,15 +195,15 @@ export const BankStatementAnalyzer: React.FC<BankStatementAnalyzerProps> = ({ su
                   <div className="space-y-6">
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="bg-white p-4 rounded-sm border border-ypsom-alice shadow-sm">
-                           <span className="text-[9px] font-black text-ypsom-slate uppercase tracking-widest">Entrée d'argent</span>
+                           <span className="text-[9px] font-black text-ypsom-slate uppercase tracking-widest">{t('bankMoneyIn')}</span>
                            <p className="text-lg font-bold text-green-700 font-mono">{summary.income.toFixed(2)}</p>
                         </div>
                         <div className="bg-white p-4 rounded-sm border border-ypsom-alice shadow-sm">
-                           <span className="text-[9px] font-black text-ypsom-slate uppercase tracking-widest">Sortie d'argent</span>
+                           <span className="text-[9px] font-black text-ypsom-slate uppercase tracking-widest">{t('bankMoneyOut')}</span>
                            <p className="text-lg font-bold text-red-600 font-mono">{summary.expense.toFixed(2)}</p>
                         </div>
                         <div className="bg-ypsom-deep p-4 rounded-sm shadow-md">
-                           <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">Net Cash Flow</span>
+                           <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">{t('bankNetCashFlow')}</span>
                            <p className="text-lg font-bold text-white font-mono">{summary.net.toFixed(2)}</p>
                         </div>
                      </div>
@@ -209,26 +211,26 @@ export const BankStatementAnalyzer: React.FC<BankStatementAnalyzerProps> = ({ su
                         <table className="min-w-full divide-y divide-ypsom-alice text-xs">
                            <thead className="bg-gray-50">
                               <tr className="font-bold text-[9px] uppercase tracking-wider text-ypsom-slate">
-                                 <th className="px-4 py-3 text-left">Date</th>
-                                 <th className="px-4 py-3 text-left">Description</th>
-                                 <th className="px-4 py-3 text-right">Amount</th>
-                                 <th className="px-4 py-3 text-left">Audit Linking</th>
+                                 <th className="px-4 py-3 text-left">{t('bankThDate')}</th>
+                                 <th className="px-4 py-3 text-left">{t('bankThDesc')}</th>
+                                 <th className="px-4 py-3 text-right">{t('bankThAmount')}</th>
+                                 <th className="px-4 py-3 text-left">{t('bankThLinking')}</th>
                               </tr>
                            </thead>
                            <tbody className="bg-white divide-y divide-ypsom-alice">
-                              {activeStatement.data!.transactions.map((t, idx) => (
-                                 <tr key={idx} className={`hover:bg-ypsom-alice/5 ${t.notes ? 'bg-green-50/20' : ''}`}>
-                                    <td className="px-4 py-3 font-mono">{t.date}</td>
-                                    <td className="px-4 py-3 font-bold">{t.description}</td>
-                                    <td className={`px-4 py-3 text-right font-mono font-bold ${t.type === 'INCOME' ? 'text-green-700' : 'text-red-600'}`}>{t.amount.toFixed(2)}</td>
-                                    <td className="px-4 py-3 text-[10px] italic">{t.notes || <span className="opacity-20">None</span>}</td>
+                              {activeStatement.data!.transactions.map((txn, idx) => (
+                                 <tr key={idx} className={`hover:bg-ypsom-alice/5 ${txn.notes ? 'bg-green-50/20' : ''}`}>
+                                    <td className="px-4 py-3 font-mono">{txn.date}</td>
+                                    <td className="px-4 py-3 font-bold">{txn.description}</td>
+                                    <td className={`px-4 py-3 text-right font-mono font-bold ${txn.type === 'INCOME' ? 'text-green-700' : 'text-red-600'}`}>{txn.amount.toFixed(2)}</td>
+                                    <td className="px-4 py-3 text-[10px] italic">{txn.notes || <span className="opacity-20">{t('bankNone')}</span>}</td>
                                  </tr>
                               ))}
                            </tbody>
                         </table>
                      </div>
                   </div>
-                ) : <div className="h-64 flex items-center justify-center bg-gray-50 border border-dashed border-ypsom-alice rounded-sm text-ypsom-slate/40 text-[10px] font-black uppercase tracking-widest">Select a completed analysis</div>}
+                ) : <div className="h-64 flex items-center justify-center bg-gray-50 border border-dashed border-ypsom-alice rounded-sm text-ypsom-slate/40 text-[10px] font-black uppercase tracking-widest">{t('bankSelectCompleted')}</div>}
             </div>
         </div>
     </div>

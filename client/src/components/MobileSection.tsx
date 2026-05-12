@@ -3,36 +3,39 @@
  * Mobile: Upcoming mobile app — copy and feature cards (no hero image).
  */
 
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import ScrollReveal from "./ScrollReveal";
 import SectionLabel from "./SectionLabel";
 import { Smartphone, Camera, Bell, Wifi } from "lucide-react";
-
-const mobileFeatures = [
-  { icon: Camera, label: "Photo et import", description: "Photographiez un document et traitez-le instantanement" },
-  { icon: Bell, label: "Notifications push", description: "Alertes en temps reel pour documents et rapports" },
-  { icon: Wifi, label: "Mode hors ligne", description: "Capture hors ligne, synchronisation a la connexion" },
-  { icon: Smartphone, label: "Experience native", description: "Apps iOS et Android avec authentification biometrie" },
-];
+import { useLanguage } from "@/cafe/context/LanguageContext";
 
 export default function MobileSection() {
+  const { t, language } = useLanguage();
+
+  const mobileFeatures = useMemo(
+    () => [
+      { icon: Camera, label: t("landingMobileF1Label"), description: t("landingMobileF1Desc") },
+      { icon: Bell, label: t("landingMobileF2Label"), description: t("landingMobileF2Desc") },
+      { icon: Wifi, label: t("landingMobileF3Label"), description: t("landingMobileF3Desc") },
+      { icon: Smartphone, label: t("landingMobileF4Label"), description: t("landingMobileF4Desc") },
+    ],
+    [language, t]
+  );
+
   return (
     <section className="relative py-24 lg:py-32 border-t border-border overflow-hidden">
       <div className="container">
-        <SectionLabel number="08" label="Application mobile" />
+        <SectionLabel number="08" label={t("landingMobileLabel")} />
 
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start">
           <div className="lg:col-span-10 lg:col-start-2">
             <ScrollReveal>
               <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5 text-foreground">
-                Vos finances,{" "}
-                <span className="font-editorial italic font-normal text-gradient-red">
-                  dans votre poche
-                </span>
+                {t("landingMobileTitle1")}{" "}
+                <span className="font-editorial italic font-normal text-gradient-red">{t("landingMobileTitleItalic")}</span>
               </h2>
-              <p className="font-editorial text-lg text-muted-foreground leading-relaxed mb-10 max-w-lg">
-                L'application mobile Paystack.ch apporte toute la puissance de gestion financiere sur smartphone. Scannez un recu, consultez votre tableau de bord et validez des depenses partout.
-              </p>
+              <p className="font-editorial text-lg text-muted-foreground leading-relaxed mb-10 max-w-lg">{t("landingMobileSubtitle")}</p>
             </ScrollReveal>
 
             <div className="grid sm:grid-cols-2 gap-4">
@@ -43,12 +46,8 @@ export default function MobileSection() {
                       <feature.icon size={18} className="text-brand-red" />
                     </div>
                     <div>
-                      <h4 className="font-display text-sm font-medium text-foreground mb-1">
-                        {feature.label}
-                      </h4>
-                      <p className="font-editorial text-xs text-muted-foreground leading-relaxed">
-                        {feature.description}
-                      </p>
+                      <h4 className="font-display text-sm font-medium text-foreground mb-1">{feature.label}</h4>
+                      <p className="font-editorial text-xs text-muted-foreground leading-relaxed">{feature.description}</p>
                     </div>
                   </div>
                 </ScrollReveal>
@@ -61,11 +60,9 @@ export default function MobileSection() {
                   size="lg"
                   className="font-display bg-brand-red text-white hover:bg-brand-red/90 rounded-lg px-6 h-11 text-sm"
                 >
-                  Rejoindre la liste d'attente
+                  {t("landingMobileCta")}
                 </Button>
-                <span className="font-data text-xs text-muted-foreground">
-                  Disponible T3 2026
-                </span>
+                <span className="font-data text-xs text-muted-foreground">{t("landingMobileTarget")}</span>
               </div>
             </ScrollReveal>
           </div>

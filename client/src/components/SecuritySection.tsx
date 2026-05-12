@@ -3,64 +3,43 @@
  * Security: Swiss trust copy and data protection feature grid (no badge image).
  */
 
+import { useMemo } from "react";
 import ScrollReveal from "./ScrollReveal";
 import SectionLabel from "./SectionLabel";
 import { Shield, Lock, Eye, Server, RefreshCw, Globe } from "lucide-react";
-
-const securityFeatures = [
-  {
-    icon: Lock,
-    title: "Chiffrement de bout en bout",
-    description: "All data is encrypted in transit and at rest using AES-256 encryption standards.",
-  },
-  {
-    icon: Shield,
-    title: "Acces base sur les roles",
-    description: "Granular permissions ensure team members only see what they need to see.",
-  },
-  {
-    icon: Eye,
-    title: "Journal d'audit",
-    description: "Every action is logged with timestamps for complete traceability and compliance.",
-  },
-  {
-    icon: Server,
-    title: "Hebergement des donnees en Suisse",
-    description: "Your financial data stays in Switzerland, compliant with Swiss data protection laws.",
-  },
-  {
-    icon: RefreshCw,
-    title: "Sauvegardes automatiques",
-    description: "Continuous backups with disaster recovery ensure your data is never lost.",
-  },
-  {
-    icon: Globe,
-    title: "Conforme RGPD",
-    description: "Full compliance with European data protection regulations and Swiss FADP.",
-  },
-];
+import { useLanguage } from "@/cafe/context/LanguageContext";
 
 export default function SecuritySection() {
+  const { t, language } = useLanguage();
+
+  const securityFeatures = useMemo(
+    () => [
+      { icon: Lock, title: t("landingSec1Title"), description: t("landingSec1Desc") },
+      { icon: Shield, title: t("landingSec2Title"), description: t("landingSec2Desc") },
+      { icon: Eye, title: t("landingSec3Title"), description: t("landingSec3Desc") },
+      { icon: Server, title: t("landingSec4Title"), description: t("landingSec4Desc") },
+      { icon: RefreshCw, title: t("landingSec5Title"), description: t("landingSec5Desc") },
+      { icon: Globe, title: t("landingSec6Title"), description: t("landingSec6Desc") },
+    ],
+    [language, t]
+  );
+
   return (
     <section id="security" className="relative py-24 lg:py-32 border-t border-border">
       <div className="container">
-        <SectionLabel number="07" label="Securite et conformite" />
+        <SectionLabel number="07" label={t("landingSecurityLabel")} />
 
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          {/* Left — Badge + Trust */}
           <ScrollReveal className="lg:col-span-4">
             <div className="flex flex-col items-start text-left">
               <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mb-4 text-foreground">
-                Securite{" "}
-                <span className="text-gradient-red">niveau suisse</span>
+                {t("landingSecurityTitle1")}{" "}
+                <span className="text-gradient-red">{t("landingSecurityTitleHighlight")}</span>
               </h2>
-              <p className="font-editorial text-base text-muted-foreground leading-relaxed max-w-sm">
-                Vos donnees financieres meritent un niveau de protection bancaire. Nous offrons une securite entreprise avec precision suisse.
-              </p>
+              <p className="font-editorial text-base text-muted-foreground leading-relaxed max-w-sm">{t("landingSecuritySubtitle")}</p>
             </div>
           </ScrollReveal>
 
-          {/* Right — Security Grid */}
           <div className="lg:col-span-8">
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
               {securityFeatures.map((feature, index) => (
@@ -69,12 +48,8 @@ export default function SecuritySection() {
                     <div className="w-9 h-9 rounded-lg bg-brand-red/8 flex items-center justify-center mb-4 group-hover:bg-brand-red/12 transition-colors">
                       <feature.icon size={16} className="text-brand-red" />
                     </div>
-                    <h3 className="font-display text-sm font-semibold text-foreground mb-2">
-                      {feature.title}
-                    </h3>
-                    <p className="font-editorial text-xs text-muted-foreground leading-relaxed">
-                      {feature.description}
-                    </p>
+                    <h3 className="font-display text-sm font-semibold text-foreground mb-2">{feature.title}</h3>
+                    <p className="font-editorial text-xs text-muted-foreground leading-relaxed">{feature.description}</p>
                   </div>
                 </ScrollReveal>
               ))}

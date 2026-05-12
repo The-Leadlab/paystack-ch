@@ -1,5 +1,57 @@
 const apiBase = () => (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") || "";
 
+function truncateForMessage(text: string, maxLen: number): string {
+  const t = text.replace(/\s+/g, " ").trim();
+  if (t.length <= maxLen) return t;
+  return `${t.slice(0, maxLen - 1)}…`;
+}
+
+/**
+ * Read a Stripe billing API response without assuming JSON (static hosts / proxies may return HTML or plain text).
+ * Exported for use in SubscriptionContext (authenticated checkout / portal).
+ */
+export async function parseStripeFetchResponse(res: Response): Promise<{
+  json: Record<string, unknown> | null;
+  /** Set when the response is not usable as JSON or HTTP status indicates failure */
+  errorMessage: string | null;
+}> {
+  const status = res.status;
+  const text = await res.text();
+  const ct = (res.headers.get("content-type") || "").toLowerCase();
+  const trimmed = text.trim();
+
+  if (!trimmed) {
+    return {
+      json: null,
+      errorMessage: `Empty response (HTTP ${status}). If the app is hosted separately from the API, set VITE_API_BASE_URL to your API origin (e.g. your Vercel deployment URL).`,
+    };
+  }
+
+  const looksJson =
+    ct.includes("application/json") || ct.includes("+json") || /^[\[{]/.test(trimmed);
+
+  if (!looksJson) {
+    return {
+      json: null,
+      errorMessage: `Server returned HTTP ${status} (not JSON). ${truncateForMessage(text, 200)}`,
+    };
+  }
+
+  try {
+    const json = JSON.parse(text) as Record<string, unknown>;
+    if (!res.ok) {
+      const serverErr = typeof json.error === "string" ? json.error : null;
+      return { json, errorMessage: serverErr || `Request failed (HTTP ${status})` };
+    }
+    return { json, errorMessage: null };
+  } catch {
+    return {
+      json: null,
+      errorMessage: `Invalid JSON (HTTP ${status}). ${truncateForMessage(text, 200)}`,
+    };
+  }
+}
+
 /** From URL after Stripe redirects to `/sign-up?checkout=success&session_id=...`. */
 export function checkoutSuccessSessionId(search: string): string | null {
   const qs = search.startsWith("?") ? search.slice(1) : search;
@@ -14,10 +66,15 @@ export async function startGuestCheckoutSession(planId: string | undefined): Pro
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ planId: planId ?? undefined }),
   });
-  const data = (await res.json()) as { url?: string; error?: string };
-  if (!res.ok) throw new Error(data.error || "Checkout failed");
-  if (!data.url) throw new Error("No checkout URL returned");
-  return data.url;
+  const { json, errorMessage } = await parseStripeFetchResponse(res);
+  if (!json) throw new Error(errorMessage || "Checkout failed");
+  if (!res.ok) throw new Error(errorMessage || "Checkout failed");
+  const url = json.url;
+  if (typeof url !== "string" || !url) {
+    const err = typeof json.error === "string" ? json.error : null;
+    throw new Error(err || "No checkout URL returned");
+  }
+  return url;
 }
 
 /** Append `checkout=success&session_id=` from the current page query onto sign-in / sign-up links. */
@@ -42,6 +99,12 @@ export async function linkCheckoutSessionAfterAuth(idToken: string, sessionId: s
     },
     body: JSON.stringify({ sessionId }),
   });
-  const data = (await res.json()) as { ok?: boolean; error?: string };
-  if (!res.ok) throw new Error(data.error || "Could not link subscription to your account");
+  const { json, errorMessage } = await parseStripeFetchResponse(res);
+  if (!json || !res.ok) {
+    throw new Error(errorMessage || "Could not link subscription to your account");
+  }
+  if (json.ok !== true) {
+    const err = typeof json.error === "string" ? json.error : "Could not link subscription to your account";
+    throw new Error(err);
+  }
 }

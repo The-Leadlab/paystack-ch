@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Building2, Plus, ChevronRight, User } from 'lucide-react';
 import { useClient } from '../context/ClientContext';
+import { useLanguage } from '../context/LanguageContext';
 import type { Client } from '../types';
 
 export function ClientOnboarding() {
+  const { t } = useLanguage();
   const { clients, currentClient, setCurrentClient, addClient, loading, error } = useClient();
   const [newName, setNewName] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -18,7 +20,7 @@ export function ClientOnboarding() {
     try {
       const result = await addClient(name);
       if (!result) {
-        setLocalError(error || 'Failed to add client. Check Firestore rules or console for details.');
+        setLocalError(error || t('onboardErrorAddClient'));
       } else {
         setNewName('');
         setCurrentClient(result);
@@ -37,9 +39,7 @@ export function ClientOnboarding() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
-        <div className="animate-pulse font-black text-ypsom-deep uppercase tracking-widest text-sm">
-          Chargement des clients...
-        </div>
+        <div className="animate-pulse font-black text-ypsom-deep uppercase tracking-widest text-sm">{t('onboardLoading')}</div>
       </div>
     );
   }
@@ -55,28 +55,24 @@ export function ClientOnboarding() {
             <span className="font-black text-xl text-ypsom-deep tracking-wider leading-none">
               CAFE <span className="font-light">DE LA PLACE</span>
             </span>
-            <span className="text-[0.6rem] tracking-[0.25em] text-ypsom-slate uppercase font-bold">
-              Selectionner ou ajouter un client
-            </span>
+            <span className="text-[0.6rem] tracking-[0.25em] text-ypsom-slate uppercase font-bold">{t('onboardSubtitle')}</span>
           </div>
         </div>
 
         <div className="bg-white border border-ypsom-alice rounded-lg shadow-audit p-6">
           <div className="flex items-center gap-2 mb-6">
             <Building2 className="w-5 h-5 text-ypsom-deep" />
-            <h1 className="font-black text-ypsom-deep uppercase tracking-tight">
-              Client
-            </h1>
+            <h1 className="font-black text-ypsom-deep uppercase tracking-tight">{t('onboardHeading')}</h1>
           </div>
 
           {(error || localError) && (
-            <p className="text-xs text-red-600 font-medium mb-4">{localError || error}</p>
+            <p className="text-xs text-red-600 font-medium mb-4">
+              {localError || error}
+            </p>
           )}
 
           <form onSubmit={handleAddClient} className="mb-6">
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-ypsom-slate mb-1.5">
-              New client name
-            </label>
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-ypsom-slate mb-1.5">{t('onboardNewClientLabel')}</label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ypsom-slate/60" />
@@ -84,7 +80,7 @@ export function ClientOnboarding() {
                   type="text"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="e.g. Acme Corp"
+                  placeholder={t('onboardPlaceholder')}
                   className="w-full pl-10 pr-4 py-2.5 border border-ypsom-alice rounded-sm text-sm text-ypsom-deep placeholder:text-ypsom-slate/50 focus:outline-none focus:ring-2 focus:ring-ypsom-deep/20 focus:border-ypsom-deep"
                 />
               </div>
@@ -93,16 +89,14 @@ export function ClientOnboarding() {
                 disabled={submitting || !newName.trim()}
                 className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-ypsom-deep text-white font-black text-[10px] uppercase tracking-widest rounded-sm hover:bg-ypsom-deep/90 disabled:opacity-60 transition-colors"
               >
-                <Plus className="w-4 h-4" /> Ajouter
+                <Plus className="w-4 h-4" /> {t('onboardAdd')}
               </button>
             </div>
           </form>
 
           {clients.length > 0 && (
             <>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-ypsom-slate mb-3">
-                Ou selectionner un client existant
-              </p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-ypsom-slate mb-3">{t('onboardSelectExisting')}</p>
               <ul className="space-y-1">
                 {clients.map((client) => (
                   <li key={client.id}>
