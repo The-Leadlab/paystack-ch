@@ -1958,6 +1958,17 @@ export const DocumentProcessor: React.FC<{
     const progress = total > 0 ? (completed / total) * 100 : 0;
     return { total, completed, progress };
   }, [allDocs]);
+  const monthlyCompleted = useMemo(
+    () =>
+      countCompletedDocumentsThisMonth(
+        [...documents, ...localDocs].map((d) => ({ status: d.status, created_at: d.created_at }))
+      ),
+    [documents, localDocs]
+  );
+  const documentCap = entitlements.maxDocumentsPerMonth;
+  const documentLimitReached = enforcementEnabled && documentCap != null && monthlyCompleted >= documentCap;
+  const monthlyRemaining =
+    enforcementEnabled && documentCap != null ? Math.max(0, documentCap - monthlyCompleted) : null;
 
   // Generate SHA-256 hash for file
   const generateFileHash = async (file: File): Promise<string> => {
@@ -1971,6 +1982,10 @@ export const DocumentProcessor: React.FC<{
   const addFiles = async (files: FileList | null) => {
     if (!files) return;
     setUploadError(null);
+    if (documentLimitReached && documentCap != null) {
+      setUploadError(t('planLimitDocuments').replace('{n}', String(documentCap)));
+      return;
+    }
     const incoming = Array.from(files);
     
     // Check for duplicate filenames
@@ -2185,9 +2200,7 @@ export const DocumentProcessor: React.FC<{
     const cap = entitlements.maxDocumentsPerMonth;
     let pending = allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any));
     if (enforcementEnabled && cap != null) {
-      const used = countCompletedDocumentsThisMonth(
-        [...documents, ...localDocs].map((d) => ({ status: d.status, created_at: d.created_at }))
-      );
+      const used = monthlyCompleted;
       const remaining = Math.max(0, cap - used);
       if (remaining === 0) {
         setUploadError(t('planLimitDocuments').replace('{n}', String(cap)));
@@ -2231,7 +2244,16 @@ export const DocumentProcessor: React.FC<{
       onDragEnter={(e) => { e.preventDefault(); dragCounter.current++; setIsDragging(true); }}
       onDragOver={(e) => e.preventDefault()}
       onDragLeave={() => { dragCounter.current--; if (dragCounter.current === 0) setIsDragging(false); }}
-      onDrop={(e) => { e.preventDefault(); setIsDragging(false); dragCounter.current = 0; addFiles(e.dataTransfer.files); }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        dragCounter.current = 0;
+        if (documentLimitReached && documentCap != null) {
+          setUploadError(t('planLimitDocuments').replace('{n}', String(documentCap)));
+          return;
+        }
+        addFiles(e.dataTransfer.files);
+      }}
     >
       <div className="bg-cdlp-black border border-cdlp-border p-4 md:p-6 rounded-lg shadow-card">
         {uploadError && (
@@ -2244,14 +2266,24 @@ export const DocumentProcessor: React.FC<{
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
           {/* Upload Area */}
           <div className="lg:col-span-5">
-            <label className={`flex flex-col items-center justify-center h-40 border-2 border-dashed rounded cursor-pointer transition-all ${isDragging ? 'border-cdlp-gold bg-cdlp-gold/10 scale-105' : 'border-cdlp-border hover:bg-cdlp-card'}`}>
-              <Upload className="w-8 h-8 mb-3 text-cdlp-muted" />
+            <label className={`flex flex-col items-center justify-center h-40 border-2 border-dashed rounded transition-all ${
+              documentLimitReached
+                ? 'cursor-not-allowed border-red-600/50 bg-red-950/20 opacity-80'
+                : isDragging
+                  ? 'cursor-pointer border-cdlp-gold bg-cdlp-gold/10 scale-105'
+                  : 'cursor-pointer border-cdlp-border hover:bg-cdlp-card'
+            }`}>
+              {documentLimitReached ? <Ban className="w-8 h-8 mb-3 text-red-400" /> : <Upload className="w-8 h-8 mb-3 text-cdlp-muted" />}
               <div className="text-center px-4">
-                <span className="text-xs font-bold uppercase tracking-wider block text-cdlp-gold">Upload Documents</span>
-                <span className="text-[10px] text-cdlp-muted uppercase tracking-wider mt-1 block">Drop PDF / JPG / PNG files</span>
+                <span className={`text-xs font-bold uppercase tracking-wider block ${documentLimitReached ? 'text-red-400' : 'text-cdlp-gold'}`}>
+                  {documentLimitReached ? 'Document limit reached' : 'Upload Documents'}
+                </span>
+                <span className="text-[10px] text-cdlp-muted uppercase tracking-wider mt-1 block">
+                  {monthlyRemaining != null ? `${monthlyRemaining}/${documentCap} processing slots left this month` : 'Drop PDF / JPG / PNG files'}
+                </span>
                 <span className="text-[9px] text-cdlp-muted/60 uppercase tracking-wider mt-1 block">Click rows below to view & edit</span>
               </div>
-              <input type="file" className="hidden" multiple accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp" onChange={(e) => addFiles(e.target.files)} />
+              <input type="file" className="hidden" multiple accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp" disabled={documentLimitReached} onChange={(e) => addFiles(e.target.files)} />
             </label>
           </div>
 

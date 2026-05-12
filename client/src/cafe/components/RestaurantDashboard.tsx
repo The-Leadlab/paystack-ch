@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Loader2 } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Loader2, Lock } from 'lucide-react';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
@@ -87,12 +87,34 @@ export function RestaurantDashboard() {
   
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const showRevenueTab = !enforcementEnabled || entitlements.allCoreModules;
+  const showAllSessionsView = !enforcementEnabled || entitlements.allCoreModules;
+  const canAddSession =
+    !enforcementEnabled || entitlements.maxSessions == null || sessions.length < entitlements.maxSessions;
+  const canAddEmployee =
+    !enforcementEnabled ||
+    entitlements.maxEmployeeSlots == null ||
+    employees.length < entitlements.maxEmployeeSlots;
+  const sessionLimitMessage =
+    enforcementEnabled && entitlements.maxSessions != null
+      ? t('planLimitSessions').replace('{n}', String(entitlements.maxSessions))
+      : '';
+  const employeeLimitMessage =
+    enforcementEnabled && entitlements.maxEmployeeSlots != null
+      ? t('planLimitEmployees').replace('{n}', String(entitlements.maxEmployeeSlots))
+      : '';
 
   useEffect(() => {
     if (!showRevenueTab && activeTab === 'revenue') {
       setActiveTab('dashboard');
     }
   }, [showRevenueTab, activeTab]);
+
+  useEffect(() => {
+    if (!showAllSessionsView && isAllSessionsView) {
+      setAllSessionsView(false);
+      setCurrentSession(sessions[0] || null);
+    }
+  }, [showAllSessionsView, isAllSessionsView, sessions, setAllSessionsView, setCurrentSession]);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [showAddIncome, setShowAddIncome] = useState(false);
@@ -215,6 +237,10 @@ export function RestaurantDashboard() {
   };
 
   const handleAddSession = async () => {
+    if (!canAddSession) {
+      alert(sessionLimitMessage);
+      return;
+    }
     await addSession();
   };
 
@@ -597,10 +623,17 @@ export function RestaurantDashboard() {
           </div>
           <button
             onClick={handleAddSession}
-            className="w-full flex items-center justify-center gap-2 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light"
+            disabled={!canAddSession}
+            title={!canAddSession ? sessionLimitMessage : undefined}
+            className="w-full flex items-center justify-center gap-2 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <Plus className="w-4 h-4" /> {t('newSession')}
+            {canAddSession ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />} {t('newSession')}
           </button>
+          {enforcementEnabled && entitlements.maxSessions != null ? (
+            <p className="mt-2 text-[10px] text-cdlp-muted font-bold uppercase tracking-tight">
+              {sessions.length}/{entitlements.maxSessions} {t('sessions')}
+            </p>
+          ) : null}
         </div>
 
         {/* Mobile Header in Sidebar */}
@@ -618,9 +651,11 @@ export function RestaurantDashboard() {
               handleAddSession();
               setShowSidebar(false);
             }}
-            className="w-full flex items-center justify-center gap-2 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light"
+            disabled={!canAddSession}
+            title={!canAddSession ? sessionLimitMessage : undefined}
+            className="w-full flex items-center justify-center gap-2 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <Plus className="w-4 h-4" /> New Session
+            {canAddSession ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />} {t('newSession')}
           </button>
         </div>
 
@@ -633,23 +668,25 @@ export function RestaurantDashboard() {
           </div>
           
           {/* All Sessions View Button */}
-          <button
-            onClick={() => {
-              setAllSessionsView(true);
-              setCurrentSession(null);
-              setShowSidebar(false);
-            }}
-            className={`w-full p-3 mb-2 rounded border transition-colors ${
-              isAllSessionsView
-                ? 'bg-cdlp-gold/10 border-cdlp-gold text-cdlp-gold'
-                : 'bg-cdlp-card border-cdlp-border text-white hover:border-cdlp-gold/50'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-sm">{t('allSessions')}</span>
-              {isAllSessionsView && <X className="w-4 h-4" onClick={(e) => { e.stopPropagation(); setAllSessionsView(false); setCurrentSession(sessions[0] || null); }} />}
-            </div>
-          </button>
+          {showAllSessionsView ? (
+            <button
+              onClick={() => {
+                setAllSessionsView(true);
+                setCurrentSession(null);
+                setShowSidebar(false);
+              }}
+              className={`w-full p-3 mb-2 rounded border transition-colors ${
+                isAllSessionsView
+                  ? 'bg-cdlp-gold/10 border-cdlp-gold text-cdlp-gold'
+                  : 'bg-cdlp-card border-cdlp-border text-white hover:border-cdlp-gold/50'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sm">{t('allSessions')}</span>
+                {isAllSessionsView && <X className="w-4 h-4" onClick={(e) => { e.stopPropagation(); setAllSessionsView(false); setCurrentSession(sessions[0] || null); }} />}
+              </div>
+            </button>
+          ) : null}
 
           {sessions.length === 0 ? (
             <p className="text-xs text-cdlp-muted/60">No sessions yet</p>
@@ -993,13 +1030,24 @@ export function RestaurantDashboard() {
               {/* Add Employee Button */}
               <button
                 onClick={() => {
+                  if (!canAddEmployee) return;
                   setShowEmployeePanel(false);
                   setShowAddEmployee(true);
                 }}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-cdlp-gold text-cdlp-black text-sm font-bold uppercase rounded hover:bg-cdlp-gold-light mb-6"
+                disabled={!canAddEmployee}
+                title={!canAddEmployee ? employeeLimitMessage : undefined}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-cdlp-gold text-cdlp-black text-sm font-bold uppercase rounded hover:bg-cdlp-gold-light mb-3 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <Plus className="w-4 h-4" /> Add Employee
+                {canAddEmployee ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />} Add Employee
               </button>
+              {enforcementEnabled && entitlements.maxEmployeeSlots != null ? (
+                <p className={`mb-6 text-[10px] font-bold uppercase tracking-tight ${canAddEmployee ? 'text-cdlp-muted' : 'text-red-400'}`}>
+                  {employees.length}/{entitlements.maxEmployeeSlots} employee slot(s)
+                  {!canAddEmployee ? ` · ${employeeLimitMessage}` : ''}
+                </p>
+              ) : (
+                <div className="mb-6" />
+              )}
 
               {/* Employees List */}
               {employees.length === 0 ? (
