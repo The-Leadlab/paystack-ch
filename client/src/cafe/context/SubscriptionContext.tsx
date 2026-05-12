@@ -6,6 +6,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { isSubscriptionOrVerificationBypassUser } from '../lib/subscriptionBypass';
 import { useAuth } from './AuthContext';
 import {
   SELECTED_PLAN_STORAGE_KEY,
@@ -44,6 +45,7 @@ function parseBoolEnv(v: unknown): boolean {
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const enforcementEnabled = parseBoolEnv(import.meta.env.VITE_SUBSCRIPTION_ENABLED);
+  const bypass = useMemo(() => isSubscriptionOrVerificationBypassUser(user), [user]);
   const [loading, setLoading] = useState(true);
   const [billing, setBilling] = useState<UserBillingSnapshot | null>(null);
 
@@ -80,15 +82,17 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   }, [user]);
 
   const inGoodStanding = useMemo(() => {
+    if (bypass) return true;
     if (!enforcementEnabled) return true;
     const st = billing?.subscriptionStatus;
     return st === 'trialing' || st === 'active';
-  }, [enforcementEnabled, billing?.subscriptionStatus]);
+  }, [bypass, enforcementEnabled, billing?.subscriptionStatus]);
 
   const entitlements = useMemo(() => {
     if (!enforcementEnabled) return UNRESTRICTED_ENTITLEMENTS;
+    if (bypass) return UNRESTRICTED_ENTITLEMENTS;
     return entitlementsForPlan(billing?.planId ?? undefined);
-  }, [enforcementEnabled, billing?.planId]);
+  }, [enforcementEnabled, bypass, billing?.planId]);
 
   const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') || '';
 

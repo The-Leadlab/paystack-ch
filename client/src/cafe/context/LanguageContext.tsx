@@ -194,6 +194,11 @@ const translations = {
     authContinueGoogle: 'Continue with Google',
     authSubmitSignIn: 'Sign in',
     authSubmitSignUp: 'Create account',
+    authAdminTitle: 'Admin sign in',
+    authAdminDescription: 'Admin access for existing Paystack.ch operators. No payment checkout required.',
+    authAdminSubmit: 'Sign in as admin',
+    authAdminGoogle: 'Continue as admin with Google',
+    authAdminUnauthorized: 'This account is not configured as a Paystack.ch admin.',
     authNeedAccount: "Don't have an account?",
     authSignUpLink: 'Sign up',
     authHaveAccount: 'Already have an account?',
@@ -202,6 +207,22 @@ const translations = {
     authFooterSecure: 'Secure access · Your data stays yours',
     authWorking: 'Please wait…',
     authFirebaseMissingShort: 'Firebase is not configured. Add VITE_FIREBASE_* to your environment.',
+    checkoutSameEmailNote:
+      'Payment method saved. Create your account using the same email you entered at checkout so your subscription links to this login.',
+    navSignInExisting: 'Admin login',
+    checkoutLinkErrorTitle: 'Could not link your subscription',
+    checkoutTryAgain: 'Try again',
+    checkoutContinueWithoutLink: 'Continue to app',
+
+    // Pre-login Stripe checkout (/start-trial)
+    startTrialTitle: 'Start your 7-day trial',
+    startTrialSubtitle: 'Secure checkout',
+    startTrialBody:
+      'Add a payment method to start your trial. Billing begins after the trial unless you cancel in the customer portal. Then create or sign in with the same email.',
+    startTrialBillingNote:
+      'Use the same email for your Paystack.ch account as at Stripe checkout so your subscription attaches correctly.',
+    startTrialCta: 'Continue to secure checkout',
+    startTrialSignIn: 'Already have an account?',
 
     subscriptionLoading: 'Checking subscription…',
     subscriptionTitle: 'Subscribe to continue',
@@ -403,6 +424,11 @@ const translations = {
     authContinueGoogle: 'Continuer avec Google',
     authSubmitSignIn: 'Se connecter',
     authSubmitSignUp: 'Creer mon compte',
+    authAdminTitle: 'Connexion admin',
+    authAdminDescription: 'Acces admin pour les operateurs Paystack.ch existants. Aucun paiement requis.',
+    authAdminSubmit: 'Connexion admin',
+    authAdminGoogle: 'Continuer en admin avec Google',
+    authAdminUnauthorized: 'Ce compte n\'est pas configure comme admin Paystack.ch.',
     authNeedAccount: 'Pas encore de compte ?',
     authSignUpLink: 'S\'inscrire',
     authHaveAccount: 'Deja un compte ?',
@@ -411,6 +437,21 @@ const translations = {
     authFooterSecure: 'Acces securise — vos donnees vous appartiennent',
     authWorking: 'Patience…',
     authFirebaseMissingShort: 'Firebase n\'est pas configure. Ajoutez les variables VITE_FIREBASE_* a votre environnement.',
+    checkoutSameEmailNote:
+      'Paiement enregistre. Creez votre compte avec le meme e-mail qu\'a la caisse Stripe pour lier l\'abonnement a cette connexion.',
+    navSignInExisting: 'Connexion admin',
+    checkoutLinkErrorTitle: 'Impossible de lier l\'abonnement',
+    checkoutTryAgain: 'Reessayer',
+    checkoutContinueWithoutLink: 'Continuer vers l\'app',
+
+    startTrialTitle: 'Demarrer l\'essai de 7 jours',
+    startTrialSubtitle: 'Paiement securise',
+    startTrialBody:
+      'Ajoutez un moyen de paiement pour demarrer l\'essai. La facturation commence apres l\'essai sauf annulation dans le portail client. Puis creez un compte ou connectez-vous avec le meme e-mail.',
+    startTrialBillingNote:
+      'Utilisez le meme e-mail pour Paystack.ch qu\'a la caisse Stripe pour lier correctement l\'abonnement.',
+    startTrialCta: 'Continuer vers le paiement securise',
+    startTrialSignIn: 'Vous avez deja un compte ?',
 
     subscriptionLoading: 'Verification de l\'abonnement…',
     subscriptionTitle: 'Abonnez-vous pour continuer',

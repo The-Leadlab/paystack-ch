@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { UserPlus, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,11 @@ import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { AuthLayout } from "./auth/AuthLayout";
 import { GoogleGIcon } from "@/components/icons/GoogleGIcon";
 import { isSelfServePlan, parsePaystackPlanId, SELECTED_PLAN_STORAGE_KEY } from "@shared/planCatalog";
+import {
+  checkoutSuccessSessionId,
+  linkCheckoutSessionAfterAuth,
+  preserveCheckoutInAuthHref,
+} from "@/cafe/lib/stripeCheckoutClient";
 
 function sanitizeRedirect(search: string): string {
   const redirect = new URLSearchParams(search).get("redirect");
@@ -23,7 +28,7 @@ function sanitizeRedirect(search: string): string {
 
 export default function SignUpPage() {
   const { t } = useLanguage();
-  const { user, loading, signUp, signInWithGoogle } = useAuth();
+  const { user, loading, signUp, signInWithGoogle, signOut } = useAuth();
   const [, setLocation] = useLocation();
   const search = useSearch();
 
@@ -33,8 +38,11 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [checkoutLinkError, setCheckoutLinkError] = useState<string | null>(null);
+  const linkStartedRef = useRef(false);
 
   const nextPath = sanitizeRedirect(search);
+  const checkoutSid = useMemo(() => checkoutSuccessSessionId(search), [search]);
 
   useEffect(() => {
     const qs = search.startsWith("?") ? search.slice(1) : search;
@@ -46,16 +54,85 @@ export default function SignUpPage() {
   }, [search]);
 
   useEffect(() => {
-    if (!loading && user) {
+    if (loading || !user) return;
+    if (!checkoutSid) {
       setLocation(nextPath);
+      return;
     }
-  }, [loading, user, nextPath, setLocation]);
+    if (checkoutLinkError) return;
+    if (linkStartedRef.current) return;
+    linkStartedRef.current = true;
+    let alive = true;
+    (async () => {
+      try {
+        const token = await user.getIdToken();
+        await linkCheckoutSessionAfterAuth(token, checkoutSid);
+        if (alive) setLocation(nextPath);
+      } catch (e) {
+        linkStartedRef.current = false;
+        if (alive) setCheckoutLinkError(e instanceof Error ? e.message : String(e));
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [loading, user, checkoutSid, nextPath, setLocation, checkoutLinkError]);
 
   if (!firebaseReady) {
     return <FirebaseMissing />;
   }
 
-  if (loading || user) {
+  if (loading && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="font-display text-sm text-muted-foreground animate-pulse">{t("authWorking")}</div>
+      </div>
+    );
+  }
+
+  if (user && checkoutSid) {
+    if (checkoutLinkError) {
+      return (
+        <AuthLayout heading={t("checkoutLinkErrorTitle")}>
+          <Card className="border-border shadow-sm max-w-md mx-auto">
+            <CardContent className="pt-6 space-y-4">
+              <p className="font-editorial text-sm text-destructive">{checkoutLinkError}</p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full font-display"
+                  onClick={() => {
+                    setCheckoutLinkError(null);
+                    linkStartedRef.current = false;
+                  }}
+                >
+                  {t("checkoutTryAgain")}
+                </Button>
+                <Button
+                  type="button"
+                  className="w-full font-display bg-brand-red text-white hover:bg-brand-red/90"
+                  onClick={() => setLocation(nextPath)}
+                >
+                  {t("checkoutContinueWithoutLink")}
+                </Button>
+                <Button type="button" variant="ghost" className="w-full font-display" onClick={() => signOut()}>
+                  {t("logout")}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </AuthLayout>
+      );
+    }
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="font-display text-sm text-muted-foreground animate-pulse">{t("authWorking")}</div>
+      </div>
+    );
+  }
+
+  if (user && !checkoutSid) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="font-display text-sm text-muted-foreground animate-pulse">{t("authWorking")}</div>
@@ -73,7 +150,6 @@ export default function SignUpPage() {
         setError(err.message);
         return;
       }
-      setLocation(nextPath);
     } finally {
       setSubmitting(false);
     }
@@ -85,16 +161,22 @@ export default function SignUpPage() {
     try {
       const { error: err } = await signInWithGoogle();
       if (err) setError(err.message);
-      else setLocation(nextPath);
     } finally {
       setGoogleLoading(false);
     }
   };
 
+  const signInHref = preserveCheckoutInAuthHref(`/sign-in?redirect=${encodeURIComponent(nextPath)}`, search);
+
   return (
     <AuthLayout heading={t("authSignUpTitle")}>
       <Card className="border-border shadow-sm">
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2 space-y-3">
+          {checkoutSid ? (
+            <p className="font-display text-xs text-muted-foreground bg-secondary/50 border border-border rounded-md px-3 py-2 leading-relaxed">
+              {t("checkoutSameEmailNote")}
+            </p>
+          ) : null}
           <Button
             type="button"
             variant="outline"
@@ -177,10 +259,7 @@ export default function SignUpPage() {
         <CardFooter className="flex flex-col gap-2 border-t border-border pt-4">
           <p className="font-display text-sm text-muted-foreground text-center w-full">
             {t("authHaveAccount")}{" "}
-            <Link
-              href={`/sign-in?redirect=${encodeURIComponent(nextPath)}`}
-              className="text-brand-red hover:underline font-medium"
-            >
+            <Link href={signInHref} className="text-brand-red hover:underline font-medium">
               {t("authSignInLink")}
             </Link>
           </p>

@@ -11,6 +11,7 @@ import { RestaurantDashboard } from "@/cafe/components/RestaurantDashboard";
 import { SubscriptionProvider } from "@/cafe/context/SubscriptionContext";
 import { SubscriptionGate } from "@/cafe/components/SubscriptionGate";
 import { firebaseReady } from "@/cafe/lib/firebase";
+import { isSubscriptionOrVerificationBypassUser } from "@/cafe/lib/subscriptionBypass";
 
 /**
  * Firebase-authenticated dashboard (formerly mounted only from the orphan CafeApp entry).
@@ -41,9 +42,9 @@ function PlatformContent() {
     return <Redirect to={`/sign-in?redirect=${qs}`} />;
   }
 
-  const isAdmin = user.email === "admin@test.com";
+  const bypassOps = isSubscriptionOrVerificationBypassUser(user);
   const isPasswordUser = user.providerData?.some((p) => p.providerId === "password");
-  if (isPasswordUser && !user.emailVerified && !isAdmin) {
+  if (isPasswordUser && !user.emailVerified && !bypassOps) {
     return <EmailVerificationGate />;
   }
 

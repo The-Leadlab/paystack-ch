@@ -4,7 +4,14 @@
  */
 import type { Express, Request, Response } from "express";
 import express from "express";
-import { getStripe, runCreateCheckoutSession, runCreatePortalSession, runStripeWebhook } from "../lib/stripeBilling";
+import {
+  getStripe,
+  runCreateCheckoutSession,
+  runCreateCheckoutSessionGuest,
+  runCreatePortalSession,
+  runLinkCheckoutSession,
+  runStripeWebhook,
+} from "../lib/stripeBilling";
 
 export async function handleStripeWebhookExpress(req: Request, res: Response): Promise<void> {
   if (!getStripe()) {
@@ -40,6 +47,23 @@ export async function handleCreatePortalSessionExpress(req: Request, res: Respon
   res.status(out.status).json(out.json);
 }
 
+export async function handleCreateCheckoutSessionGuestExpress(req: Request, res: Response): Promise<void> {
+  const out = await runCreateCheckoutSessionGuest(
+    (req.body || {}) as { planId?: string },
+    req.headers as Record<string, string | string[] | undefined>
+  );
+  res.status(out.status).json(out.json);
+}
+
+export async function handleLinkCheckoutSessionExpress(req: Request, res: Response): Promise<void> {
+  const out = await runLinkCheckoutSession(
+    req.headers.authorization,
+    (req.body || {}) as { sessionId?: string },
+    req.headers as Record<string, string | string[] | undefined>
+  );
+  res.status(out.status).json(out.json);
+}
+
 const jsonParser = express.json({ limit: "256kb" });
 
 /** Mount Stripe routes when STRIPE_SECRET_KEY is set. Webhook must stay raw (registered first). */
@@ -53,6 +77,12 @@ export function registerStripeIfConfigured(app: Express): boolean {
   });
   app.post("/api/stripe/create-checkout-session", jsonParser, (req, res) => {
     void handleCreateCheckoutSessionExpress(req, res);
+  });
+  app.post("/api/stripe/create-checkout-session-guest", jsonParser, (req, res) => {
+    void handleCreateCheckoutSessionGuestExpress(req, res);
+  });
+  app.post("/api/stripe/link-checkout-session", jsonParser, (req, res) => {
+    void handleLinkCheckoutSessionExpress(req, res);
   });
   app.post("/api/stripe/create-portal-session", jsonParser, (req, res) => {
     void handleCreatePortalSessionExpress(req, res);

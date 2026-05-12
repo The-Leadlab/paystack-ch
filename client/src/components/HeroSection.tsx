@@ -85,7 +85,7 @@ export default function HeroSection() {
                 size="lg"
                 className="font-display bg-brand-red text-white hover:bg-brand-red/90 rounded-lg px-7 h-12 text-sm gap-2 group"
               >
-                <Link href="/sign-up" className="inline-flex items-center gap-2">
+                <Link href="/start-trial" className="inline-flex items-center gap-2">
                   {t("heroStartTrial")}
                   <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
                 </Link>

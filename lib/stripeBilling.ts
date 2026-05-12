@@ -178,6 +178,34 @@ async function handleStripeSubscription(subscription: Stripe.Subscription): Prom
   await syncSubscriptionToFirestore(uid, subscription);
 }
 
+/** Guest checkout (card before Firebase): record pending link until user signs up with same email. */
+async function persistPendingGuestCheckout(session: Stripe.Checkout.Session, subscriptionId: string): Promise<void> {
+  ensureFirebaseAdmin();
+  const db = getFirestore();
+  const details = session.customer_details as { email?: string } | undefined;
+  const email = (details?.email || session.customer_email || "").trim().toLowerCase();
+  if (!email) {
+    console.warn("[stripe] guest checkout completed but no email on session", session.id);
+    return;
+  }
+  const planFromSession = parsePaystackPlanId(session.metadata?.planId) || "starter";
+  const cust = session.customer;
+  const stripeCustomerId = typeof cust === "string" ? cust : cust && typeof cust === "object" ? cust.id : null;
+  await db
+    .collection("pendingStripeCheckouts")
+    .doc(session.id)
+    .set(
+      {
+        email,
+        stripeCustomerId,
+        subscriptionId,
+        planId: planFromSession,
+        createdAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+}
+
 export async function dispatchStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<void> {
   switch (event.type) {
     case "checkout.session.completed": {
@@ -188,7 +216,7 @@ export async function dispatchStripeEvent(event: Stripe.Event, stripe: Stripe): 
       const uid =
         session.metadata?.firebaseUid || session.client_reference_id || fullSub.metadata?.firebaseUid;
       if (!uid) {
-        console.warn("[stripe] checkout.session.completed without uid", session.id);
+        await persistPendingGuestCheckout(session, subId);
         break;
       }
       const planFromSession = parsePaystackPlanId(session.metadata?.planId);
@@ -368,5 +396,153 @@ export async function runCreatePortalSession(
       status: 500,
       json: { error: "Portal session failed" },
     };
+  }
+}
+
+/** Pre-login checkout: 7-day trial + card on Stripe, then user creates account and links session. */
+export async function runCreateCheckoutSessionGuest(
+  body: { planId?: string },
+  headers: HeaderMap
+): Promise<{ status: number; json: Record<string, unknown> }> {
+  const stripe = getStripe();
+  if (!stripe) {
+    return { status: 503, json: { error: "Stripe checkout is not configured (STRIPE_SECRET_KEY)." } };
+  }
+  if (!isAllowedBrowserOrigin(headers)) {
+    return { status: 403, json: { error: "Origin not allowed" } };
+  }
+
+  const requestedPlan = parsePaystackPlanId(body?.planId);
+  if (requestedPlan === "enterprise") {
+    return { status: 400, json: { error: "Enterprise plans are sold via sales — contact us instead of checkout." } };
+  }
+
+  const checkoutPlanId: PaystackPlanId = requestedPlan && isSelfServePlan(requestedPlan) ? requestedPlan : "starter";
+  const priceId = stripePriceIdForPlan(checkoutPlanId) || process.env.STRIPE_PRICE_ID?.trim() || null;
+  if (!priceId) {
+    return {
+      status: 503,
+      json: {
+        error:
+          "Stripe checkout is not configured. Set STRIPE_PRICE_STARTER / STRIPE_PRICE_BUSINESS / STRIPE_PRICE_UNLIMITED or STRIPE_PRICE_ID.",
+      },
+    };
+  }
+
+  try {
+    const origin = publicAppOriginFromHeaders(headers);
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: {
+        trial_period_days: trialDays(),
+        metadata: { planId: checkoutPlanId, pendingFirebaseLink: "1" },
+      },
+      metadata: { planId: checkoutPlanId, pendingFirebaseLink: "1" },
+      success_url: `${origin}/sign-up?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/start-trial?plan=${checkoutPlanId}`,
+      allow_promotion_codes: true,
+    });
+    if (!session.url) {
+      return { status: 500, json: { error: "Checkout session missing URL" } };
+    }
+    return { status: 200, json: { url: session.url } };
+  } catch (e) {
+    console.error("[stripe] create-checkout-session-guest:", e);
+    return { status: 500, json: { error: "Checkout failed" } };
+  }
+}
+
+/** After Firebase sign-up/sign-in, attach Stripe subscription to uid (same email as Checkout). */
+export async function runLinkCheckoutSession(
+  authorization: string | undefined,
+  body: { sessionId?: string },
+  headers: HeaderMap
+): Promise<{ status: number; json: Record<string, unknown> }> {
+  const stripe = getStripe();
+  if (!stripe) {
+    return { status: 503, json: { error: "Stripe not configured" } };
+  }
+  if (!isAllowedBrowserOrigin(headers)) {
+    return { status: 403, json: { error: "Origin not allowed" } };
+  }
+
+  const sessionId = String(body?.sessionId || "").trim();
+  if (!sessionId) {
+    return { status: 400, json: { error: "Missing sessionId" } };
+  }
+
+  const m = (authorization || "").match(/^Bearer\s+(.+)$/i);
+  if (!m) {
+    return { status: 401, json: { error: "Missing Authorization Bearer token" } };
+  }
+
+  try {
+    ensureFirebaseAdmin();
+    const decoded = await getAuth().verifyIdToken(m[1]);
+    const uid = decoded.uid;
+    const userEmail = (decoded.email || "").trim().toLowerCase();
+    if (!userEmail) {
+      return { status: 400, json: { error: "Account has no email; cannot link checkout." } };
+    }
+
+    const db = getFirestore();
+    const pendingSnap = await db.collection("pendingStripeCheckouts").doc(sessionId).get();
+    const pending = pendingSnap.exists ? (pendingSnap.data() as { email?: string }) : null;
+    if (pending?.email && pending.email.toLowerCase() !== userEmail) {
+      return { status: 403, json: { error: "Checkout email does not match this account." } };
+    }
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["subscription"] });
+    const stripeEmail = (
+      (session.customer_details as { email?: string } | undefined)?.email ||
+      session.customer_email ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+    if (!stripeEmail || stripeEmail !== userEmail) {
+      return { status: 403, json: { error: "Checkout email does not match this account." } };
+    }
+
+    const subRef = session.subscription;
+    const subId =
+      typeof subRef === "string"
+        ? subRef
+        : subRef && typeof subRef === "object" && "id" in subRef
+          ? (subRef as Stripe.Subscription).id
+          : null;
+    if (!subId) {
+      return { status: 400, json: { error: "No subscription on checkout session." } };
+    }
+
+    let fullSub = await stripe.subscriptions.retrieve(subId);
+    const existingUid = fullSub.metadata?.firebaseUid;
+    if (existingUid && existingUid !== uid) {
+      return { status: 409, json: { error: "This subscription is already linked to another account." } };
+    }
+
+    const planFromMeta =
+      parsePaystackPlanId(session.metadata?.planId) ||
+      parsePaystackPlanId(fullSub.metadata?.planId) ||
+      "starter";
+    const safePlanId = isSelfServePlan(planFromMeta) ? planFromMeta : "starter";
+
+    await stripe.subscriptions.update(subId, {
+      metadata: {
+        ...(fullSub.metadata ?? {}),
+        firebaseUid: uid,
+        planId: safePlanId,
+        pendingFirebaseLink: "",
+      },
+    });
+    fullSub = await stripe.subscriptions.retrieve(subId);
+    await syncSubscriptionToFirestore(uid, fullSub);
+    await db.collection("pendingStripeCheckouts").doc(sessionId).delete().catch(() => undefined);
+
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error("[stripe] link-checkout-session:", e);
+    return { status: 500, json: { error: "Link failed" } };
   }
 }

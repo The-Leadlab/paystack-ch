@@ -75,12 +75,18 @@ export default function Navbar() {
             >
               {t("navContact")}
             </a>
+            <Link
+              href="/admin"
+              className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors duration-300 hidden sm:inline"
+            >
+              {t("navSignInExisting")}
+            </Link>
             <Button
               asChild
               size="sm"
               className="font-display text-sm bg-brand-red text-white hover:bg-brand-red/90 rounded-lg px-5"
             >
-              <Link href="/sign-up">{t("navGetStarted")}</Link>
+              <a href="#pricing">{t("navGetStarted")}</a>
             </Button>
           </div>
 
@@ -138,10 +144,17 @@ export default function Navbar() {
                 size="lg"
                 className="font-display bg-brand-red text-white hover:bg-brand-red/90 rounded-lg mt-4 w-full"
               >
-                <Link href="/sign-up" onClick={() => setMobileOpen(false)}>
+                <a href="#pricing" onClick={() => setMobileOpen(false)}>
                   {t("navGetStarted")}
-                </Link>
+                </a>
               </Button>
+              <Link
+                href="/admin"
+                onClick={() => setMobileOpen(false)}
+                className="font-display text-center text-sm text-muted-foreground hover:text-brand-red"
+              >
+                {t("navSignInExisting")}
+              </Link>
             </div>
           </motion.div>
         )}

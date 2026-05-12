@@ -31,7 +31,7 @@ export default function PricingSection() {
       ],
       cta: t("ctaStartTrial"),
       highlighted: false,
-      href: "/sign-up?plan=starter",
+      href: "/start-trial?plan=starter",
     },
     {
       name: t("planBusinessName"),
@@ -49,7 +49,7 @@ export default function PricingSection() {
       ],
       cta: t("ctaStartTrial"),
       highlighted: true,
-      href: "/sign-up?plan=business",
+      href: "/start-trial?plan=business",
     },
     {
       name: t("planUnlimitedName"),
@@ -66,7 +66,7 @@ export default function PricingSection() {
       ],
       cta: t("ctaStartTrial"),
       highlighted: false,
-      href: "/sign-up?plan=unlimited",
+      href: "/start-trial?plan=unlimited",
     },
     {
       name: t("planEnterpriseName"),
