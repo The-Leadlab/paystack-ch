@@ -4,10 +4,9 @@
  */
 import type { Express, Request, Response } from "express";
 import express from "express";
+import { getStripe, runCreateCheckoutSessionGuest } from "../lib/stripeCore";
 import {
-  getStripe,
   runCreateCheckoutSession,
-  runCreateCheckoutSessionGuest,
   runCreatePortalSession,
   runLinkCheckoutSession,
   runStripeWebhook,
