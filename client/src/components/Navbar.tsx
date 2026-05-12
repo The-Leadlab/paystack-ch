@@ -75,12 +75,6 @@ export default function Navbar() {
             >
               {t("navContact")}
             </a>
-            <Link
-              href="/admin"
-              className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors duration-300 hidden sm:inline"
-            >
-              {t("navSignInExisting")}
-            </Link>
             <Button
               asChild
               size="sm"
@@ -148,13 +142,6 @@ export default function Navbar() {
                   {t("navGetStarted")}
                 </a>
               </Button>
-              <Link
-                href="/admin"
-                onClick={() => setMobileOpen(false)}
-                className="font-display text-center text-sm text-muted-foreground hover:text-brand-red"
-              >
-                {t("navSignInExisting")}
-              </Link>
             </div>
           </motion.div>
         )}
