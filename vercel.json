@@ -11,20 +11,20 @@
   ],
   "functions": {
     "api/stripe/create-checkout-session-guest.ts": {
-      "includeFiles": ["lib/**", "shared/**"]
+      "includeFiles": "{lib,shared}/**"
     },
     "api/stripe/create-checkout-session.ts": {
-      "includeFiles": ["lib/**", "shared/**"]
+      "includeFiles": "{lib,shared}/**"
     },
     "api/stripe/create-portal-session.ts": {
-      "includeFiles": ["lib/**", "shared/**"]
+      "includeFiles": "{lib,shared}/**"
     },
     "api/stripe/link-checkout-session.ts": {
-      "includeFiles": ["lib/**", "shared/**"]
+      "includeFiles": "{lib,shared}/**"
     },
     "api/stripe/webhook.ts": {
       "maxDuration": 30,
-      "includeFiles": ["lib/**", "shared/**"]
+      "includeFiles": "{lib,shared}/**"
     }
   }
 }
