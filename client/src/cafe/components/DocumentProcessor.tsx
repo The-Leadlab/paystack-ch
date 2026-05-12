@@ -2262,7 +2262,7 @@ export const DocumentProcessor: React.FC<{
                   <th className="px-4 py-3 text-left">Document</th>
                   <th className="px-4 py-3 text-left hidden md:table-cell">Date</th>
                   <th className="px-4 py-3 text-right hidden md:table-cell">Amount</th>
-                  <th className="px-4 py-3 text-right hidden lg:table-cell">TVA Calc</th>
+                  <th className="px-4 py-3 text-right hidden md:table-cell">TVA Calc</th>
                   <th className="px-4 py-3 text-right">Status</th>
                 </tr>
               </thead>
@@ -2297,7 +2297,7 @@ export const DocumentProcessor: React.FC<{
                         <td className="px-4 py-3 text-right font-bold font-mono text-[11px] text-white hidden md:table-cell">
                           {doc.data ? (doc.data.amountInCHF || doc.data.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
                         </td>
-                        <td className="px-4 py-3 text-right hidden lg:table-cell align-top max-w-[200px]">
+                        <td className="px-4 py-3 text-right hidden md:table-cell align-top max-w-[240px]">
                           {doc.data ? (
                             swissLines && swissLines.length > 0 ? (
                               <div className="font-mono leading-snug space-y-0.5">
@@ -2310,8 +2310,9 @@ export const DocumentProcessor: React.FC<{
                                 </p>
                                 {swissLines.slice(0, 5).map((l, i) => (
                                   <p key={i} className="text-[8px] text-cdlp-muted">
-                                    {l.ratePercent}% HT {(l.baseExclusive ?? 0).toFixed(0)} → TVA{' '}
-                                    {(l.vatAmount ?? 0).toFixed(2)}
+                                    {(Number(l.ratePercent || 0)).toFixed(2)}% du{' '}
+                                    {(Number(l.baseExclusive || 0)).toFixed(2)} ={' '}
+                                    {(Number(l.vatAmount || 0)).toFixed(2)}
                                   </p>
                                 ))}
                               </div>
@@ -2341,6 +2342,18 @@ export const DocumentProcessor: React.FC<{
                               doc.status === 'skipped' ? 'text-amber-500' :
                               'text-cdlp-muted'
                             }`}>{doc.status}</span>
+                            {doc.status === 'completed' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isExpanded) toggleRow(doc.id);
+                                }}
+                                className="px-2 py-1 bg-cdlp-gold/15 hover:bg-cdlp-gold/25 text-cdlp-gold text-[9px] font-bold uppercase rounded transition-colors"
+                                title="Open Document Verification Center"
+                              >
+                                Verification Center
+                              </button>
+                            )}
                             
                             {/* Skip button - show when processing or error */}
                             {(doc.status === 'processing' || doc.status === 'error') && (doc as any).source !== 'firestore' && (
@@ -2441,6 +2454,21 @@ export const DocumentProcessor: React.FC<{
                           </div>
                         </td>
                       </tr>
+                      {doc.data && swissLines && swissLines.length > 0 && (
+                        <tr className="md:hidden">
+                          <td colSpan={5} className="px-4 pb-3">
+                            <div className="font-mono space-y-0.5 border border-cdlp-border rounded bg-cdlp-card/40 p-2">
+                              {swissLines.slice(0, 3).map((l, i) => (
+                                <p key={i} className="text-[8px] text-cdlp-muted">
+                                  {(Number(l.ratePercent || 0)).toFixed(2)}% du{' '}
+                                  {(Number(l.baseExclusive || 0)).toFixed(2)} ={' '}
+                                  {(Number(l.vatAmount || 0)).toFixed(2)}
+                                </p>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                       {isExpanded && doc.data && (
                         <tr onClick={(e) => e.stopPropagation()}>
                           <td colSpan={5} className="p-0 bg-cdlp-card border-t border-cdlp-border">
