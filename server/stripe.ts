@@ -105,6 +105,9 @@ export function registerStripeIfConfigured(app: Express): boolean {
   app.post("/api/stripe/create-checkout-session", jsonParser, (req, res) => {
     void handleCreateCheckoutSessionExpress(req, res);
   });
+  app.post("/api/stripe/guest-trial-checkout", jsonParser, (req, res) => {
+    void handleCreateCheckoutSessionGuestExpress(req, res);
+  });
   app.post("/api/stripe/create-checkout-session-guest", jsonParser, (req, res) => {
     void handleCreateCheckoutSessionGuestExpress(req, res);
   });

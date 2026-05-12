@@ -1,10 +1,9 @@
 /**
  * Stripe client + browser CORS + guest checkout only.
- * Kept separate from `stripeBilling.ts` so Vercel `/api/stripe/create-checkout-session-guest`
- * does not load `firebase-admin` (reduces cold-start failures / FUNCTION_INVOCATION_FAILED).
+ * Kept separate from `stripeBilling.ts` so Vercel guest checkout does not load `firebase-admin`.
  *
- * Vercel guest checkout is inlined in `api/stripe/create-checkout-session-guest.ts` (no `../../lib`
- * imports) so Lambda ESM does not miss bundled files. Keep that file in sync when changing guest flow.
+ * Vercel entry for guest trial: `api/stripe/guest-trial-checkout.ts` (monolithic, no `../../lib`).
+ * Keep that file in sync with `runCreateCheckoutSessionGuest` below when changing guest flow.
  */
 import Stripe from "stripe";
 import {

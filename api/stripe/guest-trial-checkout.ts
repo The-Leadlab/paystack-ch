@@ -1,8 +1,8 @@
 /**
- * Vercel serverless entry: **single file**, no imports from `api/lib/*` or `../../lib/*`.
- * Avoids Lambda ESM resolution bugs (`ERR_MODULE_NOT_FOUND` for paths outside the traced graph).
+ * Pre-login Stripe Checkout (trial). **Canonical Vercel path:** `/api/stripe/guest-trial-checkout`
+ * — new filename avoids stale Lambda bundles that still referenced `../../lib/stripeBilling`.
  *
- * Logic mirrors `lib/stripeCore.ts` (`runCreateCheckoutSessionGuest`). Change both when editing checkout.
+ * Single file: only `@vercel/node` + `stripe`. Logic mirrors `lib/stripeCore.ts` `runCreateCheckoutSessionGuest`.
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import Stripe from "stripe";
@@ -172,7 +172,7 @@ async function runCreateCheckoutSessionGuest(
     }
     return { status: 200, json: { url: session.url } };
   } catch (e) {
-    console.error("[stripe] create-checkout-session-guest:", e);
+    console.error("[stripe] guest-trial-checkout:", e);
     const msg = e instanceof Error ? e.message : "Checkout failed";
     return { status: 500, json: { error: msg } };
   }
@@ -200,7 +200,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     stripeCorsApplyHeaders(res);
     res.status(out.status).json(out.json);
   } catch (e) {
-    console.error("[api] create-checkout-session-guest:", e);
+    console.error("[api] guest-trial-checkout:", e);
     if (!res.headersSent) {
       try {
         stripeCorsApplyHeaders(res);

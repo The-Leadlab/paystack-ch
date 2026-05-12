@@ -61,7 +61,7 @@ export function checkoutSuccessSessionId(search: string): string | null {
 }
 
 export async function startGuestCheckoutSession(planId: string | undefined): Promise<string> {
-  const res = await fetch(`${apiBase()}/api/stripe/create-checkout-session-guest`, {
+  const res = await fetch(`${apiBase()}/api/stripe/guest-trial-checkout`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ planId: planId ?? undefined }),
