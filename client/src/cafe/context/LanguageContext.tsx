@@ -123,7 +123,7 @@ const translations = {
     pricingCustom: 'Custom',
     pricingStarterAmount: '29.-',
     pricingBusinessAmount: '59.-',
-    pricingUnlimitedAmount: '500.-',
+    pricingUnlimitedAmount: '499.-',
     pricingPerMonth: '/month',
     planStarterName: 'Starter',
     planStarterDescription:
@@ -332,7 +332,7 @@ const translations = {
     pricingCustom: 'Sur mesure',
     pricingStarterAmount: '29.-',
     pricingBusinessAmount: '59.-',
-    pricingUnlimitedAmount: '500.-',
+    pricingUnlimitedAmount: '499.-',
     pricingPerMonth: '/mois',
     planStarterName: 'Starter',
     planStarterDescription:

@@ -21,9 +21,50 @@ export function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY?.trim();
   if (!key) return null;
   if (!stripeSingleton) {
-    stripeSingleton = new Stripe(key, { typescript: true });
+    stripeSingleton = new Stripe(key, {
+      typescript: true,
+      apiVersion: "2026-01-28.clover",
+    });
   }
   return stripeSingleton;
+}
+
+function normalizeOrigin(input: string | undefined): string | null {
+  if (!input) return null;
+  try {
+    const u = new URL(input);
+    return `${u.protocol}//${u.host}`.replace(/\/+$/, "");
+  } catch {
+    return null;
+  }
+}
+
+function allowedOrigins(): string[] {
+  const cors = (process.env.STRIPE_CORS_ORIGIN || "")
+    .split(",")
+    .map((s) => normalizeOrigin(s.trim()))
+    .filter((s): s is string => Boolean(s));
+  const publicOrigin = normalizeOrigin(process.env.PUBLIC_APP_URL);
+  const merged = [...cors, ...(publicOrigin ? [publicOrigin] : [])];
+  return Array.from(new Set(merged));
+}
+
+function requestOriginFromHeaders(headers: HeaderMap): string | null {
+  const originRaw = headers.origin;
+  const origin = normalizeOrigin(Array.isArray(originRaw) ? originRaw[0] : originRaw);
+  if (origin) return origin;
+  const refRaw = headers.referer;
+  const ref = normalizeOrigin(Array.isArray(refRaw) ? refRaw[0] : refRaw);
+  return ref;
+}
+
+function isAllowedBrowserOrigin(headers: HeaderMap): boolean {
+  const allow = allowedOrigins();
+  if (allow.length === 0) return true;
+  const origin = requestOriginFromHeaders(headers);
+  // Non-browser calls (no Origin/Referer) are accepted; browser calls must match allowlist.
+  if (!origin) return true;
+  return allow.includes(origin);
 }
 
 export function ensureFirebaseAdmin(): void {
@@ -222,32 +263,24 @@ export async function runStripeWebhook(
 
 export async function runCreateCheckoutSession(
   authorization: string | undefined,
-  body: { priceId?: string; planId?: string },
+  body: { planId?: string },
   headers: HeaderMap
 ): Promise<{ status: number; json: Record<string, unknown> }> {
   const stripe = getStripe();
   if (!stripe) {
     return { status: 503, json: { error: "Stripe checkout is not configured (STRIPE_SECRET_KEY)." } };
   }
+  if (!isAllowedBrowserOrigin(headers)) {
+    return { status: 403, json: { error: "Origin not allowed" } };
+  }
+
   const requestedPlan = parsePaystackPlanId(body?.planId);
   if (requestedPlan === "enterprise") {
     return { status: 400, json: { error: "Enterprise plans are sold via sales — contact us instead of checkout." } };
   }
 
-  let priceId: string | null = null;
-  let checkoutPlanId: PaystackPlanId = "starter";
-
-  if (requestedPlan && isSelfServePlan(requestedPlan)) {
-    priceId = stripePriceIdForPlan(requestedPlan);
-    checkoutPlanId = requestedPlan;
-  }
-  if (!priceId) {
-    priceId = (body?.priceId || process.env.STRIPE_PRICE_ID)?.trim() || null;
-    if (priceId === process.env.STRIPE_PRICE_STARTER?.trim()) checkoutPlanId = "starter";
-    else if (priceId === process.env.STRIPE_PRICE_BUSINESS?.trim()) checkoutPlanId = "business";
-    else if (priceId === process.env.STRIPE_PRICE_UNLIMITED?.trim()) checkoutPlanId = "unlimited";
-    else checkoutPlanId = parsePaystackPlanId(process.env.STRIPE_DEFAULT_PLAN_ID) || "starter";
-  }
+  const checkoutPlanId: PaystackPlanId = requestedPlan && isSelfServePlan(requestedPlan) ? requestedPlan : "starter";
+  const priceId = stripePriceIdForPlan(checkoutPlanId) || process.env.STRIPE_PRICE_ID?.trim() || null;
   if (!priceId) {
     return {
       status: 503,
@@ -290,7 +323,7 @@ export async function runCreateCheckoutSession(
     console.error("[stripe] create-checkout-session:", e);
     return {
       status: 500,
-      json: { error: e instanceof Error ? e.message : "Checkout failed" },
+      json: { error: "Checkout failed" },
     };
   }
 }
@@ -303,6 +336,10 @@ export async function runCreatePortalSession(
   if (!stripe) {
     return { status: 503, json: { error: "Stripe not configured" } };
   }
+  if (!isAllowedBrowserOrigin(headers)) {
+    return { status: 403, json: { error: "Origin not allowed" } };
+  }
+
   const m = (authorization || "").match(/^Bearer\s+(.+)$/i);
   if (!m) {
     return { status: 401, json: { error: "Missing Authorization Bearer token" } };
@@ -329,7 +366,7 @@ export async function runCreatePortalSession(
     console.error("[stripe] create-portal-session:", e);
     return {
       status: 500,
-      json: { error: e instanceof Error ? e.message : "Portal session failed" },
+      json: { error: "Portal session failed" },
     };
   }
 }
