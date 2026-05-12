@@ -146,7 +146,8 @@ function allowedOrigins(): string[] {
     .map((s) => normalizeOrigin(s.trim()))
     .filter((s): s is string => Boolean(s));
   const publicOrigin = normalizeOrigin(process.env.PUBLIC_APP_URL);
-  const merged = [...cors, ...(publicOrigin ? [publicOrigin] : [])];
+  const defaults = ["https://paystack.ch", "https://www.paystack.ch"];
+  const merged = [...cors, ...(publicOrigin ? [publicOrigin] : []), ...defaults];
   return Array.from(new Set(merged));
 }
 
