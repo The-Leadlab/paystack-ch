@@ -10,9 +10,6 @@
     }
   ],
   "functions": {
-    "api/stripe/create-checkout-session-guest.ts": {
-      "includeFiles": "{lib,shared}/**"
-    },
     "api/stripe/create-checkout-session.ts": {
       "includeFiles": "{lib,shared}/**"
     },

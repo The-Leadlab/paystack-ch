@@ -3,8 +3,8 @@
  * Kept separate from `stripeBilling.ts` so Vercel `/api/stripe/create-checkout-session-guest`
  * does not load `firebase-admin` (reduces cold-start failures / FUNCTION_INVOCATION_FAILED).
  *
- * Vercel’s guest HTTP handler imports a colocated copy in `api/lib/stripeGuestCheckout.ts`
- * (same behavior) so the Lambda bundle does not rely on `../../lib/*` ESM resolution.
+ * Vercel guest checkout is inlined in `api/stripe/create-checkout-session-guest.ts` (no `../../lib`
+ * imports) so Lambda ESM does not miss bundled files. Keep that file in sync when changing guest flow.
  */
 import Stripe from "stripe";
 import {
