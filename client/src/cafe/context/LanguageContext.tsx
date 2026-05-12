@@ -33,6 +33,14 @@ const translations = {
     clearAll: 'Clear All',
     resetAllData: 'Reset All Data',
     resetView: 'Reset View',
+
+    /** Theme toggle (floating control; visible on /app and marketing pages) */
+    themeAriaLight: 'Switch to light theme',
+    themeAriaDark: 'Switch to dark theme',
+    themeTitleLight: 'Light mode',
+    themeTitleDark: 'Dark mode',
+    themeLabelLight: 'Light',
+    themeLabelDark: 'Dark',
     
     // Financial Summary
     income: 'Income',
@@ -654,6 +662,13 @@ const translations = {
     clearAll: 'Tout effacer',
     resetAllData: 'Réinitialiser toutes les données',
     resetView: 'Réinitialiser la vue',
+
+    themeAriaLight: 'Passer en mode clair',
+    themeAriaDark: 'Passer en mode sombre',
+    themeTitleLight: 'Mode clair',
+    themeTitleDark: 'Mode sombre',
+    themeLabelLight: 'Clair',
+    themeLabelDark: 'Sombre',
     
     // Financial Summary
     income: 'Revenus',

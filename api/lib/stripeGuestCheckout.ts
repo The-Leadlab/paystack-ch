@@ -1,27 +1,47 @@
 /**
- * Stripe client + browser CORS + guest checkout only.
- * Kept separate from `stripeBilling.ts` so Vercel `/api/stripe/create-checkout-session-guest`
- * does not load `firebase-admin` (reduces cold-start failures / FUNCTION_INVOCATION_FAILED).
+ * Guest Stripe checkout for Vercel only — lives under `api/` so the serverless bundle
+ * does not depend on `../../lib/*` (Node ESM on Lambda often fails to resolve those paths).
  *
- * Vercel’s guest HTTP handler imports a colocated copy in `api/lib/stripeGuestCheckout.ts`
- * (same behavior) so the Lambda bundle does not rely on `../../lib/*` ESM resolution.
+ * Keep behavior aligned with `lib/stripeCore.ts` (trial URLs, CORS, plan IDs).
  */
 import Stripe from "stripe";
-import {
-  isSelfServePlan,
-  parsePaystackPlanId,
-  stripePriceIdForPlan,
-  type PaystackPlanId,
-} from "../shared/planCatalog";
+
+export type PaystackPlanId = "starter" | "business" | "unlimited" | "enterprise";
 
 export type HeaderMap = Record<string, string | string[] | undefined>;
 
-/** Must match `stripe` package `LatestApiVersion` (see node_modules/stripe/types/lib.d.ts). */
+function parsePaystackPlanId(raw: unknown): PaystackPlanId | null {
+  const s = String(raw || "").toLowerCase().trim();
+  if (s === "starter" || s === "stater") return "starter";
+  if (s === "business") return "business";
+  if (s === "unlimited") return "unlimited";
+  if (s === "enterprise") return "enterprise";
+  return null;
+}
+
+function isSelfServePlan(id: PaystackPlanId): boolean {
+  return id !== "enterprise";
+}
+
+function stripePriceIdForPlan(planId: PaystackPlanId): string | null {
+  const env =
+    planId === "starter"
+      ? process.env.STRIPE_PRICE_STARTER
+      : planId === "business"
+        ? process.env.STRIPE_PRICE_BUSINESS
+        : planId === "unlimited"
+          ? process.env.STRIPE_PRICE_UNLIMITED
+          : null;
+  const v = env?.trim();
+  return v || null;
+}
+
+/** Must match `stripe` package `LatestApiVersion`. */
 const STRIPE_API_VERSION: Stripe.LatestApiVersion = "2025-02-24.acacia";
 
 let stripeSingleton: Stripe | null = null;
 
-export function getStripe(): Stripe | null {
+function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY?.trim();
   if (!key) return null;
   if (!stripeSingleton) {
@@ -62,7 +82,7 @@ function requestOriginFromHeaders(headers: HeaderMap): string | null {
   return ref;
 }
 
-export function isAllowedBrowserOrigin(headers: HeaderMap): boolean {
+function isAllowedBrowserOrigin(headers: HeaderMap): boolean {
   const allow = allowedOrigins();
   if (allow.length === 0) return true;
   const origin = requestOriginFromHeaders(headers);
@@ -70,7 +90,7 @@ export function isAllowedBrowserOrigin(headers: HeaderMap): boolean {
   return allow.includes(origin);
 }
 
-export function publicAppOriginFromHeaders(headers: HeaderMap): string {
+function publicAppOriginFromHeaders(headers: HeaderMap): string {
   const fromEnv = process.env.PUBLIC_APP_URL?.replace(/\/+$/, "");
   if (fromEnv) return fromEnv;
   const xfHost = headers["x-forwarded-host"];
@@ -82,12 +102,12 @@ export function publicAppOriginFromHeaders(headers: HeaderMap): string {
   return "http://localhost:3000";
 }
 
-export function trialDays(): number {
+function trialDays(): number {
   const n = parseInt(process.env.STRIPE_TRIAL_DAYS || "7", 10);
   return Number.isFinite(n) && n >= 0 ? Math.min(n, 730) : 7;
 }
 
-/** Pre-login checkout: 7-day trial + card on Stripe, then user creates account and links session. */
+/** Pre-login checkout: trial + card on Stripe, then user creates account and links session. */
 export async function runCreateCheckoutSessionGuest(
   body: { planId?: string },
   headers: HeaderMap
