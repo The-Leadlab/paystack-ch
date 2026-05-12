@@ -399,7 +399,9 @@ export function RestaurantDashboard() {
     } else if (amount > 0) {
       console.log('💸 Adding expense:', amount);
       const category = data.expenseCategory?.toLowerCase().includes('supplier') ? 'SUPPLIERS' : 
-                      data.expenseCategory?.toLowerCase().includes('bill') ? 'BILLS' : 'OTHER';
+                      data.expenseCategory?.toLowerCase().includes('bill') ? 'BILLS' :
+                      data.expenseCategory?.toLowerCase().includes('salary') || data.expenseCategory?.toLowerCase().includes('payroll') ? 'PAYROLL' :
+                      'OTHER';
       const description = data.issuer || data.notes || fileName;
       const vatAmount = data.vatAmount || 0;
       await addExpense(date, category as any, amount, description, currentSession.id, undefined, documentId, vatAmount);
@@ -487,7 +489,9 @@ export function RestaurantDashboard() {
       } else if (amount > 0) {
         console.log('💸 Re-adding expense:', amount);
         const category = newData.expenseCategory?.toLowerCase().includes('supplier') ? 'SUPPLIERS' : 
-                        newData.expenseCategory?.toLowerCase().includes('bill') ? 'BILLS' : 'OTHER';
+                        newData.expenseCategory?.toLowerCase().includes('bill') ? 'BILLS' :
+                        newData.expenseCategory?.toLowerCase().includes('salary') || newData.expenseCategory?.toLowerCase().includes('payroll') ? 'PAYROLL' :
+                        'OTHER';
         const description = newData.issuer || newData.notes || 'Document';
         await addExpense(date, category as any, amount, description, currentSession.id, undefined, documentId);
       }

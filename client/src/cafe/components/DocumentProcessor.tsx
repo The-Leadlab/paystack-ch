@@ -1910,6 +1910,45 @@ export const DocumentProcessor: React.FC<{
   const canProcessDoc = (doc: ProcessedDocument & { source?: 'firestore' | 'local' }) =>
     Boolean(doc.fileRaw || doc.fileUrl || (doc as any).source !== 'firestore');
 
+  const classifyDocFlowType = (data?: FinancialData): 'INCOME' | 'EXPENSE' | 'SALARY' => {
+    const cat = String(data?.expenseCategory || '').toUpperCase();
+    if (cat.includes('REVENUE') || cat.includes('SALES')) return 'INCOME';
+    if (cat.includes('PAYROLL') || cat.includes('SALARY') || cat.includes('PAYSLIP')) return 'SALARY';
+    return 'EXPENSE';
+  };
+
+  const applyDocFlowType = async (
+    doc: (ProcessedDocument & { source?: 'firestore' | 'local' }),
+    flowType: 'INCOME' | 'EXPENSE' | 'SALARY'
+  ) => {
+    if (!doc.data) return;
+    const currentCategory = String(doc.data.expenseCategory || '').toUpperCase();
+    let nextCategory = doc.data.expenseCategory;
+    if (flowType === 'INCOME') {
+      nextCategory = 'REVENUE';
+    } else if (flowType === 'SALARY') {
+      nextCategory = 'PAYROLL';
+    } else if (
+      currentCategory.includes('REVENUE') ||
+      currentCategory.includes('SALES') ||
+      currentCategory.includes('PAYROLL') ||
+      currentCategory.includes('SALARY')
+    ) {
+      nextCategory = 'OTHER';
+    }
+
+    const nextData: FinancialData = { ...doc.data, expenseCategory: nextCategory };
+
+    if ((doc as any).source === 'firestore') {
+      const recordId = firestoreRecordId(doc);
+      await updateDocument(recordId, { data: nextData });
+      if (onDocumentUpdated) await onDocumentUpdated(recordId, nextData);
+      return;
+    }
+
+    setLocalDocs((prev) => prev.map((d) => (d.id === doc.id ? { ...d, data: nextData } : d)));
+  };
+
   const stats = useMemo(() => {
     const total = allDocs.length;
     const completed = allDocs.filter(d => d.status === 'completed').length;
@@ -2262,6 +2301,7 @@ export const DocumentProcessor: React.FC<{
                   <th className="px-4 py-3 text-left">Document</th>
                   <th className="px-4 py-3 text-left hidden md:table-cell">Date</th>
                   <th className="px-4 py-3 text-right hidden md:table-cell">Amount</th>
+                  <th className="px-4 py-3 text-left hidden md:table-cell">Type</th>
                   <th className="px-4 py-3 text-right hidden md:table-cell">TVA Calc</th>
                   <th className="px-4 py-3 text-right">Status</th>
                 </tr>
@@ -2296,6 +2336,29 @@ export const DocumentProcessor: React.FC<{
                         <td className="px-4 py-3 font-mono text-[10px] text-cdlp-muted hidden md:table-cell">{doc.data?.date || '---'}</td>
                         <td className="px-4 py-3 text-right font-bold font-mono text-[11px] text-white hidden md:table-cell">
                           {doc.data ? (doc.data.amountInCHF || doc.data.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                        </td>
+                        <td className="px-4 py-3 hidden md:table-cell align-top">
+                          {doc.data ? (
+                            <select
+                              value={classifyDocFlowType(doc.data)}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={async (e) => {
+                                e.stopPropagation();
+                                await applyDocFlowType(
+                                  doc as ProcessedDocument & { source?: 'firestore' | 'local' },
+                                  e.target.value as 'INCOME' | 'EXPENSE' | 'SALARY'
+                                );
+                              }}
+                              className="h-8 min-w-[120px] bg-cdlp-black border border-cdlp-border rounded px-2 text-[10px] font-bold uppercase text-white"
+                              title="Select document flow type"
+                            >
+                              <option value="INCOME">Income</option>
+                              <option value="EXPENSE">Expense</option>
+                              <option value="SALARY">Salary</option>
+                            </select>
+                          ) : (
+                            <span className="text-[10px] text-cdlp-muted">---</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right hidden md:table-cell align-top max-w-[240px]">
                           {doc.data ? (
@@ -2456,7 +2519,7 @@ export const DocumentProcessor: React.FC<{
                       </tr>
                       {doc.data && swissLines && swissLines.length > 0 && (
                         <tr className="md:hidden">
-                          <td colSpan={5} className="px-4 pb-3">
+                          <td colSpan={6} className="px-4 pb-3">
                             <div className="font-mono space-y-0.5 border border-cdlp-border rounded bg-cdlp-card/40 p-2">
                               {swissLines.slice(0, 3).map((l, i) => (
                                 <p key={i} className="text-[8px] text-cdlp-muted">
@@ -2471,7 +2534,7 @@ export const DocumentProcessor: React.FC<{
                       )}
                       {isExpanded && doc.data && (
                         <tr onClick={(e) => e.stopPropagation()}>
-                          <td colSpan={5} className="p-0 bg-cdlp-card border-t border-cdlp-border">
+                          <td colSpan={6} className="p-0 bg-cdlp-card border-t border-cdlp-border">
                             <VerificationHub
                               doc={doc}
                               onUpdate={(newData) => {
