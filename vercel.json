@@ -22,6 +22,10 @@
     "api/stripe/webhook.ts": {
       "maxDuration": 30,
       "includeFiles": "{lib,shared}/**"
+    },
+    "api/gemini/generate.ts": {
+      "maxDuration": 60,
+      "includeFiles": "{lib,shared}/**"
     }
   }
 }

@@ -1,6 +1,5 @@
 
 import React, { useState, useMemo, useRef } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { ProcessedDocument, DocumentType, BankTransaction, FinancialData } from '../types';
 import { TAX_CATEGORIES } from './DocumentProcessor';
 import { 
@@ -12,7 +11,8 @@ import {
   ArrowUpRight, ArrowDownRight, Target, 
   LayoutGrid, BarChart3, Activity, Tag
 } from 'lucide-react';
-import { fileToBase64, getGeminiApiKey } from '../services/geminiService';
+import { fileToBase64 } from '../services/geminiService';
+import { generateGeminiContent } from '../lib/geminiClient';
 import { useLanguage } from '../context/LanguageContext';
 
 interface FinancialInsightsProps {
@@ -230,7 +230,6 @@ export const FinancialInsights: React.FC<FinancialInsightsProps> = ({ documents 
     setIsAsking(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
       const context = JSON.stringify(stats.flattenedItems.map(item => ({ 
         issuer: item.issuer, 
         total: item.amount, 
@@ -238,12 +237,21 @@ export const FinancialInsights: React.FC<FinancialInsightsProps> = ({ documents 
         parentFile: item.parentDoc.fileName,
         date: item.date
       })));
+      const currentImagePart = currentImage
+        ? [{ inlineData: { mimeType: currentImage.type, data: await fileToBase64(currentImage) } }]
+        : [];
       
-      const response = await ai.models.generateContent({
+      const response = await generateGeminiContent({
         model: import.meta.env.VITE_GEMINI_CHAT_MODEL?.trim() || 'gemini-2.5-flash',
         contents: [
           ...chatHistory.map(h => ({ role: h.role, parts: [{ text: h.text }] })),
-          { role: 'user', parts: [{ text: `Audit Intelligent Ledger Context: ${context}. User Inquiry: ${userMsg || "Scan dataset"}` }] }
+          {
+            role: 'user',
+            parts: [
+              ...currentImagePart,
+              { text: `Audit Intelligent Ledger Context: ${context}. User Inquiry: ${userMsg || "Scan dataset"}` },
+            ],
+          }
         ],
         config: { systemInstruction: "Forensic auditor mode. Support custom user categories. Reference specific tickets by entity name." }
       });

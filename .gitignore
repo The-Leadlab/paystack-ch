@@ -33,6 +33,7 @@ Thumbs.db
 # Logs
 logs
 *.log
+.manus-logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -107,6 +108,22 @@ temp/
 
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
+
+# Sensitive local customer documents and exports
+uploads/
+receipts/
+invoices/
+bank-statements/
+customer-documents/
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.csv
+*.ofx
+*.qif
+*.zip
 
 # Manus version file (auto-generated, not part of source)
 client/public/__manus__/version.json

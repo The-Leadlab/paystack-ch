@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { generateGeminiContent } from "../lib/geminiClient";
 import {
   DocumentType,
   FinancialData,
@@ -10,16 +10,12 @@ import {
   SwissVatFormPreview,
 } from "../types";
 
-export function getGeminiApiKey(): string {
-  // Support both names to avoid silent breakage across old/new deployments.
-  const key = (import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY)?.trim();
-  if (!key) {
-    throw new Error(
-      "Missing Gemini key. Set VITE_GEMINI_API_KEY (or VITE_API_KEY) in your host environment or .env.local, then rebuild/redeploy."
-    );
-  }
-  return key;
-}
+const Type = {
+  ARRAY: "ARRAY",
+  NUMBER: "NUMBER",
+  OBJECT: "OBJECT",
+  STRING: "STRING",
+} as const;
 
 /** Override with VITE_GEMINI_MODEL if a specific model works better for your API project. */
 function resolveDocumentModel(): string {
@@ -75,11 +71,11 @@ function toReadableGeminiError(error: unknown): Error {
     return new Error(
       `Gemini API access denied (403). Google blocked this API key/project (billing paused, restricted region, abuse flag, or “denied access”). ` +
         `Fix: https://aistudio.google.com/apikey — create a new key, confirm the Gemini / Generative Language API is enabled for that Google Cloud project, ` +
-        `link billing if Google requires it, set VITE_GEMINI_API_KEY on your deployment, redeploy. Google said: ${apiMessage}`
+        `link billing if Google requires it, set server-only GEMINI_API_KEY on your API deployment, redeploy. Google said: ${apiMessage}`
     );
   }
   if (httpStatus === 401) {
-    return new Error(`Gemini rejected the API key (401). Check VITE_GEMINI_API_KEY. Details: ${apiMessage}`);
+    return new Error(`Gemini rejected the server API key (401). Check GEMINI_API_KEY. Details: ${apiMessage}`);
   }
   if (httpStatus === 429) {
     return new Error(`Gemini quota / rate limited (429). Wait and retry, or raise quota. Details: ${apiMessage}`);
@@ -220,7 +216,6 @@ type ExhaustiveInvoicePass = {
 };
 
 async function extractInvoiceBreakdownExhaustive(
-  ai: GoogleGenAI,
   base64: string,
   mimeType: string,
   model: string,
@@ -228,7 +223,7 @@ async function extractInvoiceBreakdownExhaustive(
 ): Promise<ExhaustiveInvoicePass | null> {
   const hintSection = userHint ? `USER HINT: "${userHint}".` : "";
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateGeminiContent({
       model,
       contents: {
         parts: [
@@ -835,7 +830,6 @@ export const analyzeFinancialDocument = async (
   targetCurrency: string = 'CHF', 
   userHint?: string
 ): Promise<FinancialData> => {
-  const apiKey = getGeminiApiKey();
   const model = resolveDocumentModel();
   const base64 = await fileToBase64(file);
   const mimeType = file.type;
@@ -843,8 +837,6 @@ export const analyzeFinancialDocument = async (
   console.log(`📄 Analyzing: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
 
   return withRetry(async () => {
-    const ai = new GoogleGenAI({ apiKey });
-    
     console.log(`🤖 Calling Gemini API...`);
     const startTime = Date.now();
     
@@ -1008,7 +1000,7 @@ export const analyzeFinancialDocument = async (
     const hintSection = userHint ? `USER HINT: "${userHint}".` : "";
 
     // Simplified, faster prompt
-    const response = await ai.models.generateContent({
+    const response = await generateGeminiContent({
       model,
       contents: {
         parts: [
@@ -1101,7 +1093,7 @@ Return JSON only.`
     // Second-pass exhaustive extraction is expensive; keep it for likely multi-invoice files only.
     const isPdf = mimeType === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     if (isPdf && shouldRunExhaustivePdfPass(file, normalized, userHint)) {
-      const exhaustive = await extractInvoiceBreakdownExhaustive(ai, base64, mimeType, model, userHint);
+      const exhaustive = await extractInvoiceBreakdownExhaustive(base64, mimeType, model, userHint);
       if (exhaustive?.subDocuments && exhaustive.subDocuments.length > 0) {
         const currentSubCount = Array.isArray(normalized.subDocuments) ? normalized.subDocuments.length : 0;
         const exhaustiveSubCount = exhaustive.subDocuments.length;
@@ -1146,15 +1138,12 @@ Return JSON only.`
 
 // Fixed analyzeBankStatement to properly handle the GenAI response and return BankStatementAnalysis
 export const analyzeBankStatement = async (file: File, targetCurrency: string = 'CHF'): Promise<BankStatementAnalysis> => {
-  const apiKey = getGeminiApiKey();
   const model = resolveBankStatementModel();
   const base64 = await fileToBase64(file);
   const mimeType = file.type;
 
   return withRetry(async () => {
-    const ai = new GoogleGenAI({ apiKey });
-
-    const response = await ai.models.generateContent({
+    const response = await generateGeminiContent({
       model,
       contents: {
         parts: [

@@ -563,7 +563,7 @@ const translations = {
 
     firebaseMissingTitle: 'Firebase configuration missing',
     firebaseMissingBody:
-      'This app needs VITE_FIREBASE_* and VITE_GEMINI_API_KEY in your environment.',
+      'This app needs VITE_FIREBASE_* in the frontend environment and GEMINI_API_KEY only on the API server.',
     firebaseMissingNetlifyHeading: 'On Netlify',
     firebaseMissingNetlifyBody:
       'Site settings → Environment variables → add the keys listed in .env.example, then redeploy.',
@@ -1189,7 +1189,7 @@ const translations = {
 
     firebaseMissingTitle: 'Configuration Firebase manquante',
     firebaseMissingBody:
-      'Cette application necessite VITE_FIREBASE_* et VITE_GEMINI_API_KEY dans votre environnement.',
+      'Cette application necessite VITE_FIREBASE_* cote frontend et GEMINI_API_KEY uniquement sur le serveur API.',
     firebaseMissingNetlifyHeading: 'Sur Netlify',
     firebaseMissingNetlifyBody:
       'Parametres du site → Variables d\'environnement → ajoutez les cles du fichier .env.example, puis redeployez.',

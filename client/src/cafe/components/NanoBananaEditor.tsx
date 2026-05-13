@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { Upload, Camera, Search, Loader2, FileSearch, Sparkles, X, Eye, AlertCircle, RefreshCw, Zap, Layers } from 'lucide-react';
-import { fileToBase64, getGeminiApiKey } from '../services/geminiService';
+import { fileToBase64 } from '../services/geminiService';
+import { generateGeminiContent } from '../lib/geminiClient';
 
 export const NanoBananaEditor: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -26,7 +26,6 @@ export const NanoBananaEditor: React.FC = () => {
     setIsAnalyzing(true);
     
     try {
-      const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
       const base64 = await fileToBase64(selectedImage);
       
       const z2Prompt = `Perform a Z2 Bulk Forensic Analysis on this image containing multiple tickets/receipts. 
@@ -39,7 +38,7 @@ export const NanoBananaEditor: React.FC = () => {
       4. Provide a total audit sum for the entire image.
       Format the output using clear Markdown tables for each document's line items and a summary section at the end.`;
 
-      const response = await ai.models.generateContent({
+      const response = await generateGeminiContent({
         model: 'gemini-2.5-flash-image', 
         contents: {
           parts: [
