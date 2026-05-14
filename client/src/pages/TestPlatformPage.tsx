@@ -9,7 +9,7 @@ import {
   STRIPE_BILLING_PATH_TEST,
   startGuestCheckoutSession,
 } from "@/cafe/lib/stripeCheckoutClient";
-import { isSelfServePlan, type PaystackPlanId } from "@shared/planCatalog";
+import { isSelfServePlan, SELECTED_PLAN_STORAGE_KEY, type PaystackPlanId } from "@shared/planCatalog";
 
 /**
  * Internal QA lane: Stripe test keys only (`/api/stripe-test/*`). Production checkout stays on `/app` and `/api/stripe/*`.
@@ -27,6 +27,9 @@ export default function TestPlatformPage() {
     setErr(null);
     setBusyPlan(planId);
     try {
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, planId);
+      }
       const url = await startGuestCheckoutSession(planId, STRIPE_BILLING_PATH_TEST);
       window.location.href = url;
     } catch (e) {

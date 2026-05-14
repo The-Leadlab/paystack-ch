@@ -20,7 +20,7 @@
       "includeFiles": "{lib,shared}/**"
     },
     "api/stripe/guest-trial-checkout.ts": {
-      "includeFiles": "{lib,shared}/**"
+      "includeFiles": ["shared/**", "api/lib/**"]
     },
     "api/stripe/webhook.ts": {
       "maxDuration": 30,
@@ -36,7 +36,7 @@
       "includeFiles": "{lib,shared}/**"
     },
     "api/stripe-test/guest-trial-checkout.ts": {
-      "includeFiles": "{lib,shared}/**"
+      "includeFiles": ["shared/**", "api/lib/**"]
     },
     "api/stripe-test/webhook.ts": {
       "maxDuration": 30,

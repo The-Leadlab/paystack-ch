@@ -1,8 +1,9 @@
 /**
  * Test-mode guest checkout (`sk_test_...`). Vercel path: `/api/stripe-test/guest-trial-checkout`
+ * Uses `api/lib/stripeGuestCore.ts` so the lambda bundles correctly (no `../../lib/*` imports).
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { runCreateCheckoutSessionGuest } from "../../lib/stripeCore";
+import { runCreateCheckoutSessionGuest } from "../lib/stripeGuestCore";
 import { stripeCorsApplyHeaders, stripeCorsPreflight } from "../lib/stripeCors";
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {

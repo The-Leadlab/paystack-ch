@@ -1,9 +1,6 @@
 /**
- * Stripe client + browser CORS + guest checkout only.
- * Kept separate from `stripeBilling.ts` so Vercel guest checkout does not load `firebase-admin`.
- *
- * Vercel guest handlers use **`api/lib/stripeGuestCore.ts`** (same logic; duplicated so lambdas bundle under `api/`).
- * When changing guest checkout, update both this file and `api/lib/stripeGuestCore.ts`.
+ * Guest Stripe checkout only — lives under `api/` so Vercel bundles it with `guest-trial-checkout` lambdas.
+ * **Keep in sync with** `lib/stripeCore.ts` (same behaviour; duplicate import graph for serverless).
  */
 import Stripe from "stripe";
 import {
@@ -11,11 +8,10 @@ import {
   parsePaystackPlanId,
   stripePriceIdForPlan,
   type PaystackPlanId,
-} from "../shared/planCatalog";
+} from "../../shared/planCatalog";
 
 export type HeaderMap = Record<string, string | string[] | undefined>;
 
-/** Must match `stripe` package `LatestApiVersion` (see node_modules/stripe/types/lib.d.ts). */
 const STRIPE_API_VERSION: Stripe.LatestApiVersion = "2025-02-24.acacia";
 
 let stripeSingleton: Stripe | null = null;
@@ -33,7 +29,6 @@ export function getStripe(): Stripe | null {
   return stripeSingleton;
 }
 
-/** Test-mode Stripe (`sk_test_...`) for `/api/stripe-test/*` and the `/test` QA lane only. */
 export function getStripeTest(): Stripe | null {
   const key = process.env.STRIPE_TEST_SECRET_KEY?.trim();
   if (!key) return null;
@@ -149,7 +144,6 @@ export function stripeCheckoutLineItemForPlan(
   };
 }
 
-/** Pre-login checkout: 7-day trial + card on Stripe, then user creates account and links session. */
 export async function runCreateCheckoutSessionGuest(
   body: { planId?: string },
   headers: HeaderMap,

@@ -1,9 +1,9 @@
 /**
  * Pre-login Stripe Checkout (trial). **Canonical Vercel path:** `/api/stripe/guest-trial-checkout`
- * Delegates to `lib/stripeCore.ts` `runCreateCheckoutSessionGuest` (live Stripe).
+ * Uses `api/lib/stripeGuestCore.ts` (under `api/`) so Vercel bundles it; do not import `../../lib/*` here.
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { runCreateCheckoutSessionGuest } from "../../lib/stripeCore";
+import { runCreateCheckoutSessionGuest } from "../lib/stripeGuestCore";
 import { stripeCorsApplyHeaders, stripeCorsPreflight } from "../lib/stripeCors";
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
