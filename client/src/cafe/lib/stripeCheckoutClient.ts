@@ -17,7 +17,7 @@ const apiBase = () => {
   }
 };
 
-/** Live vs test billing API prefix (see `StripeBillingPathProvider`). */
+/** When `stripe_test=1` is present (legacy test checkout), link still targets `/api/stripe-test/link-checkout-session`. */
 export const STRIPE_BILLING_PATH_LIVE = "/api/stripe";
 export const STRIPE_BILLING_PATH_TEST = "/api/stripe-test";
 

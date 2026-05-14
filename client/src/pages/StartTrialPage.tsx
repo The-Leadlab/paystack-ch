@@ -22,6 +22,11 @@ export default function StartTrialPage() {
     return p && isSelfServePlan(p) ? p : ("starter" as PaystackPlanId);
   }, [search]);
 
+  const useTestStripe = useMemo(() => {
+    const qs = search.startsWith("?") ? search.slice(1) : search;
+    return new URLSearchParams(qs).get("stripe_test") === "1";
+  }, [search]);
+
   if (!firebaseReady) {
     return <FirebaseMissing />;
   }
@@ -34,7 +39,7 @@ export default function StartTrialPage() {
       if (typeof sessionStorage !== "undefined") {
         sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, planId);
       }
-      const url = await startGuestCheckoutSession(planId);
+      const url = await startGuestCheckoutSession(planId, { useTestStripe });
       window.location.href = url;
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));

@@ -1,4 +1,5 @@
-import { Redirect, useLocation } from "wouter";
+import { useEffect } from "react";
+import { Redirect, useSearch } from "wouter";
 import { useAuth } from "@/cafe/context/AuthContext";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import { SessionProvider } from "@/cafe/context/SessionContext";
@@ -13,6 +14,7 @@ import { SubscriptionProvider } from "@/cafe/context/SubscriptionContext";
 import { SubscriptionGate } from "@/cafe/components/SubscriptionGate";
 import { firebaseReady } from "@/cafe/lib/firebase";
 import { isSubscriptionOrVerificationBypassUser } from "@/cafe/lib/subscriptionBypass";
+import { isSelfServePlan, parsePaystackPlanId, SELECTED_PLAN_STORAGE_KEY } from "@shared/planCatalog";
 
 /**
  * Firebase-authenticated dashboard (formerly mounted only from the orphan CafeApp entry).
@@ -28,8 +30,16 @@ export default function PlatformPage() {
 function PlatformContent() {
   const { user, loading } = useAuth();
   const { t } = useLanguage();
-  const [loc] = useLocation();
-  const appReturnPath = loc.startsWith("/test/") ? "/test/app" : "/app";
+  const search = useSearch();
+  const appReturnPath = "/app";
+
+  useEffect(() => {
+    const qs = search.startsWith("?") ? search.slice(1) : search;
+    const plan = parsePaystackPlanId(new URLSearchParams(qs).get("plan"));
+    if (plan && isSelfServePlan(plan) && typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, plan);
+    }
+  }, [search]);
 
   if (loading) {
     return (

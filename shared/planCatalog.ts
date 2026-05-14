@@ -1,7 +1,7 @@
 /**
  * Paystack pricing tiers and entitlements (mirrors public pricing page).
  * Live Stripe Price IDs: STRIPE_PRICE_STARTER, STRIPE_PRICE_BUSINESS, STRIPE_PRICE_UNLIMITED.
- * Test lane (`/test`): STRIPE_TEST_PRICE_STARTER, STRIPE_TEST_PRICE_BUSINESS, STRIPE_TEST_PRICE_UNLIMITED.
+ * Test Price IDs: STRIPE_TEST_PRICE_STARTER, STRIPE_TEST_PRICE_BUSINESS, STRIPE_TEST_PRICE_UNLIMITED (guest body `stripeTest`).
  */
 
 export const SELECTED_PLAN_STORAGE_KEY = "paystack_selected_plan_id";

@@ -26,7 +26,7 @@ function sanitizeRedirect(search: string): string {
     return redirect;
   }
   if (params.get("stripe_test") === "1") {
-    return "/test/app";
+    return "/app";
   }
   return "/app";
 }

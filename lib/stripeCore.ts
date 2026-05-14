@@ -33,7 +33,7 @@ export function getStripe(): Stripe | null {
   return stripeSingleton;
 }
 
-/** Test-mode Stripe (`sk_test_...`) for `/api/stripe-test/*` and the `/test` QA lane only. */
+/** Test-mode Stripe (`sk_test_...`) for `/api/stripe-test/*` and guest checkout with `stripeTest: true`. */
 export function getStripeTest(): Stripe | null {
   const key = process.env.STRIPE_TEST_SECRET_KEY?.trim();
   if (!key) return null;
@@ -206,7 +206,9 @@ export async function runCreateCheckoutSessionGuest(
       },
       metadata: { planId: checkoutPlanId, pendingFirebaseLink: "1" },
       success_url: `${origin}/sign-up?checkout=success&session_id={CHECKOUT_SESSION_ID}${testQs}`,
-      cancel_url: useTest ? `${origin}/test?plan=${checkoutPlanId}` : `${origin}/start-trial?plan=${checkoutPlanId}`,
+      cancel_url: useTest
+        ? `${origin}/start-trial?plan=${checkoutPlanId}&stripe_test=1`
+        : `${origin}/start-trial?plan=${checkoutPlanId}`,
       allow_promotion_codes: true,
     });
     if (!session.url) {

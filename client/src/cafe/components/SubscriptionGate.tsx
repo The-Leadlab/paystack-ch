@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useLanguage } from '../context/LanguageContext';
 import { SELECTED_PLAN_STORAGE_KEY, parsePaystackPlanId, type PaystackPlanId } from '@shared/planCatalog';
+import { PlanEntitlementsBanner } from './PlanEntitlementsBanner';
 
 /**
  * When VITE_SUBSCRIPTION_ENABLED=true, blocks the dashboard until Stripe subscription is trialing or active.
@@ -44,7 +45,12 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   }
 
   if (inGoodStanding) {
-    return <>{children}</>;
+    return (
+      <>
+        <PlanEntitlementsBanner />
+        {children}
+      </>
+    );
   }
 
   const trialHint =

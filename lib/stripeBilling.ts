@@ -316,7 +316,7 @@ export async function runCreateCheckoutSession(
     const uid = decoded.uid;
     const email = decoded.email || undefined;
     const origin = publicAppOriginFromHeaders(headers);
-    const appPath = useTestStripe ? "/test/app" : "/app";
+    const appPath = "/app";
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       client_reference_id: uid,
@@ -377,7 +377,7 @@ export async function runCreatePortalSession(
       };
     }
     const origin = publicAppOriginFromHeaders(headers);
-    const appPath = useTestStripe ? "/test/app" : "/app";
+    const appPath = "/app";
     const portal = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: `${origin}${appPath}`,
