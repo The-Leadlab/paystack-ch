@@ -15,7 +15,55 @@ import {
   stripePriceIdForPlan,
   type PaystackPlanId,
 } from "../../shared/planCatalog";
-import { stripeCorsApplyHeaders, stripeCorsPreflight } from "../lib/stripeCors";
+
+console.info("[api/stripe/guest-trial-checkout] loaded (bundled guest v3, no ../../lib imports)");
+
+function normalizeCorsOrigin(input: string | undefined): string | null {
+  if (!input) return null;
+  try {
+    const u = new URL(input);
+    return `${u.protocol}//${u.host}`.replace(/\/+$/, "");
+  } catch {
+    return null;
+  }
+}
+
+function allowedCorsOrigins(): string[] {
+  const fromEnv = (process.env.STRIPE_CORS_ORIGIN || "")
+    .split(",")
+    .map((s) => normalizeCorsOrigin(s.trim()))
+    .filter((s): s is string => Boolean(s));
+  const publicOrigin = normalizeCorsOrigin(process.env.PUBLIC_APP_URL);
+  const defaults = ["https://paystack.ch", "https://www.paystack.ch"];
+  return Array.from(new Set([...fromEnv, ...(publicOrigin ? [publicOrigin] : []), ...defaults]));
+}
+
+function requestCorsOrigin(req: VercelRequest): string | null {
+  const raw = req.headers.origin;
+  return normalizeCorsOrigin(Array.isArray(raw) ? raw[0] : raw);
+}
+
+function applyCorsForRequest(req: VercelRequest, res: VercelResponse): void {
+  const origin = requestCorsOrigin(req);
+  if (!origin || !allowedCorsOrigins().includes(origin)) return;
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
+}
+
+function stripeCorsPreflight(req: VercelRequest, res: VercelResponse): boolean {
+  applyCorsForRequest(req, res);
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return true;
+  }
+  return false;
+}
+
+function stripeCorsApplyHeaders(req: VercelRequest, res: VercelResponse): void {
+  applyCorsForRequest(req, res);
+}
 
 export type HeaderMap = Record<string, string | string[] | undefined>;
 
