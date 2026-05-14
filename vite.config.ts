@@ -230,6 +230,7 @@ export default defineConfig({
       ? {
           proxy: {
             "/api/stripe": { target: "http://127.0.0.1:8787", changeOrigin: true },
+            "/api/stripe-test": { target: "http://127.0.0.1:8787", changeOrigin: true },
           },
         }
       : {}),

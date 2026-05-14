@@ -1,4 +1,4 @@
-import { Redirect } from "wouter";
+import { Redirect, useLocation } from "wouter";
 import { useAuth } from "@/cafe/context/AuthContext";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import { SessionProvider } from "@/cafe/context/SessionContext";
@@ -28,6 +28,8 @@ export default function PlatformPage() {
 function PlatformContent() {
   const { user, loading } = useAuth();
   const { t } = useLanguage();
+  const [loc] = useLocation();
+  const appReturnPath = loc.startsWith("/test/") ? "/test/app" : "/app";
 
   if (loading) {
     return (
@@ -38,7 +40,7 @@ function PlatformContent() {
   }
 
   if (!user) {
-    const qs = encodeURIComponent("/app");
+    const qs = encodeURIComponent(appReturnPath);
     return <Redirect to={`/sign-in?redirect=${qs}`} />;
   }
 

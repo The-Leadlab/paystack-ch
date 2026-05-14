@@ -19,6 +19,7 @@ export type HeaderMap = Record<string, string | string[] | undefined>;
 const STRIPE_API_VERSION: Stripe.LatestApiVersion = "2025-02-24.acacia";
 
 let stripeSingleton: Stripe | null = null;
+let stripeTestSingleton: Stripe | null = null;
 
 export function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY?.trim();
@@ -30,6 +31,19 @@ export function getStripe(): Stripe | null {
     });
   }
   return stripeSingleton;
+}
+
+/** Test-mode Stripe (`sk_test_...`) for `/api/stripe-test/*` and the `/test` QA lane only. */
+export function getStripeTest(): Stripe | null {
+  const key = process.env.STRIPE_TEST_SECRET_KEY?.trim();
+  if (!key) return null;
+  if (!stripeTestSingleton) {
+    stripeTestSingleton = new Stripe(key, {
+      typescript: true,
+      apiVersion: STRIPE_API_VERSION,
+    });
+  }
+  return stripeTestSingleton;
 }
 
 function normalizeOrigin(input: string | undefined): string | null {
@@ -102,8 +116,15 @@ function parseChfAmount(raw: string): number | null {
   return Math.round(amount * 100);
 }
 
-export function stripeCheckoutLineItemForPlan(planId: PaystackPlanId): Stripe.Checkout.SessionCreateParams.LineItem | null {
-  const raw = stripePriceIdForPlan(planId) || process.env.STRIPE_PRICE_ID?.trim() || null;
+export function stripeCheckoutLineItemForPlan(
+  planId: PaystackPlanId,
+  useTestPrices = false
+): Stripe.Checkout.SessionCreateParams.LineItem | null {
+  const fromPlan = stripePriceIdForPlan(planId, useTestPrices);
+  const raw =
+    fromPlan ||
+    (useTestPrices ? process.env.STRIPE_TEST_PRICE_ID?.trim() : process.env.STRIPE_PRICE_ID?.trim()) ||
+    null;
   if (!raw) return null;
 
   if (raw.startsWith("price_")) {
@@ -131,11 +152,20 @@ export function stripeCheckoutLineItemForPlan(planId: PaystackPlanId): Stripe.Ch
 /** Pre-login checkout: 7-day trial + card on Stripe, then user creates account and links session. */
 export async function runCreateCheckoutSessionGuest(
   body: { planId?: string },
-  headers: HeaderMap
+  headers: HeaderMap,
+  options?: { useTestStripe?: boolean }
 ): Promise<{ status: number; json: Record<string, unknown> }> {
-  const stripe = getStripe();
+  const useTest = Boolean(options?.useTestStripe);
+  const stripe = useTest ? getStripeTest() : getStripe();
   if (!stripe) {
-    return { status: 503, json: { error: "Stripe checkout is not configured (STRIPE_SECRET_KEY)." } };
+    return {
+      status: 503,
+      json: {
+        error: useTest
+          ? "Stripe test checkout is not configured (STRIPE_TEST_SECRET_KEY)."
+          : "Stripe checkout is not configured (STRIPE_SECRET_KEY).",
+      },
+    };
   }
   if (!isAllowedBrowserOrigin(headers)) {
     return { status: 403, json: { error: "Origin not allowed" } };
@@ -149,7 +179,7 @@ export async function runCreateCheckoutSessionGuest(
   const checkoutPlanId: PaystackPlanId = requestedPlan && isSelfServePlan(requestedPlan) ? requestedPlan : "starter";
   let lineItem: Stripe.Checkout.SessionCreateParams.LineItem | null = null;
   try {
-    lineItem = stripeCheckoutLineItemForPlan(checkoutPlanId);
+    lineItem = stripeCheckoutLineItemForPlan(checkoutPlanId, useTest);
   } catch (e) {
     return { status: 503, json: { error: e instanceof Error ? e.message : "Invalid Stripe price configuration" } };
   }
@@ -157,14 +187,16 @@ export async function runCreateCheckoutSessionGuest(
     return {
       status: 503,
       json: {
-        error:
-          "Stripe checkout is not configured. Set STRIPE_PRICE_STARTER / STRIPE_PRICE_BUSINESS / STRIPE_PRICE_UNLIMITED (Stripe Price IDs, e.g. price_xxx) or STRIPE_PRICE_ID.",
+        error: useTest
+          ? "Stripe test checkout is not configured. Set STRIPE_TEST_PRICE_STARTER / STRIPE_TEST_PRICE_BUSINESS / STRIPE_TEST_PRICE_UNLIMITED or STRIPE_TEST_PRICE_ID."
+          : "Stripe checkout is not configured. Set STRIPE_PRICE_STARTER / STRIPE_PRICE_BUSINESS / STRIPE_PRICE_UNLIMITED (Stripe Price IDs, e.g. price_xxx) or STRIPE_PRICE_ID.",
       },
     };
   }
 
   try {
     const origin = publicAppOriginFromHeaders(headers);
+    const testQs = useTest ? "&stripe_test=1" : "";
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [lineItem],
@@ -173,8 +205,8 @@ export async function runCreateCheckoutSessionGuest(
         metadata: { planId: checkoutPlanId, pendingFirebaseLink: "1" },
       },
       metadata: { planId: checkoutPlanId, pendingFirebaseLink: "1" },
-      success_url: `${origin}/sign-up?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/start-trial?plan=${checkoutPlanId}`,
+      success_url: `${origin}/sign-up?checkout=success&session_id={CHECKOUT_SESSION_ID}${testQs}`,
+      cancel_url: useTest ? `${origin}/test?plan=${checkoutPlanId}` : `${origin}/start-trial?plan=${checkoutPlanId}`,
       allow_promotion_codes: true,
     });
     if (!session.url) {

@@ -1,6 +1,5 @@
 /**
- * Pre-login Stripe Checkout (trial). **Canonical Vercel path:** `/api/stripe/guest-trial-checkout`
- * Delegates to `lib/stripeCore.ts` `runCreateCheckoutSessionGuest` (live Stripe).
+ * Test-mode guest checkout (`sk_test_...`). Vercel path: `/api/stripe-test/guest-trial-checkout`
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { runCreateCheckoutSessionGuest } from "../../lib/stripeCore";
@@ -24,11 +23,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     } else if (typeof req.body === "object" && req.body !== null && !Buffer.isBuffer(req.body)) {
       body = req.body as { planId?: string };
     }
-    const out = await runCreateCheckoutSessionGuest(body, req.headers);
+    const out = await runCreateCheckoutSessionGuest(body, req.headers, { useTestStripe: true });
     stripeCorsApplyHeaders(req, res);
     res.status(out.status).json(out.json);
   } catch (e) {
-    console.error("[api] guest-trial-checkout:", e);
+    console.error("[api] stripe-test guest-trial-checkout:", e);
     if (!res.headersSent) {
       try {
         stripeCorsApplyHeaders(req, res);

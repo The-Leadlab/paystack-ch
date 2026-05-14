@@ -9,12 +9,12 @@ import { getAuth } from "firebase-admin/auth";
 import {
   isSelfServePlan,
   parsePaystackPlanId,
-  stripePriceIdForPlan,
   type PaystackPlanId,
 } from "../shared/planCatalog";
 
 import {
   getStripe,
+  getStripeTest,
   type HeaderMap,
   isAllowedBrowserOrigin,
   publicAppOriginFromHeaders,
@@ -23,7 +23,7 @@ import {
 } from "./stripeCore";
 
 export type { HeaderMap } from "./stripeCore";
-export { getStripe, publicAppOriginFromHeaders, trialDays } from "./stripeCore";
+export { getStripe, getStripeTest, publicAppOriginFromHeaders, trialDays } from "./stripeCore";
 
 export function ensureFirebaseAdmin(): void {
   if (getApps().length > 0) return;
@@ -43,30 +43,48 @@ function firstSubscriptionPriceId(subscription: Stripe.Subscription): string | n
 }
 
 /** Resolve plan from subscription metadata or by matching configured Stripe Price IDs. */
-export function resolvePlanIdFromStripeSubscription(subscription: Stripe.Subscription): PaystackPlanId {
+export function resolvePlanIdFromStripeSubscription(
+  subscription: Stripe.Subscription,
+  useTestPrices = false
+): PaystackPlanId {
   const fromMeta = parsePaystackPlanId(subscription.metadata?.planId);
   if (fromMeta) return fromMeta;
 
   const priceId = firstSubscriptionPriceId(subscription);
   if (priceId) {
-    if (priceId === process.env.STRIPE_PRICE_STARTER?.trim()) return "starter";
-    if (priceId === process.env.STRIPE_PRICE_BUSINESS?.trim()) return "business";
-    if (priceId === process.env.STRIPE_PRICE_UNLIMITED?.trim()) return "unlimited";
-    const legacy = process.env.STRIPE_PRICE_ID?.trim();
-    if (legacy && priceId === legacy) {
-      const def = parsePaystackPlanId(process.env.STRIPE_DEFAULT_PLAN_ID) || "starter";
-      return def;
+    if (useTestPrices) {
+      if (priceId === process.env.STRIPE_TEST_PRICE_STARTER?.trim()) return "starter";
+      if (priceId === process.env.STRIPE_TEST_PRICE_BUSINESS?.trim()) return "business";
+      if (priceId === process.env.STRIPE_TEST_PRICE_UNLIMITED?.trim()) return "unlimited";
+      const legacyTest = process.env.STRIPE_TEST_PRICE_ID?.trim();
+      if (legacyTest && priceId === legacyTest) {
+        const def = parsePaystackPlanId(process.env.STRIPE_DEFAULT_PLAN_ID) || "starter";
+        return def;
+      }
+    } else {
+      if (priceId === process.env.STRIPE_PRICE_STARTER?.trim()) return "starter";
+      if (priceId === process.env.STRIPE_PRICE_BUSINESS?.trim()) return "business";
+      if (priceId === process.env.STRIPE_PRICE_UNLIMITED?.trim()) return "unlimited";
+      const legacy = process.env.STRIPE_PRICE_ID?.trim();
+      if (legacy && priceId === legacy) {
+        const def = parsePaystackPlanId(process.env.STRIPE_DEFAULT_PLAN_ID) || "starter";
+        return def;
+      }
     }
   }
   return "starter";
 }
 
-async function syncSubscriptionToFirestore(uid: string, subscription: Stripe.Subscription): Promise<void> {
+async function syncSubscriptionToFirestore(
+  uid: string,
+  subscription: Stripe.Subscription,
+  useTestPrices: boolean
+): Promise<void> {
   ensureFirebaseAdmin();
   const db = getFirestore();
   const customerId =
     typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id ?? null;
-  const planId = resolvePlanIdFromStripeSubscription(subscription);
+  const planId = resolvePlanIdFromStripeSubscription(subscription, useTestPrices);
   await db
     .collection("users")
     .doc(uid)
@@ -106,7 +124,7 @@ async function markSubscriptionCanceled(uid: string): Promise<void> {
     );
 }
 
-async function handleStripeSubscription(subscription: Stripe.Subscription): Promise<void> {
+async function handleStripeSubscription(subscription: Stripe.Subscription, useTestPrices: boolean): Promise<void> {
   const uid = subscription.metadata?.firebaseUid;
   if (!uid) {
     console.warn("[stripe] subscription without firebaseUid metadata:", subscription.id);
@@ -116,7 +134,7 @@ async function handleStripeSubscription(subscription: Stripe.Subscription): Prom
     await markSubscriptionCanceled(uid);
     return;
   }
-  await syncSubscriptionToFirestore(uid, subscription);
+  await syncSubscriptionToFirestore(uid, subscription, useTestPrices);
 }
 
 /** Guest checkout (card before Firebase): record pending link until user signs up with same email. */
@@ -147,7 +165,11 @@ async function persistPendingGuestCheckout(session: Stripe.Checkout.Session, sub
     );
 }
 
-export async function dispatchStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<void> {
+export async function dispatchStripeEvent(
+  event: Stripe.Event,
+  stripe: Stripe,
+  useTestPrices: boolean
+): Promise<void> {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -175,13 +197,13 @@ export async function dispatchStripeEvent(event: Stripe.Event, stripe: Stripe): 
         });
         fullSub = await stripe.subscriptions.retrieve(subId);
       }
-      await handleStripeSubscription(fullSub);
+      await handleStripeSubscription(fullSub, useTestPrices);
       break;
     }
     case "customer.subscription.updated":
     case "customer.subscription.created": {
       const sub = event.data.object as Stripe.Subscription;
-      await handleStripeSubscription(sub);
+      await handleStripeSubscription(sub, useTestPrices);
       break;
     }
     case "customer.subscription.deleted": {
@@ -198,12 +220,22 @@ export async function dispatchStripeEvent(event: Stripe.Event, stripe: Stripe): 
 /** Verify signature and run webhook logic. `rawBody` must be the exact request bytes. */
 export async function runStripeWebhook(
   rawBody: Buffer,
-  stripeSignature: string | undefined
+  stripeSignature: string | undefined,
+  useTestStripe = false
 ): Promise<{ status: number; json?: unknown; text?: string }> {
-  const stripe = getStripe();
-  const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+  const stripe = useTestStripe ? getStripeTest() : getStripe();
+  const secret = (
+    useTestStripe ? process.env.STRIPE_TEST_WEBHOOK_SECRET : process.env.STRIPE_WEBHOOK_SECRET
+  )?.trim();
   if (!stripe || !secret) {
-    return { status: 503, json: { error: "Stripe webhook not configured" } };
+    return {
+      status: 503,
+      json: {
+        error: useTestStripe
+          ? "Stripe test webhook not configured (STRIPE_TEST_SECRET_KEY / STRIPE_TEST_WEBHOOK_SECRET)."
+          : "Stripe webhook not configured",
+      },
+    };
   }
   if (typeof stripeSignature !== "string") {
     return { status: 400, text: "Missing stripe-signature" };
@@ -222,7 +254,7 @@ export async function runStripeWebhook(
     return { status: 503, json: { error: "Server storage not configured" } };
   }
   try {
-    await dispatchStripeEvent(event, stripe);
+    await dispatchStripeEvent(event, stripe, useTestStripe);
     return { status: 200, json: { received: true } };
   } catch (e) {
     console.error("[stripe] webhook handler error:", e);
@@ -233,11 +265,19 @@ export async function runStripeWebhook(
 export async function runCreateCheckoutSession(
   authorization: string | undefined,
   body: { planId?: string },
-  headers: HeaderMap
+  headers: HeaderMap,
+  useTestStripe = false
 ): Promise<{ status: number; json: Record<string, unknown> }> {
-  const stripe = getStripe();
+  const stripe = useTestStripe ? getStripeTest() : getStripe();
   if (!stripe) {
-    return { status: 503, json: { error: "Stripe checkout is not configured (STRIPE_SECRET_KEY)." } };
+    return {
+      status: 503,
+      json: {
+        error: useTestStripe
+          ? "Stripe test checkout is not configured (STRIPE_TEST_SECRET_KEY)."
+          : "Stripe checkout is not configured (STRIPE_SECRET_KEY).",
+      },
+    };
   }
   if (!isAllowedBrowserOrigin(headers)) {
     return { status: 403, json: { error: "Origin not allowed" } };
@@ -251,7 +291,7 @@ export async function runCreateCheckoutSession(
   const checkoutPlanId: PaystackPlanId = requestedPlan && isSelfServePlan(requestedPlan) ? requestedPlan : "starter";
   let lineItem: Stripe.Checkout.SessionCreateParams.LineItem | null = null;
   try {
-    lineItem = stripeCheckoutLineItemForPlan(checkoutPlanId);
+    lineItem = stripeCheckoutLineItemForPlan(checkoutPlanId, useTestStripe);
   } catch (e) {
     return { status: 503, json: { error: e instanceof Error ? e.message : "Invalid Stripe price configuration" } };
   }
@@ -259,8 +299,9 @@ export async function runCreateCheckoutSession(
     return {
       status: 503,
       json: {
-        error:
-          "Stripe checkout is not configured. Set STRIPE_PRICE_STARTER / STRIPE_PRICE_BUSINESS / STRIPE_PRICE_UNLIMITED or STRIPE_PRICE_ID.",
+        error: useTestStripe
+          ? "Stripe test checkout is not configured. Set STRIPE_TEST_PRICE_STARTER / STRIPE_TEST_PRICE_BUSINESS / STRIPE_TEST_PRICE_UNLIMITED or STRIPE_TEST_PRICE_ID."
+          : "Stripe checkout is not configured. Set STRIPE_PRICE_STARTER / STRIPE_PRICE_BUSINESS / STRIPE_PRICE_UNLIMITED or STRIPE_PRICE_ID.",
       },
     };
   }
@@ -275,6 +316,7 @@ export async function runCreateCheckoutSession(
     const uid = decoded.uid;
     const email = decoded.email || undefined;
     const origin = publicAppOriginFromHeaders(headers);
+    const appPath = useTestStripe ? "/test/app" : "/app";
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       client_reference_id: uid,
@@ -285,8 +327,8 @@ export async function runCreateCheckoutSession(
         metadata: { firebaseUid: uid, planId: checkoutPlanId },
       },
       metadata: { firebaseUid: uid, planId: checkoutPlanId },
-      success_url: `${origin}/app?subscription=success`,
-      cancel_url: `${origin}/app?subscription=cancel`,
+      success_url: `${origin}${appPath}?subscription=success`,
+      cancel_url: `${origin}${appPath}?subscription=cancel`,
       allow_promotion_codes: true,
     });
     if (!session.url) {
@@ -304,11 +346,15 @@ export async function runCreateCheckoutSession(
 
 export async function runCreatePortalSession(
   authorization: string | undefined,
-  headers: HeaderMap
+  headers: HeaderMap,
+  useTestStripe = false
 ): Promise<{ status: number; json: Record<string, unknown> }> {
-  const stripe = getStripe();
+  const stripe = useTestStripe ? getStripeTest() : getStripe();
   if (!stripe) {
-    return { status: 503, json: { error: "Stripe not configured" } };
+    return {
+      status: 503,
+      json: { error: useTestStripe ? "Stripe test mode not configured" : "Stripe not configured" },
+    };
   }
   if (!isAllowedBrowserOrigin(headers)) {
     return { status: 403, json: { error: "Origin not allowed" } };
@@ -331,9 +377,10 @@ export async function runCreatePortalSession(
       };
     }
     const origin = publicAppOriginFromHeaders(headers);
+    const appPath = useTestStripe ? "/test/app" : "/app";
     const portal = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${origin}/app`,
+      return_url: `${origin}${appPath}`,
     });
     return { status: 200, json: { url: portal.url } };
   } catch (e) {
@@ -349,11 +396,15 @@ export async function runCreatePortalSession(
 export async function runLinkCheckoutSession(
   authorization: string | undefined,
   body: { sessionId?: string },
-  headers: HeaderMap
+  headers: HeaderMap,
+  useTestStripe = false
 ): Promise<{ status: number; json: Record<string, unknown> }> {
-  const stripe = getStripe();
+  const stripe = useTestStripe ? getStripeTest() : getStripe();
   if (!stripe) {
-    return { status: 503, json: { error: "Stripe not configured" } };
+    return {
+      status: 503,
+      json: { error: useTestStripe ? "Stripe test mode not configured" : "Stripe not configured" },
+    };
   }
   if (!isAllowedBrowserOrigin(headers)) {
     return { status: 403, json: { error: "Origin not allowed" } };
@@ -429,7 +480,7 @@ export async function runLinkCheckoutSession(
       },
     });
     fullSub = await stripe.subscriptions.retrieve(subId);
-    await syncSubscriptionToFirestore(uid, fullSub);
+    await syncSubscriptionToFirestore(uid, fullSub, useTestStripe);
     await db.collection("pendingStripeCheckouts").doc(sessionId).delete().catch(() => undefined);
 
     return { status: 200, json: { ok: true } };

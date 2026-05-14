@@ -1,7 +1,7 @@
 /**
- * Billing calls POST /api/stripe/* (same origin on Vercel, or set VITE_API_BASE_URL to your Vercel app
- * when the SPA is hosted on Firebase Hosting). For cross-origin API, set STRIPE_CORS_ORIGIN on Vercel
- * to your SPA origin (e.g. https://paystack-ch.web.app).
+ * Billing calls POST under `StripeBillingPathProvider` (`/api/stripe` live, `/api/stripe-test` on `/test*`).
+ * Same origin on Vercel, or set VITE_API_BASE_URL when the SPA is hosted separately. Set STRIPE_CORS_ORIGIN
+ * on the API for cross-origin browser calls.
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -17,6 +17,7 @@ import {
   type PlanEntitlements,
 } from '@shared/planCatalog';
 import { parseStripeFetchResponse } from '../lib/stripeCheckoutClient';
+import { useStripeBillingApiPath } from './StripeBillingPathContext';
 
 type UserBillingSnapshot = {
   subscriptionStatus: string | null;
@@ -96,6 +97,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   }, [enforcementEnabled, bypass, billing?.planId]);
 
   const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') || '';
+  const stripeApiPath = useStripeBillingApiPath();
 
   const startCheckout = useCallback(
     async (planIdArg?: PaystackPlanId | null) => {
@@ -104,7 +106,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(SELECTED_PLAN_STORAGE_KEY) : null;
       const resolved = planIdArg ?? parsePaystackPlanId(fromStorage);
       const token = await user.getIdToken();
-      const res = await fetch(`${apiBase}/api/stripe/create-checkout-session`, {
+      const res = await fetch(`${apiBase}${stripeApiPath}/create-checkout-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -121,13 +123,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       }
       window.location.href = url;
     },
-    [user, apiBase]
+    [user, apiBase, stripeApiPath]
   );
 
   const openCustomerPortal = useCallback(async () => {
     if (!user) throw new Error('Not signed in');
     const token = await user.getIdToken();
-    const res = await fetch(`${apiBase}/api/stripe/create-portal-session`, {
+    const res = await fetch(`${apiBase}${stripeApiPath}/create-portal-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -143,7 +145,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       throw new Error(typeof json.error === 'string' ? json.error : 'No portal URL returned');
     }
     window.location.href = url;
-  }, [user, apiBase]);
+  }, [user, apiBase, stripeApiPath]);
 
   const value: SubscriptionContextValue = {
     enforcementEnabled,

@@ -1,9 +1,5 @@
-/**
- * Pre-login Stripe Checkout (trial). **Canonical Vercel path:** `/api/stripe/guest-trial-checkout`
- * Delegates to `lib/stripeCore.ts` `runCreateCheckoutSessionGuest` (live Stripe).
- */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { runCreateCheckoutSessionGuest } from "../../lib/stripeCore";
+import { runCreatePortalSession } from "../../lib/stripeBilling";
 import { stripeCorsApplyHeaders, stripeCorsPreflight } from "../lib/stripeCors";
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -14,21 +10,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       res.status(405).json({ error: "Method not allowed" });
       return;
     }
-    let body: { planId?: string } = {};
-    if (typeof req.body === "string") {
-      try {
-        body = JSON.parse(req.body) as { planId?: string };
-      } catch {
-        body = {};
-      }
-    } else if (typeof req.body === "object" && req.body !== null && !Buffer.isBuffer(req.body)) {
-      body = req.body as { planId?: string };
-    }
-    const out = await runCreateCheckoutSessionGuest(body, req.headers);
+    const out = await runCreatePortalSession(req.headers.authorization, req.headers, true);
     stripeCorsApplyHeaders(req, res);
     res.status(out.status).json(out.json);
   } catch (e) {
-    console.error("[api] guest-trial-checkout:", e);
+    console.error("[api] stripe-test create-portal-session:", e);
     if (!res.headersSent) {
       try {
         stripeCorsApplyHeaders(req, res);

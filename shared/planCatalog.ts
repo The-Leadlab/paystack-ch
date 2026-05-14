@@ -1,6 +1,7 @@
 /**
  * Paystack pricing tiers and entitlements (mirrors public pricing page).
- * Stripe Price IDs come from env: STRIPE_PRICE_STARTER, STRIPE_PRICE_BUSINESS, STRIPE_PRICE_UNLIMITED.
+ * Live Stripe Price IDs: STRIPE_PRICE_STARTER, STRIPE_PRICE_BUSINESS, STRIPE_PRICE_UNLIMITED.
+ * Test lane (`/test`): STRIPE_TEST_PRICE_STARTER, STRIPE_TEST_PRICE_BUSINESS, STRIPE_TEST_PRICE_UNLIMITED.
  */
 
 export const SELECTED_PLAN_STORAGE_KEY = "paystack_selected_plan_id";
@@ -123,7 +124,19 @@ export function entitlementsForPlan(planId: PaystackPlanId | null | undefined): 
 }
 
 /** Resolve Stripe recurring Price id from plan (server env). */
-export function stripePriceIdForPlan(planId: PaystackPlanId): string | null {
+export function stripePriceIdForPlan(planId: PaystackPlanId, useTestPrices = false): string | null {
+  if (useTestPrices) {
+    const env =
+      planId === "starter"
+        ? process.env.STRIPE_TEST_PRICE_STARTER
+        : planId === "business"
+          ? process.env.STRIPE_TEST_PRICE_BUSINESS
+          : planId === "unlimited"
+            ? process.env.STRIPE_TEST_PRICE_UNLIMITED
+            : null;
+    const v = env?.trim();
+    return v || null;
+  }
   const env =
     planId === "starter"
       ? process.env.STRIPE_PRICE_STARTER

@@ -12,17 +12,22 @@ import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { AuthLayout } from "./auth/AuthLayout";
 import { GoogleGIcon } from "@/components/icons/GoogleGIcon";
 import {
+  billingPathFromSearch,
   checkoutSuccessSessionId,
   linkCheckoutSessionAfterAuth,
   preserveCheckoutInAuthHref,
 } from "@/cafe/lib/stripeCheckoutClient";
 
 function sanitizeRedirect(search: string): string {
-  const redirect = new URLSearchParams(search).get("redirect");
-  if (!redirect || !redirect.startsWith("/") || redirect.startsWith("//")) {
-    return "/app";
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  const redirect = params.get("redirect");
+  if (redirect && redirect.startsWith("/") && !redirect.startsWith("//")) {
+    return redirect;
   }
-  return redirect;
+  if (params.get("stripe_test") === "1") {
+    return "/test/app";
+  }
+  return "/app";
 }
 
 export default function SignInPage() {
@@ -41,6 +46,7 @@ export default function SignInPage() {
 
   const nextPath = sanitizeRedirect(search);
   const checkoutSid = useMemo(() => checkoutSuccessSessionId(search), [search]);
+  const checkoutBillingPath = useMemo(() => billingPathFromSearch(search), [search]);
 
   useEffect(() => {
     if (loading || !user) return;
@@ -55,7 +61,7 @@ export default function SignInPage() {
     (async () => {
       try {
         const token = await user.getIdToken();
-        await linkCheckoutSessionAfterAuth(token, checkoutSid);
+        await linkCheckoutSessionAfterAuth(token, checkoutSid, checkoutBillingPath);
         if (alive) setLocation(nextPath);
       } catch (e) {
         linkStartedRef.current = false;
@@ -65,7 +71,7 @@ export default function SignInPage() {
     return () => {
       alive = false;
     };
-  }, [loading, user, checkoutSid, nextPath, setLocation, checkoutLinkError]);
+  }, [loading, user, checkoutSid, checkoutBillingPath, nextPath, setLocation, checkoutLinkError]);
 
   if (!firebaseReady) {
     return <FirebaseMissing />;

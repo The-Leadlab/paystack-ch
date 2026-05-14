@@ -10,5 +10,7 @@ registerStripeIfConfigured(app);
 
 const port = parseInt(process.env.STRIPE_DEV_PORT || "8787", 10);
 app.listen(port, "127.0.0.1", () => {
-  console.log(`[stripe-dev] http://127.0.0.1:${port}  (webhook: POST /api/stripe/webhook)`);
+  console.log(
+    `[stripe-dev] http://127.0.0.1:${port}  (live: /api/stripe/* ; test: /api/stripe-test/* when STRIPE_TEST_SECRET_KEY is set)`
+  );
 });

@@ -17,6 +17,16 @@ const apiBase = () => {
   }
 };
 
+/** Live vs test billing API prefix (see `StripeBillingPathProvider`). */
+export const STRIPE_BILLING_PATH_LIVE = "/api/stripe";
+export const STRIPE_BILLING_PATH_TEST = "/api/stripe-test";
+
+export function billingPathFromSearch(search: string): string {
+  const qs = search.startsWith("?") ? search.slice(1) : search;
+  const params = new URLSearchParams(qs);
+  return params.get("stripe_test") === "1" ? STRIPE_BILLING_PATH_TEST : STRIPE_BILLING_PATH_LIVE;
+}
+
 function truncateForMessage(text: string, maxLen: number): string {
   const t = text.replace(/\s+/g, " ").trim();
   if (t.length <= maxLen) return t;
@@ -77,8 +87,11 @@ export function checkoutSuccessSessionId(search: string): string | null {
   return params.get("session_id");
 }
 
-export async function startGuestCheckoutSession(planId: string | undefined): Promise<string> {
-  const res = await fetch(`${apiBase()}/api/stripe/guest-trial-checkout`, {
+export async function startGuestCheckoutSession(
+  planId: string | undefined,
+  billingPath: string = STRIPE_BILLING_PATH_LIVE
+): Promise<string> {
+  const res = await fetch(`${apiBase()}${billingPath}/guest-trial-checkout`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ planId: planId ?? undefined }),
@@ -104,11 +117,19 @@ export function preserveCheckoutInAuthHref(baseHref: string, currentSearch: stri
   const params = new URLSearchParams(existing);
   params.set("checkout", "success");
   params.set("session_id", sid);
+  const curQs = currentSearch.startsWith("?") ? currentSearch.slice(1) : currentSearch;
+  if (new URLSearchParams(curQs).get("stripe_test") === "1") {
+    params.set("stripe_test", "1");
+  }
   return `${path}?${params.toString()}`;
 }
 
-export async function linkCheckoutSessionAfterAuth(idToken: string, sessionId: string): Promise<void> {
-  const res = await fetch(`${apiBase()}/api/stripe/link-checkout-session`, {
+export async function linkCheckoutSessionAfterAuth(
+  idToken: string,
+  sessionId: string,
+  billingPath: string = STRIPE_BILLING_PATH_LIVE
+): Promise<void> {
+  const res = await fetch(`${apiBase()}${billingPath}/link-checkout-session`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
