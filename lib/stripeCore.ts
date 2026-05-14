@@ -2,8 +2,9 @@
  * Stripe client + browser CORS + guest checkout only.
  * Kept separate from `stripeBilling.ts` so Vercel guest checkout does not load `firebase-admin`.
  *
- * Vercel guest handlers use **`api/lib/stripeGuestCore.ts`** (same logic; duplicated so lambdas bundle under `api/`).
- * When changing guest checkout, update both this file and `api/lib/stripeGuestCore.ts`.
+ * Vercel guest handlers use **`api/stripe/guest-trial-checkout.ts`** and
+ * **`api/stripe-test/guest-trial-checkout.ts`** (self-contained; each lambda is isolated).
+ * When changing guest checkout, update those two files and this file together.
  */
 import Stripe from "stripe";
 import {
