@@ -1,9 +1,9 @@
 /**
  * Pre-login Stripe Checkout (trial). **Vercel path:** `/api/stripe/guest-trial-checkout`
  *
- * All guest Stripe logic lives in this single file so Vercel does not deploy a separate
- * `api/lib/*.ts` lambda (which breaks module resolution). The test route duplicates this file
- * (each `api/**/*.ts` entry is an isolated lambda — see `api/stripe-test/guest-trial-checkout.ts`).
+ * **Single Vercel entry for live + test guest checkout.** Send `{ stripeTest: true }` in the JSON
+ * body for Stripe test mode (`sk_test_...`). Do not use `/api/stripe-test/guest-trial-checkout`
+ * (removed) — one lambda avoids broken multi-function bundles on Vercel.
  *
  * **Keep in sync with** `lib/stripeCore.ts` `runCreateCheckoutSessionGuest` behaviour.
  */
@@ -16,7 +16,7 @@ import {
   type PaystackPlanId,
 } from "../../shared/planCatalog";
 
-console.info("[api/stripe/guest-trial-checkout] loaded (bundled guest v3, no ../../lib imports)");
+console.info("[api/stripe/guest-trial-checkout] loaded (unified guest v4: body.stripeTest for test mode)");
 
 function normalizeCorsOrigin(input: string | undefined): string | null {
   if (!input) return null;
@@ -277,17 +277,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       res.status(405).json({ error: "Method not allowed" });
       return;
     }
-    let body: { planId?: string } = {};
+    let raw: { planId?: string; stripeTest?: boolean } = {};
     if (typeof req.body === "string") {
       try {
-        body = JSON.parse(req.body) as { planId?: string };
+        raw = JSON.parse(req.body) as { planId?: string; stripeTest?: boolean };
       } catch {
-        body = {};
+        raw = {};
       }
     } else if (typeof req.body === "object" && req.body !== null && !Buffer.isBuffer(req.body)) {
-      body = req.body as { planId?: string };
+      raw = req.body as { planId?: string; stripeTest?: boolean };
     }
-    const out = await runCreateCheckoutSessionGuest(body, req.headers);
+    const useTestStripe =
+      raw.stripeTest === true ||
+      (typeof raw.stripeTest === "string" && raw.stripeTest.toLowerCase() === "true");
+    const out = await runCreateCheckoutSessionGuest({ planId: raw.planId }, req.headers, { useTestStripe });
     stripeCorsApplyHeaders(req, res);
     res.status(out.status).json(out.json);
   } catch (e) {

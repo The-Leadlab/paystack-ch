@@ -118,6 +118,17 @@ export async function handleLinkCheckoutSessionExpress(
 
 const jsonParser = express.json({ limit: "256kb" });
 
+/** Single URL for guest trial: body `stripeTest: true` selects test keys (matches Vercel). */
+function mountSharedGuestTrialCheckout(app: Express): void {
+  app.post("/api/stripe/guest-trial-checkout", jsonParser, (req, res) => {
+    const b = (req.body || {}) as { planId?: string; stripeTest?: unknown };
+    const useTest =
+      b.stripeTest === true ||
+      (typeof b.stripeTest === "string" && String(b.stripeTest).toLowerCase() === "true");
+    void handleCreateCheckoutSessionGuestExpress(req, res, useTest);
+  });
+}
+
 function mountStripeRoutes(app: Express, useTestStripe: boolean): void {
   const prefix = useTestStripe ? "/api/stripe-test" : "/api/stripe";
   app.post(`${prefix}/webhook`, express.raw({ type: "application/json", limit: "1mb" }), (req, res) => {
@@ -125,9 +136,6 @@ function mountStripeRoutes(app: Express, useTestStripe: boolean): void {
   });
   app.post(`${prefix}/create-checkout-session`, jsonParser, (req, res) => {
     void handleCreateCheckoutSessionExpress(req, res, useTestStripe);
-  });
-  app.post(`${prefix}/guest-trial-checkout`, jsonParser, (req, res) => {
-    void handleCreateCheckoutSessionGuestExpress(req, res, useTestStripe);
   });
   app.post(`${prefix}/create-checkout-session-guest`, jsonParser, (req, res) => {
     void handleCreateCheckoutSessionGuestExpress(req, res, useTestStripe);
@@ -147,6 +155,10 @@ export function registerStripeIfConfigured(app: Express): boolean {
   if (!live && !test) {
     console.info("[stripe] No STRIPE_SECRET_KEY or STRIPE_TEST_SECRET_KEY — billing API disabled.");
     return false;
+  }
+  if (live || test) {
+    mountSharedGuestTrialCheckout(app);
+    console.info("[stripe] Guest trial checkout: POST /api/stripe/guest-trial-checkout (body.stripeTest for test mode).");
   }
   if (live) {
     mountStripeRoutes(app, false);

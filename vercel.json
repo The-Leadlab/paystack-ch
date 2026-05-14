@@ -35,9 +35,6 @@
     "api/stripe-test/link-checkout-session.ts": {
       "includeFiles": "{lib,shared}/**"
     },
-    "api/stripe-test/guest-trial-checkout.ts": {
-      "includeFiles": "{lib,shared}/**"
-    },
     "api/stripe-test/webhook.ts": {
       "maxDuration": 30,
       "includeFiles": "{lib,shared}/**"

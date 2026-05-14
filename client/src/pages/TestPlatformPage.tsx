@@ -5,10 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { firebaseReady } from "@/cafe/lib/firebase";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
-import {
-  STRIPE_BILLING_PATH_TEST,
-  startGuestCheckoutSession,
-} from "@/cafe/lib/stripeCheckoutClient";
+import { startGuestCheckoutSession } from "@/cafe/lib/stripeCheckoutClient";
 import { isSelfServePlan, SELECTED_PLAN_STORAGE_KEY, type PaystackPlanId } from "@shared/planCatalog";
 
 /**
@@ -30,7 +27,7 @@ export default function TestPlatformPage() {
       if (typeof sessionStorage !== "undefined") {
         sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, planId);
       }
-      const url = await startGuestCheckoutSession(planId, STRIPE_BILLING_PATH_TEST);
+      const url = await startGuestCheckoutSession(planId, { useTestStripe: true });
       window.location.href = url;
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
