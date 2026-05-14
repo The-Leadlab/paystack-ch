@@ -4,6 +4,8 @@ import { STRIPE_BILLING_PATH_LIVE, STRIPE_BILLING_PATH_TEST } from "../lib/strip
 
 export { STRIPE_BILLING_PATH_LIVE, STRIPE_BILLING_PATH_TEST } from "../lib/stripeCheckoutClient";
 
+const StripeBillingPathContext = createContext(STRIPE_BILLING_PATH_LIVE);
+
 export function StripeBillingPathProvider({ children }: { children: React.ReactNode }) {
   const [loc] = useLocation();
   const path = useMemo(() => {
