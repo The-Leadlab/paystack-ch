@@ -9,12 +9,8 @@
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import Stripe from "stripe";
-import {
-  isSelfServePlan,
-  parsePaystackPlanId,
-  stripePriceIdForPlan,
-  type PaystackPlanId,
-} from "../../shared/planCatalog";
+import type { PaystackPlanId } from "../../shared/planCatalog";
+import { isSelfServePlan, parsePaystackPlanId, stripePriceIdForPlan } from "../../shared/planCatalog";
 
 console.info("[api/stripe/guest-trial-checkout] loaded (unified guest v4: body.stripeTest for test mode)");
 
