@@ -24,14 +24,14 @@ export async function handleStripeWebhookExpress(
   }
   const payload = req.body;
   if (!Buffer.isBuffer(payload)) {
-    res.status(400).send("Webhook body must be raw");
+    res.status(400).json({ error: "Webhook body must be raw" });
     return;
   }
   const sig = req.headers["stripe-signature"];
   const sigStr = typeof sig === "string" ? sig : Array.isArray(sig) ? sig[0] : undefined;
   const out = await runStripeWebhook(payload, sigStr, useTestStripe);
   if (out.json !== undefined) res.status(out.status).json(out.json);
-  else res.status(out.status).send(out.text ?? "");
+  else res.status(out.status).json({ error: typeof out.text === "string" ? out.text : "Request failed" });
 }
 
 export async function handleCreateCheckoutSessionExpress(

@@ -217,6 +217,25 @@ export async function dispatchStripeEvent(
   }
 }
 
+/**
+ * Stripe issues a different signing secret (`whsec_...`) per webhook endpoint URL. If both
+ * `https://paystack.ch/...` and `https://www.paystack.ch/...` are registered in the Dashboard,
+ * list both secrets here (comma-separated in one var and/or `STRIPE_WEBHOOK_SECRET_ALT`).
+ */
+function collectWebhookSecrets(useTestStripe: boolean): string[] {
+  const primary = useTestStripe ? process.env.STRIPE_TEST_WEBHOOK_SECRET : process.env.STRIPE_WEBHOOK_SECRET;
+  const alt = useTestStripe ? process.env.STRIPE_TEST_WEBHOOK_SECRET_ALT : process.env.STRIPE_WEBHOOK_SECRET_ALT;
+  const out: string[] = [];
+  for (const envVal of [primary, alt]) {
+    if (!envVal?.trim()) continue;
+    for (const piece of envVal.split(",")) {
+      const s = piece.trim();
+      if (s) out.push(s);
+    }
+  }
+  return Array.from(new Set(out));
+}
+
 /** Verify signature and run webhook logic. `rawBody` must be the exact request bytes. */
 export async function runStripeWebhook(
   rawBody: Buffer,
@@ -224,10 +243,8 @@ export async function runStripeWebhook(
   useTestStripe = false
 ): Promise<{ status: number; json?: unknown; text?: string }> {
   const stripe = useTestStripe ? getStripeTest() : getStripe();
-  const secret = (
-    useTestStripe ? process.env.STRIPE_TEST_WEBHOOK_SECRET : process.env.STRIPE_WEBHOOK_SECRET
-  )?.trim();
-  if (!stripe || !secret) {
+  const secrets = collectWebhookSecrets(useTestStripe);
+  if (!stripe || secrets.length === 0) {
     return {
       status: 503,
       json: {
@@ -238,14 +255,28 @@ export async function runStripeWebhook(
     };
   }
   if (typeof stripeSignature !== "string") {
-    return { status: 400, text: "Missing stripe-signature" };
+    return { status: 400, json: { error: "Missing stripe-signature" } };
   }
-  let event: Stripe.Event;
-  try {
-    event = stripe.webhooks.constructEvent(rawBody, stripeSignature, secret);
-  } catch (err) {
-    console.error("[stripe] webhook signature error:", err);
-    return { status: 400, text: "Webhook signature verification failed" };
+  let event: Stripe.Event | null = null;
+  let lastSigErr: unknown;
+  for (const secret of secrets) {
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, stripeSignature, secret);
+      break;
+    } catch (err) {
+      lastSigErr = err;
+    }
+  }
+  if (!event) {
+    console.error(`[stripe] webhook signature error (tried ${secrets.length} secret(s)):`, lastSigErr);
+    return {
+      status: 400,
+      json: {
+        error: "Webhook signature verification failed",
+        hint:
+          "Each Stripe webhook URL has its own signing secret. If you use both paystack.ch and www.paystack.ch endpoints, set STRIPE_WEBHOOK_SECRET to both whsec_ values (comma-separated) or add STRIPE_WEBHOOK_SECRET_ALT.",
+      },
+    };
   }
   try {
     ensureFirebaseAdmin();
