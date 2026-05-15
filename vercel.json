@@ -22,7 +22,12 @@
     "api/stripe/guest-trial-checkout.ts": {
       "includeFiles": "{lib,shared}/**"
     },
-    "api/admin/verify.ts": {},
+    "api/admin/verify.ts": {
+      "includeFiles": "lib/**"
+    },
+    "api/admin/logout.ts": {
+      "includeFiles": "lib/**"
+    },
     "api/stripe/webhook.ts": {
       "maxDuration": 30,
       "includeFiles": "{lib,shared}/**"

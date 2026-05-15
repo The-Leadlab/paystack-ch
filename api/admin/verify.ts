@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHash, timingSafeEqual } from "crypto";
+import { adminSessionCookieValue, adminSessionSetCookieHeader } from "../../lib/adminGateCookie.js";
 
 function parseBody(req: VercelRequest): { password?: string } {
   if (typeof req.body === "string") {
@@ -28,8 +29,8 @@ function passwordMatches(given: string, expected: string): boolean {
 }
 
 /**
- * POST JSON `{ "password": "..." }` — compares to `ADMIN_ACCESS_PASSWORD` (set in Vercel / server env).
- * Used only to unlock the `/admin` operator panel in the SPA (sessionStorage); does not grant API access by itself.
+ * POST JSON `{ "password": "..." }` — compares to `ADMIN_ACCESS_PASSWORD`.
+ * On success sets HttpOnly cookie `paystack_admin_session` (Path=/admin) so Edge middleware allows `/admin`.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   try {
@@ -52,6 +53,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       sendJson(res, 401, { error: "Invalid password" });
       return;
     }
+    const token = adminSessionCookieValue(expected);
+    res.setHeader("Set-Cookie", adminSessionSetCookieHeader(token, 60 * 60 * 24 * 30));
     sendJson(res, 200, { ok: true });
   } catch (e) {
     console.error("[api/admin/verify]", e);

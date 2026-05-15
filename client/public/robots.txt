@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+# Operator / admin tooling (also noindex in HTML)
+Disallow: /admin
+Disallow: /operator

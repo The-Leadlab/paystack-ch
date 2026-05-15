@@ -11,6 +11,7 @@ import Home from "./pages/Home";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
 import AdminSignInPage from "./pages/AdminSignInPage";
+import OperatorGatePage from "./pages/OperatorGatePage";
 import StartTrialPage from "./pages/StartTrialPage";
 import PlatformPage from "./pages/PlatformPage";
 
@@ -33,6 +34,7 @@ function Router() {
       <Route path={"/sign-in"} component={SignInPage} />
       <Route path={"/sign-up"} component={SignUpPage} />
       <Route path={"/admin"} component={AdminSignInPage} />
+      <Route path={"/operator"} component={OperatorGatePage} />
       <Route path={"/start-trial"} component={StartTrialPage} />
       <Route path={"/login"} component={SignInPage} />
       <Route path={"/signup"} component={SignUpPage} />
