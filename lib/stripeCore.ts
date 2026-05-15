@@ -11,7 +11,7 @@ import {
   parsePaystackPlanId,
   stripePriceIdForPlan,
   type PaystackPlanId,
-} from "../shared/planCatalog";
+} from "../shared/planCatalog.js";
 
 export type HeaderMap = Record<string, string | string[] | undefined>;
 

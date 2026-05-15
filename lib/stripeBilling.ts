@@ -10,7 +10,7 @@ import {
   isSelfServePlan,
   parsePaystackPlanId,
   type PaystackPlanId,
-} from "../shared/planCatalog";
+} from "../shared/planCatalog.js";
 
 import {
   getStripe,
