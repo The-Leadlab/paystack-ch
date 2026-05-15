@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import type { PaystackPlanId } from '@shared/planCatalog';
 import { planMarketingFeatureKeys } from '@shared/planMarketingFeatureKeys';
 
-function planDisplayName(id: PaystackPlanId | null, t: (k: string) => string): string {
+function planDisplayName(id: PaystackPlanId | null | undefined, t: (k: string) => string): string {
   if (id === 'starter') return t('planStarterName');
   if (id === 'business') return t('planBusinessName');
   if (id === 'unlimited') return t('planUnlimitedName');
