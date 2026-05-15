@@ -207,8 +207,8 @@ export async function runCreateCheckoutSessionGuest(
       metadata: { planId: checkoutPlanId, pendingFirebaseLink: "1" },
       success_url: `${origin}/sign-up?checkout=success&session_id={CHECKOUT_SESSION_ID}${testQs}`,
       cancel_url: useTest
-        ? `${origin}/start-trial?plan=${checkoutPlanId}&stripe_test=1`
-        : `${origin}/start-trial?plan=${checkoutPlanId}`,
+        ? `${origin}/start-trial?plan=${checkoutPlanId}&stripe_test=1&checkout=cancel`
+        : `${origin}/start-trial?plan=${checkoutPlanId}&checkout=cancel`,
       allow_promotion_codes: true,
     });
     if (!session.url) {
