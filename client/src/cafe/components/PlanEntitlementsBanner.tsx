@@ -3,7 +3,7 @@ import { CreditCard, Loader2 } from 'lucide-react';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { PaystackPlanId } from '@shared/planCatalog';
-import { planMarketingFeatureKeys } from '@shared/planMarketingFeatureKeys';
+import { PlanMarketingFeatureBullets } from './PlanMarketingPanel';
 
 function planDisplayName(id: PaystackPlanId | null | undefined, t: (k: string) => string): string {
   if (id === 'starter') return t('planStarterName');
@@ -47,8 +47,6 @@ export function PlanEntitlementsBanner() {
     { label: t('planSummarySessions'), value: formatLimit(entitlements.maxSessions, t) },
   ];
 
-  const featureKeys = planMarketingFeatureKeys(effectivePlan);
-
   return (
     <div className="shrink-0 border-b border-cdlp-border bg-cdlp-card/80 backdrop-blur-sm px-3 py-3 sm:px-4">
       <div className="max-w-[1600px] mx-auto flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -70,13 +68,7 @@ export function PlanEntitlementsBanner() {
           </dl>
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted mb-2">{t('planSummaryIncludedTitle')}</p>
-            <ul className="list-disc pl-4 space-y-1.5 text-[11px] text-cdlp-muted leading-snug marker:text-cdlp-gold/80">
-              {featureKeys.map((key) => (
-                <li key={key} className="pl-0.5">
-                  <span className="text-white/95">{t(key)}</span>
-                </li>
-              ))}
-            </ul>
+            <PlanMarketingFeatureBullets planId={effectivePlan} variant="cdlp" />
           </div>
         </div>
         <button

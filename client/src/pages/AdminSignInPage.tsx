@@ -16,6 +16,7 @@ import { logoutAdmin } from "@/lib/adminGateClient";
 import { startGuestCheckoutSession } from "@/cafe/lib/stripeCheckoutClient";
 import { SELECTED_PLAN_STORAGE_KEY, type PaystackPlanId } from "@shared/planCatalog";
 import { SeoNoIndex } from "@/components/SeoNoIndex";
+import { PlanMarketingPanel } from "@/cafe/components/PlanMarketingPanel";
 
 export default function AdminSignInPage() {
   const { t } = useLanguage();
@@ -57,6 +58,10 @@ export default function AdminSignInPage() {
 
   const openGuestCheckout = async (useTest: boolean) => {
     setGateErr(null);
+    if (testPlan === "enterprise") {
+      setGateErr(t("authAdminEnterpriseNoCheckout"));
+      return;
+    }
     setCheckoutBusy(useTest ? "test" : "live");
     try {
       if (typeof sessionStorage !== "undefined") {
@@ -75,6 +80,7 @@ export default function AdminSignInPage() {
     if (id === "starter") return t("planStarterName");
     if (id === "business") return t("planBusinessName");
     if (id === "unlimited") return t("planUnlimitedName");
+    if (id === "enterprise") return t("planEnterpriseName");
     return id;
   };
 
@@ -94,8 +100,8 @@ export default function AdminSignInPage() {
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-2">
-                {(["starter", "business", "unlimited"] as const).map((id) => (
+              <div className="grid grid-cols-2 gap-2">
+                {(["starter", "business", "unlimited", "enterprise"] as const).map((id) => (
                   <button
                     key={id}
                     type="button"
@@ -110,11 +116,12 @@ export default function AdminSignInPage() {
                   </button>
                 ))}
               </div>
+              <PlanMarketingPanel planId={testPlan} variant="card" showMostPopularBadge />
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   type="button"
                   className="flex-1 font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2"
-                  disabled={checkoutBusy !== null}
+                  disabled={checkoutBusy !== null || testPlan === "enterprise"}
                   onClick={() => void openGuestCheckout(false)}
                 >
                   {checkoutBusy === "live" ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
@@ -124,13 +131,16 @@ export default function AdminSignInPage() {
                   type="button"
                   variant="secondary"
                   className="flex-1 font-display gap-2"
-                  disabled={checkoutBusy !== null}
+                  disabled={checkoutBusy !== null || testPlan === "enterprise"}
                   onClick={() => void openGuestCheckout(true)}
                 >
                   {checkoutBusy === "test" ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
                   {t("authAdminPlanTest")}
                 </Button>
               </div>
+              {testPlan === "enterprise" ? (
+                <p className="text-xs text-muted-foreground leading-relaxed">{t("authAdminEnterpriseNoCheckout")}</p>
+              ) : null}
               {gateErr ? (
                 <p className="text-sm text-destructive font-medium">
                   {t("authErrorPrefix")}

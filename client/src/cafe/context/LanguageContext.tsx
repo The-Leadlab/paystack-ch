@@ -216,6 +216,8 @@ const translations = {
     authAdminPlanTestTitle: 'Open guest checkout by plan',
     authAdminPlanLive: 'Live Stripe (real keys)',
     authAdminPlanTest: 'Test Stripe (test keys)',
+    authAdminEnterpriseNoCheckout:
+      'Enterprise is sold via sales, not Stripe checkout here. Use Contact Sales or email info@paystack.ch.',
     authAdminBypassSectionTitle: 'Firebase admin (subscription bypass)',
     authNeedAccount: "Don't have an account?",
     authSignUpLink: 'Sign up',
@@ -879,6 +881,8 @@ const translations = {
     authAdminPlanTestTitle: 'Ouvrir la caisse invite par offre',
     authAdminPlanLive: 'Stripe live (cles reelles)',
     authAdminPlanTest: 'Stripe test (cles test)',
+    authAdminEnterpriseNoCheckout:
+      'L\'offre Enterprise se vend par vente directe, pas via cette caisse Stripe. Contactez le commercial ou info@paystack.ch.',
     authAdminBypassSectionTitle: 'Admin Firebase (contournement abonnement)',
     authNeedAccount: 'Pas encore de compte ?',
     authSignUpLink: 'S\'inscrire',

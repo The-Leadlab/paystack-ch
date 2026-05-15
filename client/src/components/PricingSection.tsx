@@ -9,9 +9,7 @@ import { Check, ArrowRight } from "lucide-react";
 import ScrollReveal from "./ScrollReveal";
 import SectionLabel from "./SectionLabel";
 import { useLanguage } from "@/cafe/context/LanguageContext";
-
-const ENTERPRISE_MAIL =
-  "mailto:info@paystack.ch?subject=Enterprise%20plan%20%E2%80%94%20Paystack.ch";
+import { PLAN_ENTERPRISE_SALES_MAILTO } from "@/cafe/components/PlanMarketingPanel";
 
 export default function PricingSection() {
   const { t } = useLanguage();
@@ -85,7 +83,7 @@ export default function PricingSection() {
       ],
       cta: t("ctaContactSales"),
       highlighted: false,
-      href: ENTERPRISE_MAIL,
+      href: PLAN_ENTERPRISE_SALES_MAILTO,
       external: true,
     },
   ];

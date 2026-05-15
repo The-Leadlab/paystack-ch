@@ -5,6 +5,7 @@ import { useSubscription } from '../context/SubscriptionContext';
 import { useLanguage } from '../context/LanguageContext';
 import { SELECTED_PLAN_STORAGE_KEY, parsePaystackPlanId, type PaystackPlanId } from '@shared/planCatalog';
 import { PlanEntitlementsBanner } from './PlanEntitlementsBanner';
+import { PlanMarketingPanel, PLAN_ENTERPRISE_SALES_MAILTO } from './PlanMarketingPanel';
 
 /**
  * When VITE_SUBSCRIPTION_ENABLED=true, blocks the dashboard until Stripe subscription is trialing or active.
@@ -25,9 +26,11 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   const st = billing?.subscriptionStatus;
   const needsPaymentMethodFix = st === 'past_due' || st === 'unpaid';
 
-  const persistPlan = (id: PaystackPlanId) => {
-    if (id === 'enterprise') return;
-    sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, id);
+  const selectPlan = (id: PaystackPlanId) => {
+    if (typeof sessionStorage !== 'undefined') {
+      if (id === 'enterprise') sessionStorage.removeItem(SELECTED_PLAN_STORAGE_KEY);
+      else sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, id);
+    }
     setChosenPlan(id);
   };
 
@@ -69,7 +72,7 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-[100dvh] min-h-screen bg-cdlp-dark flex items-center justify-center px-4 py-8 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] touch-manipulation">
-      <div className="max-w-lg w-full border border-cdlp-border rounded-xl bg-cdlp-card p-6 sm:p-8 shadow-card text-center space-y-6">
+      <div className="max-w-xl w-full border border-cdlp-border rounded-xl bg-cdlp-card p-6 sm:p-8 shadow-card text-center space-y-6">
         <div className="mx-auto w-14 h-14 rounded-full bg-cdlp-gold/15 flex items-center justify-center border border-cdlp-gold/40">
           <CreditCard className="w-7 h-7 text-cdlp-gold" />
         </div>
@@ -82,12 +85,12 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
         {showPlanPicker ? (
           <div className="text-left space-y-3">
             <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted">{t('subscriptionPickPlan')}</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {(['starter', 'business', 'unlimited'] as const).map((id) => (
+            <div className="grid grid-cols-2 gap-2">
+              {(['starter', 'business', 'unlimited', 'enterprise'] as const).map((id) => (
                 <button
                   key={id}
                   type="button"
-                  onClick={() => persistPlan(id)}
+                  onClick={() => selectPlan(id)}
                   className={`rounded border px-2 py-3 text-[10px] font-black uppercase tracking-tight transition-colors ${
                     chosenPlan === id
                       ? 'border-cdlp-gold bg-cdlp-gold/15 text-white'
@@ -98,7 +101,9 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-cdlp-muted leading-relaxed">{t('subscriptionEnterpriseHint')}</p>
+            {chosenPlan ? (
+              <PlanMarketingPanel planId={chosenPlan} variant="cdlp" showMostPopularBadge />
+            ) : null}
           </div>
         ) : null}
 
@@ -121,6 +126,10 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
                     setErr(t('subscriptionPickPlanError'));
                     return;
                   }
+                  if (chosenPlan === 'enterprise') {
+                    window.location.href = PLAN_ENTERPRISE_SALES_MAILTO;
+                    return;
+                  }
                   await startCheckout(chosenPlan);
                 }
               } catch (e) {
@@ -132,7 +141,11 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
             className="w-full h-12 rounded-sm bg-cdlp-gold text-cdlp-black font-black text-xs uppercase tracking-wider hover:bg-cdlp-gold-light disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            {needsPaymentMethodFix ? t('subscriptionUpdatePayment') : t('subscriptionCta')}
+            {needsPaymentMethodFix
+              ? t('subscriptionUpdatePayment')
+              : chosenPlan === 'enterprise'
+                ? t('ctaContactSales')
+                : t('subscriptionCta')}
           </button>
           <button
             type="button"
