@@ -20,10 +20,10 @@ import {
   publicAppOriginFromHeaders,
   stripeCheckoutLineItemForPlan,
   trialDays,
-} from "./stripeCore";
+} from "./stripeCore.js";
 
-export type { HeaderMap } from "./stripeCore";
-export { getStripe, getStripeTest, publicAppOriginFromHeaders, trialDays } from "./stripeCore";
+export type { HeaderMap } from "./stripeCore.js";
+export { getStripe, getStripeTest, publicAppOriginFromHeaders, trialDays } from "./stripeCore.js";
 
 export function ensureFirebaseAdmin(): void {
   if (getApps().length > 0) return;

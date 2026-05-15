@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { getAuth } from "firebase-admin/auth";
-import { ensureFirebaseAdmin, type HeaderMap } from "./stripeBilling";
+import { ensureFirebaseAdmin, type HeaderMap } from "./stripeBilling.js";
 
 type GeminiGenerateRequest = {
   model?: unknown;

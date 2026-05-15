@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { runCreateCheckoutSession } from "../../lib/stripeBilling";
-import { stripeCorsApplyHeaders, stripeCorsPreflight } from "../lib/stripeCors";
+import { runCreateCheckoutSession } from "../../lib/stripeBilling.js";
+import { stripeCorsApplyHeaders, stripeCorsPreflight } from "../lib/stripeCors.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (stripeCorsPreflight(req, res)) return;

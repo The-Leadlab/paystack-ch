@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { runStripeWebhook } from "../../lib/stripeBilling";
-import { readStripeWebhookRawBody } from "../lib/stripeWebhookRequest";
+import { runStripeWebhook } from "../../lib/stripeBilling.js";
+import { readStripeWebhookRawBody } from "../lib/stripeWebhookRequest.js";
 
 function sendJson(res: VercelResponse, status: number, body: unknown): void {
   res.status(status).setHeader("Content-Type", "application/json; charset=utf-8").end(JSON.stringify(body));
