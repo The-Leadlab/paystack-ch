@@ -277,6 +277,13 @@ const translations = {
     planSummaryFlagApi: 'API access',
     planSummaryFlagPriority: 'Priority support',
 
+    planSummaryIncludedTitle: 'What is included in your plan',
+    checkoutLinkEmailHint:
+      'Tip: your Paystack.ch account email must exactly match the email you used at Stripe checkout (same spelling, no extra spaces).',
+    emailVerifyRateLimited:
+      'Too many verification emails were sent. Please wait several minutes before trying again, or check your spam folder.',
+    emailVerifyWait: 'You can resend in {s}s.',
+
     authDividerEmail: 'Email',
     authPlaceholderAdminEmail: 'admin@paystack.ch',
     authPlaceholderEmail: 'you@company.ch',
@@ -931,6 +938,13 @@ const translations = {
     planSummaryFlagAllModules: 'Tous les modules principaux',
     planSummaryFlagApi: 'Acces API',
     planSummaryFlagPriority: 'Support prioritaire',
+
+    planSummaryIncludedTitle: 'Inclus dans votre offre',
+    checkoutLinkEmailHint:
+      'Conseil : l\'e-mail du compte Paystack.ch doit etre strictement le meme que celui saisi a la caisse Stripe (meme orthographe, sans espaces en trop).',
+    emailVerifyRateLimited:
+      'Trop d\'e-mails de verification ont ete envoyes. Patientez quelques minutes avant de reessayer, ou verifiez vos courriers indesirables.',
+    emailVerifyWait: 'Nouvel envoi possible dans {s}s.',
 
     authDividerEmail: 'E-mail',
     authPlaceholderAdminEmail: 'admin@paystack.ch',

@@ -95,6 +95,7 @@ export default function SignInPage() {
                 {t("authErrorPrefix")}
                 {checkoutLinkError}
               </p>
+              <p className="font-editorial text-xs text-muted-foreground leading-relaxed">{t("checkoutLinkEmailHint")}</p>
               <div className="flex flex-col gap-2">
                 <Button
                   type="button"

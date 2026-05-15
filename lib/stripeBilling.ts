@@ -467,16 +467,43 @@ export async function runLinkCheckoutSession(
       return { status: 403, json: { error: "Checkout email does not match this account." } };
     }
 
-    const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["subscription"] });
-    const stripeEmail = (
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ["subscription", "customer"],
+    });
+
+    let stripeEmail = (
       (session.customer_details as { email?: string } | undefined)?.email ||
       session.customer_email ||
       ""
     )
       .trim()
       .toLowerCase();
+
+    const custRef = session.customer;
+    if (!stripeEmail && custRef && typeof custRef === "object" && "email" in custRef) {
+      const em = (custRef as { email?: string | null }).email;
+      if (typeof em === "string" && em.trim()) stripeEmail = em.trim().toLowerCase();
+    }
+    if (!stripeEmail && typeof custRef === "string") {
+      try {
+        const cust = await stripe.customers.retrieve(custRef);
+        if (!("deleted" in cust && cust.deleted) && typeof (cust as { email?: string | null }).email === "string") {
+          const em = (cust as { email: string }).email;
+          if (em?.trim()) stripeEmail = em.trim().toLowerCase();
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
     if (!stripeEmail || stripeEmail !== userEmail) {
-      return { status: 403, json: { error: "Checkout email does not match this account." } };
+      return {
+        status: 403,
+        json: {
+          error:
+            "Checkout email does not match this account. Use the same email you entered at Stripe checkout as your Paystack.ch sign-up email.",
+        },
+      };
     }
 
     const subRef = session.subscription;
@@ -517,6 +544,8 @@ export async function runLinkCheckoutSession(
     return { status: 200, json: { ok: true } };
   } catch (e) {
     console.error("[stripe] link-checkout-session:", e);
-    return { status: 500, json: { error: "Link failed" } };
+    const msg = e instanceof Error ? e.message : "Link failed";
+    const safe = msg.length > 220 ? `${msg.slice(0, 217)}…` : msg;
+    return { status: 500, json: { error: safe || "Link failed" } };
   }
 }

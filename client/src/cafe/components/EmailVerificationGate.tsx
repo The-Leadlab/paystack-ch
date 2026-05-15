@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MailCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+
+function authErrorCode(err: unknown): string | null {
+  if (typeof err !== 'object' || err === null) return null;
+  if ('code' in err && typeof (err as { code: unknown }).code === 'string') {
+    return (err as { code: string }).code;
+  }
+  return null;
+}
 
 export function EmailVerificationGate() {
   const { t } = useLanguage();
@@ -9,17 +17,38 @@ export function EmailVerificationGate() {
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cooldownSec, setCooldownSec] = useState(0);
+
+  useEffect(() => {
+    if (cooldownSec <= 0) return;
+    const id = window.setInterval(() => {
+      setCooldownSec((s) => (s <= 1 ? 0 : s - 1));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [cooldownSec]);
 
   const email = user?.email ?? '';
 
   const handleResend = async () => {
+    if (cooldownSec > 0) return;
     setError(null);
     setMessage(null);
     setSending(true);
     try {
       const { error: err } = await resendVerificationEmail();
-      if (err) setError(err.message);
-      else setMessage(t('emailVerifySuccess'));
+      if (err) {
+        const code = authErrorCode(err);
+        if (code === 'auth/too-many-requests') {
+          setError(t('emailVerifyRateLimited'));
+          setCooldownSec(300);
+        } else {
+          setError(err.message);
+          setCooldownSec(45);
+        }
+      } else {
+        setMessage(t('emailVerifySuccess'));
+        setCooldownSec(60);
+      }
     } finally {
       setSending(false);
     }
@@ -49,12 +78,15 @@ export function EmailVerificationGate() {
           </p>
         )}
         {message && <p className="mt-4 text-xs text-emerald-600 font-medium">{message}</p>}
+        {cooldownSec > 0 ? (
+          <p className="mt-2 text-xs text-ypsom-slate">{t('emailVerifyWait').replace('{s}', String(cooldownSec))}</p>
+        ) : null}
 
         <div className="mt-6 space-y-3">
           <button
             type="button"
             onClick={handleResend}
-            disabled={sending}
+            disabled={sending || cooldownSec > 0}
             className="w-full flex items-center justify-center gap-2 py-2.5 bg-ypsom-deep text-white font-black text-[10px] uppercase tracking-widest rounded-sm hover:bg-ypsom-shadow disabled:opacity-60 transition-colors"
           >
             {sending ? t('emailVerifyResending') : t('emailVerifyResend')}

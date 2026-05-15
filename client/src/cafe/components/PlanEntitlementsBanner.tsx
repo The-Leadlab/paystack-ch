@@ -3,6 +3,7 @@ import { CreditCard, Loader2 } from 'lucide-react';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { PaystackPlanId } from '@shared/planCatalog';
+import { planMarketingFeatureKeys } from '@shared/planMarketingFeatureKeys';
 
 function planDisplayName(id: PaystackPlanId | null, t: (k: string) => string): string {
   if (id === 'starter') return t('planStarterName');
@@ -18,8 +19,8 @@ function formatLimit(n: number | null, t: (k: string) => string): string {
 }
 
 /**
- * Shown at the top of the dashboard when subscription enforcement is on and the user has access,
- * so each paid tier’s limits and feature flags are visible at a glance.
+ * Shown at the top of the dashboard when subscription enforcement is on and the user has access:
+ * numeric caps from entitlements plus the same marketing feature lines as the landing pricing table.
  */
 export function PlanEntitlementsBanner() {
   const { t } = useLanguage();
@@ -29,6 +30,7 @@ export function PlanEntitlementsBanner() {
   if (!enforcementEnabled || !inGoodStanding) return null;
 
   const planId = billing?.planId;
+  const effectivePlan: PaystackPlanId = planId ?? 'starter';
   const status = billing?.subscriptionStatus;
   const statusLabel =
     status === 'trialing'
@@ -45,18 +47,12 @@ export function PlanEntitlementsBanner() {
     { label: t('planSummarySessions'), value: formatLimit(entitlements.maxSessions, t) },
   ];
 
-  const flags: { label: string; on: boolean }[] = [
-    { label: t('planSummaryFlagBasicReports'), on: entitlements.basicReportsAndExports },
-    { label: t('planSummaryFlagAdvanced'), on: entitlements.advancedAnalyticsAndReports },
-    { label: t('planSummaryFlagAllModules'), on: entitlements.allCoreModules },
-    { label: t('planSummaryFlagApi'), on: entitlements.apiAccess },
-    { label: t('planSummaryFlagPriority'), on: entitlements.prioritySupport },
-  ];
+  const featureKeys = planMarketingFeatureKeys(effectivePlan);
 
   return (
     <div className="shrink-0 border-b border-cdlp-border bg-cdlp-card/80 backdrop-blur-sm px-3 py-3 sm:px-4">
       <div className="max-w-[1600px] mx-auto flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-        <div className="min-w-0 space-y-2">
+        <div className="min-w-0 space-y-3 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted">{t('planSummaryTitle')}</p>
             {statusLabel ? (
@@ -72,16 +68,16 @@ export function PlanEntitlementsBanner() {
               </div>
             ))}
           </dl>
-          <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-tight">
-            {flags.map((f) => (
-              <li
-                key={f.label}
-                className={f.on ? 'text-cdlp-gold/95' : 'text-cdlp-muted/50 line-through decoration-cdlp-border'}
-              >
-                {f.label}
-              </li>
-            ))}
-          </ul>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted mb-2">{t('planSummaryIncludedTitle')}</p>
+            <ul className="list-disc pl-4 space-y-1.5 text-[11px] text-cdlp-muted leading-snug marker:text-cdlp-gold/80">
+              {featureKeys.map((key) => (
+                <li key={key} className="pl-0.5">
+                  <span className="text-white/95">{t(key)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
         <button
           type="button"
@@ -91,7 +87,7 @@ export function PlanEntitlementsBanner() {
             try {
               await openCustomerPortal();
             } catch {
-              // Stay on page if portal fails
+              /* stay on page */
             } finally {
               setPortalBusy(false);
             }
