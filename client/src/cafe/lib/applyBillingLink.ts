@@ -1,4 +1,4 @@
-import { doc, setDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { db } from "./firebase";
 import type { BillingLinkFirestorePatch } from "@shared/billingLink";
 
@@ -10,8 +10,13 @@ export async function applyBillingLinkToFirestore(
   if (!db) {
     throw new Error("Firebase is not configured.");
   }
+  const ref = doc(db, "users", uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    await setDoc(ref, { subscriptionStatus: "none" }, { merge: true });
+  }
   await setDoc(
-    doc(db, "users", uid),
+    ref,
     {
       stripeCustomerId: billing.stripeCustomerId,
       subscriptionId: billing.subscriptionId,
