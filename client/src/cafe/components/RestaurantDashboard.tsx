@@ -583,7 +583,7 @@ export function RestaurantDashboard() {
       `}
       >
         {/* Desktop Header */}
-        <div className="hidden md:block p-4 border-b border-cdlp-border">
+        <div className="hidden md:block shrink-0 p-4 border-b border-cdlp-border">
           <div className="flex flex-col items-center mb-4">
             <img
               src={BRAND_LOGO_SRC}
@@ -610,28 +610,6 @@ export function RestaurantDashboard() {
               <span className="text-[10px] font-bold text-cdlp-gold">{language === 'en' ? 'FR' : 'EN'}</span>
             </button>
           </div>
-          <div className="space-y-2 mb-3">
-            <button
-              type="button"
-              onClick={openBillingTab}
-              className={`w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase rounded border transition-colors ${
-                activeTab === 'billing'
-                  ? 'bg-cdlp-gold/15 border-cdlp-gold text-cdlp-gold'
-                  : 'text-cdlp-gold border-cdlp-gold/40 hover:bg-cdlp-gold/10'
-              }`}
-            >
-              <CreditCard className="w-4 h-4" />
-              {t('subscriptionManageBilling')}
-            </button>
-            <button
-              type="button"
-              onClick={() => void signOut()}
-              className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-muted border border-cdlp-border rounded hover:text-cdlp-gold hover:border-cdlp-gold/40"
-            >
-              <LogOut className="w-4 h-4" />
-              {t('logout')}
-            </button>
-          </div>
           <button
             onClick={handleAddSession}
             disabled={!canAddSession}
@@ -648,7 +626,7 @@ export function RestaurantDashboard() {
         </div>
 
         {/* Mobile Header in Sidebar */}
-        <div className="md:hidden p-4 border-b border-cdlp-border flex items-center justify-between">
+        <div className="md:hidden shrink-0 p-4 border-b border-cdlp-border flex items-center justify-between">
           <span className="font-bold text-cdlp-gold text-sm uppercase">Sessions</span>
           <button onClick={() => setShowSidebar(false)}>
             <X className="w-5 h-5 text-cdlp-muted" />
@@ -656,26 +634,7 @@ export function RestaurantDashboard() {
         </div>
 
         {/* Mobile Add Session Button */}
-        <div className="md:hidden p-4 border-b border-cdlp-border space-y-2">
-          <button
-            type="button"
-            onClick={openBillingTab}
-            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-gold border border-cdlp-gold/40 rounded hover:bg-cdlp-gold/10"
-          >
-            <CreditCard className="w-4 h-4" />
-            {t('subscriptionManageBilling')}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              void signOut();
-              setShowSidebar(false);
-            }}
-            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-muted border border-cdlp-border rounded hover:text-cdlp-gold"
-          >
-            <LogOut className="w-4 h-4" />
-            {t('logout')}
-          </button>
+        <div className="md:hidden shrink-0 p-4 border-b border-cdlp-border">
           <button
             onClick={() => {
               handleAddSession();
@@ -774,6 +733,29 @@ export function RestaurantDashboard() {
           )}
         </div>
 
+        {/* Pinned bottom: billing + logout (sessions scroll above) */}
+        <div className="shrink-0 p-4 border-t border-cdlp-border bg-cdlp-black space-y-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <button
+            type="button"
+            onClick={openBillingTab}
+            className={`w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase rounded border transition-colors ${
+              activeTab === 'billing'
+                ? 'bg-cdlp-gold/15 border-cdlp-gold text-cdlp-gold'
+                : 'text-cdlp-gold border-cdlp-gold/40 hover:bg-cdlp-gold/10'
+            }`}
+          >
+            <CreditCard className="w-4 h-4" />
+            {t('subscriptionManageBilling')}
+          </button>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-muted border border-cdlp-border rounded hover:text-cdlp-gold hover:border-cdlp-gold/40"
+          >
+            <LogOut className="w-4 h-4" />
+            {t('logout')}
+          </button>
+        </div>
       </div>
 
       {/* Overlay for mobile sidebar */}
