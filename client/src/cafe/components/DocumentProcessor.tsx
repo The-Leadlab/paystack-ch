@@ -2694,7 +2694,12 @@ export const DocumentProcessor: React.FC<{
                             <button 
                               onClick={async (e) => { 
                                 e.stopPropagation();
-                                if (!confirm(`Delete "${doc.fileName}"?`)) return;
+                                if (
+                                  !confirm(
+                                    `Delete "${doc.fileName}"?\n\nThis removes the document and all linked income, expenses, payroll, and VAT totals from the dashboard.`
+                                  )
+                                )
+                                  return;
                                 if (typeof onDeleteDocument !== 'function') {
                                   console.error('Document delete handler is unavailable');
                                   alert('Delete action is temporarily unavailable. Please refresh and try again.');
@@ -2721,8 +2726,17 @@ export const DocumentProcessor: React.FC<{
                                     alert('Could not delete the document record. Please try again.');
                                   }
                                 } else {
-                                  // Remove from local state
-                                  setLocalDocs(p => p.filter(d => d.id !== doc.id));
+                                  const recordId = firestoreRecordId(doc);
+                                  if (doc.persistedDocumentId) {
+                                    try {
+                                      await onDeleteDocument(recordId);
+                                    } catch (deleteErr) {
+                                      console.error('Failed to delete queued document finances:', deleteErr);
+                                      alert('Could not delete linked income/expenses for this document.');
+                                      return;
+                                    }
+                                  }
+                                  setLocalDocs((p) => p.filter((d) => d.id !== doc.id));
                                 }
                               }} 
                               className="text-cdlp-muted/30 hover:text-red-500 transition-colors"

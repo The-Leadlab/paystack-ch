@@ -57,7 +57,17 @@ async function commitDeletesInChunks(
 
 export function RestaurantDashboard() {
   const { employees, addEmployee, deleteEmployee } = useEmployee();
-  const { income, expenses, addIncome, addExpense, updateIncome, updateExpense, deleteIncome, deleteExpense } = useFinance();
+  const {
+    income,
+    expenses,
+    addIncome,
+    addExpense,
+    updateIncome,
+    updateExpense,
+    deleteIncome,
+    deleteExpense,
+    deleteFinancesByDocumentId,
+  } = useFinance();
   const { sessions, currentSession, addSession, deleteSession, renameSession, setCurrentSession, isAllSessionsView, setAllSessionsView } = useSession();
   const { documents, addDocument, updateDocumentData, deleteDocument: deleteDocumentFromContext } = useDocuments();
   const { signOut, user } = useAuth();
@@ -107,7 +117,17 @@ export function RestaurantDashboard() {
   const storageUploadEnabledRef = useRef(true);
 
   const handleDeleteDocument = async (documentId: string) => {
-    await deleteDocumentFromContext(documentId);
+    try {
+      const removed = await deleteFinancesByDocumentId(documentId);
+      await deleteDocumentFromContext(documentId);
+      console.log(
+        `🗑️ Document ${documentId} deleted with ${removed.income} income and ${removed.expenses} expense row(s)`
+      );
+    } catch (err) {
+      console.error('Failed to delete document and linked finances:', err);
+      alert('Could not fully delete this document. Linked income/expense rows may still exist — please refresh and try again.');
+      throw err;
+    }
   };
 
   // Filter data by current session or show all
@@ -444,17 +464,8 @@ export function RestaurantDashboard() {
     try {
       // Delete all existing income/expenses linked to this document
       console.log('🗑️ Deleting old income/expenses for document:', documentId);
-      const oldIncome = income.filter(i => i.documentId === documentId);
-      const oldExpenses = expenses.filter(e => e.documentId === documentId);
-      
-      for (const item of oldIncome) {
-        await deleteIncome(item.id);
-      }
-      for (const item of oldExpenses) {
-        await deleteExpense(item.id);
-      }
-      
-      console.log(`✅ Deleted ${oldIncome.length} income and ${oldExpenses.length} expense entries`);
+      const removed = await deleteFinancesByDocumentId(documentId);
+      console.log(`✅ Deleted ${removed.income} income and ${removed.expenses} expense entries`);
       
       // Re-create income/expenses from updated document data
       const date = newData.date || new Date().toISOString().split('T')[0];

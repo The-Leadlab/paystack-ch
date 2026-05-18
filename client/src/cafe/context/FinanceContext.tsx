@@ -58,6 +58,8 @@ type FinanceContextValue = {
   updateExpense: (id: string, updates: Partial<Omit<Expense, 'id' | 'restaurant_id' | 'created_at'>>) => Promise<void>;
   deleteIncome: (id: string) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
+  /** Remove all income/expense rows created from a processed document. */
+  deleteFinancesByDocumentId: (documentId: string) => Promise<{ income: number; expenses: number }>;
   refreshFinances: () => Promise<void>;
 };
 
@@ -232,6 +234,62 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const deleteFinancesByDocumentId = useCallback(
+    async (documentId: string): Promise<{ income: number; expenses: number }> => {
+      const uid = user?.uid;
+      if (!db || !uid || !documentId) {
+        return { income: 0, expenses: 0 };
+      }
+
+      const incomeIds = new Set<string>();
+      const expenseIds = new Set<string>();
+
+      income
+        .filter((i) => i.document_id === documentId)
+        .forEach((i) => incomeIds.add(i.id));
+      expenses
+        .filter((e) => e.document_id === documentId)
+        .forEach((e) => expenseIds.add(e.id));
+
+      try {
+        const [incomeSnap, expenseSnap] = await Promise.all([
+          getDocs(
+            query(
+              collection(db, INCOME_COLLECTION),
+              where('restaurantId', '==', uid),
+              where('documentId', '==', documentId)
+            )
+          ),
+          getDocs(
+            query(
+              collection(db, EXPENSE_COLLECTION),
+              where('restaurantId', '==', uid),
+              where('documentId', '==', documentId)
+            )
+          ),
+        ]);
+
+        incomeSnap.forEach((d) => incomeIds.add(d.id));
+        expenseSnap.forEach((d) => expenseIds.add(d.id));
+
+        await Promise.all([
+          ...[...incomeIds].map((id) => deleteDoc(doc(db, INCOME_COLLECTION, id))),
+          ...[...expenseIds].map((id) => deleteDoc(doc(db, EXPENSE_COLLECTION, id))),
+        ]);
+
+        setIncome((prev) => prev.filter((i) => i.document_id !== documentId));
+        setExpenses((prev) => prev.filter((e) => e.document_id !== documentId));
+
+        return { income: incomeIds.size, expenses: expenseIds.size };
+      } catch (err) {
+        console.error('deleteFinancesByDocumentId error:', err);
+        setError(err instanceof Error ? err.message : String(err));
+        throw err;
+      }
+    },
+    [user?.uid, income, expenses]
+  );
+
   const updateIncome = useCallback(async (id: string, updates: Partial<Omit<Income, 'id' | 'restaurant_id' | 'created_at'>>) => {
     if (!db) return;
     try {
@@ -292,6 +350,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     updateExpense,
     deleteIncome,
     deleteExpense,
+    deleteFinancesByDocumentId,
     refreshFinances: fetchFinances,
   };
 
