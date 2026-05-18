@@ -78,12 +78,33 @@ service cloud.firestore {
       allow create: if createOwnedByUser();
     }
 
-    /** Billing mirror (Stripe webhooks via Admin SDK; client may create own stub on first sign-in). */
+    function validSelfServePlan() {
+      return request.resource.data.planId in ['starter', 'business', 'unlimited'];
+    }
+
+    function validSubscriptionStatus() {
+      return request.resource.data.subscriptionStatus in [
+        'trialing', 'active', 'past_due', 'unpaid', 'canceled', 'none'
+      ];
+    }
+
+    /** Billing: Admin SDK webhooks when available, or client merge after verified Stripe link (Option B). */
     match /users/{userId} {
       allow read: if signedIn() && userId == ownerUid();
       allow create: if signedIn() && userId == ownerUid()
-        && request.resource.data.subscriptionStatus == 'none';
-      allow update, delete: if false;
+        && (!('subscriptionStatus' in request.resource.data)
+          || request.resource.data.subscriptionStatus == 'none');
+      allow update: if signedIn()
+        && userId == ownerUid()
+        && validSelfServePlan()
+        && validSubscriptionStatus()
+        && request.resource.data.subscriptionId is string
+        && request.resource.data.subscriptionId.size() > 0;
+      allow delete: if false;
+    }
+
+    match /pendingStripeCheckouts/{id} {
+      allow read, write: if false;
     }
 
     match /{document=**} {

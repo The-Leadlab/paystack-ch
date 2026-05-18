@@ -63,6 +63,7 @@ export async function handleCreatePortalSessionExpress(
   try {
     const out = await runCreatePortalSession(
       req.headers.authorization,
+      (req.body ?? {}) as { stripeCustomerId?: string },
       req.headers as Record<string, string | string[] | undefined>,
       useTestStripe
     );

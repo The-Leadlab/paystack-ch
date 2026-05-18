@@ -1,5 +1,7 @@
 import { apiUrl } from "@/lib/apiBase";
 import { parseTruthyEnv } from "@shared/stripeMode";
+import type { BillingLinkFirestorePatch } from "@shared/billingLink";
+import { applyBillingLinkToFirestore } from "./applyBillingLink";
 
 /** Live Stripe (`sk_live_...`) — `/api/stripe/*` */
 export const STRIPE_BILLING_PATH_LIVE = "/api/stripe";
@@ -137,9 +139,22 @@ export function preserveCheckoutInAuthHref(baseHref: string, currentSearch: stri
   return `${path}?${params.toString()}`;
 }
 
+export type CheckoutLinkFailure = Error & {
+  code?: string;
+  stripeEmail?: string | null;
+};
+
+function checkoutLinkError(
+  message: string,
+  extra?: { code?: string; stripeEmail?: string | null }
+): CheckoutLinkFailure {
+  return Object.assign(new Error(message), extra);
+}
+
 export async function linkCheckoutSessionAfterAuth(
   idToken: string,
   sessionId: string,
+  uid: string,
   billingPath: string = activeStripeBillingPath()
 ): Promise<void> {
   const res = await fetch(apiUrl(`${billingPath}/link-checkout-session`), {
@@ -152,10 +167,32 @@ export async function linkCheckoutSessionAfterAuth(
   });
   const { json, errorMessage } = await parseStripeFetchResponse(res);
   if (!json || !res.ok) {
-    throw new Error(errorMessage || "Could not link subscription to your account");
+    throw checkoutLinkError(errorMessage || "Could not link subscription to your account", {
+      code: typeof json?.code === "string" ? json.code : undefined,
+      stripeEmail: typeof json?.stripeEmail === "string" ? json.stripeEmail : null,
+    });
   }
   if (json.ok !== true) {
     const err = typeof json.error === "string" ? json.error : "Could not link subscription to your account";
-    throw new Error(err);
+    throw checkoutLinkError(err, {
+      code: typeof json.code === "string" ? json.code : undefined,
+      stripeEmail: typeof json.stripeEmail === "string" ? json.stripeEmail : null,
+    });
+  }
+
+  const billing = json.billing as BillingLinkFirestorePatch | undefined;
+  if (json.clientWriteRequired === true && billing) {
+    try {
+      await applyBillingLinkToFirestore(uid, billing);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/permission|insufficient/i.test(msg)) {
+        throw checkoutLinkError(
+          "Subscription verified but Firestore denied saving your plan. Deploy the updated firestore.rules from the repo, then try again.",
+          { code: "firestore_permission" }
+        );
+      }
+      throw checkoutLinkError(msg || "Could not save subscription to your account", { code: "firestore_write" });
+    }
   }
 }

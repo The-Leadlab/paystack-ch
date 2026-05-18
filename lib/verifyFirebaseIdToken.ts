@@ -3,14 +3,14 @@
  * When org policy blocks service-account key creation, use Identity Toolkit + FIREBASE_WEB_API_KEY.
  */
 import { getAuth } from "firebase-admin/auth";
-import { ensureFirebaseAdmin } from "./stripeBilling.js";
+import { ensureFirebaseAdmin, hasFirebaseAdminCredentials } from "./firebaseAdmin.js";
 
-export function hasFirebaseAdminCredentials(): boolean {
-  return Boolean(
-    process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim() ||
-      process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64?.trim()
-  );
-}
+export { hasFirebaseAdminCredentials } from "./firebaseAdmin.js";
+
+export type VerifiedFirebaseUser = {
+  uid: string;
+  email: string | null;
+};
 
 function resolveFirebaseWebApiKey(): string {
   const key =
@@ -20,7 +20,7 @@ function resolveFirebaseWebApiKey(): string {
     throw Object.assign(
       new Error(
         "Server missing FIREBASE_WEB_API_KEY (use the same Web API Key as VITE_FIREBASE_API_KEY). " +
-          "Your organisation blocks service-account private keys; this key verifies signed-in users for /api/gemini instead."
+          "Required when service-account private keys are blocked."
       ),
       { status: 503 }
     );
@@ -28,7 +28,7 @@ function resolveFirebaseWebApiKey(): string {
   return key;
 }
 
-async function verifyWithIdentityToolkit(idToken: string): Promise<string> {
+async function verifyWithIdentityToolkit(idToken: string): Promise<VerifiedFirebaseUser> {
   const apiKey = resolveFirebaseWebApiKey();
   const res = await fetch(
     `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`,
@@ -40,7 +40,7 @@ async function verifyWithIdentityToolkit(idToken: string): Promise<string> {
   );
 
   const data = (await res.json().catch(() => ({}))) as {
-    users?: Array<{ localId?: string }>;
+    users?: Array<{ localId?: string; email?: string }>;
     error?: { message?: string };
   };
 
@@ -51,24 +51,33 @@ async function verifyWithIdentityToolkit(idToken: string): Promise<string> {
     );
   }
 
-  const uid = data.users?.[0]?.localId;
+  const user = data.users?.[0];
+  const uid = user?.localId;
   if (!uid) {
     throw Object.assign(new Error("Invalid authentication token"), { status: 401 });
   }
-  return uid;
+  const email = typeof user?.email === "string" ? user.email.trim().toLowerCase() : null;
+  return { uid, email };
 }
 
-/** Returns Firebase Auth uid for a valid ID token. */
-export async function verifyFirebaseIdToken(idToken: string): Promise<string> {
+/** Returns Firebase Auth uid + email for a valid ID token. */
+export async function verifyFirebaseUser(idToken: string): Promise<VerifiedFirebaseUser> {
   if (hasFirebaseAdminCredentials()) {
     ensureFirebaseAdmin();
     const decoded = await getAuth().verifyIdToken(idToken, true);
     if (!decoded.uid) {
       throw Object.assign(new Error("Invalid authentication token"), { status: 401 });
     }
-    return decoded.uid;
+    const email = decoded.email ? decoded.email.trim().toLowerCase() : null;
+    return { uid: decoded.uid, email };
   }
   return verifyWithIdentityToolkit(idToken);
+}
+
+/** Returns Firebase Auth uid for a valid ID token. */
+export async function verifyFirebaseIdToken(idToken: string): Promise<string> {
+  const { uid } = await verifyFirebaseUser(idToken);
+  return uid;
 }
 
 export async function verifyFirebaseAuthorizationHeader(

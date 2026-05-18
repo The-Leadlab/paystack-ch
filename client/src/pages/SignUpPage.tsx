@@ -18,6 +18,7 @@ import {
   linkCheckoutSessionAfterAuth,
   preserveCheckoutInAuthHref,
 } from "@/cafe/lib/stripeCheckoutClient";
+import { formatCheckoutLinkError } from "@/cafe/lib/formatCheckoutLinkError";
 
 function sanitizeRedirect(search: string): string {
   const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
@@ -72,11 +73,11 @@ export default function SignUpPage() {
     (async () => {
       try {
         const token = await user.getIdToken();
-        await linkCheckoutSessionAfterAuth(token, checkoutSid, checkoutBillingPath);
+        await linkCheckoutSessionAfterAuth(token, checkoutSid, user.uid, checkoutBillingPath);
         if (alive) setLocation(nextPath);
       } catch (e) {
         linkStartedRef.current = false;
-        if (alive) setCheckoutLinkError(e instanceof Error ? e.message : String(e));
+        if (alive) setCheckoutLinkError(formatCheckoutLinkError(e, t));
       }
     })();
     return () => {

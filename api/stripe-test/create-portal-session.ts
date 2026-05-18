@@ -10,7 +10,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       res.status(405).json({ error: "Method not allowed" });
       return;
     }
-    const out = await runCreatePortalSession(req.headers.authorization, req.headers, true);
+    let body: { stripeCustomerId?: string } = {};
+    if (typeof req.body === "string") {
+      try {
+        body = JSON.parse(req.body) as { stripeCustomerId?: string };
+      } catch {
+        body = {};
+      }
+    } else if (typeof req.body === "object" && req.body !== null && !Buffer.isBuffer(req.body)) {
+      body = req.body as { stripeCustomerId?: string };
+    }
+    const out = await runCreatePortalSession(req.headers.authorization, body, req.headers, true);
     stripeCorsApplyHeaders(req, res);
     res.status(out.status).json(out.json);
   } catch (e) {

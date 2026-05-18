@@ -22,6 +22,7 @@ type UserBillingSnapshot = {
   subscriptionStatus: string | null;
   trialEndsAt: Date | null;
   planId: PaystackPlanId | null;
+  stripeCustomerId: string | null;
 };
 
 type SubscriptionContextValue = {
@@ -62,7 +63,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       ref,
       (snap) => {
         if (!snap.exists()) {
-          setBilling({ subscriptionStatus: 'none', trialEndsAt: null, planId: null });
+          setBilling({ subscriptionStatus: 'none', trialEndsAt: null, planId: null, stripeCustomerId: null });
         } else {
           const d = snap.data() as Record<string, unknown>;
           const ts = d.trialEndsAt as { toDate?: () => Date } | undefined;
@@ -70,13 +71,17 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             subscriptionStatus: typeof d.subscriptionStatus === 'string' ? d.subscriptionStatus : 'none',
             trialEndsAt: ts && typeof ts.toDate === 'function' ? ts.toDate() : null,
             planId: parsePaystackPlanId(d.planId),
+            stripeCustomerId:
+              typeof d.stripeCustomerId === 'string' && d.stripeCustomerId.trim()
+                ? d.stripeCustomerId.trim()
+                : null,
           });
         }
         setLoading(false);
       },
       (err) => {
         console.error('Subscription snapshot error:', err);
-        setBilling({ subscriptionStatus: 'none', trialEndsAt: null, planId: null });
+        setBilling({ subscriptionStatus: 'none', trialEndsAt: null, planId: null, stripeCustomerId: null });
         setLoading(false);
       }
     );
@@ -128,13 +133,16 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     if (!user) throw new Error('Not signed in');
     const token = await user.getIdToken();
     const billingPath = activeStripeBillingPath();
+    const stripeCustomerId = billing?.stripeCustomerId;
     const res = await fetch(apiUrl(`${billingPath}/create-portal-session`), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: '{}',
+      body: JSON.stringify(
+        stripeCustomerId ? { stripeCustomerId } : {}
+      ),
     });
     const { json, errorMessage } = await parseStripeFetchResponse(res);
     if (!json) throw new Error(errorMessage || 'Billing portal failed');
@@ -144,7 +152,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       throw new Error(typeof json.error === 'string' ? json.error : 'No portal URL returned');
     }
     window.location.href = url;
-  }, [user]);
+  }, [user, billing?.stripeCustomerId]);
 
   const value: SubscriptionContextValue = {
     enforcementEnabled,

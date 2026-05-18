@@ -284,6 +284,15 @@ const translations = {
     planSummaryIncludedTitle: 'What is included in your plan',
     checkoutLinkEmailHint:
       'Tip: your Paystack.ch account email must exactly match the email you used at Stripe checkout (same spelling, no extra spaces).',
+    checkoutLinkEmailMismatch:
+      'Stripe checkout used {email}. Create or sign in with that exact email, then tap Try again.',
+    checkoutLinkFirestoreDenied:
+      'Your plan was verified with Stripe but could not be saved. Deploy the updated firestore.rules from the repo in Firebase Console, then try again.',
+    checkoutLinkNoEmail:
+      'This account has no email address. Use email/password or Google sign-in with the same email you used at Stripe checkout.',
+    checkoutLinkAdminBlockedHint:
+      'Server billing storage is misconfigured. Ensure FIREBASE_WEB_API_KEY and SUBSCRIPTION_LINK_SIGNING_SECRET are set on Vercel, then redeploy.',
+    checkoutLinkGeneric: 'Could not link your subscription. Try again or contact support.',
     emailVerifyRateLimited:
       'Too many verification emails were sent. Please wait several minutes before trying again, or check your spam folder.',
     emailVerifyWait: 'You can resend in {s}s.',
@@ -950,6 +959,15 @@ const translations = {
     planSummaryIncludedTitle: 'Inclus dans votre offre',
     checkoutLinkEmailHint:
       'Conseil : l\'e-mail du compte Paystack.ch doit etre strictement le meme que celui saisi a la caisse Stripe (meme orthographe, sans espaces en trop).',
+    checkoutLinkEmailMismatch:
+      'Le paiement Stripe utilise {email}. Creez un compte ou connectez-vous avec cet e-mail exact, puis reessayez.',
+    checkoutLinkFirestoreDenied:
+      'Votre offre a ete verifiee par Stripe mais n\'a pas pu etre enregistree. Deployez firestore.rules depuis le depot (Console Firebase), puis reessayez.',
+    checkoutLinkNoEmail:
+      'Ce compte n\'a pas d\'adresse e-mail. Utilisez la meme adresse que sur Stripe (e-mail/mot de passe ou Google).',
+    checkoutLinkAdminBlockedHint:
+      'Configuration serveur incomplete. Definissez FIREBASE_WEB_API_KEY et SUBSCRIPTION_LINK_SIGNING_SECRET sur Vercel, puis redeployez.',
+    checkoutLinkGeneric: 'Impossible de lier votre abonnement. Reessayez ou contactez le support.',
     emailVerifyRateLimited:
       'Trop d\'e-mails de verification ont ete envoyes. Patientez quelques minutes avant de reessayer, ou verifiez vos courriers indesirables.',
     emailVerifyWait: 'Nouvel envoi possible dans {s}s.',
