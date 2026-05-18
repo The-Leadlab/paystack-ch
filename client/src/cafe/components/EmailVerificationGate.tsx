@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MailCheck } from 'lucide-react';
+import { Loader2, LogOut, MailCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -13,8 +13,9 @@ function authErrorCode(err: unknown): string | null {
 
 export function EmailVerificationGate() {
   const { t } = useLanguage();
-  const { user, resendVerificationEmail, signOut } = useAuth();
+  const { user, resendVerificationEmail, refreshAuthUser, signOut } = useAuth();
   const [sending, setSending] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cooldownSec, setCooldownSec] = useState(0);
@@ -54,48 +55,81 @@ export function EmailVerificationGate() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white border border-ypsom-alice rounded-lg shadow-audit p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <MailCheck className="w-5 h-5 text-ypsom-deep" />
-          <h1 className="font-black text-ypsom-deep uppercase tracking-tight">{t('emailVerifyTitle')}</h1>
-        </div>
-        <p className="text-sm text-ypsom-slate leading-relaxed">
-          {t('emailVerifyBody')}
-          {email ? (
-            <>
-              {' '}
-              {t('emailVerifySentPrefix')} <span className="font-bold text-ypsom-deep">{email}</span>.
-            </>
-          ) : null}
-        </p>
+  const handleRefresh = async () => {
+    setError(null);
+    setMessage(null);
+    setChecking(true);
+    try {
+      const { emailVerified } = await refreshAuthUser();
+      if (!emailVerified) {
+        setMessage(t('emailVerifyStillPending'));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setChecking(false);
+    }
+  };
 
-        {error && (
-          <p className="mt-4 text-xs text-red-600 font-medium">
+  return (
+    <div className="min-h-[100dvh] min-h-screen bg-cdlp-dark flex items-center justify-center px-4 py-8 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] touch-manipulation">
+      <div className="max-w-md w-full border border-cdlp-border rounded-xl bg-cdlp-card p-6 sm:p-8 shadow-card space-y-5">
+        <div className="mx-auto w-14 h-14 rounded-full bg-cdlp-gold/15 flex items-center justify-center border border-cdlp-gold/40">
+          <MailCheck className="w-7 h-7 text-cdlp-gold" />
+        </div>
+        <div className="text-center space-y-2">
+          <h1 className="text-lg font-black uppercase tracking-wider text-white">{t('emailVerifyTitle')}</h1>
+          <p className="text-xs text-cdlp-muted leading-relaxed">
+            {t('emailVerifyBody')}
+            {email ? (
+              <>
+                {' '}
+                {t('emailVerifySentPrefix')}{' '}
+                <span className="font-bold text-cdlp-gold">{email}</span>.
+              </>
+            ) : null}
+          </p>
+        </div>
+
+        {error ? (
+          <p className="text-[10px] font-bold text-red-400 bg-red-950/40 border border-red-800/50 rounded px-3 py-2">
             {t('authErrorPrefix')}
             {error}
           </p>
-        )}
-        {message && <p className="mt-4 text-xs text-emerald-600 font-medium">{message}</p>}
+        ) : null}
+        {message ? (
+          <p className="text-[10px] font-bold text-emerald-400 bg-emerald-950/30 border border-emerald-800/40 rounded px-3 py-2">
+            {message}
+          </p>
+        ) : null}
         {cooldownSec > 0 ? (
-          <p className="mt-2 text-xs text-ypsom-slate">{t('emailVerifyWait').replace('{s}', String(cooldownSec))}</p>
+          <p className="text-[10px] text-cdlp-muted text-center">{t('emailVerifyWait').replace('{s}', String(cooldownSec))}</p>
         ) : null}
 
-        <div className="mt-6 space-y-3">
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={checking}
+            className="w-full h-12 rounded-sm bg-cdlp-gold text-cdlp-black font-black text-xs uppercase tracking-wider hover:bg-cdlp-gold-light disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {checking ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {checking ? t('emailVerifyChecking') : t('emailVerifyRefresh')}
+          </button>
           <button
             type="button"
             onClick={handleResend}
             disabled={sending || cooldownSec > 0}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-ypsom-deep text-white font-black text-[10px] uppercase tracking-widest rounded-sm hover:bg-ypsom-shadow disabled:opacity-60 transition-colors"
+            className="w-full h-10 rounded-sm border border-cdlp-border text-[10px] font-bold uppercase tracking-widest text-cdlp-muted hover:text-white disabled:opacity-50 transition-colors"
           >
             {sending ? t('emailVerifyResending') : t('emailVerifyResend')}
           </button>
           <button
             type="button"
-            onClick={() => signOut()}
-            className="w-full text-center text-[10px] font-bold uppercase tracking-widest text-ypsom-slate hover:text-ypsom-deep transition-colors"
+            onClick={() => void signOut()}
+            className="w-full h-10 rounded-sm border border-cdlp-border text-[10px] font-bold uppercase text-cdlp-muted hover:text-white flex items-center justify-center gap-2"
           >
+            <LogOut className="w-3.5 h-3.5" />
             {t('emailVerifySignOut')}
           </button>
         </div>

@@ -40,6 +40,8 @@ type AuthContextValue = {
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, username?: string) => Promise<{ error: Error | null }>;
   resendVerificationEmail: () => Promise<{ error: Error | null }>;
+  /** Reload Firebase user (e.g. after clicking the verification link). */
+  refreshAuthUser: () => Promise<{ emailVerified: boolean }>;
   signOut: () => Promise<void>;
 };
 
@@ -129,6 +131,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshAuthUser = async () => {
+    if (!auth?.currentUser) {
+      return { emailVerified: false };
+    }
+    await auth.currentUser.reload();
+    const verified = auth.currentUser.emailVerified;
+    // Force React to re-read emailVerified (reload mutates the same User reference).
+    setUser(null);
+    setUser(auth.currentUser);
+    return { emailVerified: verified };
+  };
+
   const signOut = async () => {
     if (auth) await firebaseSignOut(auth);
   };
@@ -141,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithGoogle,
     signUp,
     resendVerificationEmail,
+    refreshAuthUser,
     signOut,
   };
 

@@ -626,7 +626,10 @@ const translations = {
     emailVerifyResend: 'Resend verification email',
     emailVerifyResending: 'Sending…',
     emailVerifySignOut: 'Sign out',
-    emailVerifySuccess: 'Verification email sent. Check your inbox, then reload this page.',
+    emailVerifyRefresh: "I've verified — check again",
+    emailVerifyChecking: 'Checking…',
+    emailVerifyStillPending: 'Not verified yet. Open the link in your inbox, then try again.',
+    emailVerifySuccess: 'Verification email sent. Check your inbox, then tap "I\'ve verified — check again".',
 
     fiEvidenceMeta: 'Audit Evidence Metadata',
     fiOpenTraceTab: 'Open trace in new tab',
@@ -1301,7 +1304,10 @@ const translations = {
     emailVerifyResend: 'Renvoyer l\'e-mail de verification',
     emailVerifyResending: 'Envoi…',
     emailVerifySignOut: 'Deconnexion',
-    emailVerifySuccess: 'E-mail de verification envoye. Consultez votre boite, puis rechargez la page.',
+    emailVerifyRefresh: 'J\'ai verifie — verifier a nouveau',
+    emailVerifyChecking: 'Verification…',
+    emailVerifyStillPending: 'Pas encore verifie. Ouvrez le lien dans votre boite, puis reessayez.',
+    emailVerifySuccess: 'E-mail de verification envoye. Consultez votre boite, puis appuyez sur « J\'ai verifie ».',
 
     fiEvidenceMeta: 'Metadonnees de preuve d\'audit',
     fiOpenTraceTab: 'Ouvrir la trace dans un nouvel onglet',
