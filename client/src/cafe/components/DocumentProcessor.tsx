@@ -2056,6 +2056,7 @@ export const DocumentProcessor: React.FC<{
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [localDocs, setLocalDocs] = useState<ProcessedDocument[]>([]);
   const [reattachTargetId, setReattachTargetId] = useState<string | null>(null);
+  const [retryingDocId, setRetryingDocId] = useState<string | null>(null);
   const reattachInputRef = useRef<HTMLInputElement>(null);
   const stopProcessingRef = useRef(false);
   const dragCounter = useRef(0);
@@ -2077,7 +2078,7 @@ export const DocumentProcessor: React.FC<{
     status === 'pending' || status === 'error' || status === 'skipped';
 
   const canProcessDoc = (doc: ProcessedDocument & { source?: 'firestore' | 'local' }) =>
-    Boolean(doc.fileRaw || doc.fileUrl || (doc as any).source !== 'firestore');
+    Boolean(doc.fileRaw || doc.fileUrl || doc.fileDataUrl || doc.persistedDocumentId);
 
   const classifyDocFlowType = (data?: FinancialData): 'INCOME' | 'EXPENSE' | 'SALARY' => {
     const cat = String(data?.expenseCategory || '').toUpperCase();
@@ -2321,11 +2322,19 @@ export const DocumentProcessor: React.FC<{
     setLocalDocs((prev) => prev.map((d) => d.id === docId ? { ...d, status: 'skipped' as const, error: 'Skipped by user' } : d));
   };
 
-  const retryDoc = async (docId: string) => {
-    const doc = localDocs.find(d => d.id === docId);
-    if (doc) {
-      setLocalDocs((prev) => prev.map((d) => d.id === docId ? { ...d, status: 'pending', error: undefined } : d));
+  const retryDocument = async (doc: ProcessedDocument & { source?: 'firestore' | 'local' }) => {
+    if (retryingDocId || isProcessing) return;
+    setRetryingDocId(doc.id);
+    try {
+      const isFirestoreDoc = (doc as any).source === 'firestore';
+      if (!isFirestoreDoc) {
+        setLocalDocs((prev) =>
+          prev.map((d) => (d.id === doc.id ? { ...d, status: 'pending' as const, error: undefined } : d))
+        );
+      }
       await processDoc(doc);
+    } finally {
+      setRetryingDocId(null);
     }
   };
 
@@ -2546,6 +2555,11 @@ export const DocumentProcessor: React.FC<{
                               <span className="px-2 py-0.5 bg-cdlp-gold/20 text-cdlp-gold text-[9px] font-bold uppercase rounded">{doc.data.issuer}</span>
                             </div>
                           )}
+                          {doc.status === 'error' && doc.error && (
+                            <p className="ml-5 mt-1 text-[9px] text-red-400/90 max-w-[280px] leading-snug" title={doc.error}>
+                              {doc.error}
+                            </p>
+                          )}
                         </td>
                         <td className="px-4 py-3 font-mono text-[10px] text-cdlp-muted hidden md:table-cell">{doc.data?.date || '---'}</td>
                         <td className="px-4 py-3 text-right font-bold font-mono text-[11px] text-white hidden md:table-cell">
@@ -2634,47 +2648,72 @@ export const DocumentProcessor: React.FC<{
                               </button>
                             )}
                             
-                            {/* Skip button - show when processing or error */}
-                            {(doc.status === 'processing' || doc.status === 'error') && (doc as any).source !== 'firestore' && (
-                              <button 
-                                onClick={(e) => { 
+                            {doc.status === 'error' && (
+                              <>
+                                {canProcessDoc(doc as ProcessedDocument & { source?: 'firestore' | 'local' }) ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void retryDocument(doc as ProcessedDocument & { source?: 'firestore' | 'local' });
+                                    }}
+                                    disabled={Boolean(retryingDocId) || isProcessing}
+                                    className="px-2 py-1 bg-cdlp-gold/20 hover:bg-cdlp-gold/30 disabled:opacity-50 text-cdlp-gold text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
+                                    title="Run AI extraction again on this file"
+                                  >
+                                    {retryingDocId === doc.id ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <RefreshCcw className="w-3 h-3" />
+                                    )}
+                                    <span className="hidden lg:inline">Process again</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      startReattach(doc.id);
+                                    }}
+                                    disabled={Boolean(retryingDocId) || isProcessing}
+                                    className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/30 disabled:opacity-50 text-blue-400 text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
+                                    title="Select the file from your computer and process again"
+                                  >
+                                    <Upload className="w-3 h-3" />
+                                    <span className="hidden lg:inline">Reattach & process</span>
+                                  </button>
+                                )}
+                              </>
+                            )}
+
+                            {doc.status === 'skipped' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void retryDocument(doc as ProcessedDocument & { source?: 'firestore' | 'local' });
+                                }}
+                                disabled={Boolean(retryingDocId) || isProcessing}
+                                className="px-2 py-1 bg-cdlp-gold/20 hover:bg-cdlp-gold/30 disabled:opacity-50 text-cdlp-gold text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
+                                title="Process this document again"
+                              >
+                                {retryingDocId === doc.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <RefreshCcw className="w-3 h-3" />
+                                )}
+                                <span className="hidden lg:inline">Process again</span>
+                              </button>
+                            )}
+
+                            {doc.status === 'processing' && (doc as any).source !== 'firestore' && (
+                              <button
+                                onClick={(e) => {
                                   e.stopPropagation();
                                   skipDoc(doc.id);
-                                }} 
+                                }}
                                 className="px-2 py-1 bg-amber-600/20 hover:bg-amber-600/30 text-amber-500 text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
                                 title="Skip this document"
                               >
                                 <Ban className="w-3 h-3" />
                                 <span className="hidden lg:inline">Skip</span>
-                              </button>
-                            )}
-                            
-                            {/* Retry button - show when skipped */}
-                            {doc.status === 'skipped' && (doc as any).source !== 'firestore' && (
-                              <button 
-                                onClick={(e) => { 
-                                  e.stopPropagation();
-                                  retryDoc(doc.id);
-                                }} 
-                                className="px-2 py-1 bg-cdlp-gold/20 hover:bg-cdlp-gold/30 text-cdlp-gold text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
-                                title="Retry processing this document"
-                              >
-                                <RefreshCcw className="w-3 h-3" />
-                                <span className="hidden lg:inline">Retry</span>
-                              </button>
-                            )}
-
-                            {doc.status === 'error' && (doc as any).source === 'firestore' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  startReattach(doc.id);
-                                }}
-                                className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
-                                title="Reattach the file and retry processing"
-                              >
-                                <Upload className="w-3 h-3" />
-                                <span className="hidden lg:inline">Reattach</span>
                               </button>
                             )}
                             
