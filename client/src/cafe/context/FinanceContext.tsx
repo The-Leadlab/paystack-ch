@@ -53,7 +53,7 @@ type FinanceContextValue = {
   loading: boolean;
   error: string | null;
   addIncome: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number) => Promise<Income | null>;
-  addExpense: (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number) => Promise<Expense | null>;
+  addExpense: (date: string, category: Expense['category'], amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number) => Promise<Expense | null>;
   updateIncome: (id: string, updates: Partial<Omit<Income, 'id' | 'restaurant_id' | 'created_at'>>) => Promise<void>;
   updateExpense: (id: string, updates: Partial<Omit<Expense, 'id' | 'restaurant_id' | 'created_at'>>) => Promise<void>;
   deleteIncome: (id: string) => Promise<void>;
@@ -162,7 +162,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addExpense = useCallback(
-    async (date: string, category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER', amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number): Promise<Expense | null> => {
+    async (date: string, category: Expense['category'], amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number): Promise<Expense | null> => {
       const uid = user?.uid;
       if (!uid || !db) {
         console.error('addExpense failed: No user or database');

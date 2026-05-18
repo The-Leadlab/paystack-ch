@@ -14,6 +14,11 @@ import type { FinancialData, ProcessedDocument, POSReading } from '../types';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
 import { BRAND_LOGO_SRC } from '@/const/branding';
 import type { DocumentReference } from 'firebase/firestore';
+import {
+  buildPayrollExpenseLines,
+  isPayrollCostCategory,
+  resolvePayrollSettlementMode,
+} from '../services/swissPayrollService';
 
 type Tab = 'dashboard' | 'revenue' | 'reports' | 'documents';
 
@@ -48,31 +53,6 @@ async function commitDeletesInChunks(
     n += slice.length;
   }
   return n;
-}
-
-function resolveNetPayFromFinancialData(data: FinancialData): number {
-  const components = data.paySlip?.components ?? [];
-  const grossFromComponents = components
-    .filter((c) => c.type === 'INCOME')
-    .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-  const deductionsFromComponents = components
-    .filter((c) => c.type === 'EXPENSE')
-    .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-  const netFromComponents = grossFromComponents - deductionsFromComponents;
-  if (netFromComponents > 0) return netFromComponents;
-
-  const directNet = Number(data.paySlip?.netPay || 0);
-  if (directNet > 0) return directNet;
-
-  const netAmount = Number(data.netAmount || 0);
-  if (netAmount > 0) return netAmount;
-
-  const total = Number(data.totalAmount || 0);
-  const gross = Number(data.paySlip?.grossPay || 0);
-  // If total equals gross, treat as unresolved gross and avoid posting wrong payroll amount.
-  if (gross > 0 && Math.abs(total - gross) < 0.01) return 0;
-
-  return total > 0 ? total : 0;
 }
 
 export function RestaurantDashboard() {
@@ -156,9 +136,9 @@ export function RestaurantDashboard() {
 
   const totalIncome = filteredIncome.reduce((sum, i) => sum + i.amount, 0);
   // Total expenses (excluding payroll)
-  const totalExpenses = filteredExpenses.filter(e => e.category !== 'PAYROLL').reduce((sum, e) => sum + e.amount, 0);
-  // Payroll is deducted separately
-  const totalPayroll = filteredExpenses.filter(e => e.category === 'PAYROLL').reduce((sum, e) => sum + e.amount, 0);
+  const totalExpenses = filteredExpenses.filter((e) => !isPayrollCostCategory(e.category)).reduce((sum, e) => sum + e.amount, 0);
+  // Payroll card = full employer cost (net + state deductions, or gross for C/CH)
+  const totalPayroll = filteredExpenses.filter((e) => isPayrollCostCategory(e.category)).reduce((sum, e) => sum + e.amount, 0);
   // VAT calculations
   const vatReceived = filteredIncome.reduce((sum, i) => sum + (i.vat_amount || 0), 0);
   const vatPaid = filteredExpenses.reduce((sum, e) => sum + (e.vat_amount || 0), 0);
@@ -397,46 +377,33 @@ export function RestaurantDashboard() {
         }
       }
     } else if (docType === 'Pay Slip') {
-      const netPay = resolveNetPayFromFinancialData(data);
-      const grossPay = data.paySlip?.grossPay || 0;
       const employeeName = data.paySlip?.employee?.name || 'Unknown Employee';
-      const employeeId = data.paySlip?.employee?.idNumber || '';
-      const socialContributions = grossPay > 0 ? (grossPay - netPay) : 0; // Deductions = Gross - Net
-      
-      console.log('💰 Processing payslip:', employeeName, 'Net Pay:', netPay, 'Gross Pay:', grossPay, 'Social Contributions:', socialContributions);
-      
-      // Automatically create or update employee record
+      const settlement = resolvePayrollSettlementMode(data);
+      const payrollLines = buildPayrollExpenseLines(data, employeeName, settlement);
+      const netForEmployee =
+        payrollLines.find((l) => l.category === 'PAYROLL')?.amount ??
+        payrollLines[0]?.amount ??
+        0;
+
+      console.log('💰 Processing payslip:', employeeName, settlement, payrollLines);
+
       try {
-        const existingEmployee = employees.find(emp => 
-          emp.name.toLowerCase() === employeeName.toLowerCase()
+        const existingEmployee = employees.find(
+          (emp) => emp.name.toLowerCase() === employeeName.toLowerCase()
         );
-        
-        if (existingEmployee) {
-          // Update existing employee with latest payslip data
-          console.log('📝 Employee already exists:', employeeName);
-        } else {
-          // Create new employee automatically with NET PAY as the expense amount
-          console.log('➕ Creating new employee:', employeeName);
-          await addEmployee(
-            employeeName,
-            'Employee', // Default position
-            netPay, // monthly_salary = net pay (what we actually pay)
-            currentSession?.id
-          );
-          console.log('✅ Employee created successfully');
+        if (!existingEmployee && netForEmployee > 0) {
+          await addEmployee(employeeName, 'Employee', netForEmployee, currentSession?.id);
         }
       } catch (empError) {
         console.error('⚠️ Error managing employee:', empError);
-        // Continue even if employee creation fails
       }
-      
-      // Add payroll expense with NET PAY (what employee receives)
-      if (netPay > 0) {
+
+      for (const line of payrollLines) {
         await addExpense(
-          date, 
-          'PAYROLL', 
-          netPay, 
-          `Payslip - ${employeeName}`, 
+          date,
+          line.category,
+          line.amount,
+          line.description,
           currentSession.id,
           undefined,
           documentId
@@ -517,17 +484,16 @@ export function RestaurantDashboard() {
           }
         }
     } else if (docType === 'Pay Slip') {
-        const netPay = resolveNetPayFromFinancialData(newData);
         const employeeName = newData.paySlip?.employee?.name || 'Unknown Employee';
-        
-        console.log('💰 Re-processing payslip:', employeeName, 'Net Pay:', netPay);
-        
-        if (netPay > 0) {
+        const settlement = resolvePayrollSettlementMode(newData);
+        const payrollLines = buildPayrollExpenseLines(newData, employeeName, settlement);
+        console.log('💰 Re-processing payslip:', employeeName, settlement, payrollLines);
+        for (const line of payrollLines) {
           await addExpense(
-            date, 
-            'PAYROLL', 
-            netPay, 
-            `Payslip - ${employeeName}`, 
+            date,
+            line.category,
+            line.amount,
+            line.description,
             currentSession.id,
             undefined,
             documentId

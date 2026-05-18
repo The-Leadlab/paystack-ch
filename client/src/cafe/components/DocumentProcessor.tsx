@@ -8,6 +8,15 @@ import {
   ArrowUpRight, ArrowDownRight, Scale as ScaleIcon, Eye, Plus
 } from 'lucide-react';
 import { analyzeFinancialDocument, syncSwissVatDerivedFields } from '../services/geminiService';
+import {
+  buildPayrollExpenseLines,
+  resolvePayrollAmounts,
+  resolvePayrollSettlementMode,
+  settlementModeForPermit,
+  totalEmployerPayrollCost,
+  type PayrollSettlementMode,
+  type SwissPermitType,
+} from '../services/swissPayrollService';
 import { exportToExcel } from '../services/excelService';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
 import { resolveDocumentProcessingTimeoutMs } from '../lib/documentProcessingTimeout';
@@ -1000,8 +1009,10 @@ const VerificationHub: React.FC<{
       const nextCurrency = nextPaySlip.currency || newData.originalCurrency || 'CHF';
 
       newData.originalCurrency = nextCurrency;
+      const permitType = nextPaySlip.permitType ?? 'B';
       newData.paySlip = {
         ...nextPaySlip,
+        permitType,
         currency: nextCurrency,
         grossPay: gross,
         netPay: net,
@@ -1009,8 +1020,16 @@ const VerificationHub: React.FC<{
 
       newData.vatAmount = 0;
       newData.netAmount = net;
-      newData.totalAmount = net;
-      newData.amountInCHF = net;
+      const employerGross = gross > 0 ? gross : net;
+      newData.totalAmount = employerGross;
+      newData.amountInCHF = employerGross;
+    }
+
+    if (field === 'payrollSettlementMode' || field === 'paySlip') {
+      const mode = resolvePayrollSettlementMode(newData);
+      if (!newData.payrollSettlementMode) {
+        newData.payrollSettlementMode = mode;
+      }
     }
     
     onUpdate(newData);
@@ -1079,7 +1098,34 @@ const VerificationHub: React.FC<{
   const paySlipComponents = currentPaySlip.components ?? [];
   const computedGrossPay = paySlipComponents.filter((c) => c.type === 'INCOME').reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const computedDeductions = paySlipComponents.filter((c) => c.type === 'EXPENSE').reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const computedNetPay = computedGrossPay - computedDeductions;
+  const computedNetPay = computedGrossPay > 0 ? computedGrossPay - computedDeductions : Number(currentPaySlip.netPay || editedData.netAmount || 0);
+  const payrollSettlement: PayrollSettlementMode = resolvePayrollSettlementMode(editedData);
+  const payrollPreviewLines = buildPayrollExpenseLines(
+    editedData,
+    currentPaySlip.employee?.name || 'Employee',
+    payrollSettlement
+  );
+  const payrollAmounts = resolvePayrollAmounts(editedData);
+
+  const setPermitAndMode = (permit: SwissPermitType) => {
+    const mode = settlementModeForPermit(permit);
+    const nextPaySlip = { ...currentPaySlip, permitType: permit };
+    const gross = computedGrossPay || Number(nextPaySlip.grossPay || 0);
+    const net = computedNetPay || Number(nextPaySlip.netPay || 0);
+    const employerGross = gross > 0 ? gross : net;
+    onUpdate({
+      ...editedData,
+      paySlip: nextPaySlip,
+      payrollSettlementMode: mode,
+      totalAmount: employerGross,
+      amountInCHF: employerGross,
+      netAmount: net,
+    });
+  };
+
+  const setSettlementModeOnly = (mode: PayrollSettlementMode) => {
+    handleFieldChange('payrollSettlementMode', mode);
+  };
 
   return (
     <div className="bg-cdlp-black border-y border-cdlp-border animate-in slide-in-from-top-2 duration-400 overflow-hidden shadow-inner">
@@ -1162,6 +1208,7 @@ const VerificationHub: React.FC<{
            )}
 
            {isPaySlip && (
+             <>
              <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 p-4 sm:p-6 bg-indigo-900/20 rounded-sm border border-cdlp-border shadow-sm">
                <div className="lg:col-span-1">
                  <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Employee Name</label>
@@ -1255,7 +1302,96 @@ const VerificationHub: React.FC<{
                    {computedNetPay.toFixed(2)} {editedData.originalCurrency || 'CHF'}
                  </div>
                </div>
+               <div className="lg:col-span-2">
+                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Employer total cost (gross)</label>
+                 <div className="w-full bg-cdlp-black border border-cdlp-gold/30 h-9 px-3 flex items-center font-mono text-[10px] font-black text-cdlp-gold">
+                   {totalEmployerPayrollCost(editedData).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+                   {editedData.originalCurrency || 'CHF'}
+                 </div>
+               </div>
              </div>
+
+             <div className="mb-8 p-4 sm:p-6 bg-cdlp-card border border-cdlp-border rounded-sm space-y-4">
+               <h5 className="text-[10px] font-black uppercase tracking-widest text-cdlp-gold">Swiss payroll mode</h5>
+               <p className="text-[9px] text-cdlp-muted leading-relaxed max-w-3xl">
+                 Tax at source (permis B, frontalier G/F): two expenses — net salary to the employee, then taxes and social
+                 contributions to the state (gross − net). Paid gross (permis C / Swiss national): one expense for the full
+                 gross amount; the employee pays tax at year-end.
+               </p>
+               <div className="flex flex-wrap gap-2">
+                 {(
+                   [
+                     { id: 'B' as SwissPermitType, label: 'Permit B' },
+                     { id: 'G' as SwissPermitType, label: 'Frontalier G/F' },
+                     { id: 'C' as SwissPermitType, label: 'Permit C' },
+                     { id: 'CH' as SwissPermitType, label: 'Swiss national' },
+                   ] as const
+                 ).map((p) => (
+                   <button
+                     key={p.id}
+                     type="button"
+                     onClick={() => setPermitAndMode(p.id)}
+                     className={`px-3 py-2 rounded-sm text-[9px] font-black uppercase border transition-colors ${
+                       currentPaySlip.permitType === p.id
+                         ? 'bg-cdlp-gold text-cdlp-black border-cdlp-gold'
+                         : 'bg-cdlp-black border-cdlp-border text-cdlp-muted hover:border-cdlp-gold'
+                     }`}
+                   >
+                     {p.label}
+                   </button>
+                 ))}
+               </div>
+               <div className="flex flex-col sm:flex-row gap-2">
+                 <button
+                   type="button"
+                   onClick={() => setSettlementModeOnly('source_tax')}
+                   className={`flex-1 px-4 py-3 rounded-sm text-[9px] font-black uppercase border text-left ${
+                     payrollSettlement === 'source_tax'
+                       ? 'bg-indigo-900/40 border-cdlp-gold text-cdlp-gold'
+                       : 'bg-cdlp-black border-cdlp-border text-cdlp-muted'
+                   }`}
+                 >
+                   Tax at source (2 payments)
+                   <span className="block text-[8px] font-bold normal-case mt-1 opacity-80">
+                     Net {payrollAmounts.net.toFixed(2)} + state {payrollAmounts.deductions.toFixed(2)}
+                   </span>
+                 </button>
+                 <button
+                   type="button"
+                   onClick={() => setSettlementModeOnly('gross_paid')}
+                   className={`flex-1 px-4 py-3 rounded-sm text-[9px] font-black uppercase border text-left ${
+                     payrollSettlement === 'gross_paid'
+                       ? 'bg-indigo-900/40 border-cdlp-gold text-cdlp-gold'
+                       : 'bg-cdlp-black border-cdlp-border text-cdlp-muted'
+                   }`}
+                 >
+                   Paid gross (1 payment)
+                   <span className="block text-[8px] font-bold normal-case mt-1 opacity-80">
+                     Gross {payrollAmounts.gross.toFixed(2)} to employee
+                   </span>
+                 </button>
+               </div>
+               <div className="border border-cdlp-border rounded-sm overflow-hidden">
+                 <div className="px-3 py-2 bg-cdlp-black text-[8px] font-black uppercase text-cdlp-muted tracking-widest">
+                   Expenses that will be posted
+                 </div>
+                 <ul className="divide-y divide-cdlp-border">
+                   {payrollPreviewLines.length === 0 ? (
+                     <li className="px-3 py-2 text-[9px] text-cdlp-muted">Enter gross and net on the payslip first.</li>
+                   ) : (
+                     payrollPreviewLines.map((line, idx) => (
+                       <li key={idx} className="px-3 py-2 flex justify-between gap-4 text-[10px]">
+                         <span className="text-cdlp-muted font-bold uppercase shrink-0">{line.category.replace('_', ' ')}</span>
+                         <span className="font-mono font-bold text-white text-right">
+                           {line.amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} — {line.description}
+                         </span>
+                       </li>
+                     ))
+                   )}
+                 </ul>
+               </div>
+             </div>
+             </>
            )}
 
            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8">

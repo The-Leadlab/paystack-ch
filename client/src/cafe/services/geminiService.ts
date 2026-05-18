@@ -399,6 +399,7 @@ function repairPaySlipMultiInvoiceBlocks(data: FinancialData, file?: File): Fina
     380
   );
 
+  const permitType = ps?.permitType ?? "B";
   return {
     ...data,
     documentType: DocumentType.PAY_SLIP,
@@ -408,6 +409,13 @@ function repairPaySlipMultiInvoiceBlocks(data: FinancialData, file?: File): Fina
     netAmount: headerNet,
     vatAmount: 0,
     expenseCategory: "PAYROLL",
+    payrollSettlementMode: data.payrollSettlementMode ?? (permitType === "C" || permitType === "CH" ? "gross_paid" : "source_tax"),
+    paySlip: {
+      ...(ps ?? { employee: { name: empName }, employer: { name: employer } }),
+      permitType,
+      grossPay: amount,
+      netPay: headerNet,
+    },
     lineItems: [lineItem],
     aiInterpretation: note,
   };

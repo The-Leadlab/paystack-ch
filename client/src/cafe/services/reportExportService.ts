@@ -254,11 +254,14 @@ export const exportToPDF = async (data: ReportData) => {
   
   const suppliersTotal = expensesByCategory['SUPPLIERS'] || 0;
   const billsTotal = expensesByCategory['BILLS'] || 0;
-  const payrollTotal = expensesByCategory['PAYROLL'] || 0;
+  const payrollTotal =
+    (expensesByCategory['PAYROLL'] || 0) + (expensesByCategory['PAYROLL_TAXES'] || 0);
   const otherTotal = expensesByCategory['OTHER'] || 0;
   
   // Get payroll details (employee breakdown)
-  const payrollExpenses = expenses.filter(e => e.category === 'PAYROLL');
+  const payrollExpenses = expenses.filter(
+    (e) => e.category === 'PAYROLL' || e.category === 'PAYROLL_TAXES'
+  );
   const employeePayroll = payrollExpenses.reduce((acc, exp) => {
     const employeeName = exp.description.replace('Payslip - ', '');
     acc[employeeName] = (acc[employeeName] || 0) + exp.amount;

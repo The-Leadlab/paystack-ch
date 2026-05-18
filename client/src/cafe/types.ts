@@ -45,7 +45,7 @@ export interface Expense {
   restaurant_id: string;
   session_id: string;
   date: string;
-  category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'OTHER';
+  category: 'BILLS' | 'SUPPLIERS' | 'PAYROLL' | 'PAYROLL_TAXES' | 'OTHER';
   amount: number;
   vat_amount?: number; // VAT paid on expenses
   description: string;
@@ -131,6 +131,9 @@ export interface PaySlipParty {
   address?: string;
 }
 
+/** Swiss permit hint for payroll settlement (B/G/F = tax at source, C/CH = paid gross). */
+export type SwissPermitType = 'B' | 'C' | 'G' | 'F' | 'CH' | 'UNKNOWN';
+
 export interface PaySlipAnalysis {
   employee: PaySlipParty;
   employer: PaySlipParty;
@@ -141,6 +144,8 @@ export interface PaySlipAnalysis {
   currency?: string;
   grossPay?: number;
   netPay?: number;
+  /** Permit type drives default settlement mode in the verification UI. */
+  permitType?: SwissPermitType;
   // Components: earnings (INCOME) and deductions (EXPENSE)
   components?: BankTransaction[];
 }
@@ -186,6 +191,8 @@ export interface FinancialData {
   lineItems?: BankTransaction[];
   subDocuments?: FinancialData[]; 
   paySlip?: PaySlipAnalysis;
+  /** source_tax = net + state deductions (B, G, F). gross_paid = single gross payment (C, CH). */
+  payrollSettlementMode?: 'source_tax' | 'gross_paid';
   forensicAlerts?: string[];
   groundingUrls?: string[];
   aiInterpretation?: string;
