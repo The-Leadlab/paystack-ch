@@ -254,16 +254,19 @@ export const exportToPDF = async (data: ReportData) => {
   
   const suppliersTotal = expensesByCategory['SUPPLIERS'] || 0;
   const billsTotal = expensesByCategory['BILLS'] || 0;
-  const payrollTotal =
-    (expensesByCategory['PAYROLL'] || 0) + (expensesByCategory['PAYROLL_TAXES'] || 0);
+  const payrollTotal = expensesByCategory['PAYROLL'] || 0;
+  const payrollTaxesTotal = expensesByCategory['PAYROLL_TAXES'] || 0;
   const otherTotal = expensesByCategory['OTHER'] || 0;
   
-  // Get payroll details (employee breakdown)
-  const payrollExpenses = expenses.filter(
-    (e) => e.category === 'PAYROLL' || e.category === 'PAYROLL_TAXES'
-  );
+  // Employee breakdown from net salary lines only
+  const payrollExpenses = expenses.filter((e) => e.category === 'PAYROLL');
   const employeePayroll = payrollExpenses.reduce((acc, exp) => {
-    const employeeName = exp.description.replace('Payslip - ', '');
+    const employeeName = exp.description
+      .replace(/^Payslip\s*[—-]\s*salary payment to employee\s*[—-]\s*/i, '')
+      .replace(/^Payslip\s*\(gross paid to employee\)\s*[—-]\s*/i, '')
+      .replace(/^Payslip\s*[—-]\s*/i, '')
+      .replace(/^Payslip\s*-\s*/i, '')
+      .trim();
     acc[employeeName] = (acc[employeeName] || 0) + exp.amount;
     return acc;
   }, {} as Record<string, number>);

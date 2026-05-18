@@ -15,6 +15,7 @@ import {
   resolveEmployeePaymentAmount,
   settlementModeForPermit,
   totalEmployerPayrollCost,
+  documentTableDisplayAmount,
   applyPayrollPaymentFields,
   type PayrollSettlementMode,
   type SwissPermitType,
@@ -2563,7 +2564,12 @@ export const DocumentProcessor: React.FC<{
                         </td>
                         <td className="px-4 py-3 font-mono text-[10px] text-cdlp-muted hidden md:table-cell">{doc.data?.date || '---'}</td>
                         <td className="px-4 py-3 text-right font-bold font-mono text-[11px] text-white hidden md:table-cell">
-                          {doc.data ? (doc.data.amountInCHF || doc.data.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                          {doc.data
+                            ? documentTableDisplayAmount(doc.data).toLocaleString('en-CH', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })
+                            : '0.00'}
                         </td>
                         <td className="px-4 py-3 hidden md:table-cell align-top">
                           {doc.data ? (

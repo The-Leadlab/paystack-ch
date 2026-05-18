@@ -21,8 +21,34 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/** Net salary paid to employee (dashboard Payroll card). */
+export function isNetPayrollCategory(category: string): boolean {
+  return category === "PAYROLL";
+}
+
+/** Taxes & social contributions paid to the state (counts as expense, not payroll). */
+export function isPayrollTaxCategory(category: string): boolean {
+  return category === "PAYROLL_TAXES";
+}
+
 export function isPayrollCostCategory(category: string): boolean {
-  return PAYROLL_COST_CATEGORIES.includes(category as (typeof PAYROLL_COST_CATEGORIES)[number]);
+  return isNetPayrollCategory(category) || isPayrollTaxCategory(category);
+}
+
+/** Amount shown in the analysis table Amount column. */
+export function documentTableDisplayAmount(data: FinancialData): number {
+  const isPaySlip =
+    Boolean(data.paySlip) || /pay\s*slip|payslip|salaire|paie/i.test(String(data.documentType || ""));
+  if (!isPaySlip) {
+    return Number(data.amountInCHF ?? data.totalAmount ?? 0);
+  }
+  const settlement = resolvePayrollSettlementMode(data);
+  if (settlement === "gross_paid") {
+    const gross = resolveGrossPayFromFinancialData(data);
+    return gross > 0 ? gross : Number(data.amountInCHF ?? data.totalAmount ?? 0);
+  }
+  const employeePayment = resolveEmployeePaymentAmount(data);
+  return employeePayment > 0 ? employeePayment : Number(data.netAmount ?? data.amountInCHF ?? 0);
 }
 
 export function settlementModeForPermit(permit: SwissPermitType | undefined): PayrollSettlementMode {

@@ -16,7 +16,7 @@ import { BRAND_LOGO_SRC } from '@/const/branding';
 import type { DocumentReference } from 'firebase/firestore';
 import {
   buildPayrollExpenseLines,
-  isPayrollCostCategory,
+  isNetPayrollCategory,
   resolvePayrollSettlementMode,
 } from '../services/swissPayrollService';
 
@@ -155,10 +155,14 @@ export function RestaurantDashboard() {
   }
 
   const totalIncome = filteredIncome.reduce((sum, i) => sum + i.amount, 0);
-  // Total expenses (excluding payroll)
-  const totalExpenses = filteredExpenses.filter((e) => !isPayrollCostCategory(e.category)).reduce((sum, e) => sum + e.amount, 0);
-  // Payroll card = full employer cost (net + state deductions, or gross for C/CH)
-  const totalPayroll = filteredExpenses.filter((e) => isPayrollCostCategory(e.category)).reduce((sum, e) => sum + e.amount, 0);
+  // Expenses include PAYROLL_TAXES (state) but not net salary (shown on Payroll card)
+  const totalExpenses = filteredExpenses
+    .filter((e) => !isNetPayrollCategory(e.category))
+    .reduce((sum, e) => sum + e.amount, 0);
+  // Payroll card = net payment to employee(s) only
+  const totalPayroll = filteredExpenses
+    .filter((e) => isNetPayrollCategory(e.category))
+    .reduce((sum, e) => sum + e.amount, 0);
   // VAT calculations
   const vatReceived = filteredIncome.reduce((sum, i) => sum + (i.vat_amount || 0), 0);
   const vatPaid = filteredExpenses.reduce((sum, e) => sum + (e.vat_amount || 0), 0);
