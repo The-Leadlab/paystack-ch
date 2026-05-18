@@ -10,9 +10,11 @@ import ScrollReveal from "./ScrollReveal";
 import SectionLabel from "./SectionLabel";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import { PLAN_ENTERPRISE_SALES_MAILTO } from "@/cafe/components/PlanMarketingPanel";
+import { withStripeTestQuery } from "@/cafe/lib/stripeCheckoutClient";
 
 export default function PricingSection() {
   const { t } = useLanguage();
+  const trialHref = (plan: string) => withStripeTestQuery(`/start-trial?plan=${plan}`);
   const plans = [
     {
       name: t("planStarterName"),
@@ -29,7 +31,7 @@ export default function PricingSection() {
       ],
       cta: t("ctaStartTrial"),
       highlighted: false,
-      href: "/start-trial?plan=starter",
+      href: trialHref("starter"),
     },
     {
       name: t("planBusinessName"),
@@ -47,7 +49,7 @@ export default function PricingSection() {
       ],
       cta: t("ctaStartTrial"),
       highlighted: true,
-      href: "/start-trial?plan=business",
+      href: trialHref("business"),
     },
     {
       name: t("planUnlimitedName"),
@@ -64,7 +66,7 @@ export default function PricingSection() {
       ],
       cta: t("ctaStartTrial"),
       highlighted: false,
-      href: "/start-trial?plan=unlimited",
+      href: trialHref("unlimited"),
     },
     {
       name: t("planEnterpriseName"),

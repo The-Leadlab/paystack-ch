@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Play } from "lucide-react";
 import AnimatedCounter from "./AnimatedCounter";
 import { useLanguage } from "@/cafe/context/LanguageContext";
+import { withStripeTestQuery } from "@/cafe/lib/stripeCheckoutClient";
 import { LandingScreenshot } from "./LandingScreenshot";
 
 export default function HeroSection() {
@@ -85,7 +86,7 @@ export default function HeroSection() {
                 size="lg"
                 className="font-display bg-brand-red text-white hover:bg-brand-red/90 rounded-lg px-7 h-12 text-sm gap-2 group"
               >
-                <Link href="/start-trial" className="inline-flex items-center gap-2">
+                <Link href={withStripeTestQuery("/start-trial")} className="inline-flex items-center gap-2">
                   {t("heroStartTrial")}
                   <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
                 </Link>

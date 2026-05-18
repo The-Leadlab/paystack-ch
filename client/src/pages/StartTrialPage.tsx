@@ -8,7 +8,7 @@ import { firebaseReady } from "@/cafe/lib/firebase";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { AuthLayout } from "./auth/AuthLayout";
 import { isSelfServePlan, parsePaystackPlanId, SELECTED_PLAN_STORAGE_KEY, type PaystackPlanId } from "@shared/planCatalog";
-import { startGuestCheckoutSession } from "@/cafe/lib/stripeCheckoutClient";
+import { isStripeSandboxActive, startGuestCheckoutSession, withStripeTestQuery } from "@/cafe/lib/stripeCheckoutClient";
 
 export default function StartTrialPage() {
   const { t } = useLanguage();
@@ -22,10 +22,7 @@ export default function StartTrialPage() {
     return p && isSelfServePlan(p) ? p : ("starter" as PaystackPlanId);
   }, [search]);
 
-  const useTestStripe = useMemo(() => {
-    const qs = search.startsWith("?") ? search.slice(1) : search;
-    return new URLSearchParams(qs).get("stripe_test") === "1";
-  }, [search]);
+  const useTestStripe = useMemo(() => isStripeSandboxActive(search), [search]);
 
   const cancelled = useMemo(() => {
     const qs = search.startsWith("?") ? search.slice(1) : search;
@@ -54,7 +51,7 @@ export default function StartTrialPage() {
   }
 
   if (cancelled) {
-    const retryHref = `/start-trial?plan=${planId}${useTestStripe ? "&stripe_test=1" : ""}`;
+    const retryHref = withStripeTestQuery(`/start-trial?plan=${planId}`, search);
     return (
       <AuthLayout heading={t("startTrialCheckoutCancelled")}>
         <Card className="border-border shadow-sm max-w-lg mx-auto">

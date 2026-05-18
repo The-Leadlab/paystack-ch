@@ -1,6 +1,6 @@
 /**
- * Billing POSTs to `/api/stripe/*` (live keys). Same origin on Vercel, or set VITE_API_BASE_URL when the SPA
- * is hosted separately. Set STRIPE_CORS_ORIGIN on the API for cross-origin browser calls.
+ * Billing POSTs to `/api/stripe/*` (live) or `/api/stripe-test/*` (sandbox) when `VITE_STRIPE_USE_TEST=true`.
+ * Same origin on Vercel, or set VITE_API_BASE_URL when the SPA is hosted separately.
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -15,10 +15,8 @@ import {
   type PaystackPlanId,
   type PlanEntitlements,
 } from '@shared/planCatalog';
-import { parseStripeFetchResponse } from '../lib/stripeCheckoutClient';
+import { activeStripeBillingPath, parseStripeFetchResponse } from '../lib/stripeCheckoutClient';
 import { apiUrl } from '@/lib/apiBase';
-
-const STRIPE_API_PATH = '/api/stripe';
 
 type UserBillingSnapshot = {
   subscriptionStatus: string | null;
@@ -105,7 +103,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(SELECTED_PLAN_STORAGE_KEY) : null;
       const resolved = planIdArg ?? parsePaystackPlanId(fromStorage);
       const token = await user.getIdToken();
-      const res = await fetch(apiUrl(`${STRIPE_API_PATH}/create-checkout-session`), {
+      const billingPath = activeStripeBillingPath();
+      const res = await fetch(apiUrl(`${billingPath}/create-checkout-session`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -128,7 +127,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const openCustomerPortal = useCallback(async () => {
     if (!user) throw new Error('Not signed in');
     const token = await user.getIdToken();
-    const res = await fetch(apiUrl(`${STRIPE_API_PATH}/create-portal-session`), {
+    const billingPath = activeStripeBillingPath();
+    const res = await fetch(apiUrl(`${billingPath}/create-portal-session`), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

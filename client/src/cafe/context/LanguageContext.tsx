@@ -218,6 +218,8 @@ const translations = {
     authAdminPlanTest: 'Test Stripe (test keys)',
     authAdminEnterpriseNoCheckout:
       'Enterprise is sold via sales, not Stripe checkout here. Use Contact Sales or email info@paystack.ch.',
+    stripeSandboxModeActive:
+      'Stripe sandbox mode is on — all checkouts use test cards only (no real charges). Set VITE_STRIPE_USE_TEST=false to return to live billing.',
     authAdminBypassSectionTitle: 'Firebase admin (subscription bypass)',
     authNeedAccount: "Don't have an account?",
     authSignUpLink: 'Sign up',
@@ -883,6 +885,8 @@ const translations = {
     authAdminPlanTest: 'Stripe test (cles test)',
     authAdminEnterpriseNoCheckout:
       'L\'offre Enterprise se vend par vente directe, pas via cette caisse Stripe. Contactez le commercial ou info@paystack.ch.',
+    stripeSandboxModeActive:
+      'Mode bac a sable Stripe actif — paiements fictifs uniquement (cartes test). Mettez VITE_STRIPE_USE_TEST=false pour la facturation live.',
     authAdminBypassSectionTitle: 'Admin Firebase (contournement abonnement)',
     authNeedAccount: 'Pas encore de compte ?',
     authSignUpLink: 'S\'inscrire',

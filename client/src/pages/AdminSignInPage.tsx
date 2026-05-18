@@ -13,7 +13,7 @@ import { isSubscriptionBypassEmail } from "@/cafe/lib/subscriptionBypass";
 import { GoogleGIcon } from "@/components/icons/GoogleGIcon";
 import { AuthLayout } from "./auth/AuthLayout";
 import { logoutAdmin } from "@/lib/adminGateClient";
-import { startGuestCheckoutSession } from "@/cafe/lib/stripeCheckoutClient";
+import { clientStripeUseTest, startGuestCheckoutSession } from "@/cafe/lib/stripeCheckoutClient";
 import { SELECTED_PLAN_STORAGE_KEY, type PaystackPlanId } from "@shared/planCatalog";
 import { SeoNoIndex } from "@/components/SeoNoIndex";
 import { PlanMarketingPanel } from "@/cafe/components/PlanMarketingPanel";
@@ -33,6 +33,7 @@ export default function AdminSignInPage() {
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [lockBusy, setLockBusy] = useState(false);
+  const sandboxOnly = clientStripeUseTest();
 
   useEffect(() => {
     if (loading || !user) return;
@@ -62,12 +63,13 @@ export default function AdminSignInPage() {
       setGateErr(t("authAdminEnterpriseNoCheckout"));
       return;
     }
-    setCheckoutBusy(useTest ? "test" : "live");
+    const effectiveTest = sandboxOnly || useTest;
+    setCheckoutBusy(effectiveTest ? "test" : "live");
     try {
       if (typeof sessionStorage !== "undefined") {
         sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, testPlan);
       }
-      const url = await startGuestCheckoutSession(testPlan, { useTestStripe: useTest });
+      const url = await startGuestCheckoutSession(testPlan, { useTestStripe: effectiveTest });
       window.location.href = url;
     } catch (e) {
       setGateErr(e instanceof Error ? e.message : String(e));
@@ -117,20 +119,27 @@ export default function AdminSignInPage() {
                 ))}
               </div>
               <PlanMarketingPanel planId={testPlan} variant="card" showMostPopularBadge />
+              {sandboxOnly ? (
+                <p className="text-xs text-muted-foreground leading-relaxed rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                  {t("stripeSandboxModeActive")}
+                </p>
+              ) : null}
               <div className="flex flex-col sm:flex-row gap-2">
+                {!sandboxOnly ? (
+                  <Button
+                    type="button"
+                    className="flex-1 font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2"
+                    disabled={checkoutBusy !== null || testPlan === "enterprise"}
+                    onClick={() => void openGuestCheckout(false)}
+                  >
+                    {checkoutBusy === "live" ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
+                    {t("authAdminPlanLive")}
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
-                  className="flex-1 font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2"
-                  disabled={checkoutBusy !== null || testPlan === "enterprise"}
-                  onClick={() => void openGuestCheckout(false)}
-                >
-                  {checkoutBusy === "live" ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
-                  {t("authAdminPlanLive")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="flex-1 font-display gap-2"
+                  variant={sandboxOnly ? "default" : "secondary"}
+                  className={`flex-1 font-display gap-2 ${sandboxOnly ? "bg-brand-red text-white hover:bg-brand-red/90" : ""}`}
                   disabled={checkoutBusy !== null || testPlan === "enterprise"}
                   onClick={() => void openGuestCheckout(true)}
                 >

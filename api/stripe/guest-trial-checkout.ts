@@ -5,6 +5,7 @@
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { runCreateCheckoutSessionGuest } from "../../lib/stripeCore.js";
+import { serverStripeUseTestMode } from "../../lib/stripeMode.js";
 import { stripeCorsApplyHeaders, stripeCorsPreflight } from "../lib/stripeCors.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -26,6 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       raw = req.body as { planId?: string; stripeTest?: boolean };
     }
     const useTestStripe =
+      serverStripeUseTestMode() ||
       raw.stripeTest === true ||
       (typeof raw.stripeTest === "string" && String(raw.stripeTest).toLowerCase() === "true");
     const out = await runCreateCheckoutSessionGuest({ planId: raw.planId }, req.headers, { useTestStripe });
