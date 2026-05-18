@@ -2,11 +2,29 @@
  * Paystack pricing tiers and entitlements (mirrors public pricing page).
  * Live Stripe Price IDs: STRIPE_PRICE_STARTER, STRIPE_PRICE_BUSINESS, STRIPE_PRICE_UNLIMITED.
  * Test Price IDs: STRIPE_TEST_PRICE_STARTER, STRIPE_TEST_PRICE_BUSINESS, STRIPE_TEST_PRICE_UNLIMITED (guest body `stripeTest`).
+ *
+ * Unit economics (CHF/mo, indicative — verify against Google Cloud + Firebase bills):
+ * Model: gemini-2.5-flash via server proxy; ~CHF 0.08–0.15/doc (simple), CHF 0.20–0.40+ (multi-page PDF / 2nd pass).
+ *
+ * | Plan      | Retail | Docs/mo | Est. AI @ 100% cap | Stripe ~3% | Rough margin @ cap |
+ * |-----------|--------|---------|------------------|------------|-------------------|
+ * | Starter   | 29     | 50      | 4–8              | ~1         | ~65–85%           |
+ * | Business  | 59     | 120     | 10–20            | ~2         | ~60–80%           |
+ * | Unlimited | 499    | ∞       | unbounded risk   | ~15        | depends on usage  |
+ *
+ * Business at 500 docs/mo ≈ CHF 40–75+ AI alone → loss at CHF 59. Cap lowered to 120.
  */
 
 export const SELECTED_PLAN_STORAGE_KEY = "paystack_selected_plan_id";
 
 export type PaystackPlanId = "starter" | "business" | "unlimited" | "enterprise";
+
+/** Public list prices (CHF/month) — keep in sync with landing copy and STRIPE_PRICE_* env. */
+export const PLAN_MONTHLY_PRICE_CHF: Record<Exclude<PaystackPlanId, "enterprise">, number> = {
+  starter: 29,
+  business: 59,
+  unlimited: 499,
+};
 
 export type PlanEntitlements = {
   maxDocumentsPerMonth: number | null;
@@ -58,7 +76,7 @@ export const PLAN_ENTITLEMENTS: Record<PaystackPlanId, PlanEntitlements> = {
     onPremiseDeployment: false,
   },
   business: {
-    maxDocumentsPerMonth: 500,
+    maxDocumentsPerMonth: 120,
     maxEmployeeSlots: 10,
     maxSessions: null,
     basicReportsAndExports: true,
