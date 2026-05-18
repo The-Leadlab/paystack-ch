@@ -9,6 +9,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useDocuments } from '../context/DocumentContext';
 import { usePOS } from '../context/POSContext';
 import { DocumentProcessor } from './DocumentProcessor';
+import { getSessionDisplayName } from '../lib/formatLocalDateTime';
 import { POSManager } from './POSManager';
 import type { FinancialData, ProcessedDocument, POSReading } from '../types';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
@@ -702,7 +703,7 @@ export function RestaurantDashboard() {
                     />
                   ) : (
                     <div className="flex items-start justify-between">
-                      <p className="font-bold text-sm text-white flex-1">{session.name}</p>
+                      <p className="font-bold text-sm text-white flex-1">{getSessionDisplayName(session)}</p>
                       <div className="flex gap-1">
                         <button
                           onClick={(e) => { e.stopPropagation(); startRename(session.id, session.name); }}
@@ -1420,7 +1421,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
     <>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">
-          {isAllSessionsView ? 'All Sessions' : currentSession?.name || 'Dashboard'}
+          {isAllSessionsView ? 'All Sessions' : (currentSession ? getSessionDisplayName(currentSession) : 'Dashboard')}
         </h1>
         <button
           onClick={onShowEmployeePanel}
@@ -1787,7 +1788,7 @@ function ReportsPlaceholder() {
       supplierData,
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
-      sessionName: isAllSessionsView ? 'All Sessions' : currentSession?.name
+      sessionName: isAllSessionsView ? 'All Sessions' : (currentSession ? getSessionDisplayName(currentSession) : undefined)
     };
     
     if (format === 'csv') {
@@ -1806,7 +1807,7 @@ function ReportsPlaceholder() {
       supplierData,
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
-      sessionName: isAllSessionsView ? 'All Sessions' : currentSession?.name
+      sessionName: isAllSessionsView ? 'All Sessions' : (currentSession ? getSessionDisplayName(currentSession) : undefined)
     };
 
     if (format === 'csv') {

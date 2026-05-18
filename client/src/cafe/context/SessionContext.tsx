@@ -15,6 +15,7 @@ import type { Session } from '../types';
 import { useAuth } from './AuthContext';
 import { useSubscription } from './SubscriptionContext';
 import { useLanguage } from './LanguageContext';
+import { defaultSessionName } from '../lib/formatLocalDateTime';
 
 const SESSIONS_COLLECTION = 'sessions';
 const LAST_SESSION_KEY = 'cdlp_last_session_id';
@@ -67,8 +68,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
 
-      const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-      const sessionName = name || timestamp;
+      const sessionName = name || defaultSessionName();
 
       if (enforcementEnabled && entitlements.maxSessions != null && sessions.length >= entitlements.maxSessions) {
         setError(t('planLimitSessions').replace('{n}', String(entitlements.maxSessions)));
