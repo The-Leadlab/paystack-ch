@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useLanguage } from '../context/LanguageContext';
 import { SELECTED_PLAN_STORAGE_KEY, parsePaystackPlanId, type PaystackPlanId } from '@shared/planCatalog';
-import { PlanEntitlementsBanner } from './PlanEntitlementsBanner';
 import { PlanMarketingPanel, PLAN_ENTERPRISE_SALES_MAILTO } from './PlanMarketingPanel';
 
 /**
@@ -48,12 +47,7 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   }
 
   if (inGoodStanding) {
-    return (
-      <>
-        <PlanEntitlementsBanner />
-        {children}
-      </>
-    );
+    return <>{children}</>;
   }
 
   const trialHint =

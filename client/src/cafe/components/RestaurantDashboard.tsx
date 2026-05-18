@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Loader2, Lock } from 'lucide-react';
+﻿import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings } from 'lucide-react';
+import { BillingPlanPanel } from './BillingPlanPanel';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
@@ -21,7 +22,7 @@ import {
   resolvePayrollSettlementMode,
 } from '../services/swissPayrollService';
 
-type Tab = 'dashboard' | 'revenue' | 'reports' | 'documents';
+type Tab = 'dashboard' | 'revenue' | 'reports' | 'documents' | 'billing';
 
 const FIRESTORE_BATCH_MAX = 450;
 
@@ -72,9 +73,13 @@ export function RestaurantDashboard() {
   const { sessions, currentSession, addSession, deleteSession, renameSession, setCurrentSession, isAllSessionsView, setAllSessionsView } = useSession();
   const { documents, addDocument, updateDocumentData, deleteDocument: deleteDocumentFromContext } = useDocuments();
   const { signOut, user } = useAuth();
-  const { enforcementEnabled, inGoodStanding, openCustomerPortal, entitlements } = useSubscription();
+  const { enforcementEnabled, entitlements } = useSubscription();
   const { language, setLanguage, t } = useLanguage();
-  const [billingBusy, setBillingBusy] = useState(false);
+
+  const openBillingTab = () => {
+    setActiveTab('billing');
+    setShowSidebar(false);
+  };
   
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const showRevenueTab = !enforcementEnabled || entitlements.allCoreModules;
@@ -122,11 +127,11 @@ export function RestaurantDashboard() {
       const removed = await deleteFinancesByDocumentId(documentId);
       await deleteDocumentFromContext(documentId);
       console.log(
-        `🗑️ Document ${documentId} deleted with ${removed.income} income and ${removed.expenses} expense row(s)`
+        `ðŸ—‘ï¸ Document ${documentId} deleted with ${removed.income} income and ${removed.expenses} expense row(s)`
       );
     } catch (err) {
       console.error('Failed to delete document and linked finances:', err);
-      alert('Could not fully delete this document. Linked income/expense rows may still exist — please refresh and try again.');
+      alert('Could not fully delete this document. Linked income/expense rows may still exist â€” please refresh and try again.');
       throw err;
     }
   };
@@ -175,11 +180,11 @@ export function RestaurantDashboard() {
   console.log('=== END DEBUG ===');
 
   const handleMasterReset = async () => {
-    if (!confirm('🗑️ MASTER RESET\n\nThis will permanently delete EVERYTHING:\n• All sessions\n• All income & expenses\n• All POS readings\n• All documents\n• All employees\n\nThis cannot be undone!\n\nAre you absolutely sure?')) {
+    if (!confirm('ðŸ—‘ï¸ MASTER RESET\n\nThis will permanently delete EVERYTHING:\nâ€¢ All sessions\nâ€¢ All income & expenses\nâ€¢ All POS readings\nâ€¢ All documents\nâ€¢ All employees\n\nThis cannot be undone!\n\nAre you absolutely sure?')) {
       return;
     }
     
-    if (!confirm('⚠️ FINAL WARNING!\n\nYou are about to delete ALL data from the entire system.\n\nType YES in your mind and click OK to proceed.')) {
+    if (!confirm('âš ï¸ FINAL WARNING!\n\nYou are about to delete ALL data from the entire system.\n\nType YES in your mind and click OK to proceed.')) {
       return;
     }
 
@@ -231,13 +236,13 @@ export function RestaurantDashboard() {
 
       const deleteCount = await commitDeletesInChunks(db, allRefs);
       
-      alert(`✅ Master Reset Complete!\n\nDeleted ${deleteCount} records.\n\nThe page will now reload.`);
+      alert(`âœ… Master Reset Complete!\n\nDeleted ${deleteCount} records.\n\nThe page will now reload.`);
       
       // Refresh data
       window.location.reload();
     } catch (error) {
       console.error('Master reset error:', error);
-      alert('❌ Error during master reset: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      alert('âŒ Error during master reset: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
@@ -270,7 +275,7 @@ export function RestaurantDashboard() {
 
   const handleQueueDocument = async (fileName: string, fileHash?: string, fileRaw?: File): Promise<string> => {
     if (!currentSession) {
-      console.error('❌ No session selected');
+      console.error('âŒ No session selected');
       alert('Please select a session first');
       throw new Error('No session selected');
     }
@@ -279,14 +284,14 @@ export function RestaurantDashboard() {
     if (fileHash) {
       const existingDoc = documents.find(d => d.fileHash === fileHash);
       if (existingDoc) {
-        console.log('⚠️ Duplicate document detected:', fileHash);
-        alert(`⚠️ This document has already been processed: "${existingDoc.fileName}"\n\nSkipping to avoid duplicate entries.`);
+        console.log('âš ï¸ Duplicate document detected:', fileHash);
+        alert(`âš ï¸ This document has already been processed: "${existingDoc.fileName}"\n\nSkipping to avoid duplicate entries.`);
         throw new Error('Duplicate document');
       }
     }
 
     try {
-      console.log('💾 Queue-saving document to Firestore...');
+      console.log('ðŸ’¾ Queue-saving document to Firestore...');
       const newDoc = await addDocument({
         id: Math.random().toString(36).substr(2, 9),
         fileName,
@@ -294,7 +299,7 @@ export function RestaurantDashboard() {
         ...(fileHash ? { fileHash } : {}),
       });
       const createdId = newDoc.id;
-      console.log('✅ Document queue-saved with ID:', createdId);
+      console.log('âœ… Document queue-saved with ID:', createdId);
 
       // Always keep a local backup for resilient reprocessing even if remote storage is unstable/disabled.
       if (fileRaw) {
@@ -303,7 +308,7 @@ export function RestaurantDashboard() {
             const { cacheDocumentFile } = await import('../services/storageService');
             await cacheDocumentFile(createdId, fileRaw);
           } catch (cacheErr) {
-            console.warn('⚠️ Local cache backup failed:', cacheErr);
+            console.warn('âš ï¸ Local cache backup failed:', cacheErr);
           }
         })();
       }
@@ -312,13 +317,13 @@ export function RestaurantDashboard() {
       if (fileRaw && user?.uid && storageUploadEnabledRef.current) {
         void (async () => {
           try {
-            console.log('📤 Background uploading file to Firebase Storage...');
+            console.log('ðŸ“¤ Background uploading file to Firebase Storage...');
             const { uploadDocument } = await import('../services/storageService');
             const fileUrl = await uploadDocument(fileRaw, user.uid, fileName);
             await updateDocumentData(createdId, { fileUrl });
-            console.log('✅ File URL attached to document:', createdId);
+            console.log('âœ… File URL attached to document:', createdId);
           } catch (uploadError: any) {
-            console.error('⚠️ Background file upload failed:', uploadError);
+            console.error('âš ï¸ Background file upload failed:', uploadError);
             if (uploadError?.code === 'storage/unauthorized') {
               storageUploadEnabledRef.current = false;
               console.warn('Storage upload disabled for this session due to storage/unauthorized.');
@@ -329,17 +334,17 @@ export function RestaurantDashboard() {
 
       return createdId;
     } catch (error) {
-      console.error('❌ Error queue-saving document:', error);
+      console.error('âŒ Error queue-saving document:', error);
       alert('Failed to queue-save document: ' + (error as Error).message);
       throw error;
     }
   };
 
   const handleDocumentData = async (data: FinancialData, fileName: string, fileHash?: string, fileRaw?: File, persistedDocumentId?: string) => {
-    console.log('🔵 handleDocumentData called:', { fileName, hasData: !!data, currentSession: currentSession?.id, persistedDocumentId });
+    console.log('ðŸ”µ handleDocumentData called:', { fileName, hasData: !!data, currentSession: currentSession?.id, persistedDocumentId });
 
     if (!currentSession) {
-      console.error('❌ No session selected');
+      console.error('âŒ No session selected');
       alert('Please select a session first');
       throw new Error('No session selected');
     }
@@ -353,9 +358,9 @@ export function RestaurantDashboard() {
           ...(fileHash ? { fileHash } : {}),
         });
         documentId = persistedDocumentId;
-        console.log('✅ Document updated to completed with ID:', documentId);
+        console.log('âœ… Document updated to completed with ID:', documentId);
       } else {
-        console.log('💾 Saving document to Firestore (legacy path)...');
+        console.log('ðŸ’¾ Saving document to Firestore (legacy path)...');
         const newDoc = await addDocument({
           id: Math.random().toString(36).substr(2, 9),
           fileName,
@@ -364,10 +369,10 @@ export function RestaurantDashboard() {
           ...(fileHash ? { fileHash } : {}),
         });
         documentId = newDoc.id;
-        console.log('✅ Document saved with ID:', documentId);
+        console.log('âœ… Document saved with ID:', documentId);
       }
     } catch (error) {
-      console.error('❌ Error saving document:', error);
+      console.error('âŒ Error saving document:', error);
       alert('Failed to save document: ' + (error as Error).message);
       throw error;
     }
@@ -376,7 +381,7 @@ export function RestaurantDashboard() {
     const amount = data.amountInCHF || data.totalAmount || 0;
     const docType = data.documentType;
     
-    console.log('📊 Processing document type:', docType, 'Amount:', amount);
+    console.log('ðŸ“Š Processing document type:', docType, 'Amount:', amount);
     
     // Check if this is revenue based on category or document type
     const isRevenue = data.expenseCategory?.toUpperCase().includes('REVENUE') || 
@@ -385,16 +390,16 @@ export function RestaurantDashboard() {
                       docType === 'Z2 Multi-Ticket Sheet';
     
     if (docType === 'Bank Statement' || docType === 'Bank Deposit') {
-      console.log('🏦 Processing bank statement with', data.lineItems?.length || 0, 'line items');
+      console.log('ðŸ¦ Processing bank statement with', data.lineItems?.length || 0, 'line items');
       if (data.lineItems) {
         for (const item of data.lineItems) {
           if (item.type === 'INCOME') {
-            console.log('➕ Adding income:', item.amount, item.description);
+            console.log('âž• Adding income:', item.amount, item.description);
             // Extract VAT if available (typically 7.7% or 8.1% in Switzerland)
             const vatAmount = data.vatAmount || 0;
             await addIncome(date, 'SALES', item.amount, item.description || fileName, currentSession.id, documentId, vatAmount);
           } else if (item.type === 'EXPENSE') {
-            console.log('➖ Adding expense:', item.amount, item.description);
+            console.log('âž– Adding expense:', item.amount, item.description);
             const description = item.description || data.issuer || fileName;
             const vatAmount = data.vatAmount || 0;
             await addExpense(date, 'OTHER', item.amount, description, currentSession.id, undefined, documentId, vatAmount);
@@ -410,7 +415,7 @@ export function RestaurantDashboard() {
         payrollLines[0]?.amount ??
         0;
 
-      console.log('💰 Processing payslip:', employeeName, settlement, payrollLines);
+      console.log('ðŸ’° Processing payslip:', employeeName, settlement, payrollLines);
 
       try {
         const existingEmployee = employees.find(
@@ -420,7 +425,7 @@ export function RestaurantDashboard() {
           await addEmployee(employeeName, 'Employee', netForEmployee, currentSession?.id);
         }
       } catch (empError) {
-        console.error('⚠️ Error managing employee:', empError);
+        console.error('âš ï¸ Error managing employee:', empError);
       }
 
       for (const line of payrollLines) {
@@ -435,12 +440,12 @@ export function RestaurantDashboard() {
         );
       }
     } else if (isRevenue && amount > 0) {
-      console.log('💵 Adding revenue:', amount);
+      console.log('ðŸ’µ Adding revenue:', amount);
       const description = data.issuer || data.notes || fileName;
       const vatAmount = data.vatAmount || 0;
       await addIncome(date, 'SALES', amount, description, currentSession.id, documentId, vatAmount);
     } else if (amount > 0) {
-      console.log('💸 Adding expense:', amount);
+      console.log('ðŸ’¸ Adding expense:', amount);
       const category = data.expenseCategory?.toLowerCase().includes('supplier') ? 'SUPPLIERS' : 
                       data.expenseCategory?.toLowerCase().includes('bill') ? 'BILLS' :
                       data.expenseCategory?.toLowerCase().includes('salary') || data.expenseCategory?.toLowerCase().includes('payroll') ? 'PAYROLL' :
@@ -450,7 +455,7 @@ export function RestaurantDashboard() {
       await addExpense(date, category as any, amount, description, currentSession.id, undefined, documentId, vatAmount);
     }
     
-    console.log('✅ Document processing complete:', fileName);
+    console.log('âœ… Document processing complete:', fileName);
   };
 
   const handleNavigateToDocument = (doc: ProcessedDocument) => {
@@ -459,25 +464,25 @@ export function RestaurantDashboard() {
   };
 
   const handleDocumentUpdated = async (documentId: string, newData: FinancialData) => {
-    console.log('🔄 Updating document and related income/expenses:', documentId);
+    console.log('ðŸ”„ Updating document and related income/expenses:', documentId);
     
     if (!currentSession) {
-      console.error('❌ No session selected');
+      console.error('âŒ No session selected');
       return;
     }
 
     try {
       // Delete all existing income/expenses linked to this document
-      console.log('🗑️ Deleting old income/expenses for document:', documentId);
+      console.log('ðŸ—‘ï¸ Deleting old income/expenses for document:', documentId);
       const removed = await deleteFinancesByDocumentId(documentId);
-      console.log(`✅ Deleted ${removed.income} income and ${removed.expenses} expense entries`);
+      console.log(`âœ… Deleted ${removed.income} income and ${removed.expenses} expense entries`);
       
       // Re-create income/expenses from updated document data
       const date = newData.date || new Date().toISOString().split('T')[0];
       const amount = newData.amountInCHF || newData.totalAmount || 0;
       const docType = newData.documentType;
       
-      console.log('📊 Re-processing document type:', docType, 'Amount:', amount);
+      console.log('ðŸ“Š Re-processing document type:', docType, 'Amount:', amount);
       
       // Check if this is revenue based on category or document type
       const isRevenue = newData.expenseCategory?.toUpperCase().includes('REVENUE') || 
@@ -486,14 +491,14 @@ export function RestaurantDashboard() {
                         docType === 'Z2 Multi-Ticket Sheet';
       
       if (docType === 'Bank Statement' || docType === 'Bank Deposit') {
-        console.log('🏦 Re-processing bank statement with', newData.lineItems?.length || 0, 'line items');
+        console.log('ðŸ¦ Re-processing bank statement with', newData.lineItems?.length || 0, 'line items');
         if (newData.lineItems) {
           for (const item of newData.lineItems) {
             if (item.type === 'INCOME') {
-              console.log('➕ Re-adding income:', item.amount, item.description);
+              console.log('âž• Re-adding income:', item.amount, item.description);
               await addIncome(date, 'SALES', item.amount, item.description || 'Bank Statement', currentSession.id, documentId);
             } else if (item.type === 'EXPENSE') {
-              console.log('➖ Re-adding expense:', item.amount, item.description);
+              console.log('âž– Re-adding expense:', item.amount, item.description);
               const description = item.description || newData.issuer || 'Bank Statement';
               await addExpense(date, 'OTHER', item.amount, description, currentSession.id, undefined, documentId);
             }
@@ -503,7 +508,7 @@ export function RestaurantDashboard() {
         const employeeName = newData.paySlip?.employee?.name || 'Unknown Employee';
         const settlement = resolvePayrollSettlementMode(newData);
         const payrollLines = buildPayrollExpenseLines(newData, employeeName, settlement);
-        console.log('💰 Re-processing payslip:', employeeName, settlement, payrollLines);
+        console.log('ðŸ’° Re-processing payslip:', employeeName, settlement, payrollLines);
         for (const line of payrollLines) {
           await addExpense(
             date,
@@ -516,11 +521,11 @@ export function RestaurantDashboard() {
           );
         }
       } else if (isRevenue && amount > 0) {
-        console.log('💵 Re-adding revenue:', amount);
+        console.log('ðŸ’µ Re-adding revenue:', amount);
         const description = newData.issuer || newData.notes || 'Document';
         await addIncome(date, 'SALES', amount, description, currentSession.id, documentId);
       } else if (amount > 0) {
-        console.log('💸 Re-adding expense:', amount);
+        console.log('ðŸ’¸ Re-adding expense:', amount);
         const category = newData.expenseCategory?.toLowerCase().includes('supplier') ? 'SUPPLIERS' : 
                         newData.expenseCategory?.toLowerCase().includes('bill') ? 'BILLS' :
                         newData.expenseCategory?.toLowerCase().includes('salary') || newData.expenseCategory?.toLowerCase().includes('payroll') ? 'PAYROLL' :
@@ -529,10 +534,10 @@ export function RestaurantDashboard() {
         await addExpense(date, category as any, amount, description, currentSession.id, undefined, documentId);
       }
       
-      console.log('✅ Document update complete');
-      alert('✅ Document updated successfully! Dashboard numbers have been refreshed.');
+      console.log('âœ… Document update complete');
+      alert('âœ… Document updated successfully! Dashboard numbers have been refreshed.');
     } catch (error) {
-      console.error('❌ Error updating document:', error);
+      console.error('âŒ Error updating document:', error);
       alert('Failed to update document: ' + (error as Error).message);
     }
   };
@@ -570,11 +575,13 @@ export function RestaurantDashboard() {
       </div>
 
       {/* Session Sidebar */}
-      <div className={`
+      <div
+        className={`
         fixed md:relative inset-y-0 left-0 z-50 w-64 bg-cdlp-black border-r border-cdlp-border flex flex-col
-        transform transition-transform duration-300 ease-in-out custom-scrollbar
+        h-[100dvh] max-h-[100dvh] transform transition-transform duration-300 ease-in-out
         ${showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-      `}>
+      `}
+      >
         {/* Desktop Header */}
         <div className="hidden md:block p-4 border-b border-cdlp-border">
           <div className="flex flex-col items-center mb-4">
@@ -603,29 +610,28 @@ export function RestaurantDashboard() {
               <span className="text-[10px] font-bold text-cdlp-gold">{language === 'en' ? 'FR' : 'EN'}</span>
             </button>
           </div>
-          {enforcementEnabled ? (
+          <div className="space-y-2 mb-3">
             <button
               type="button"
-              disabled={billingBusy}
-              onClick={() => {
-                void (async () => {
-                  setBillingBusy(true);
-                  try {
-                    await openCustomerPortal();
-                  } catch (e) {
-                    console.error(e);
-                    alert(e instanceof Error ? e.message : String(e));
-                  } finally {
-                    setBillingBusy(false);
-                  }
-                })();
-              }}
-              className="w-full flex items-center justify-center gap-2 py-2 mb-2 text-xs font-bold uppercase text-cdlp-gold border border-cdlp-gold/40 rounded hover:bg-cdlp-gold/10 disabled:opacity-50"
+              onClick={openBillingTab}
+              className={`w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase rounded border transition-colors ${
+                activeTab === 'billing'
+                  ? 'bg-cdlp-gold/15 border-cdlp-gold text-cdlp-gold'
+                  : 'text-cdlp-gold border-cdlp-gold/40 hover:bg-cdlp-gold/10'
+              }`}
             >
-              {billingBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-              {t('planManagement')}
+              <CreditCard className="w-4 h-4" />
+              {t('subscriptionManageBilling')}
             </button>
-          ) : null}
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-muted border border-cdlp-border rounded hover:text-cdlp-gold hover:border-cdlp-gold/40"
+            >
+              <LogOut className="w-4 h-4" />
+              {t('logout')}
+            </button>
+          </div>
           <button
             onClick={handleAddSession}
             disabled={!canAddSession}
@@ -651,29 +657,25 @@ export function RestaurantDashboard() {
 
         {/* Mobile Add Session Button */}
         <div className="md:hidden p-4 border-b border-cdlp-border space-y-2">
-          {enforcementEnabled ? (
-            <button
-              type="button"
-              disabled={billingBusy}
-              onClick={() => {
-                void (async () => {
-                  setBillingBusy(true);
-                  try {
-                    await openCustomerPortal();
-                  } catch (e) {
-                    console.error(e);
-                    alert(e instanceof Error ? e.message : String(e));
-                  } finally {
-                    setBillingBusy(false);
-                  }
-                })();
-              }}
-              className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-gold border border-cdlp-gold/40 rounded hover:bg-cdlp-gold/10 disabled:opacity-50"
-            >
-              {billingBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-              {t('planManagement')}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={openBillingTab}
+            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-gold border border-cdlp-gold/40 rounded hover:bg-cdlp-gold/10"
+          >
+            <CreditCard className="w-4 h-4" />
+            {t('subscriptionManageBilling')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void signOut();
+              setShowSidebar(false);
+            }}
+            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-muted border border-cdlp-border rounded hover:text-cdlp-gold"
+          >
+            <LogOut className="w-4 h-4" />
+            {t('logout')}
+          </button>
           <button
             onClick={() => {
               handleAddSession();
@@ -688,7 +690,7 @@ export function RestaurantDashboard() {
         </div>
 
         {/* Sessions List */}
-        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 custom-scrollbar">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase text-cdlp-muted">
               {t('sessions')} ({sessions.length})
@@ -772,37 +774,6 @@ export function RestaurantDashboard() {
           )}
         </div>
 
-        <div className="p-4 border-t border-cdlp-border space-y-2">
-          {enforcementEnabled && inGoodStanding ? (
-            <button
-              type="button"
-              disabled={billingBusy}
-              onClick={() => {
-                void (async () => {
-                  setBillingBusy(true);
-                  try {
-                    await openCustomerPortal();
-                  } catch (e) {
-                    console.error(e);
-                    alert(e instanceof Error ? e.message : String(e));
-                  } finally {
-                    setBillingBusy(false);
-                  }
-                })();
-              }}
-              className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-gold border border-cdlp-gold/40 rounded hover:bg-cdlp-gold/10 disabled:opacity-50"
-            >
-              {billingBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-              {t('subscriptionManageBilling')}
-            </button>
-          ) : null}
-          <button
-            onClick={signOut}
-            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-muted hover:text-cdlp-gold"
-          >
-            <LogOut className="w-4 h-4" /> {t('logout')}
-          </button>
-        </div>
       </div>
 
       {/* Overlay for mobile sidebar */}
@@ -815,7 +786,7 @@ export function RestaurantDashboard() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Tab Navigation — desktop only; phones use bottom app bar */}
+        {/* Tab Navigation â€” desktop only; phones use bottom app bar */}
         <div className="hidden md:block bg-cdlp-black border-b border-cdlp-border px-4 md:px-8 pt-4">
           <div className="flex gap-2 overflow-x-auto">
             <button
@@ -860,6 +831,16 @@ export function RestaurantDashboard() {
             >
               <FileText className="w-4 h-4" /> {t('documents')}
             </button>
+            <button
+              onClick={() => setActiveTab('billing')}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
+                activeTab === 'billing'
+                  ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
+                  : 'text-cdlp-muted hover:text-white'
+              }`}
+            >
+              <Settings className="w-4 h-4" /> {t('billingTab')}
+            </button>
           </div>
         </div>
 
@@ -902,6 +883,7 @@ export function RestaurantDashboard() {
           {activeTab === 'revenue' && showRevenueTab ? <POSManager /> : null}
           {activeTab === 'reports' && <ReportsPlaceholder />}
           {activeTab === 'documents' && <DocumentsTab selectedDocument={selectedDocumentFromFinance} onClearSelection={() => setSelectedDocumentFromFinance(null)} />}
+          {activeTab === 'billing' ? <BillingPlanPanel /> : null}
         </div>
       </div>
 
@@ -952,6 +934,16 @@ export function RestaurantDashboard() {
           >
             <FileText className="w-5 h-5 shrink-0" aria-hidden />
             <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('documents')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('billing')}
+            className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
+              activeTab === 'billing' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
+            }`}
+          >
+            <CreditCard className="w-5 h-5 shrink-0" aria-hidden />
+            <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('billingTab')}</span>
           </button>
         </div>
       </nav>
@@ -1004,7 +996,7 @@ export function RestaurantDashboard() {
                 </li>
               </ul>
               <div className="bg-red-600/10 border border-red-600/30 rounded p-3 mt-4">
-                <p className="text-xs text-red-400 font-bold">⚠️ This action cannot be undone!</p>
+                <p className="text-xs text-red-400 font-bold">âš ï¸ This action cannot be undone!</p>
               </div>
             </div>
             
@@ -1071,7 +1063,7 @@ export function RestaurantDashboard() {
               {enforcementEnabled && entitlements.maxEmployeeSlots != null ? (
                 <p className={`mb-6 text-[10px] font-bold uppercase tracking-tight ${canAddEmployee ? 'text-cdlp-muted' : 'text-red-400'}`}>
                   {employees.length}/{entitlements.maxEmployeeSlots} employee slot(s)
-                  {!canAddEmployee ? ` · ${employeeLimitMessage}` : ''}
+                  {!canAddEmployee ? ` Â· ${employeeLimitMessage}` : ''}
                 </p>
               ) : (
                 <div className="mb-6" />
@@ -1281,10 +1273,10 @@ function IncomeExpenseSection({
       await onUpdate(editForm.id, updates);
       setEditingId(null);
       setEditForm(null);
-      alert('✅ Updated successfully!');
+      alert('âœ… Updated successfully!');
     } catch (err) {
       console.error('Save edit error:', err);
-      alert('❌ Error saving: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      alert('âŒ Error saving: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 
@@ -1553,7 +1545,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
       {/* Document Upload Section */}
       {!currentSession && !isAllSessionsView && (
         <div className="mb-6 bg-cdlp-gold/10 border border-cdlp-gold rounded-lg p-4">
-          <p className="text-sm text-cdlp-gold">⚠️ Please create or select a session to upload documents</p>
+          <p className="text-sm text-cdlp-gold">âš ï¸ Please create or select a session to upload documents</p>
         </div>
       )}
       {currentSession && (
@@ -1613,14 +1605,14 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                   console.log('Income added successfully, now deleting expense:', item.id);
                   await deleteExpense(item.id);
                   console.log('Expense deleted successfully');
-                  alert('✅ Converted to income successfully!');
+                  alert('âœ… Converted to income successfully!');
                 } else {
                   console.error('addIncome returned null');
-                  alert('❌ Failed to add income - check console for details');
+                  alert('âŒ Failed to add income - check console for details');
                 }
               } catch (err) {
                 console.error('Error converting to income:', err);
-                alert('❌ Error: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                alert('âŒ Error: ' + (err instanceof Error ? err.message : 'Unknown error'));
               }
             } else {
               console.log('User cancelled conversion');
@@ -1671,14 +1663,14 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                   console.log('Expense added successfully, now deleting income:', item.id);
                   await deleteIncome(item.id);
                   console.log('Income deleted successfully');
-                  alert('✅ Converted to expense successfully!');
+                  alert('âœ… Converted to expense successfully!');
                 } else {
                   console.error('addExpense returned null');
-                  alert('❌ Failed to add expense - check console for details');
+                  alert('âŒ Failed to add expense - check console for details');
                 }
               } catch (err) {
                 console.error('Error converting to expense:', err);
-                alert('❌ Error: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                alert('âŒ Error: ' + (err instanceof Error ? err.message : 'Unknown error'));
               }
             } else {
               console.log('User cancelled conversion');
@@ -1932,9 +1924,9 @@ function ReportsPlaceholder() {
         </div>
         {(filterActive || categoryFilter !== 'all' || supplierFilter !== 'all') && (
           <div className="text-xs text-cdlp-gold flex flex-wrap gap-2">
-            {filterActive && dateFrom && dateTo && <span>📅 Date: {dateFrom} → {dateTo}</span>}
-            {categoryFilter !== 'all' && <span>📂 Category: {categoryFilter}</span>}
-            {supplierFilter !== 'all' && <span>🏢 Supplier: {supplierFilter}</span>}
+            {filterActive && dateFrom && dateTo && <span>ðŸ“… Date: {dateFrom} â†’ {dateTo}</span>}
+            {categoryFilter !== 'all' && <span>ðŸ“‚ Category: {categoryFilter}</span>}
+            {supplierFilter !== 'all' && <span>ðŸ¢ Supplier: {supplierFilter}</span>}
           </div>
         )}
       </div>

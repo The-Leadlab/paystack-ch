@@ -1,0 +1,304 @@
+import React, { useMemo, useState } from 'react';
+import { CreditCard, KeyRound, Loader2, ArrowUpCircle, XCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useSubscription } from '../context/SubscriptionContext';
+import { useLanguage } from '../context/LanguageContext';
+import type { PaystackPlanId } from '@shared/planCatalog';
+import { PlanMarketingFeatureBullets, PlanMarketingPanel, PLAN_ENTERPRISE_SALES_MAILTO } from './PlanMarketingPanel';
+
+function planDisplayName(id: PaystackPlanId | null | undefined, t: (k: string) => string): string {
+  if (id === 'starter') return t('planStarterName');
+  if (id === 'business') return t('planBusinessName');
+  if (id === 'unlimited') return t('planUnlimitedName');
+  if (id === 'enterprise') return t('planEnterpriseName');
+  return t('planSummaryPlanUnknown');
+}
+
+function formatLimit(n: number | null, t: (k: string) => string): string {
+  if (n === null) return t('planSummaryUnlimited');
+  return String(n);
+}
+
+const UPGRADE_PLANS: PaystackPlanId[] = ['starter', 'business', 'unlimited', 'enterprise'];
+
+export function BillingPlanPanel() {
+  const { t } = useLanguage();
+  const { user, changePassword } = useAuth();
+  const { enforcementEnabled, loading, billing, entitlements, startCheckout, openCustomerPortal } = useSubscription();
+
+  const [portalBusy, setPortalBusy] = useState(false);
+  const [upgradePlan, setUpgradePlan] = useState<PaystackPlanId | null>(billing?.planId ?? 'starter');
+  const [upgradeBusy, setUpgradeBusy] = useState(false);
+  const [upgradeErr, setUpgradeErr] = useState<string | null>(null);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<string | null>(null);
+  const [passwordErr, setPasswordErr] = useState<string | null>(null);
+
+  const isPasswordUser = useMemo(
+    () => user?.providerData?.some((p) => p.providerId === 'password') ?? false,
+    [user]
+  );
+
+  const planId = billing?.planId;
+  const effectivePlan: PaystackPlanId = planId ?? 'starter';
+  const status = billing?.subscriptionStatus;
+  const statusLabel =
+    status === 'trialing'
+      ? t('planSummaryStatusTrialing')
+      : status === 'active'
+        ? t('planSummaryStatusActive')
+        : status && status !== 'none'
+          ? status
+          : '';
+
+  const trialHint =
+    billing?.trialEndsAt != null
+      ? t('subscriptionTrialUntil').replace('{date}', billing.trialEndsAt.toLocaleDateString())
+      : '';
+
+  const rows: { label: string; value: string }[] = [
+    { label: t('planSummaryDocuments'), value: formatLimit(entitlements.maxDocumentsPerMonth, t) },
+    { label: t('planSummaryEmployees'), value: formatLimit(entitlements.maxEmployeeSlots, t) },
+    { label: t('planSummarySessions'), value: formatLimit(entitlements.maxSessions, t) },
+  ];
+
+  const planLabel = (id: PaystackPlanId) => planDisplayName(id, t);
+
+  const openPortal = async () => {
+    setPortalBusy(true);
+    try {
+      await openCustomerPortal();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPortalBusy(false);
+    }
+  };
+
+  const handleUpgrade = async () => {
+    if (!upgradePlan) {
+      setUpgradeErr(t('subscriptionPickPlanError'));
+      return;
+    }
+    if (upgradePlan === 'enterprise') {
+      window.location.href = PLAN_ENTERPRISE_SALES_MAILTO;
+      return;
+    }
+    setUpgradeErr(null);
+    setUpgradeBusy(true);
+    try {
+      await startCheckout(upgradePlan);
+    } catch (e) {
+      setUpgradeErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setUpgradeBusy(false);
+    }
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordErr(null);
+    setPasswordMsg(null);
+    if (newPassword.length < 6) {
+      setPasswordErr(t('billingPasswordTooShort'));
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordErr(t('billingPasswordMismatch'));
+      return;
+    }
+    setPasswordBusy(true);
+    try {
+      const { error } = await changePassword(currentPassword, newPassword);
+      if (error) {
+        setPasswordErr(error.message);
+        return;
+      }
+      setPasswordMsg(t('billingPasswordSuccess'));
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } finally {
+      setPasswordBusy(false);
+    }
+  };
+
+  if (loading && enforcementEnabled) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-16">
+        <Loader2 className="w-10 h-10 text-cdlp-gold animate-spin" />
+        <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted">{t('subscriptionLoading')}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-8 pb-8">
+      <div>
+        <h1 className="text-xl font-black uppercase tracking-wider text-white mb-1">{t('subscriptionManageBilling')}</h1>
+        <p className="text-xs text-cdlp-muted leading-relaxed">{t('billingPageIntro')}</p>
+      </div>
+
+      {enforcementEnabled ? (
+        <section className="rounded-xl border border-cdlp-border bg-cdlp-card p-5 sm:p-6 space-y-5">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted">{t('planSummaryTitle')}</p>
+            {statusLabel ? (
+              <span className="text-[10px] font-bold uppercase tracking-tight text-cdlp-gold/90">{statusLabel}</span>
+            ) : null}
+          </div>
+          <p className="text-lg font-black text-white tracking-tight">{planDisplayName(planId, t)}</p>
+          {trialHint ? (
+            <p className="text-[10px] text-cdlp-gold/90 font-bold uppercase tracking-tight">{trialHint}</p>
+          ) : null}
+          <dl className="grid grid-cols-1 gap-3 text-[11px] sm:grid-cols-3">
+            {rows.map((r) => (
+              <div key={r.label} className="rounded border border-cdlp-border bg-cdlp-dark/50 px-3 py-2">
+                <dt className="font-bold text-cdlp-muted/90">{r.label}</dt>
+                <dd className="text-white font-semibold tabular-nums mt-1">{r.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted mb-2">{t('planSummaryIncludedTitle')}</p>
+            <PlanMarketingFeatureBullets planId={effectivePlan} variant="cdlp" />
+          </div>
+          <button
+            type="button"
+            disabled={portalBusy}
+            onClick={() => void openPortal()}
+            className="inline-flex items-center justify-center gap-2 rounded-sm border border-cdlp-gold/50 bg-cdlp-gold/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cdlp-gold hover:bg-cdlp-gold/20 disabled:opacity-50"
+          >
+            {portalBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
+            {t('billingOpenStripePortal')}
+          </button>
+        </section>
+      ) : (
+        <section className="rounded-xl border border-cdlp-border bg-cdlp-card p-5 text-xs text-cdlp-muted">
+          {t('billingEnforcementOff')}
+        </section>
+      )}
+
+      {enforcementEnabled ? (
+        <section className="rounded-xl border border-cdlp-border bg-cdlp-card p-5 sm:p-6 space-y-4">
+          <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+            <ArrowUpCircle className="w-4 h-4 text-cdlp-gold" />
+            {t('billingUpgradeTitle')}
+          </h2>
+          <p className="text-xs text-cdlp-muted leading-relaxed">{t('billingUpgradeBody')}</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {UPGRADE_PLANS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setUpgradePlan(id)}
+                className={`rounded border px-2 py-3 text-[10px] font-black uppercase tracking-tight transition-colors ${
+                  upgradePlan === id
+                    ? 'border-cdlp-gold bg-cdlp-gold/15 text-white'
+                    : 'border-cdlp-border text-cdlp-muted hover:border-cdlp-gold/50 hover:text-white'
+                }`}
+              >
+                {planLabel(id)}
+              </button>
+            ))}
+          </div>
+          {upgradePlan ? <PlanMarketingPanel planId={upgradePlan} variant="cdlp" showMostPopularBadge /> : null}
+          {upgradeErr ? (
+            <p className="text-[10px] font-bold text-red-400 bg-red-950/40 border border-red-800/50 rounded px-3 py-2">
+              {upgradeErr}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            disabled={upgradeBusy || !upgradePlan}
+            onClick={() => void handleUpgrade()}
+            className="w-full h-11 rounded-sm bg-cdlp-gold text-cdlp-black font-black text-xs uppercase tracking-wider hover:bg-cdlp-gold-light disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {upgradeBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUpCircle className="w-4 h-4" />}
+            {upgradePlan === 'enterprise' ? t('ctaContactSales') : t('billingUpgradeCta')}
+          </button>
+        </section>
+      ) : null}
+
+      {enforcementEnabled ? (
+        <section className="rounded-xl border border-red-900/40 bg-red-950/20 p-5 sm:p-6 space-y-3">
+          <h2 className="text-sm font-black uppercase tracking-wider text-red-300 flex items-center gap-2">
+            <XCircle className="w-4 h-4" />
+            {t('billingCancelTitle')}
+          </h2>
+          <p className="text-xs text-cdlp-muted leading-relaxed">{t('billingCancelBody')}</p>
+          <button
+            type="button"
+            disabled={portalBusy}
+            onClick={() => void openPortal()}
+            className="w-full h-11 rounded-sm border border-red-700/60 text-red-300 font-black text-xs uppercase tracking-wider hover:bg-red-950/40 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {portalBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+            {t('billingCancelCta')}
+          </button>
+        </section>
+      ) : null}
+
+      <section className="rounded-xl border border-cdlp-border bg-cdlp-card p-5 sm:p-6 space-y-4">
+        <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+          <KeyRound className="w-4 h-4 text-cdlp-gold" />
+          {t('billingAccountTitle')}
+        </h2>
+        <p className="text-xs text-cdlp-muted">
+          {t('billingAccountEmail')}{' '}
+          <span className="font-bold text-white">{user?.email ?? '—'}</span>
+        </p>
+        {isPasswordUser ? (
+          <form onSubmit={handlePasswordChange} className="space-y-3 max-w-md">
+            <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted">{t('billingChangePasswordTitle')}</p>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder={t('billingCurrentPassword')}
+              required
+              className="w-full rounded border border-cdlp-border bg-cdlp-dark px-3 py-2 text-sm text-white"
+            />
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder={t('billingNewPassword')}
+              required
+              minLength={6}
+              className="w-full rounded border border-cdlp-border bg-cdlp-dark px-3 py-2 text-sm text-white"
+            />
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder={t('billingConfirmPassword')}
+              required
+              minLength={6}
+              className="w-full rounded border border-cdlp-border bg-cdlp-dark px-3 py-2 text-sm text-white"
+            />
+            {passwordErr ? <p className="text-xs text-red-400 font-medium">{passwordErr}</p> : null}
+            {passwordMsg ? <p className="text-xs text-emerald-400 font-medium">{passwordMsg}</p> : null}
+            <button
+              type="submit"
+              disabled={passwordBusy}
+              className="h-10 px-4 rounded-sm bg-cdlp-gold text-cdlp-black font-black text-[10px] uppercase tracking-wider hover:bg-cdlp-gold-light disabled:opacity-50 flex items-center gap-2"
+            >
+              {passwordBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {t('billingChangePasswordCta')}
+            </button>
+          </form>
+        ) : (
+          <p className="text-xs text-cdlp-muted leading-relaxed">{t('billingGooglePasswordHint')}</p>
+        )}
+      </section>
+    </div>
+  );
+}

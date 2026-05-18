@@ -9,6 +9,9 @@ import {
   GoogleAuthProvider,
   updateProfile,
   signOut as firebaseSignOut,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
   type User as FirebaseUser,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -56,6 +59,7 @@ type AuthContextValue = {
   resendVerificationEmail: () => Promise<{ error: Error | null }>;
   /** Reload Firebase user (e.g. after clicking the verification link). */
   refreshAuthUser: () => Promise<{ emailVerified: boolean }>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 };
 
@@ -177,6 +181,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { emailVerified: verified };
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    if (!auth?.currentUser?.email) {
+      return { error: new Error('Not signed in with email and password.') };
+    }
+    try {
+      const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
+      await reauthenticateWithCredential(auth.currentUser, credential);
+      await updatePassword(auth.currentUser, newPassword);
+      return { error: null };
+    } catch (err) {
+      return { error: err instanceof Error ? err : new Error(String(err)) };
+    }
+  };
+
   const signOut = async () => {
     if (auth) await firebaseSignOut(auth);
   };
@@ -190,6 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     resendVerificationEmail,
     refreshAuthUser,
+    changePassword,
     signOut,
   };
 
