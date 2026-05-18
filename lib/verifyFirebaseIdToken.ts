@@ -19,7 +19,7 @@ function resolveFirebaseWebApiKey(): string {
   if (!key) {
     throw Object.assign(
       new Error(
-        "Server missing FIREBASE_WEB_API_KEY (use the same Web API Key as VITE_FIREBASE_API_KEY). " +
+        "Server missing Firebase Web API key. On Vercel set FIREBASE_WEB_API_KEY or reuse VITE_FIREBASE_API_KEY (same value). " +
           "Required when service-account private keys are blocked."
       ),
       { status: 503 }

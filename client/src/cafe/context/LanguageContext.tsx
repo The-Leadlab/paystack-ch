@@ -291,7 +291,7 @@ const translations = {
     checkoutLinkNoEmail:
       'This account has no email address. Use email/password or Google sign-in with the same email you used at Stripe checkout.',
     checkoutLinkAdminBlockedHint:
-      'Server billing storage is misconfigured. Ensure FIREBASE_WEB_API_KEY and SUBSCRIPTION_LINK_SIGNING_SECRET are set on Vercel, then redeploy.',
+      'Server billing is misconfigured. On Vercel set SUBSCRIPTION_LINK_SIGNING_SECRET and keep VITE_FIREBASE_API_KEY (or FIREBASE_WEB_API_KEY), then redeploy.',
     checkoutLinkGeneric: 'Could not link your subscription. Try again or contact support.',
     emailVerifyRateLimited:
       'Too many verification emails were sent. Please wait several minutes before trying again, or check your spam folder.',
@@ -966,7 +966,7 @@ const translations = {
     checkoutLinkNoEmail:
       'Ce compte n\'a pas d\'adresse e-mail. Utilisez la meme adresse que sur Stripe (e-mail/mot de passe ou Google).',
     checkoutLinkAdminBlockedHint:
-      'Configuration serveur incomplete. Definissez FIREBASE_WEB_API_KEY et SUBSCRIPTION_LINK_SIGNING_SECRET sur Vercel, puis redeployez.',
+      'Configuration serveur incomplete. Sur Vercel : SUBSCRIPTION_LINK_SIGNING_SECRET et VITE_FIREBASE_API_KEY (ou FIREBASE_WEB_API_KEY), puis redeployez.',
     checkoutLinkGeneric: 'Impossible de lier votre abonnement. Reessayez ou contactez le support.',
     emailVerifyRateLimited:
       'Trop d\'e-mails de verification ont ete envoyes. Patientez quelques minutes avant de reessayer, ou verifiez vos courriers indesirables.',
