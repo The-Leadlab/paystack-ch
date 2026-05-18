@@ -4,13 +4,15 @@
  */
 import express from "express";
 import { registerStripeIfConfigured } from "./stripe";
+import { registerGeminiRoutes } from "./gemini";
 
 const app = express();
 registerStripeIfConfigured(app);
+registerGeminiRoutes(app);
 
 const port = parseInt(process.env.STRIPE_DEV_PORT || "8787", 10);
 app.listen(port, "127.0.0.1", () => {
   console.log(
-    `[stripe-dev] http://127.0.0.1:${port}  (live: /api/stripe/* ; test: /api/stripe-test/* when STRIPE_TEST_SECRET_KEY is set)`
+    `[stripe-dev] http://127.0.0.1:${port}  (stripe: /api/stripe/* ; gemini: /api/gemini/generate ; test stripe when STRIPE_TEST_SECRET_KEY is set)`
   );
 });

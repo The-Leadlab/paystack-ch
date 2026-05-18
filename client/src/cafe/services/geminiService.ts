@@ -825,11 +825,20 @@ function applySwissVatWarnings(data: FinancialData): FinancialData {
 }
 
 
+const MAX_ANALYZE_FILE_BYTES = 3_200_000;
+
 export const analyzeFinancialDocument = async (
   file: File, 
   targetCurrency: string = 'CHF', 
   userHint?: string
 ): Promise<FinancialData> => {
+  if (file.size > MAX_ANALYZE_FILE_BYTES) {
+    throw new Error(
+      `"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). ` +
+        "Keep files under about 3 MB for secure AI processing."
+    );
+  }
+
   const model = resolveDocumentModel();
   const base64 = await fileToBase64(file);
   const mimeType = file.type;

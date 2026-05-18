@@ -16,7 +16,14 @@ function allowedCorsOrigins(): string[] {
     .map((s) => normalizeOrigin(s.trim()))
     .filter((s): s is string => Boolean(s));
   const publicOrigin = normalizeOrigin(process.env.PUBLIC_APP_URL);
-  const defaults = ["https://paystack.ch", "https://www.paystack.ch"];
+  const defaults = [
+    "https://paystack.ch",
+    "https://www.paystack.ch",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ];
+  const vercelHost = process.env.VERCEL_URL?.trim();
+  if (vercelHost) defaults.push(`https://${vercelHost.replace(/^https?:\/\//, "")}`);
   return Array.from(new Set([...fromEnv, ...(publicOrigin ? [publicOrigin] : []), ...defaults]));
 }
 

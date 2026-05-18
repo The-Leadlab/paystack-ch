@@ -73,13 +73,31 @@ function estimateJsonBytes(value: unknown): number {
   }
 }
 
+function extractGoogleApiMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  const jsonStart = raw.indexOf("{");
+  if (jsonStart >= 0) {
+    try {
+      const j = JSON.parse(raw.slice(jsonStart)) as { error?: { message?: string; code?: number } };
+      if (typeof j?.error?.message === "string") return j.error.message;
+    } catch {
+      /* ignore */
+    }
+  }
+  return raw;
+}
+
 function toClientError(error: unknown): GeminiProxyResult {
   const err = error as { status?: number; message?: string };
-  const status = typeof err?.status === "number" && err.status >= 400 && err.status < 500 ? err.status : 500;
+  const googleMsg = extractGoogleApiMessage(error);
+  const status = typeof err?.status === "number" && err.status >= 400 && err.status < 500 ? err.status : 502;
   return {
     status,
     json: {
-      error: status === 500 ? "Gemini proxy failed" : err.message || "Gemini request rejected",
+      error:
+        status === 502
+          ? `Gemini API error: ${googleMsg}`
+          : err.message || googleMsg || "Gemini request rejected",
     },
   };
 }
@@ -128,7 +146,8 @@ export async function runGeminiGenerate(
       },
     };
   } catch (error) {
-    console.error("[gemini] proxy error:", error instanceof Error ? error.message : String(error));
+    const msg = extractGoogleApiMessage(error);
+    console.error("[gemini] proxy error:", msg);
     return toClientError(error);
   }
 }

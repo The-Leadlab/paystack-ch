@@ -1897,7 +1897,7 @@ export const DocumentProcessor: React.FC<{
   // Processing throughput: configurable via env, capped to avoid overloading browsers/devices.
   const CONCURRENCY_LIMIT = Math.min(
     6,
-    Math.max(1, parseInt((import.meta.env.VITE_DOCUMENT_PROCESSING_CONCURRENCY || '3').trim(), 10) || 3)
+    Math.max(1, parseInt((import.meta.env.VITE_DOCUMENT_PROCESSING_CONCURRENCY || '1').trim(), 10) || 1)
   );
 
   // Combine Firestore documents with local processing documents
