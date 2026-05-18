@@ -122,13 +122,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       }
       window.location.href = url;
     },
-    [user, apiBase]
+    [user]
   );
 
   const openCustomerPortal = useCallback(async () => {
     if (!user) throw new Error('Not signed in');
     const token = await user.getIdToken();
-    const res = await fetch(`${apiBase}${STRIPE_API_PATH}/create-portal-session`, {
+    const res = await fetch(apiUrl(`${STRIPE_API_PATH}/create-portal-session`), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
