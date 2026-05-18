@@ -1,21 +1,4 @@
-function stripWww(hostname: string): string {
-  return hostname.replace(/^www\./i, "");
-}
-
-const apiBase = () => {
-  const configured = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") || "";
-  if (!configured || typeof window === "undefined") return configured;
-  try {
-    const configuredUrl = new URL(configured);
-    const currentUrl = new URL(window.location.origin);
-    const sameApex =
-      configuredUrl.protocol === currentUrl.protocol &&
-      stripWww(configuredUrl.hostname) === stripWww(currentUrl.hostname);
-    return sameApex ? "" : configured;
-  } catch {
-    return configured;
-  }
-};
+import { apiUrl } from "@/lib/apiBase";
 
 /** When `stripe_test=1` is present (legacy test checkout), link still targets `/api/stripe-test/link-checkout-session`. */
 export const STRIPE_BILLING_PATH_LIVE = "/api/stripe";
@@ -93,7 +76,7 @@ export async function startGuestCheckoutSession(
   opts?: { useTestStripe?: boolean }
 ): Promise<string> {
   const useTest = Boolean(opts?.useTestStripe);
-  const res = await fetch(`${apiBase()}/api/stripe/guest-trial-checkout`, {
+  const res = await fetch(apiUrl("/api/stripe/guest-trial-checkout"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ planId: planId ?? undefined, stripeTest: useTest }),
@@ -131,7 +114,7 @@ export async function linkCheckoutSessionAfterAuth(
   sessionId: string,
   billingPath: string = STRIPE_BILLING_PATH_LIVE
 ): Promise<void> {
-  const res = await fetch(`${apiBase()}${billingPath}/link-checkout-session`, {
+  const res = await fetch(apiUrl(`${billingPath}/link-checkout-session`), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -1,24 +1,7 @@
-function stripWww(hostname: string): string {
-  return hostname.replace(/^www\./i, "");
-}
-
-function apiBase(): string {
-  const configured = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") || "";
-  if (!configured || typeof window === "undefined") return configured;
-  try {
-    const configuredUrl = new URL(configured);
-    const currentUrl = new URL(window.location.origin);
-    const sameApex =
-      configuredUrl.protocol === currentUrl.protocol &&
-      stripWww(configuredUrl.hostname) === stripWww(currentUrl.hostname);
-    return sameApex ? "" : configured;
-  } catch {
-    return configured;
-  }
-}
+import { apiUrl } from "@/lib/apiBase";
 
 export async function verifyAdminPassword(password: string): Promise<void> {
-  const res = await fetch(`${apiBase()}/api/admin/verify`, {
+  const res = await fetch(apiUrl("/api/admin/verify"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -39,7 +22,7 @@ export async function verifyAdminPassword(password: string): Promise<void> {
 }
 
 export async function logoutAdmin(): Promise<void> {
-  const res = await fetch(`${apiBase()}/api/admin/logout`, {
+  const res = await fetch(apiUrl("/api/admin/logout"), {
     method: "POST",
     credentials: "same-origin",
   });

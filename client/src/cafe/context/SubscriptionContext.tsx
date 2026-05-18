@@ -16,6 +16,7 @@ import {
   type PlanEntitlements,
 } from '@shared/planCatalog';
 import { parseStripeFetchResponse } from '../lib/stripeCheckoutClient';
+import { apiUrl } from '@/lib/apiBase';
 
 const STRIPE_API_PATH = '/api/stripe';
 
@@ -77,6 +78,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       },
       (err) => {
         console.error('Subscription snapshot error:', err);
+        setBilling({ subscriptionStatus: 'none', trialEndsAt: null, planId: null });
         setLoading(false);
       }
     );
@@ -96,8 +98,6 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     return entitlementsForPlan(billing?.planId ?? undefined);
   }, [enforcementEnabled, bypass, billing?.planId]);
 
-  const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') || '';
-
   const startCheckout = useCallback(
     async (planIdArg?: PaystackPlanId | null) => {
       if (!user) throw new Error('Not signed in');
@@ -105,7 +105,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(SELECTED_PLAN_STORAGE_KEY) : null;
       const resolved = planIdArg ?? parsePaystackPlanId(fromStorage);
       const token = await user.getIdToken();
-      const res = await fetch(`${apiBase}${STRIPE_API_PATH}/create-checkout-session`, {
+      const res = await fetch(apiUrl(`${STRIPE_API_PATH}/create-checkout-session`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -144,7 +144,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       throw new Error(typeof json.error === 'string' ? json.error : 'No portal URL returned');
     }
     window.location.href = url;
-  }, [user, apiBase]);
+  }, [user]);
 
   const value: SubscriptionContextValue = {
     enforcementEnabled,

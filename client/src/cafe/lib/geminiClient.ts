@@ -1,4 +1,5 @@
 import { auth } from "./firebase";
+import { apiUrl } from "@/lib/apiBase";
 
 type GeminiGenerateRequest = {
   model: string;
@@ -9,10 +10,6 @@ type GeminiGenerateRequest = {
 type GeminiGenerateResponse = {
   text: string;
 };
-
-function apiBase(): string {
-  return (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") || "";
-}
 
 function estimateRequestBytes(body: GeminiGenerateRequest): number {
   try {
@@ -46,7 +43,7 @@ export async function generateGeminiContent(body: GeminiGenerateRequest): Promis
     throw new Error("Session expired. Sign out and sign in again, then retry.");
   }
 
-  const url = `${apiBase()}/api/gemini/generate`;
+  const url = apiUrl("/api/gemini/generate");
   let res: Response;
   try {
     res = await fetch(url, {
@@ -60,9 +57,9 @@ export async function generateGeminiContent(body: GeminiGenerateRequest): Promis
   } catch (networkErr) {
     const detail = networkErr instanceof Error ? networkErr.message : "Failed to fetch";
     throw new Error(
-      `Cannot reach the AI server (${url || "/api/gemini/generate"}). ` +
-        "Check that Vercel deploy includes api/gemini, GEMINI_API_KEY and FIREBASE_SERVICE_ACCOUNT_JSON are set, " +
-        "billing is active on Google AI Studio, and the PDF is not too large. " +
+      `Cannot reach the AI server (${url}). ` +
+        "If VITE_API_BASE_URL is set, use the site origin only (https://paystack.ch), not https://paystack.ch/api. " +
+        "Also confirm api/gemini is deployed and GEMINI_API_KEY + FIREBASE_SERVICE_ACCOUNT_JSON are set. " +
         `Network: ${detail}`
     );
   }
