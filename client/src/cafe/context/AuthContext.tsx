@@ -3,6 +3,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
+  getAdditionalUserInfo,
   createUserWithEmailAndPassword,
   sendEmailVerification,
   GoogleAuthProvider,
@@ -12,6 +13,12 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, firebaseReady } from '../lib/firebase';
+import {
+  AUTH_ERR_REGISTRATION_CLOSED,
+  type AuthAccessOptions,
+  checkPublicAuthAccess,
+  isPaidRegistrationEnforced,
+} from '../lib/authAccess';
 
 async function ensureUserBillingStub(firebaseUser: FirebaseUser): Promise<void> {
   if (!db) return;
@@ -37,8 +44,15 @@ type AuthContextValue = {
   session: null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithGoogle: () => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, username?: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: (
+    options?: AuthAccessOptions & { allowNewUserFromCheckout?: boolean }
+  ) => Promise<{ error: Error | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    username?: string,
+    options?: { allowFromCheckout?: boolean }
+  ) => Promise<{ error: Error | null }>;
   resendVerificationEmail: () => Promise<{ error: Error | null }>;
   /** Reload Firebase user (e.g. after clicking the verification link). */
   refreshAuthUser: () => Promise<{ emailVerified: boolean }>;
@@ -91,9 +105,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, username?: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    username?: string,
+    options?: { allowFromCheckout?: boolean }
+  ) => {
     if (!auth) {
       return { error: new Error('Firebase is not configured.') };
+    }
+    if (isPaidRegistrationEnforced() && !options?.allowFromCheckout) {
+      return { error: new Error(AUTH_ERR_REGISTRATION_CLOSED) };
     }
     try {
       const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
@@ -108,11 +130,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (
+    options?: AuthAccessOptions & { allowNewUserFromCheckout?: boolean }
+  ) => {
     if (!auth) return { error: new Error('Firebase is not configured.') };
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const info = getAdditionalUserInfo(result);
+      const denied = checkPublicAuthAccess(result.user, {
+        isNewUser: info?.isNewUser === true,
+        allowNewUserFromCheckout: options?.allowNewUserFromCheckout,
+        skipRegistrationGate: options?.skipRegistrationGate,
+      });
+      if (denied) {
+        await firebaseSignOut(auth);
+        return { error: new Error(denied) };
+      }
       return { error: null };
     } catch (err) {
       return { error: err instanceof Error ? err : new Error(String(err)) };

@@ -180,7 +180,7 @@ export default function AdminSignInPage() {
                     setError(null);
                     setGoogleLoading(true);
                     try {
-                      const { error: err } = await signInWithGoogle();
+                      const { error: err } = await signInWithGoogle({ skipRegistrationGate: true });
                       if (err) setError(err.message);
                     } finally {
                       setGoogleLoading(false);

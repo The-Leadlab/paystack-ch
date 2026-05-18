@@ -223,6 +223,18 @@ const translations = {
     authAdminBypassSectionTitle: 'Firebase admin (subscription bypass)',
     authNeedAccount: "Don't have an account?",
     authSignUpLink: 'Sign up',
+    authTeamSignIn: 'Team sign in',
+    authSignInExistingOnlyNote:
+      'Sign in with the email and password for your existing account. New accounts require a paid plan first.',
+    authSubscribeFirst: 'Need an account?',
+    authRegistrationClosedTitle: 'Subscribe to create an account',
+    authRegistrationClosedBody:
+      'Public registration is closed. Choose a plan on the pricing page, complete checkout, then create your account with the same email.',
+    authRegistrationClosedCta: 'View pricing',
+    authErrRegistrationClosed: 'Account creation is only available after checkout. Choose a plan first.',
+    authErrGoogleNewUser:
+      'This Google account is new. Subscribe first, or sign in with an existing Paystack.ch account.',
+    planManagement: 'Plan management',
     authHaveAccount: 'Already have an account?',
     authSignInLink: 'Sign in',
     authBackHome: 'Back to home',
@@ -902,6 +914,18 @@ const translations = {
     authAdminBypassSectionTitle: 'Admin Firebase (contournement abonnement)',
     authNeedAccount: 'Pas encore de compte ?',
     authSignUpLink: 'S\'inscrire',
+    authTeamSignIn: 'Connexion equipe',
+    authSignInExistingOnlyNote:
+      'Connectez-vous avec l\'e-mail et le mot de passe de votre compte existant. Les nouveaux comptes passent d\'abord par un abonnement payant.',
+    authSubscribeFirst: 'Besoin d\'un compte ?',
+    authRegistrationClosedTitle: 'Abonnez-vous pour creer un compte',
+    authRegistrationClosedBody:
+      'L\'inscription publique est fermee. Choisissez une offre, payez, puis creez votre compte avec le meme e-mail.',
+    authRegistrationClosedCta: 'Voir les tarifs',
+    authErrRegistrationClosed: 'La creation de compte n\'est possible qu\'apres le paiement. Choisissez d\'abord une offre.',
+    authErrGoogleNewUser:
+      'Ce compte Google est nouveau. Abonnez-vous d\'abord ou connectez-vous avec un compte Paystack.ch existant.',
+    planManagement: 'Gestion de l\'offre',
     authHaveAccount: 'Deja un compte ?',
     authSignInLink: 'Se connecter',
     authBackHome: 'Retour a l\'accueil',

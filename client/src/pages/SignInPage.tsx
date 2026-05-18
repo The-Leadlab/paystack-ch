@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useSearch } from "wouter";
-import { LogIn } from "lucide-react";
+import { LogIn, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ import {
   preserveCheckoutInAuthHref,
 } from "@/cafe/lib/stripeCheckoutClient";
 import { formatCheckoutLinkError } from "@/cafe/lib/formatCheckoutLinkError";
+import { formatAuthAccessError, isPaidRegistrationEnforced } from "@/cafe/lib/authAccess";
 
 function sanitizeRedirect(search: string): string {
   const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
@@ -48,6 +49,7 @@ export default function SignInPage() {
   const nextPath = sanitizeRedirect(search);
   const checkoutSid = useMemo(() => checkoutSuccessSessionId(search), [search]);
   const checkoutBillingPath = useMemo(() => billingPathFromSearch(search), [search]);
+  const registrationClosed = isPaidRegistrationEnforced();
 
   useEffect(() => {
     if (loading || !user) return;
@@ -160,7 +162,7 @@ export default function SignInPage() {
     setGoogleLoading(true);
     try {
       const { error: err } = await signInWithGoogle();
-      if (err) setError(err.message);
+      if (err) setError(formatAuthAccessError(err, t));
     } finally {
       setGoogleLoading(false);
     }
@@ -177,16 +179,23 @@ export default function SignInPage() {
               {t("checkoutSameEmailNote")}
             </p>
           ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full font-display gap-2 border-border bg-background hover:bg-secondary/80"
-            onClick={handleGoogle}
-            disabled={googleLoading || submitting}
-          >
-            <GoogleGIcon className="size-[18px] shrink-0" />
-            {googleLoading ? t("authWorking") : t("authContinueGoogle")}
-          </Button>
+          {registrationClosed ? (
+            <p className="font-display text-xs text-muted-foreground bg-secondary/50 border border-border rounded-md px-3 py-2 leading-relaxed">
+              {t("authSignInExistingOnlyNote")}
+            </p>
+          ) : null}
+          {!registrationClosed ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full font-display gap-2 border-border bg-background hover:bg-secondary/80"
+              onClick={handleGoogle}
+              disabled={googleLoading || submitting}
+            >
+              <GoogleGIcon className="size-[18px] shrink-0" />
+              {googleLoading ? t("authWorking") : t("authContinueGoogle")}
+            </Button>
+          ) : null}
         </CardHeader>
         <CardContent>
           <div className="relative py-2">
@@ -244,13 +253,28 @@ export default function SignInPage() {
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-col gap-2 border-t border-border pt-4">
-          <p className="font-display text-sm text-muted-foreground text-center w-full">
-            {t("authNeedAccount")}{" "}
-            <Link href={signUpHref} className="text-brand-red hover:underline font-medium">
-              {t("authSignUpLink")}
+        <CardFooter className="flex flex-col gap-3 border-t border-border pt-4">
+          {registrationClosed ? (
+            <p className="font-display text-xs text-muted-foreground text-center leading-relaxed">
+              {t("authSubscribeFirst")}{" "}
+              <a href="/#pricing" className="text-brand-red hover:underline font-medium">
+                {t("navPricing")}
+              </a>
+            </p>
+          ) : (
+            <p className="font-display text-sm text-muted-foreground text-center w-full">
+              {t("authNeedAccount")}{" "}
+              <Link href={signUpHref} className="text-brand-red hover:underline font-medium">
+                {t("authSignUpLink")}
+              </Link>
+            </p>
+          )}
+          <Button type="button" variant="outline" className="w-full font-display gap-2" asChild>
+            <Link href="/operator?next=%2Fadmin">
+              <Shield className="size-4" />
+              {t("authTeamSignIn")}
             </Link>
-          </p>
+          </Button>
         </CardFooter>
       </Card>
     </AuthLayout>

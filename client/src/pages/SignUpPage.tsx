@@ -19,6 +19,7 @@ import {
   preserveCheckoutInAuthHref,
 } from "@/cafe/lib/stripeCheckoutClient";
 import { formatCheckoutLinkError } from "@/cafe/lib/formatCheckoutLinkError";
+import { canOpenPublicSignUp, formatAuthAccessError } from "@/cafe/lib/authAccess";
 
 function sanitizeRedirect(search: string): string {
   const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
@@ -50,6 +51,7 @@ export default function SignUpPage() {
   const nextPath = sanitizeRedirect(search);
   const checkoutSid = useMemo(() => checkoutSuccessSessionId(search), [search]);
   const checkoutBillingPath = useMemo(() => billingPathFromSearch(search), [search]);
+  const signUpAllowed = canOpenPublicSignUp(Boolean(checkoutSid));
 
   useEffect(() => {
     const qs = search.startsWith("?") ? search.slice(1) : search;
@@ -151,14 +153,35 @@ export default function SignUpPage() {
     );
   }
 
+  if (!signUpAllowed) {
+    return (
+      <AuthLayout heading={t("authRegistrationClosedTitle")}>
+        <Card className="border-border shadow-sm max-w-md mx-auto">
+          <CardContent className="pt-6 space-y-4">
+            <p className="font-editorial text-sm text-muted-foreground leading-relaxed">{t("authRegistrationClosedBody")}</p>
+            <Button asChild className="w-full font-display bg-brand-red text-white hover:bg-brand-red/90">
+              <a href="/#pricing">{t("authRegistrationClosedCta")}</a>
+            </Button>
+            <p className="font-display text-sm text-muted-foreground text-center">
+              {t("authHaveAccount")}{" "}
+              <Link href="/sign-in?redirect=%2Fapp" className="text-brand-red hover:underline font-medium">
+                {t("authSignInLink")}
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </AuthLayout>
+    );
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      const { error: err } = await signUp(email, password, displayName);
+      const { error: err } = await signUp(email, password, displayName, { allowFromCheckout: Boolean(checkoutSid) });
       if (err) {
-        setError(err.message);
+        setError(formatAuthAccessError(err, t));
         return;
       }
     } finally {
@@ -170,8 +193,8 @@ export default function SignUpPage() {
     setError(null);
     setGoogleLoading(true);
     try {
-      const { error: err } = await signInWithGoogle();
-      if (err) setError(err.message);
+      const { error: err } = await signInWithGoogle({ allowNewUserFromCheckout: Boolean(checkoutSid) });
+      if (err) setError(formatAuthAccessError(err, t));
     } finally {
       setGoogleLoading(false);
     }

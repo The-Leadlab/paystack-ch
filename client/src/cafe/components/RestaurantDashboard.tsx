@@ -603,6 +603,29 @@ export function RestaurantDashboard() {
               <span className="text-[10px] font-bold text-cdlp-gold">{language === 'en' ? 'FR' : 'EN'}</span>
             </button>
           </div>
+          {enforcementEnabled ? (
+            <button
+              type="button"
+              disabled={billingBusy}
+              onClick={() => {
+                void (async () => {
+                  setBillingBusy(true);
+                  try {
+                    await openCustomerPortal();
+                  } catch (e) {
+                    console.error(e);
+                    alert(e instanceof Error ? e.message : String(e));
+                  } finally {
+                    setBillingBusy(false);
+                  }
+                })();
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2 mb-2 text-xs font-bold uppercase text-cdlp-gold border border-cdlp-gold/40 rounded hover:bg-cdlp-gold/10 disabled:opacity-50"
+            >
+              {billingBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+              {t('planManagement')}
+            </button>
+          ) : null}
           <button
             onClick={handleAddSession}
             disabled={!canAddSession}
@@ -627,7 +650,30 @@ export function RestaurantDashboard() {
         </div>
 
         {/* Mobile Add Session Button */}
-        <div className="md:hidden p-4 border-b border-cdlp-border">
+        <div className="md:hidden p-4 border-b border-cdlp-border space-y-2">
+          {enforcementEnabled ? (
+            <button
+              type="button"
+              disabled={billingBusy}
+              onClick={() => {
+                void (async () => {
+                  setBillingBusy(true);
+                  try {
+                    await openCustomerPortal();
+                  } catch (e) {
+                    console.error(e);
+                    alert(e instanceof Error ? e.message : String(e));
+                  } finally {
+                    setBillingBusy(false);
+                  }
+                })();
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-gold border border-cdlp-gold/40 rounded hover:bg-cdlp-gold/10 disabled:opacity-50"
+            >
+              {billingBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+              {t('planManagement')}
+            </button>
+          ) : null}
           <button
             onClick={() => {
               handleAddSession();

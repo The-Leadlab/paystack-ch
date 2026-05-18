@@ -69,6 +69,12 @@ export default function Navbar() {
             >
               {language === "fr" ? t("navTranslateEnglish") : t("navTranslateFrench")}
             </Button>
+            <Link
+              href="/sign-in?redirect=%2Fapp"
+              className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
+            >
+              {t("authSignInLink")}
+            </Link>
             <a
               href="#contact"
               className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
@@ -116,6 +122,13 @@ export default function Navbar() {
                 </a>
               ))}
               <div className="ruled-line my-4" />
+              <Link
+                href="/sign-in?redirect=%2Fapp"
+                onClick={() => setMobileOpen(false)}
+                className="font-display text-2xl font-light text-foreground hover:text-brand-red transition-colors"
+              >
+                {t("authSignInLink")}
+              </Link>
               <a
                 href="#contact"
                 onClick={() => setMobileOpen(false)}
