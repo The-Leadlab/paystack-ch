@@ -78,10 +78,12 @@ service cloud.firestore {
       allow create: if createOwnedByUser();
     }
 
-    /** Billing mirror (Stripe webhooks via Admin SDK only — no client writes). */
+    /** Billing mirror (Stripe webhooks via Admin SDK; client may create own stub on first sign-in). */
     match /users/{userId} {
       allow read: if signedIn() && userId == ownerUid();
-      allow write: if false;
+      allow create: if signedIn() && userId == ownerUid()
+        && request.resource.data.subscriptionStatus == 'none';
+      allow update, delete: if false;
     }
 
     match /{document=**} {

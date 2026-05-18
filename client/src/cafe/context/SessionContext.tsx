@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   collection,
   query,
@@ -55,6 +55,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAllSessionsView, setAllSessionsView] = useState(false);
+  const currentSessionRef = useRef<Session | null>(null);
+  currentSessionRef.current = currentSession;
 
   const addSession = useCallback(
     async (name?: string): Promise<Session | null> => {
@@ -142,11 +144,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       list.sort((a, b) => b.created_at.localeCompare(a.created_at));
       setSessions(list);
 
-      // Resume last active session
-      if (list.length > 0 && !currentSession) {
+      // Resume last active session (ref avoids stale closure / refetch loops)
+      if (list.length > 0 && !currentSessionRef.current) {
         const lastSessionId = localStorage.getItem(LAST_SESSION_KEY);
-        const lastSession = list.find(s => s.id === lastSessionId) || list[0];
+        const lastSession = list.find((s) => s.id === lastSessionId) || list[0];
         setCurrentSessionState(lastSession);
+        localStorage.setItem(LAST_SESSION_KEY, lastSession.id);
       }
     } catch (err) {
       console.error('fetchSessions error:', err);
@@ -155,7 +158,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [user?.uid, currentSession]);
+  }, [user?.uid]);
 
   useEffect(() => {
     fetchSessions();

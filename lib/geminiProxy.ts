@@ -90,14 +90,19 @@ function extractGoogleApiMessage(error: unknown): string {
 function toClientError(error: unknown): GeminiProxyResult {
   const err = error as { status?: number; message?: string };
   const googleMsg = extractGoogleApiMessage(error);
+  const rawMsg = err.message || googleMsg || "Gemini request rejected";
+
+  if (
+    /FIREBASE_SERVICE_ACCOUNT_JSON|GEMINI_API_KEY is not configured/i.test(rawMsg)
+  ) {
+    return { status: 503, json: { error: rawMsg } };
+  }
+
   const status = typeof err?.status === "number" && err.status >= 400 && err.status < 500 ? err.status : 502;
   return {
     status,
     json: {
-      error:
-        status === 502
-          ? `Gemini API error: ${googleMsg}`
-          : err.message || googleMsg || "Gemini request rejected",
+      error: status === 502 ? `Gemini API error: ${googleMsg}` : rawMsg,
     },
   };
 }

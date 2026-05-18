@@ -2,12 +2,11 @@ function stripWww(hostname: string): string {
   return hostname.replace(/^www\./i, "");
 }
 
-/** Strip trailing slashes and a mistaken `/api` suffix (paths already start with `/api/`). */
+/** Strip trailing slashes and mistaken `/api` or `/app` suffixes (API paths are absolute from origin). */
 function normalizeConfiguredBase(raw: string): string {
   let base = raw.trim().replace(/\/+$/, "");
-  if (/\/api$/i.test(base)) {
-    base = base.replace(/\/api$/i, "");
-  }
+  if (/\/api$/i.test(base)) base = base.replace(/\/api$/i, "");
+  if (/\/app$/i.test(base)) base = base.replace(/\/app$/i, "");
   return base;
 }
 
@@ -16,7 +15,8 @@ function normalizeConfiguredBase(raw: string): string {
  * Use empty string when the SPA and API share the same host (paystack.ch).
  *
  * `VITE_API_BASE_URL` must be the site origin only, e.g. `https://paystack.ch`
- * — not `https://paystack.ch/api` (that produces `/api/api/...` and fails).
+ * — not `.../api` or `.../app` (those break `/api/gemini/generate`).
+ * When the app and API are on the same domain, leave this unset.
  */
 export function resolveApiBaseUrl(): string {
   const configured = normalizeConfiguredBase(

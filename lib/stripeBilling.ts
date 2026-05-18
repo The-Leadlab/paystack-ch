@@ -25,13 +25,33 @@ import {
 export type { HeaderMap } from "./stripeCore.js";
 export { getStripe, getStripeTest, publicAppOriginFromHeaders, trialDays } from "./stripeCore.js";
 
+function loadServiceAccountJson(): string {
+  const inline = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+  if (inline) return inline;
+  const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64?.trim();
+  if (b64) {
+    return Buffer.from(b64, "base64").toString("utf8");
+  }
+  throw Object.assign(
+    new Error(
+      "Server missing Firebase Admin credentials. In Vercel → Environment Variables add " +
+        "FIREBASE_SERVICE_ACCOUNT_JSON (full service-account JSON on one line) or " +
+        "FIREBASE_SERVICE_ACCOUNT_JSON_BASE64, then redeploy. Firebase Console → Project settings → Service accounts → Generate new private key."
+    ),
+    { status: 503 }
+  );
+}
+
 export function ensureFirebaseAdmin(): void {
   if (getApps().length > 0) return;
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
-  if (!raw) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON is not set");
+  let cred: ServiceAccount;
+  try {
+    cred = JSON.parse(loadServiceAccountJson()) as ServiceAccount;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if ((e as { status?: number }).status === 503) throw e;
+    throw Object.assign(new Error(`Invalid FIREBASE_SERVICE_ACCOUNT_JSON: ${msg}`), { status: 503 });
   }
-  const cred = JSON.parse(raw) as ServiceAccount;
   initializeApp({ credential: cert(cred) });
 }
 

@@ -10,7 +10,23 @@ import {
   signOut as firebaseSignOut,
   type User as FirebaseUser,
 } from 'firebase/auth';
-import { auth, firebaseReady } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db, firebaseReady } from '../lib/firebase';
+
+async function ensureUserBillingStub(firebaseUser: FirebaseUser): Promise<void> {
+  if (!db) return;
+  try {
+    const ref = doc(db, 'users', firebaseUser.uid);
+    const snap = await getDoc(ref);
+    if (snap.exists()) return;
+    await setDoc(ref, {
+      subscriptionStatus: 'none',
+      email: firebaseUser.email ?? '',
+    });
+  } catch (err) {
+    console.warn('Could not create users/{uid} billing stub:', err);
+  }
+}
 
 type AuthContextValue = {
   user: FirebaseUser | null;
@@ -49,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(timeout);
       setUser(firebaseUser ?? null);
       setLoading(false);
+      if (firebaseUser) void ensureUserBillingStub(firebaseUser);
     });
     return () => {
       clearTimeout(timeout);
