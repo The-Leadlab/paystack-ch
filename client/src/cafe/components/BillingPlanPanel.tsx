@@ -137,28 +137,37 @@ export function BillingPlanPanel() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 pb-8">
-      <div>
+    <div className="billing-plan-panel max-w-3xl mx-auto space-y-8 pb-8">
+      <header>
         <h1 className="text-xl font-black uppercase tracking-wider text-white mb-1">{t('subscriptionManageBilling')}</h1>
-        <p className="text-xs text-cdlp-muted leading-relaxed">{t('billingPageIntro')}</p>
-      </div>
+        <p className="text-xs text-cdlp-muted leading-relaxed max-w-prose">{t('billingPageIntro')}</p>
+      </header>
 
       {enforcementEnabled ? (
-        <section className="rounded-xl border border-cdlp-border bg-cdlp-card p-5 sm:p-6 space-y-5">
+        <section className="rounded-xl border border-cdlp-border bg-cdlp-card shadow-[0_1px_0_0_color-mix(in_srgb,var(--color-cdlp-border)_40%,transparent)] ring-1 ring-white/[0.04] p-5 sm:p-6 space-y-5">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted">{t('planSummaryTitle')}</p>
             {statusLabel ? (
-              <span className="text-[10px] font-bold uppercase tracking-tight text-cdlp-gold/90">{statusLabel}</span>
+              <span
+                className={`text-[10px] font-bold uppercase tracking-tight ${
+                  status === 'active' ? 'text-emerald-400/90' : 'text-cdlp-gold/80'
+                }`}
+              >
+                {statusLabel}
+              </span>
             ) : null}
           </div>
           <p className="text-lg font-black text-white tracking-tight">{planDisplayName(planId, t)}</p>
           {trialHint ? (
-            <p className="text-[10px] text-cdlp-gold/90 font-bold uppercase tracking-tight">{trialHint}</p>
+            <p className="text-[10px] text-cdlp-gold/75 font-bold uppercase tracking-tight">{trialHint}</p>
           ) : null}
           <dl className="grid grid-cols-1 gap-3 text-[11px] sm:grid-cols-3">
             {rows.map((r) => (
-              <div key={r.label} className="rounded border border-cdlp-border bg-cdlp-dark/50 px-3 py-2">
-                <dt className="font-bold text-cdlp-muted/90">{r.label}</dt>
+              <div
+                key={r.label}
+                className="rounded-lg border border-cdlp-border/90 bg-cdlp-cream/40 px-3 py-2.5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]"
+              >
+                <dt className="font-bold text-cdlp-muted">{r.label}</dt>
                 <dd className="text-white font-semibold tabular-nums mt-1">{r.value}</dd>
               </div>
             ))}
@@ -171,9 +180,13 @@ export function BillingPlanPanel() {
             type="button"
             disabled={portalBusy}
             onClick={() => void openPortal()}
-            className="inline-flex items-center justify-center gap-2 rounded-sm border border-cdlp-gold/50 bg-cdlp-gold/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cdlp-gold hover:bg-cdlp-gold/20 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-sm border border-cdlp-border bg-cdlp-dark/40 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cdlp-muted hover:border-cdlp-gold/35 hover:bg-cdlp-cream/30 hover:text-white disabled:opacity-50 transition-colors"
           >
-            {portalBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
+            {portalBusy ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-cdlp-gold" />
+            ) : (
+              <CreditCard className="w-3.5 h-3.5 text-cdlp-gold/80" />
+            )}
             {t('billingOpenStripePortal')}
           </button>
         </section>
@@ -184,31 +197,38 @@ export function BillingPlanPanel() {
       )}
 
       {enforcementEnabled ? (
-        <section className="rounded-xl border border-cdlp-border bg-cdlp-card p-5 sm:p-6 space-y-4">
+        <section className="rounded-xl border border-cdlp-border border-l-[3px] border-l-cdlp-gold/45 bg-cdlp-card p-5 sm:p-6 space-y-4">
           <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
-            <ArrowUpCircle className="w-4 h-4 text-cdlp-gold" />
+            <ArrowUpCircle className="w-4 h-4 shrink-0 text-cdlp-gold/85" aria-hidden />
             {t('billingUpgradeTitle')}
           </h2>
           <p className="text-xs text-cdlp-muted leading-relaxed">{t('billingUpgradeBody')}</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label={t('billingUpgradeTitle')}>
             {UPGRADE_PLANS.map((id) => (
               <button
                 key={id}
                 type="button"
                 onClick={() => setUpgradePlan(id)}
-                className={`rounded border px-2 py-3 text-[10px] font-black uppercase tracking-tight transition-colors ${
+                className={`rounded-md border px-2 py-3 text-[10px] font-black uppercase tracking-tight transition-colors ${
                   upgradePlan === id
-                    ? 'border-cdlp-gold bg-cdlp-gold/15 text-white'
-                    : 'border-cdlp-border text-cdlp-muted hover:border-cdlp-gold/50 hover:text-white'
+                    ? 'border-cdlp-gold/70 bg-cdlp-cream/50 text-white shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-cdlp-gold)_18%,transparent)]'
+                    : 'border-cdlp-border bg-cdlp-dark/30 text-cdlp-muted hover:border-cdlp-gold/35 hover:bg-cdlp-cream/20 hover:text-white/90'
                 }`}
               >
                 {planLabel(id)}
               </button>
             ))}
           </div>
-          {upgradePlan ? <PlanMarketingPanel planId={upgradePlan} variant="cdlp" showMostPopularBadge /> : null}
+          {upgradePlan ? (
+            <PlanMarketingPanel
+              planId={upgradePlan}
+              variant="cdlp"
+              showMostPopularBadge
+              className="border-cdlp-border/80 bg-cdlp-dark/25"
+            />
+          ) : null}
           {upgradeErr ? (
-            <p className="text-[10px] font-bold text-red-400 bg-red-950/40 border border-red-800/50 rounded px-3 py-2">
+            <p className="text-[10px] font-bold text-red-400/90 bg-red-950/25 border border-red-900/30 rounded-md px-3 py-2">
               {upgradeErr}
             </p>
           ) : null}
@@ -216,7 +236,7 @@ export function BillingPlanPanel() {
             type="button"
             disabled={upgradeBusy || !upgradePlan}
             onClick={() => void handleUpgrade()}
-            className="w-full h-11 rounded-sm bg-cdlp-gold text-cdlp-black font-black text-xs uppercase tracking-wider hover:bg-cdlp-gold-light disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full h-11 rounded-sm bg-cdlp-gold text-cdlp-black font-black text-xs uppercase tracking-wider hover:bg-cdlp-gold-light disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
           >
             {upgradeBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUpCircle className="w-4 h-4" />}
             {upgradePlan === 'enterprise' ? t('ctaContactSales') : t('billingUpgradeCta')}
@@ -225,9 +245,9 @@ export function BillingPlanPanel() {
       ) : null}
 
       {enforcementEnabled ? (
-        <section className="rounded-xl border border-red-900/40 bg-red-950/20 p-5 sm:p-6 space-y-3">
-          <h2 className="text-sm font-black uppercase tracking-wider text-red-300 flex items-center gap-2">
-            <XCircle className="w-4 h-4" />
+        <section className="rounded-xl border border-cdlp-gold-pale/25 bg-cdlp-cream/35 p-5 sm:p-6 space-y-3">
+          <h2 className="text-sm font-black uppercase tracking-wider text-cdlp-muted flex items-center gap-2">
+            <XCircle className="w-4 h-4 shrink-0 text-cdlp-gold/70" aria-hidden />
             {t('billingCancelTitle')}
           </h2>
           <p className="text-xs text-cdlp-muted leading-relaxed">{t('billingCancelBody')}</p>
@@ -235,9 +255,9 @@ export function BillingPlanPanel() {
             type="button"
             disabled={portalBusy}
             onClick={() => void openPortal()}
-            className="w-full h-11 rounded-sm border border-red-700/60 text-red-300 font-black text-xs uppercase tracking-wider hover:bg-red-950/40 disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full h-11 rounded-sm border border-cdlp-gold-pale/40 bg-transparent text-cdlp-muted font-black text-xs uppercase tracking-wider hover:border-cdlp-gold/40 hover:bg-cdlp-gold/5 hover:text-cdlp-gold/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
           >
-            {portalBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+            {portalBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 opacity-80" />}
             {t('billingCancelCta')}
           </button>
         </section>
@@ -245,7 +265,7 @@ export function BillingPlanPanel() {
 
       <section className="rounded-xl border border-cdlp-border bg-cdlp-card p-5 sm:p-6 space-y-4">
         <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
-          <KeyRound className="w-4 h-4 text-cdlp-gold" />
+          <KeyRound className="w-4 h-4 shrink-0 text-cdlp-muted" aria-hidden />
           {t('billingAccountTitle')}
         </h2>
         <p className="text-xs text-cdlp-muted">
@@ -289,7 +309,7 @@ export function BillingPlanPanel() {
             <button
               type="submit"
               disabled={passwordBusy}
-              className="h-10 px-4 rounded-sm bg-cdlp-gold text-cdlp-black font-black text-[10px] uppercase tracking-wider hover:bg-cdlp-gold-light disabled:opacity-50 flex items-center gap-2"
+              className="h-10 px-4 rounded-sm border border-cdlp-border bg-cdlp-dark/40 text-cdlp-muted font-black text-[10px] uppercase tracking-wider hover:border-cdlp-gold/35 hover:bg-cdlp-cream/30 hover:text-white disabled:opacity-50 flex items-center gap-2 transition-colors"
             >
               {passwordBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               {t('billingChangePasswordCta')}

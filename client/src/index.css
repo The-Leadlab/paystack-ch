@@ -257,6 +257,16 @@
   border-color: color-mix(in srgb, var(--color-brand-charcoal) 18%, #ffffff) !important;
 }
 
+/* Billing panel: cream tints need dark text in light mode */
+.cafe-shell.cafe-theme-light .billing-plan-panel .bg-cdlp-cream\/40,
+.cafe-shell.cafe-theme-light .billing-plan-panel .bg-cdlp-cream\/50 {
+  color: #2b2b2b;
+}
+.cafe-shell.cafe-theme-light .billing-plan-panel .bg-cdlp-cream\/40 .text-white,
+.cafe-shell.cafe-theme-light .billing-plan-panel .bg-cdlp-cream\/50.text-white {
+  color: #2b2b2b !important;
+}
+
 /* Full viewport on phones (Safari toolbar, PWA standalone) */
 .cafe-shell {
   min-height: 100dvh;
