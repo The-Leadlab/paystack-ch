@@ -59,7 +59,7 @@ export async function generateGeminiContent(body: GeminiGenerateRequest): Promis
     throw new Error(
       `Cannot reach the AI server (${url}). ` +
         "If VITE_API_BASE_URL is set, use the site origin only (https://paystack.ch), not https://paystack.ch/api. " +
-        "Also confirm api/gemini is deployed and GEMINI_API_KEY + FIREBASE_SERVICE_ACCOUNT_JSON are set. " +
+        "Also confirm api/gemini is deployed and GEMINI_API_KEY + FIREBASE_WEB_API_KEY are set on Vercel. " +
         `Network: ${detail}`
     );
   }

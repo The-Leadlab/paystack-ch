@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
-import { getAuth } from "firebase-admin/auth";
-import { ensureFirebaseAdmin, type HeaderMap } from "./stripeBilling.js";
+import type { HeaderMap } from "./stripeBilling.js";
+import { verifyFirebaseAuthorizationHeader } from "./verifyFirebaseIdToken.js";
 
 type GeminiGenerateRequest = {
   model?: unknown;
@@ -36,20 +36,6 @@ function resolveApiKey(): string {
     throw new Error("GEMINI_API_KEY is not configured on the server");
   }
   return key;
-}
-
-async function verifyFirebaseBearer(authorization: string | undefined): Promise<string> {
-  const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
-  if (!token) {
-    throw Object.assign(new Error("Authentication required"), { status: 401 });
-  }
-
-  ensureFirebaseAdmin();
-  const decoded = await getAuth().verifyIdToken(token, true);
-  if (!decoded.uid) {
-    throw Object.assign(new Error("Invalid authentication token"), { status: 401 });
-  }
-  return decoded.uid;
 }
 
 function consumeRateLimit(uid: string, ip: string | undefined): boolean {
@@ -93,7 +79,9 @@ function toClientError(error: unknown): GeminiProxyResult {
   const rawMsg = err.message || googleMsg || "Gemini request rejected";
 
   if (
-    /FIREBASE_SERVICE_ACCOUNT_JSON|GEMINI_API_KEY is not configured/i.test(rawMsg)
+    /FIREBASE_SERVICE_ACCOUNT_JSON|FIREBASE_WEB_API_KEY|GEMINI_API_KEY is not configured/i.test(
+      rawMsg
+    )
   ) {
     return { status: 503, json: { error: rawMsg } };
   }
@@ -113,7 +101,7 @@ export async function runGeminiGenerate(
   headers: HeaderMap = {}
 ): Promise<GeminiProxyResult> {
   try {
-    const uid = await verifyFirebaseBearer(authorization);
+    const uid = await verifyFirebaseAuthorizationHeader(authorization);
     const ip =
       normalizeHeader(headers["x-forwarded-for"])?.split(",")[0]?.trim() ||
       normalizeHeader(headers["x-real-ip"]);
