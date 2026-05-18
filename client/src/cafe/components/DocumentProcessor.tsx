@@ -12,8 +12,10 @@ import {
   buildPayrollExpenseLines,
   resolvePayrollAmounts,
   resolvePayrollSettlementMode,
+  resolveEmployeePaymentAmount,
   settlementModeForPermit,
   totalEmployerPayrollCost,
+  applyPayrollPaymentFields,
   type PayrollSettlementMode,
   type SwissPermitType,
 } from '../services/swissPayrollService';
@@ -1019,10 +1021,10 @@ const VerificationHub: React.FC<{
       };
 
       newData.vatAmount = 0;
-      newData.netAmount = net;
       const employerGross = gross > 0 ? gross : net;
       newData.totalAmount = employerGross;
       newData.amountInCHF = employerGross;
+      newData = applyPayrollPaymentFields(newData);
     }
 
     if (field === 'payrollSettlementMode' || field === 'paySlip') {
@@ -1106,21 +1108,23 @@ const VerificationHub: React.FC<{
     payrollSettlement
   );
   const payrollAmounts = resolvePayrollAmounts(editedData);
+  const computedEmployeePayment = resolveEmployeePaymentAmount(editedData);
+  const computedStatePayment = payrollAmounts.statePayment;
 
   const setPermitAndMode = (permit: SwissPermitType) => {
     const mode = settlementModeForPermit(permit);
     const nextPaySlip = { ...currentPaySlip, permitType: permit };
     const gross = computedGrossPay || Number(nextPaySlip.grossPay || 0);
-    const net = computedNetPay || Number(nextPaySlip.netPay || 0);
-    const employerGross = gross > 0 ? gross : net;
-    onUpdate({
-      ...editedData,
-      paySlip: nextPaySlip,
-      payrollSettlementMode: mode,
-      totalAmount: employerGross,
-      amountInCHF: employerGross,
-      netAmount: net,
-    });
+    const employerGross = gross > 0 ? gross : computedEmployeePayment;
+    onUpdate(
+      applyPayrollPaymentFields({
+        ...editedData,
+        paySlip: nextPaySlip,
+        payrollSettlementMode: mode,
+        totalAmount: employerGross,
+        amountInCHF: employerGross,
+      })
+    );
   };
 
   const setSettlementModeOnly = (mode: PayrollSettlementMode) => {
@@ -1297,13 +1301,39 @@ const VerificationHub: React.FC<{
                  </div>
                </div>
                <div className="lg:col-span-1">
-                 <label className="text-[8px] font-black uppercase text-amber-600 tracking-widest block mb-2">Net Pay</label>
+                 <label className="text-[8px] font-black uppercase text-amber-600 tracking-widest block mb-2">Net salary (on slip)</label>
                  <div className="w-full bg-cdlp-black border border-amber-600/20 h-9 px-3 flex items-center font-mono text-[10px] font-black text-cdlp-gold">
                    {computedNetPay.toFixed(2)} {editedData.originalCurrency || 'CHF'}
                  </div>
                </div>
-               <div className="lg:col-span-2">
-                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Employer total cost (gross)</label>
+               <div className="lg:col-span-1">
+                 <label className="text-[8px] font-black uppercase text-cdlp-gold tracking-widest block mb-2">Payment to employee</label>
+                 <input
+                   type="number"
+                   step="0.01"
+                   value={computedEmployeePayment || ''}
+                   onChange={(e) => {
+                     const payment = parseFloat(e.target.value) || 0;
+                     handleFieldChange('paySlip', {
+                       ...currentPaySlip,
+                       paymentToEmployee: payment,
+                     });
+                   }}
+                   className="w-full bg-cdlp-black border border-cdlp-gold/30 h-9 px-3 font-mono text-[10px] font-black text-cdlp-gold outline-none focus:border-cdlp-gold"
+                 />
+               </div>
+               <div className="lg:col-span-1">
+                 <label className="text-[8px] font-black uppercase text-red-600 tracking-widest block mb-2">2nd payment — state</label>
+                 <div
+                   className="w-full bg-cdlp-black border border-red-600/30 h-9 px-3 flex items-center font-mono text-[10px] font-black text-red-400"
+                   title="Gross minus payment to employee"
+                 >
+                   {computedStatePayment.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+                   {editedData.originalCurrency || 'CHF'}
+                 </div>
+               </div>
+               <div className="lg:col-span-1">
+                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Employer total (gross)</label>
                  <div className="w-full bg-cdlp-black border border-cdlp-gold/30 h-9 px-3 flex items-center font-mono text-[10px] font-black text-cdlp-gold">
                    {totalEmployerPayrollCost(editedData).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
                    {editedData.originalCurrency || 'CHF'}
@@ -1314,9 +1344,9 @@ const VerificationHub: React.FC<{
              <div className="mb-8 p-4 sm:p-6 bg-cdlp-card border border-cdlp-border rounded-sm space-y-4">
                <h5 className="text-[10px] font-black uppercase tracking-widest text-cdlp-gold">Swiss payroll mode</h5>
                <p className="text-[9px] text-cdlp-muted leading-relaxed max-w-3xl">
-                 Tax at source (permis B, frontalier G/F): two expenses — net salary to the employee, then taxes and social
-                 contributions to the state (gross − net). Paid gross (permis C / Swiss national): one expense for the full
-                 gross amount; the employee pays tax at year-end.
+                 Tax at source: two payments — (1) salary payment to the employee, (2) gross minus that payment to the state
+                 for taxes and contributions (e.g. 5&apos;150 gross → 4&apos;536.86 employee + 613.14 state). Use the final Payment
+                 line after any advance (e.g. 25&apos;288.35 − 12&apos;872.80). Permit C / Swiss: one gross payment.
                </p>
                <div className="flex flex-wrap gap-2">
                  {(
@@ -1353,7 +1383,7 @@ const VerificationHub: React.FC<{
                  >
                    Tax at source (2 payments)
                    <span className="block text-[8px] font-bold normal-case mt-1 opacity-80">
-                     Net {payrollAmounts.net.toFixed(2)} + state {payrollAmounts.deductions.toFixed(2)}
+                     Employee {payrollAmounts.employeePayment.toFixed(2)} + 2nd payment (state) {payrollAmounts.statePayment.toFixed(2)} = gross {payrollAmounts.gross.toFixed(2)}
                    </span>
                  </button>
                  <button

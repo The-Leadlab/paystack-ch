@@ -144,6 +144,8 @@ export interface PaySlipAnalysis {
   currency?: string;
   grossPay?: number;
   netPay?: number;
+  /** Actual bank payment to employee (Payment / Remittance line; after advance if any). */
+  paymentToEmployee?: number;
   /** Permit type drives default settlement mode in the verification UI. */
   permitType?: SwissPermitType;
   // Components: earnings (INCOME) and deductions (EXPENSE)

@@ -1,5 +1,6 @@
 
 import { generateGeminiContent } from "../lib/geminiClient";
+import { applyPayrollPaymentFields } from "./swissPayrollService";
 import {
   DocumentType,
   FinancialData,
@@ -400,7 +401,7 @@ function repairPaySlipMultiInvoiceBlocks(data: FinancialData, file?: File): Fina
   );
 
   const permitType = ps?.permitType ?? "B";
-  return {
+  return applyPayrollPaymentFields({
     ...data,
     documentType: DocumentType.PAY_SLIP,
     subDocuments: [],
@@ -415,10 +416,11 @@ function repairPaySlipMultiInvoiceBlocks(data: FinancialData, file?: File): Fina
       permitType,
       grossPay: amount,
       netPay: headerNet,
+      paymentToEmployee: ps?.paymentToEmployee,
     },
     lineItems: [lineItem],
     aiInterpretation: note,
-  };
+  });
 }
 
 function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
@@ -939,6 +941,11 @@ export const analyzeFinancialDocument = async (
             currency: { type: Type.STRING },
             grossPay: { type: Type.NUMBER },
             netPay: { type: Type.NUMBER },
+            paymentToEmployee: {
+              type: Type.NUMBER,
+              description:
+                "Actual bank Payment/Remittance to employee (after advance on salary if shown). Not the printed net before advance.",
+            },
             components: {
               type: Type.ARRAY,
               items: {
@@ -1062,7 +1069,8 @@ CRITICAL RULES:
 34. After filling swissVatBreakdown, set top-level vatAmount to the sum of column TVA amounts and netAmount to merchandise HT when available.
 35. For each subDocuments entry that is a receipt/invoice with a printed multi-rate TVA grid, also populate that sub-entry's swissVatBreakdown and swissVatReceiptTotals when visible.
 36. PAY SLIPS ONLY: documentType MUST be "Pay Slip". Set subDocuments to an empty array []. Never emit multiple subDocuments for one payslip — it is ONE document, not multiple invoices.
-37. PAY SLIPS ONLY: Put totals in paySlip.grossPay / paySlip.netPay and top-level totalAmount = gross pay for payroll; do not duplicate the same salary as two invoice blocks.
+37. PAY SLIPS ONLY: Put totals in paySlip.grossPay, paySlip.netPay (printed net salary), paySlip.paymentToEmployee (final Payment/Remittance/Virement to employee after any advance), and top-level totalAmount = gross pay for payroll; do not duplicate the same salary as two invoice blocks.
+38. PAY SLIPS ONLY: The business posts two payments for tax-at-source employees: (1) paymentToEmployee to the employee, (2) grossPay minus paymentToEmployee to the state for taxes and social contributions. If an advance on salary is deducted before payment, paymentToEmployee is the final Payment line, not netPay.
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings
@@ -1140,6 +1148,7 @@ Return JSON only.`
     }
 
     normalized = repairPaySlipMultiInvoiceBlocks(normalized, file);
+    normalized = applyPayrollPaymentFields(normalized);
     normalized = sanitizeFinancialDataForUi(syncGrandTotalsFromSubDocuments(normalized));
     normalized = sanitizeFinancialDataForUi(applySwissVatWarnings(normalized));
 
