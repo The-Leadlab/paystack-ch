@@ -14,6 +14,9 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
+/** Use when surfacing Firestore permission errors — must match Firebase Console project for deployed rules. */
+export const firebaseProjectId = firebaseConfig.projectId as string | undefined;
+
 export const firebaseReady = Boolean(
   firebaseConfig.apiKey &&
     firebaseConfig.authDomain &&

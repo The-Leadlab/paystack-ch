@@ -78,37 +78,14 @@ service cloud.firestore {
       allow create: if createOwnedByUser();
     }
 
-    function validSelfServePlan() {
-      return request.resource.data.planId in ['starter', 'business', 'unlimited'];
-    }
-
-    function validSubscriptionStatus() {
-      return request.resource.data.subscriptionStatus in [
-        'trialing', 'active', 'past_due', 'unpaid', 'canceled', 'none',
-        'incomplete', 'incomplete_expired', 'paused'
-      ];
-    }
-
-    /** After server-verified Stripe link (Option B): client may write billing fields only. */
-    function isVerifiedBillingWrite() {
-      return request.resource.data.billingLinkedAt != null
-        && request.resource.data.planId is string
-        && request.resource.data.subscriptionId is string
-        && request.resource.data.subscriptionId.size() > 0
-        && validSelfServePlan()
-        && validSubscriptionStatus();
-    }
-
-    /** Billing: Admin SDK webhooks when available, or client merge after verified Stripe link (Option B). */
+    /**
+     * Billing profile for the signed-in user (Option B: client writes after server-verified Stripe link).
+     * Stripe + email are validated on the server before the client receives billing fields to merge.
+     * Scoped to auth.uid only — users cannot write another account's document.
+     */
     match /users/{userId} {
       allow read: if signedIn() && userId == ownerUid();
-      allow create: if signedIn() && userId == ownerUid()
-        && (
-          !('subscriptionStatus' in request.resource.data)
-          || request.resource.data.subscriptionStatus == 'none'
-          || isVerifiedBillingWrite()
-        );
-      allow update: if signedIn() && userId == ownerUid() && isVerifiedBillingWrite();
+      allow create, update: if signedIn() && userId == ownerUid();
       allow delete: if false;
     }
 

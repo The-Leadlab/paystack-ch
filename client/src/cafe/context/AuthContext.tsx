@@ -19,10 +19,14 @@ async function ensureUserBillingStub(firebaseUser: FirebaseUser): Promise<void> 
     const ref = doc(db, 'users', firebaseUser.uid);
     const snap = await getDoc(ref);
     if (snap.exists()) return;
-    await setDoc(ref, {
-      subscriptionStatus: 'none',
-      email: firebaseUser.email ?? '',
-    });
+    await setDoc(
+      ref,
+      {
+        subscriptionStatus: 'none',
+        email: firebaseUser.email ?? '',
+      },
+      { merge: true }
+    );
   } catch (err) {
     console.warn('Could not create users/{uid} billing stub:', err);
   }
