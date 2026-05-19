@@ -1,4 +1,4 @@
-import { MAX_STORAGE_DOCUMENT_BYTES } from "@shared/geminiLimits";
+import { MAX_GEMINI_ANALYSIS_BYTES } from "@shared/geminiLimits";
 
 /**
  * Gemini requests send files as base64 inside JSON (~4/3 size inflation).
@@ -17,10 +17,10 @@ export const MAX_GEMINI_PROXY_BODY_BYTES = parsePositiveIntEnv(
   4_200_000
 );
 
-/** Largest source file we accept before processing (images are compressed if needed). */
+/** Largest file for legacy inline AI path (storage + Files API is used when signed in). */
 export const MAX_SOURCE_DOCUMENT_BYTES = parsePositiveIntEnv(
   import.meta.env.VITE_GEMINI_MAX_SOURCE_FILE_BYTES,
-  20 * 1024 * 1024
+  MAX_GEMINI_ANALYSIS_BYTES
 );
 
 const JSON_OVERHEAD_BYTES = 120_000;
@@ -145,5 +145,9 @@ export function formatMaxUploadHintMb(): string {
 }
 
 export function formatMaxStorageUploadHintMb(): string {
-  return `${(MAX_STORAGE_DOCUMENT_BYTES / (1024 * 1024)).toFixed(0)}`;
+  return "no limit";
+}
+
+export function formatMaxGeminiAnalysisHintMb(): string {
+  return `${(MAX_GEMINI_ANALYSIS_BYTES / (1024 * 1024)).toFixed(0)}`;
 }

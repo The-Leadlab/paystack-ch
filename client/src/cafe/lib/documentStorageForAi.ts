@@ -1,6 +1,5 @@
 import { auth } from "./firebase";
 import { uploadDocument, type UploadedDocumentMeta } from "../services/storageService";
-import { MAX_STORAGE_DOCUMENT_BYTES } from "@shared/geminiLimits";
 
 export type DocumentStorageRef = UploadedDocumentMeta & {
   mimeType: string;
@@ -26,13 +25,6 @@ export async function ensureDocumentStorageForAi(
 ): Promise<DocumentStorageRef | null> {
   const user = auth?.currentUser;
   if (!user?.uid) return null;
-
-  if (file.size > MAX_STORAGE_DOCUMENT_BYTES) {
-    throw new Error(
-      `"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). ` +
-        `Maximum is ${(MAX_STORAGE_DOCUMENT_BYTES / (1024 * 1024)).toFixed(0)} MB.`
-    );
-  }
 
   if (existing?.fileUrl && existing?.storagePath) {
     return {

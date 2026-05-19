@@ -35,7 +35,6 @@ import {
 import { useSubscription } from '../context/SubscriptionContext';
 import { useLanguage } from '../context/LanguageContext';
 import { countCompletedDocumentsThisMonth } from '@shared/planCatalog';
-import { MAX_STORAGE_DOCUMENT_BYTES } from '@shared/geminiLimits';
 
 // Restaurant-specific categories adapted from Ypsom - comprehensive categorization
 const RESTAURANT_CATEGORIES = [
@@ -2156,14 +2155,6 @@ export const DocumentProcessor: React.FC<{
       return;
     }
     const incoming = Array.from(files);
-    const tooLarge = incoming.filter((f) => f.size > MAX_STORAGE_DOCUMENT_BYTES);
-    if (tooLarge.length > 0) {
-      const maxMb = (MAX_STORAGE_DOCUMENT_BYTES / (1024 * 1024)).toFixed(0);
-      setUploadError(
-        `${tooLarge.length} file(s) exceed ${maxMb} MB (e.g. ${tooLarge[0].name}). Split or compress PDFs and try again.`
-      );
-      return;
-    }
 
     // Check for duplicate filenames
     const duplicateNames = incoming.filter(f => documents.some(d => d.fileName === f.name));

@@ -6,7 +6,14 @@ import {
 } from "./geminiDocumentParts.js";
 import { verifyFirebaseAuthorizationHeader } from "./verifyFirebaseIdToken.js";
 import type { HeaderMap } from "./stripeBilling.js";
-import { MAX_STORAGE_FETCH_BYTES } from "../shared/geminiLimits.js";
+import {
+  MAX_GEMINI_ANALYSIS_BYTES,
+  formatMegabytes,
+} from "../shared/geminiLimits.js";
+
+const MAX_FETCH_BYTES = Number(
+  process.env.GEMINI_MAX_ANALYSIS_BYTES || MAX_GEMINI_ANALYSIS_BYTES
+);
 
 export type GeminiGenerateFromStorageRequest = {
   model?: unknown;
@@ -58,20 +65,20 @@ async function fetchStorageBytes(fileUrl: string): Promise<{ bytes: Buffer; mime
   const lenHeader = res.headers.get("content-length");
   if (lenHeader) {
     const len = Number(lenHeader);
-    if (Number.isFinite(len) && len > MAX_STORAGE_FETCH_BYTES) {
+    if (Number.isFinite(len) && len > MAX_FETCH_BYTES) {
       throw Object.assign(
         new Error(
-          `File exceeds ${(MAX_STORAGE_FETCH_BYTES / (1024 * 1024)).toFixed(0)} MB limit. Split the PDF or compress it.`
+          `This file is ${formatMegabytes(len)} MB. AI analysis supports up to ${formatMegabytes(MAX_FETCH_BYTES)} MB per Google Gemini — compress or split the PDF. The file remains stored.`
         ),
         { status: 413 }
       );
     }
   }
   const arrayBuffer = await res.arrayBuffer();
-  if (arrayBuffer.byteLength > MAX_STORAGE_FETCH_BYTES) {
+  if (arrayBuffer.byteLength > MAX_FETCH_BYTES) {
     throw Object.assign(
       new Error(
-        `File exceeds ${(MAX_STORAGE_FETCH_BYTES / (1024 * 1024)).toFixed(0)} MB limit. Split the PDF or compress it.`
+        `This file is ${formatMegabytes(arrayBuffer.byteLength)} MB. AI analysis supports up to ${formatMegabytes(MAX_FETCH_BYTES)} MB per Google Gemini — compress or split the PDF. The file remains stored.`
       ),
       { status: 413 }
     );

@@ -7,10 +7,7 @@ import {
   deleteObject,
   getBytes,
 } from 'firebase/storage';
-import {
-  FIREBASE_RESUMABLE_UPLOAD_THRESHOLD_BYTES,
-  MAX_STORAGE_DOCUMENT_BYTES,
-} from '@shared/geminiLimits';
+import { FIREBASE_RESUMABLE_UPLOAD_THRESHOLD_BYTES } from '@shared/geminiLimits';
 
 const DOC_CACHE_NAME = 'paystack-doc-cache-v1';
 const CACHE_PREFIX = '/__doc-cache__/';
@@ -117,13 +114,6 @@ export async function uploadDocument(
 ): Promise<UploadedDocumentMeta> {
   if (!storage) {
     throw new Error('Firebase Storage not initialized');
-  }
-
-  if (file.size > MAX_STORAGE_DOCUMENT_BYTES) {
-    throw new Error(
-      `"${fileName}" is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). ` +
-        `Maximum upload size is ${(MAX_STORAGE_DOCUMENT_BYTES / (1024 * 1024)).toFixed(0)} MB.`
-    );
   }
 
   // Create a reference to the file location

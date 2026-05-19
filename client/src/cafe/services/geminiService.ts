@@ -4,6 +4,7 @@ import {
   ensureDocumentStorageForAi,
   type DocumentStorageRef,
 } from "../lib/documentStorageForAi";
+import { MAX_GEMINI_ANALYSIS_BYTES, formatMegabytes } from "@shared/geminiLimits";
 import { applyPayrollPaymentFields } from "./swissPayrollService";
 import {
   DocumentType,
@@ -880,6 +881,12 @@ export const analyzeFinancialDocument = async (
   existingStorage?: { fileUrl?: string; storagePath?: string },
   signal?: AbortSignal
 ): Promise<FinancialData> => {
+  if (file.size > MAX_GEMINI_ANALYSIS_BYTES) {
+    throw new Error(
+      `"${file.name}" is ${formatMegabytes(file.size)} MB. AI extraction supports up to ${formatMegabytes(MAX_GEMINI_ANALYSIS_BYTES)} MB per Google Gemini — compress or split the PDF. The file can still be stored for viewing.`
+    );
+  }
+
   const storageRef = await ensureDocumentStorageForAi(file, existingStorage);
   const model = resolveDocumentModel();
   const mimeType = storageRef?.mimeType || file.type || 'application/octet-stream';
