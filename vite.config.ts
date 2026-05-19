@@ -221,6 +221,17 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("framer-motion")) return "motion";
+          if (id.includes("firebase")) return "firebase";
+          if (id.includes("recharts") || id.includes("xlsx")) return "reports";
+          if (id.includes("@radix-ui")) return "ui";
+        },
+      },
+    },
   },
   server: {
     port: 3000,

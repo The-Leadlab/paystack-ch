@@ -42,14 +42,21 @@ if (firebaseReady) {
   db = getFirestore(app);
   storage = getStorage(app);
 
-  // Analytics works only in browser environments and when supported.
+  // Defer Analytics until after idle so it does not compete with LCP on marketing/auth pages.
   if (typeof window !== 'undefined') {
-    isSupported()
-      .then((supported) => {
-        if (supported && app) analytics = getAnalytics(app);
-      })
-      .catch(() => {
-        analytics = null;
-      });
+    const initAnalytics = () => {
+      isSupported()
+        .then((supported) => {
+          if (supported && app) analytics = getAnalytics(app);
+        })
+        .catch(() => {
+          analytics = null;
+        });
+    };
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(() => initAnalytics(), { timeout: 5000 });
+    } else {
+      window.addEventListener('load', () => window.setTimeout(initAnalytics, 3000), { once: true });
+    }
   }
 }

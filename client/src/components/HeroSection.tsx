@@ -49,30 +49,19 @@ export default function HeroSection() {
               <span className="font-data text-xs text-brand-red">{t("heroBadge")}</span>
             </motion.div>
 
-            {/* Headline */}
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              className="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-bold leading-[1.1] tracking-tight mb-6 text-foreground"
-            >
+            {/* Headline — no opacity:0 animation (blocks LCP until JS + framer-motion) */}
+            <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-bold leading-[1.1] tracking-tight mb-6 text-foreground">
               {t("heroTitleLine1")}{" "}
               <span className="text-gradient-red">{t("heroTitleHighlight")}</span>
               <br />
               <span className="font-editorial font-normal italic text-[0.85em] text-muted-foreground">
                 {t("heroTitleLine2")}
               </span>
-            </motion.h1>
+            </h1>
 
-            {/* Subheadline */}
-            <motion.p
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
-              className="font-editorial text-lg text-muted-foreground leading-relaxed mb-8 max-w-md"
-            >
+            <p className="font-editorial text-lg text-muted-foreground leading-relaxed mb-8 max-w-md">
               {t("heroDescription")}
-            </motion.p>
+            </p>
 
             {/* CTAs */}
             <motion.div

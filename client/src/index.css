@@ -59,11 +59,11 @@
   --color-cdlp-muted: #6f6669;
   --color-cdlp-red: #ffd730;
 
-  /* Typography */
-  --font-display: 'Sora', system-ui, sans-serif;
-  --font-body: 'Source Serif 4', Georgia, serif;
-  --font-mono: 'JetBrains Mono', monospace;
-  --font-sans: 'Sora', system-ui, sans-serif;
+  /* Typography — system fallbacks first to limit CLS while webfonts load */
+  --font-display: 'Sora', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: 'Sora', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 :root {
