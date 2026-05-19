@@ -44,6 +44,7 @@ export function stripeCorsPreflight(req: VercelRequest, res: VercelResponse): bo
   applyCorsForRequest(req, res);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  res.setHeader("Access-Control-Max-Age", "86400");
   if (req.method === "OPTIONS") {
     res.status(204).end();
     return true;

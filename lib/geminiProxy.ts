@@ -141,6 +141,15 @@ export async function runGeminiGenerate(
   } catch (error) {
     const msg = extractGoogleApiMessage(error);
     console.error("[gemini] proxy error:", msg);
+    if (/timed out|timeout|DEADLINE_EXCEEDED/i.test(msg)) {
+      return {
+        status: 504,
+        json: {
+          error:
+            "Gemini processing timed out. Retry with a smaller file or fewer pages — large PDFs can take several minutes.",
+        },
+      };
+    }
     return toClientError(error);
   }
 }

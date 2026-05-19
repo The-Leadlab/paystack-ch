@@ -46,11 +46,11 @@
       "includeFiles": "{lib,shared}/**"
     },
     "api/gemini/generate.ts": {
-      "maxDuration": 60,
+      "maxDuration": 300,
       "includeFiles": "{lib,shared}/**"
     },
     "api/gemini/generate-from-storage.ts": {
-      "maxDuration": 60,
+      "maxDuration": 300,
       "includeFiles": "{lib,shared}/**"
     }
   }

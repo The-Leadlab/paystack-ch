@@ -39,7 +39,15 @@ function isAllowedFirebaseStorageUrl(fileUrl: string, uid: string): boolean {
 }
 
 async function fetchStorageBytes(fileUrl: string): Promise<{ bytes: Buffer; mimeType: string }> {
-  const res = await fetch(fileUrl, { redirect: "follow", cache: "no-store" });
+  const fetchTimeoutMs = Number(process.env.GEMINI_STORAGE_FETCH_TIMEOUT_MS || 90_000);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), fetchTimeoutMs);
+  let res: Response;
+  try {
+    res = await fetch(fileUrl, { redirect: "follow", cache: "no-store", signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) {
     throw Object.assign(new Error(`Could not read file from storage (HTTP ${res.status})`), { status: 502 });
   }

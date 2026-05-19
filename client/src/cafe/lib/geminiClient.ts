@@ -1,5 +1,6 @@
 import { auth } from "./firebase";
 import { apiUrl } from "@/lib/apiBase";
+import { postGeminiApi } from "./geminiApiFetch";
 import { MAX_GEMINI_PROXY_BODY_BYTES } from "./prepareDocumentForAi";
 
 type GeminiGenerateRequest = {
@@ -29,7 +30,10 @@ function estimateRequestBytes(body: GeminiGenerateRequest): number {
   }
 }
 
-export async function generateGeminiContent(body: GeminiGenerateRequest): Promise<GeminiGenerateResponse> {
+export async function generateGeminiContent(
+  body: GeminiGenerateRequest,
+  options?: { signal?: AbortSignal }
+): Promise<GeminiGenerateResponse> {
   const user = auth?.currentUser;
   if (!user) {
     throw new Error("Sign in before using AI document analysis.");
@@ -50,38 +54,20 @@ export async function generateGeminiContent(body: GeminiGenerateRequest): Promis
     throw new Error("Session expired. Sign out and sign in again, then retry.");
   }
 
-  const url = apiUrl("/api/gemini/generate");
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    });
-  } catch (networkErr) {
-    const detail = networkErr instanceof Error ? networkErr.message : "Failed to fetch";
-    throw new Error(
-      `Cannot reach the AI server (${url}). ` +
-        "If VITE_API_BASE_URL is set, use the site origin only (https://paystack.ch), not https://paystack.ch/api. " +
-        "Also confirm api/gemini is deployed and GEMINI_API_KEY + FIREBASE_WEB_API_KEY are set on Vercel. " +
-        `Network: ${detail}`
-    );
-  }
-
-  const json = (await res.json().catch(() => null)) as { text?: string; error?: string } | null;
-  if (!res.ok) {
-    throw new Error(json?.error || `AI request failed (HTTP ${res.status})`);
-  }
+  const json = await postGeminiApi<{ text?: string; error?: string }>({
+    url: apiUrl("/api/gemini/generate"),
+    token,
+    body,
+    signal: options?.signal,
+  });
 
   return { text: json?.text || "" };
 }
 
 /** Send only metadata + prompt; server fetches the file from Firebase Storage and calls Gemini. */
 export async function generateGeminiContentFromStorage(
-  body: GeminiStorageBackedRequest
+  body: GeminiStorageBackedRequest,
+  options?: { signal?: AbortSignal }
 ): Promise<GeminiGenerateResponse> {
   const user = auth?.currentUser;
   if (!user) {
@@ -95,26 +81,12 @@ export async function generateGeminiContentFromStorage(
     throw new Error("Session expired. Sign out and sign in again, then retry.");
   }
 
-  const url = apiUrl("/api/gemini/generate-from-storage");
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    });
-  } catch (networkErr) {
-    const detail = networkErr instanceof Error ? networkErr.message : "Failed to fetch";
-    throw new Error(`Cannot reach the AI server (${url}). Network: ${detail}`);
-  }
-
-  const json = (await res.json().catch(() => null)) as { text?: string; error?: string } | null;
-  if (!res.ok) {
-    throw new Error(json?.error || `AI request failed (HTTP ${res.status})`);
-  }
+  const json = await postGeminiApi<{ text?: string; error?: string }>({
+    url: apiUrl("/api/gemini/generate-from-storage"),
+    token,
+    body,
+    signal: options?.signal,
+  });
 
   return { text: json?.text || "" };
 }

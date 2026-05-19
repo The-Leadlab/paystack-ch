@@ -40,12 +40,39 @@ async function canvasToJpegBlob(canvas: HTMLCanvasElement, quality: number): Pro
   });
 }
 
+type DrawableImage = ImageBitmap | HTMLImageElement;
+
+async function loadDrawableImage(file: File): Promise<{ source: DrawableImage; release: () => void }> {
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(file);
+      return { source: bitmap, release: () => bitmap.close() };
+    } catch {
+      /* Safari / older browsers: fall back to Image + object URL */
+    }
+  }
+
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Could not decode image for AI analysis."));
+      el.src = url;
+    });
+    return { source: img, release: () => URL.revokeObjectURL(url) };
+  } catch (error) {
+    URL.revokeObjectURL(url);
+    throw error;
+  }
+}
+
 async function compressImageToMaxBytes(file: File, maxBytes: number): Promise<File> {
-  const bitmap = await createImageBitmap(file);
+  const { source, release } = await loadDrawableImage(file);
   try {
     const maxDim = 4096;
-    let w = bitmap.width;
-    let h = bitmap.height;
+    let w = source.width;
+    let h = source.height;
     if (w > maxDim || h > maxDim) {
       const scale = maxDim / Math.max(w, h);
       w = Math.max(1, Math.round(w * scale));
@@ -62,7 +89,7 @@ async function compressImageToMaxBytes(file: File, maxBytes: number): Promise<Fi
     for (const dimScale of dimScales) {
       canvas.width = Math.max(1, Math.round(w * dimScale));
       canvas.height = Math.max(1, Math.round(h * dimScale));
-      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
 
       for (const q of qualities) {
         const blob = await canvasToJpegBlob(canvas, q);
@@ -77,7 +104,7 @@ async function compressImageToMaxBytes(file: File, maxBytes: number): Promise<Fi
       `Could not reduce "${file.name}" enough for AI processing. Try a smaller photo or export as PDF.`
     );
   } finally {
-    bitmap.close();
+    release();
   }
 }
 

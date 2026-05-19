@@ -1,5 +1,7 @@
+import { GEMINI_CLIENT_FETCH_TIMEOUT_MS } from "@shared/geminiTimeouts";
+
 /**
- * Gemini document analysis can exceed several minutes for large PDFs (multiple API passes).
+ * Wall-clock limit for one document (may include 2 Gemini API calls for multi-invoice PDFs).
  * Override with VITE_DOCUMENT_PROCESSING_TIMEOUT_MS (milliseconds), min 120000.
  */
 export function resolveDocumentProcessingTimeoutMs(file: File): number {
@@ -9,8 +11,12 @@ export function resolveDocumentProcessingTimeoutMs(file: File): number {
     return Math.min(fromEnv, 1_200_000);
   }
   const mb = file.size / (1024 * 1024);
-  if (mb > 24) return 900_000;
-  if (mb > 12) return 600_000;
-  if (mb > 5) return 420_000;
-  return 300_000;
+  let perFile = 300_000;
+  if (mb > 24) perFile = 900_000;
+  else if (mb > 12) perFile = 600_000;
+  else if (mb > 5) perFile = 420_000;
+
+  // Two serverless invocations (main + exhaustive PDF pass) plus upload margin.
+  const twoPassFloor = GEMINI_CLIENT_FETCH_TIMEOUT_MS * 2 + 45_000;
+  return Math.max(perFile, twoPassFloor);
 }

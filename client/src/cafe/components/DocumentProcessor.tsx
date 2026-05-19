@@ -2301,19 +2301,25 @@ export const DocumentProcessor: React.FC<{
 
       const processingTimeoutMs = resolveDocumentProcessingTimeoutMs(inputFile);
       const timeoutSec = Math.round(processingTimeoutMs / 1000);
+      const abortController = new AbortController();
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(
-          () =>
-            reject(
-              new Error(
-                `Processing timeout (${timeoutSec}s). Very large PDFs can exceed this—click retry or set VITE_DOCUMENT_PROCESSING_TIMEOUT_MS (milliseconds) and redeploy.`
-              )
-            ),
-          processingTimeoutMs
-        )
+        setTimeout(() => {
+          abortController.abort();
+          reject(
+            new Error(
+              `Processing timeout (${timeoutSec}s). Very large PDFs can take several minutes — click retry or set VITE_DOCUMENT_PROCESSING_TIMEOUT_MS and redeploy.`
+            )
+          );
+        }, processingTimeoutMs)
       );
       const res = await Promise.race([
-        analyzeFinancialDocument(inputFile, reportingCurrency, undefined, storageForAi),
+        analyzeFinancialDocument(
+          inputFile,
+          reportingCurrency,
+          undefined,
+          storageForAi,
+          abortController.signal
+        ),
         timeoutPromise,
       ]);
       console.log(`✅ Completed: ${doc.fileName}`);

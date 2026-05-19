@@ -114,17 +114,20 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
       
       const timeoutMs = resolveDocumentProcessingTimeoutMs(fileItem.file);
       const timeoutSec = Math.round(timeoutMs / 1000);
+      const abortController = new AbortController();
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error(`Processing timeout (${timeoutSec}s). Retry or set VITE_DOCUMENT_PROCESSING_TIMEOUT_MS.`)),
-          timeoutMs
-        )
+        setTimeout(() => {
+          abortController.abort();
+          reject(
+            new Error(`Processing timeout (${timeoutSec}s). Retry or set VITE_DOCUMENT_PROCESSING_TIMEOUT_MS.`)
+          );
+        }, timeoutMs)
       );
-      
-      const data = await Promise.race([
-        analyzeFinancialDocument(fileItem.file, 'CHF'),
-        timeoutPromise
-      ]) as any;
+
+      const data = (await Promise.race([
+        analyzeFinancialDocument(fileItem.file, 'CHF', undefined, undefined, abortController.signal),
+        timeoutPromise,
+      ])) as any;
       
       console.log(`✅ AI analysis complete for: ${fileItem.name}`);
       

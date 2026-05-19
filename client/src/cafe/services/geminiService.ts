@@ -198,29 +198,37 @@ async function generateGeminiForDocumentFile(
   storageRef: DocumentStorageRef | null,
   promptText: string,
   model: string,
-  config?: unknown
+  config?: unknown,
+  signal?: AbortSignal
 ): Promise<{ text: string }> {
+  const requestOptions = signal ? { signal } : undefined;
   if (storageRef) {
-    return generateGeminiContentFromStorage({
-      model,
-      storagePath: storageRef.storagePath,
-      fileUrl: storageRef.downloadURL,
-      mimeType: storageRef.mimeType,
-      contents: { parts: [{ text: promptText }] },
-      config,
-    });
+    return generateGeminiContentFromStorage(
+      {
+        model,
+        storagePath: storageRef.storagePath,
+        fileUrl: storageRef.downloadURL,
+        mimeType: storageRef.mimeType,
+        contents: { parts: [{ text: promptText }] },
+        config,
+      },
+      requestOptions
+    );
   }
 
   const prepared = await prepareDocumentForAi(file);
   const base64 = await fileToBase64(prepared);
   const mimeType = prepared.type || file.type;
-  return generateGeminiContent({
-    model,
-    contents: {
-      parts: [{ inlineData: { mimeType, data: base64 } }, { text: promptText }],
+  return generateGeminiContent(
+    {
+      model,
+      contents: {
+        parts: [{ inlineData: { mimeType, data: base64 } }, { text: promptText }],
+      },
+      config,
     },
-    config,
-  });
+    requestOptions
+  );
 }
 
 export const getLiveExchangeRate = async (from: string, to: string): Promise<number> => {
@@ -256,7 +264,8 @@ async function extractInvoiceBreakdownExhaustive(
   storageRef: DocumentStorageRef | null,
   mimeType: string,
   model: string,
-  userHint?: string
+  userHint?: string,
+  signal?: AbortSignal
 ): Promise<ExhaustiveInvoicePass | null> {
   const hintSection = userHint ? `USER HINT: "${userHint}".` : "";
   const promptText = `You are auditing a multi-page PDF that may contain MULTIPLE separate invoices or receipts bound together.
@@ -328,7 +337,8 @@ Return JSON only matching schema.`;
       storageRef,
       promptText,
       model,
-      exhaustiveConfig
+      exhaustiveConfig,
+      signal
     );
 
     const parsed = parseModelJsonResponse<ExhaustiveInvoicePass>(response.text, "exhaustive-invoice-pass");
@@ -784,23 +794,16 @@ function shouldRunExhaustivePdfPass(file: File, parsed: FinancialData, userHint?
   const extractedSubDocs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments.length : 0;
   const docType = String(parsed.documentType ?? '');
 
-  const expenseBundle =
-    docType === DocumentType.INVOICE ||
-    docType === DocumentType.RECEIPT ||
-    docType === DocumentType.UNKNOWN ||
-    docType === 'Invoice' ||
-    docType === 'Ticket/Receipt' ||
-    docType === 'Unknown';
-
   const lineCount = Array.isArray(parsed.lineItems) ? parsed.lineItems.length : 0;
   const suspiciousUnderSplit = extractedSubDocs <= 1 && lineCount >= 4;
+  const largePdf = file.size > 400_000;
 
+  // Second pass only when the first pass likely under-counted invoices (saves server time).
   return (
     hasMultiHint ||
-    extractedSubDocs > 1 ||
-    extractedSubDocs === 0 ||
-    expenseBundle ||
-    suspiciousUnderSplit
+    suspiciousUnderSplit ||
+    (extractedSubDocs === 0 && largePdf) ||
+    (extractedSubDocs === 1 && largePdf && lineCount >= 2)
   );
 }
 
@@ -874,7 +877,8 @@ export const analyzeFinancialDocument = async (
   file: File,
   targetCurrency: string = 'CHF',
   userHint?: string,
-  existingStorage?: { fileUrl?: string; storagePath?: string }
+  existingStorage?: { fileUrl?: string; storagePath?: string },
+  signal?: AbortSignal
 ): Promise<FinancialData> => {
   const storageRef = await ensureDocumentStorageForAi(file, existingStorage);
   const model = resolveDocumentModel();
@@ -1107,14 +1111,21 @@ MULTI-PAGE / MULTI-INVOICE REQUIREMENT:
 
 Return JSON only.`;
 
-    const response = await generateGeminiForDocumentFile(file, storageRef, analysisPrompt, model, {
-      responseMimeType: "application/json",
-      responseSchema: coreSchema,
-      temperature: 0.1,
-      topP: 0.8,
-      topK: 20,
-      maxOutputTokens: resolveMaxOutputTokens(32768),
-    });
+    const response = await generateGeminiForDocumentFile(
+      file,
+      storageRef,
+      analysisPrompt,
+      model,
+      {
+        responseMimeType: "application/json",
+        responseSchema: coreSchema,
+        temperature: 0.1,
+        topP: 0.8,
+        topK: 20,
+        maxOutputTokens: resolveMaxOutputTokens(32768),
+      },
+      signal
+    );
 
     const elapsed = Date.now() - startTime;
     console.log(`✅ Gemini API responded in ${elapsed}ms`);
@@ -1138,7 +1149,14 @@ Return JSON only.`;
     // Second-pass exhaustive extraction is expensive; keep it for likely multi-invoice files only.
     const isPdf = mimeType === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     if (isPdf && shouldRunExhaustivePdfPass(file, normalized, userHint)) {
-      const exhaustive = await extractInvoiceBreakdownExhaustive(file, storageRef, mimeType, model, userHint);
+      const exhaustive = await extractInvoiceBreakdownExhaustive(
+        file,
+        storageRef,
+        mimeType,
+        model,
+        userHint,
+        signal
+      );
       if (exhaustive?.subDocuments && exhaustive.subDocuments.length > 0) {
         const currentSubCount = Array.isArray(normalized.subDocuments) ? normalized.subDocuments.length : 0;
         const exhaustiveSubCount = exhaustive.subDocuments.length;
