@@ -1,5 +1,6 @@
 import { auth } from "./firebase";
 import { apiUrl } from "@/lib/apiBase";
+import { MAX_GEMINI_PROXY_BODY_BYTES } from "./prepareDocumentForAi";
 
 type GeminiGenerateRequest = {
   model: string;
@@ -19,9 +20,6 @@ function estimateRequestBytes(body: GeminiGenerateRequest): number {
   }
 }
 
-/** Vercel serverless body limit is ~4.5 MB; stay under with JSON overhead. */
-const MAX_PROXY_BODY_BYTES = 4_000_000;
-
 export async function generateGeminiContent(body: GeminiGenerateRequest): Promise<GeminiGenerateResponse> {
   const user = auth?.currentUser;
   if (!user) {
@@ -29,7 +27,7 @@ export async function generateGeminiContent(body: GeminiGenerateRequest): Promis
   }
 
   const bytes = estimateRequestBytes(body);
-  if (bytes > MAX_PROXY_BODY_BYTES) {
+  if (bytes > MAX_GEMINI_PROXY_BODY_BYTES) {
     throw new Error(
       `Document is too large to send for AI analysis (${(bytes / (1024 * 1024)).toFixed(1)} MB). ` +
         "Try a smaller PDF or split the file."

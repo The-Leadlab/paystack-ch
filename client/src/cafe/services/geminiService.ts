@@ -10,6 +10,7 @@ import {
   SwissVatReceiptTotals,
   SwissVatFormPreview,
 } from "../types";
+import { prepareDocumentForAi } from "../lib/prepareDocumentForAi";
 
 const Type = {
   ARRAY: "ARRAY",
@@ -835,25 +836,17 @@ function applySwissVatWarnings(data: FinancialData): FinancialData {
 }
 
 
-const MAX_ANALYZE_FILE_BYTES = 3_200_000;
-
 export const analyzeFinancialDocument = async (
   file: File, 
   targetCurrency: string = 'CHF', 
   userHint?: string
 ): Promise<FinancialData> => {
-  if (file.size > MAX_ANALYZE_FILE_BYTES) {
-    throw new Error(
-      `"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). ` +
-        "Keep files under about 3 MB for secure AI processing."
-    );
-  }
-
+  const prepared = await prepareDocumentForAi(file);
   const model = resolveDocumentModel();
-  const base64 = await fileToBase64(file);
-  const mimeType = file.type;
+  const base64 = await fileToBase64(prepared);
+  const mimeType = prepared.type || file.type;
 
-  console.log(`📄 Analyzing: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+  console.log(`📄 Analyzing: ${file.name} (${(prepared.size / 1024).toFixed(2)} KB)`);
 
   return withRetry(async () => {
     console.log(`🤖 Calling Gemini API...`);
@@ -1164,9 +1157,10 @@ Return JSON only.`
 
 // Fixed analyzeBankStatement to properly handle the GenAI response and return BankStatementAnalysis
 export const analyzeBankStatement = async (file: File, targetCurrency: string = 'CHF'): Promise<BankStatementAnalysis> => {
+  const prepared = await prepareDocumentForAi(file);
   const model = resolveBankStatementModel();
-  const base64 = await fileToBase64(file);
-  const mimeType = file.type;
+  const base64 = await fileToBase64(prepared);
+  const mimeType = prepared.type || file.type;
 
   return withRetry(async () => {
     const response = await generateGeminiContent({
