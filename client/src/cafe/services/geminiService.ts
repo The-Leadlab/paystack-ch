@@ -1,5 +1,9 @@
 
-import { generateGeminiContent } from "../lib/geminiClient";
+import { generateGeminiContent, generateGeminiContentFromStorage } from "../lib/geminiClient";
+import {
+  ensureDocumentStorageForAi,
+  type DocumentStorageRef,
+} from "../lib/documentStorageForAi";
 import { applyPayrollPaymentFields } from "./swissPayrollService";
 import {
   DocumentType,
@@ -189,6 +193,36 @@ export const fileToBase64 = (file: Blob): Promise<string> => {
   });
 };
 
+async function generateGeminiForDocumentFile(
+  file: File,
+  storageRef: DocumentStorageRef | null,
+  promptText: string,
+  model: string,
+  config?: unknown
+): Promise<{ text: string }> {
+  if (storageRef) {
+    return generateGeminiContentFromStorage({
+      model,
+      storagePath: storageRef.storagePath,
+      fileUrl: storageRef.downloadURL,
+      mimeType: storageRef.mimeType,
+      contents: { parts: [{ text: promptText }] },
+      config,
+    });
+  }
+
+  const prepared = await prepareDocumentForAi(file);
+  const base64 = await fileToBase64(prepared);
+  const mimeType = prepared.type || file.type;
+  return generateGeminiContent({
+    model,
+    contents: {
+      parts: [{ inlineData: { mimeType, data: base64 } }, { text: promptText }],
+    },
+    config,
+  });
+}
+
 export const getLiveExchangeRate = async (from: string, to: string): Promise<number> => {
   if (!from || from === to || from === '---') return 1.0;
   try {
@@ -218,20 +252,14 @@ type ExhaustiveInvoicePass = {
 };
 
 async function extractInvoiceBreakdownExhaustive(
-  base64: string,
+  file: File,
+  storageRef: DocumentStorageRef | null,
   mimeType: string,
   model: string,
   userHint?: string
 ): Promise<ExhaustiveInvoicePass | null> {
   const hintSection = userHint ? `USER HINT: "${userHint}".` : "";
-  try {
-    const response = await generateGeminiContent({
-      model,
-      contents: {
-        parts: [
-          { inlineData: { mimeType, data: base64 } },
-          {
-            text: `You are auditing a multi-page PDF that may contain MULTIPLE separate invoices or receipts bound together.
+  const promptText = `You are auditing a multi-page PDF that may contain MULTIPLE separate invoices or receipts bound together.
 ${hintSection}
 
 MANDATORY:
@@ -245,11 +273,9 @@ MANDATORY:
 8. JSON only: no raw newlines or unescaped " inside strings; keep descriptions short.
 9. DISTINCT-INVOICE RULE: invoices with different dates/page blocks are separate entries, even if supplier and amounts look similar.
 
-Return JSON only matching schema.`
-          }
-        ]
-      },
-      config: {
+Return JSON only matching schema.`;
+
+  const exhaustiveConfig = {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -294,8 +320,16 @@ Return JSON only matching schema.`
         topP: 0.9,
         topK: 20,
         maxOutputTokens: resolveMaxOutputTokens(24576),
-      }
-    });
+      };
+
+  try {
+    const response = await generateGeminiForDocumentFile(
+      file,
+      storageRef,
+      promptText,
+      model,
+      exhaustiveConfig
+    );
 
     const parsed = parseModelJsonResponse<ExhaustiveInvoicePass>(response.text, "exhaustive-invoice-pass");
     return parsed;
@@ -837,16 +871,19 @@ function applySwissVatWarnings(data: FinancialData): FinancialData {
 
 
 export const analyzeFinancialDocument = async (
-  file: File, 
-  targetCurrency: string = 'CHF', 
-  userHint?: string
+  file: File,
+  targetCurrency: string = 'CHF',
+  userHint?: string,
+  existingStorage?: { fileUrl?: string; storagePath?: string }
 ): Promise<FinancialData> => {
-  const prepared = await prepareDocumentForAi(file);
+  const storageRef = await ensureDocumentStorageForAi(file, existingStorage);
   const model = resolveDocumentModel();
-  const base64 = await fileToBase64(prepared);
-  const mimeType = prepared.type || file.type;
+  const mimeType = storageRef?.mimeType || file.type || 'application/octet-stream';
 
-  console.log(`📄 Analyzing: ${file.name} (${(prepared.size / 1024).toFixed(2)} KB)`);
+  console.log(
+    `📄 Analyzing: ${file.name} (${(file.size / 1024).toFixed(2)} KB)` +
+      (storageRef ? ' via Firebase Storage' : '')
+  );
 
   return withRetry(async () => {
     console.log(`🤖 Calling Gemini API...`);
@@ -1016,14 +1053,7 @@ export const analyzeFinancialDocument = async (
 
     const hintSection = userHint ? `USER HINT: "${userHint}".` : "";
 
-    // Simplified, faster prompt
-    const response = await generateGeminiContent({
-      model,
-      contents: {
-        parts: [
-          { inlineData: { mimeType: mimeType, data: base64 } },
-          {
-            text: `You are a strict Swiss accounting document extraction engine. ${hintSection}
+    const analysisPrompt = `You are a strict Swiss accounting document extraction engine. ${hintSection}
 
 CRITICAL RULES:
 1. Identify document type accurately
@@ -1075,18 +1105,15 @@ MULTI-PAGE / MULTI-INVOICE REQUIREMENT:
 - Do not stop after the first invoice.
 - If page quality is poor, still return best-effort extraction with confidence reflected in aiInterpretation.
 
-Return JSON only.`
-          }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: coreSchema,
-        temperature: 0.1, // Lower temperature for faster, more consistent results
-        topP: 0.8,
-        topK: 20,
-        maxOutputTokens: resolveMaxOutputTokens(32768),
-      }
+Return JSON only.`;
+
+    const response = await generateGeminiForDocumentFile(file, storageRef, analysisPrompt, model, {
+      responseMimeType: "application/json",
+      responseSchema: coreSchema,
+      temperature: 0.1,
+      topP: 0.8,
+      topK: 20,
+      maxOutputTokens: resolveMaxOutputTokens(32768),
     });
 
     const elapsed = Date.now() - startTime;
@@ -1111,7 +1138,7 @@ Return JSON only.`
     // Second-pass exhaustive extraction is expensive; keep it for likely multi-invoice files only.
     const isPdf = mimeType === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     if (isPdf && shouldRunExhaustivePdfPass(file, normalized, userHint)) {
-      const exhaustive = await extractInvoiceBreakdownExhaustive(base64, mimeType, model, userHint);
+      const exhaustive = await extractInvoiceBreakdownExhaustive(file, storageRef, mimeType, model, userHint);
       if (exhaustive?.subDocuments && exhaustive.subDocuments.length > 0) {
         const currentSubCount = Array.isArray(normalized.subDocuments) ? normalized.subDocuments.length : 0;
         const exhaustiveSubCount = exhaustive.subDocuments.length;
@@ -1156,24 +1183,21 @@ Return JSON only.`
 };
 
 // Fixed analyzeBankStatement to properly handle the GenAI response and return BankStatementAnalysis
-export const analyzeBankStatement = async (file: File, targetCurrency: string = 'CHF'): Promise<BankStatementAnalysis> => {
-  const prepared = await prepareDocumentForAi(file);
+export const analyzeBankStatement = async (
+  file: File,
+  targetCurrency: string = 'CHF',
+  existingStorage?: { fileUrl?: string; storagePath?: string }
+): Promise<BankStatementAnalysis> => {
+  const storageRef = await ensureDocumentStorageForAi(file, existingStorage);
   const model = resolveBankStatementModel();
-  const base64 = await fileToBase64(prepared);
-  const mimeType = prepared.type || file.type;
 
   return withRetry(async () => {
-    const response = await generateGeminiContent({
+    const response = await generateGeminiForDocumentFile(
+      file,
+      storageRef,
+      `Extract the full multi-page transaction ledger from this bank statement. You MUST find the opening balance and final balance (solde).`,
       model,
-      contents: {
-        parts: [
-          { inlineData: { mimeType: mimeType, data: base64 } },
-          {
-            text: `Extract the full multi-page transaction ledger from this bank statement. You MUST find the opening balance and final balance (solde).`
-          }
-        ]
-      },
-      config: {
+      {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -1203,7 +1227,7 @@ export const analyzeBankStatement = async (file: File, targetCurrency: string = 
         },
         maxOutputTokens: resolveMaxOutputTokens(24576),
       }
-    });
+    );
 
     const text = response.text;
     if (!text) throw new Error("Empty response from AI engine");

@@ -313,23 +313,21 @@ export function RestaurantDashboard() {
         })();
       }
 
-      // Background storage upload so listing in Firestore returns immediately.
+      // Upload to Firebase Storage before AI processing (no Vercel body-size cap on Storage).
       if (fileRaw && user?.uid && storageUploadEnabledRef.current) {
-        void (async () => {
-          try {
-            console.log('ðŸ“¤ Background uploading file to Firebase Storage...');
-            const { uploadDocument } = await import('../services/storageService');
-            const fileUrl = await uploadDocument(fileRaw, user.uid, fileName);
-            await updateDocumentData(createdId, { fileUrl });
-            console.log('âœ… File URL attached to document:', createdId);
-          } catch (uploadError: any) {
-            console.error('âš ï¸ Background file upload failed:', uploadError);
-            if (uploadError?.code === 'storage/unauthorized') {
-              storageUploadEnabledRef.current = false;
-              console.warn('Storage upload disabled for this session due to storage/unauthorized.');
-            }
+        try {
+          console.log('📤 Uploading file to Firebase Storage...');
+          const { uploadDocument } = await import('../services/storageService');
+          const { downloadURL, storagePath } = await uploadDocument(fileRaw, user.uid, fileName);
+          await updateDocumentData(createdId, { fileUrl: downloadURL, storagePath });
+          console.log('✅ File stored for processing:', createdId);
+        } catch (uploadError: any) {
+          console.error('⚠️ Storage upload failed:', uploadError);
+          if (uploadError?.code === 'storage/unauthorized') {
+            storageUploadEnabledRef.current = false;
+            console.warn('Storage upload disabled for this session due to storage/unauthorized.');
           }
-        })();
+        }
       }
 
       return createdId;

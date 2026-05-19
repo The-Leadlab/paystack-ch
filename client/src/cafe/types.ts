@@ -219,7 +219,8 @@ export interface ProcessedDocument {
   error?: string;
   fileRaw?: File;
   fileDataUrl?: string; // Deprecated - kept for backward compatibility
-  fileUrl?: string; // Firebase Storage URL (NEW - free tier: 5GB storage)
+  fileUrl?: string; // Firebase Storage download URL
+  storagePath?: string; // documents/{uid}/... for server-side AI fetch
   restaurantId?: string;
   session_id?: string;
   created_at?: string;

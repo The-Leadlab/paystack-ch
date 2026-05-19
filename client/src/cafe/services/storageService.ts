@@ -87,18 +87,23 @@ export async function deleteCachedDocumentFile(id: string): Promise<void> {
   }
 }
 
+export type UploadedDocumentMeta = {
+  downloadURL: string;
+  storagePath: string;
+};
+
 /**
  * Upload a file to Firebase Storage
  * @param file - The file to upload
  * @param userId - The user ID (for folder organization)
  * @param fileName - The file name
- * @returns The download URL of the uploaded file
+ * @returns Download URL and storage path for server-side AI processing
  */
 export async function uploadDocument(
   file: File,
   userId: string,
   fileName: string
-): Promise<string> {
+): Promise<UploadedDocumentMeta> {
   if (!storage) {
     throw new Error('Firebase Storage not initialized');
   }
@@ -128,7 +133,7 @@ export async function uploadDocument(
     const downloadURL = await getDownloadURL(snapshot.ref);
     console.log('🔗 Download URL:', downloadURL);
 
-    return downloadURL;
+    return { downloadURL, storagePath: filePath };
   } catch (error) {
     console.error('❌ Error uploading file:', error);
     throw error;

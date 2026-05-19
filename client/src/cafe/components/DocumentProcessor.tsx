@@ -2271,6 +2271,34 @@ export const DocumentProcessor: React.FC<{
         }
       }
 
+      let storageForAi =
+        doc.fileUrl && doc.storagePath
+          ? { fileUrl: doc.fileUrl, storagePath: doc.storagePath }
+          : doc.fileUrl
+            ? { fileUrl: doc.fileUrl, storagePath: undefined as string | undefined }
+            : undefined;
+
+      if (!storageForAi?.storagePath) {
+        const { ensureDocumentStorageForAi } = await import('../lib/documentStorageForAi');
+        const uploaded = await ensureDocumentStorageForAi(inputFile, storageForAi);
+        if (uploaded) {
+          storageForAi = { fileUrl: uploaded.downloadURL, storagePath: uploaded.storagePath };
+          setLocalDocs((prev) =>
+            prev.map((d) =>
+              d.id === doc.id
+                ? { ...d, fileUrl: uploaded.downloadURL, storagePath: uploaded.storagePath }
+                : d
+            )
+          );
+          if (isFirestoreDoc && firestoreId) {
+            await updateDocument(firestoreId, {
+              fileUrl: uploaded.downloadURL,
+              storagePath: uploaded.storagePath,
+            });
+          }
+        }
+      }
+
       const processingTimeoutMs = resolveDocumentProcessingTimeoutMs(inputFile);
       const timeoutSec = Math.round(processingTimeoutMs / 1000);
       const timeoutPromise = new Promise<never>((_, reject) =>
@@ -2285,7 +2313,7 @@ export const DocumentProcessor: React.FC<{
         )
       );
       const res = await Promise.race([
-        analyzeFinancialDocument(inputFile, reportingCurrency),
+        analyzeFinancialDocument(inputFile, reportingCurrency, undefined, storageForAi),
         timeoutPromise,
       ]);
       console.log(`✅ Completed: ${doc.fileName}`);
