@@ -1,3 +1,5 @@
+import { MAX_STORAGE_DOCUMENT_BYTES } from "@shared/geminiLimits";
+
 /**
  * Gemini requests send files as base64 inside JSON (~4/3 size inflation).
  * Vercel serverless bodies are capped around 4.5 MB, so large phone photos must be
@@ -140,4 +142,8 @@ export async function prepareDocumentForAi(file: File): Promise<File> {
 
 export function formatMaxUploadHintMb(): string {
   return `${(MAX_SOURCE_DOCUMENT_BYTES / (1024 * 1024)).toFixed(0)}`;
+}
+
+export function formatMaxStorageUploadHintMb(): string {
+  return `${(MAX_STORAGE_DOCUMENT_BYTES / (1024 * 1024)).toFixed(0)}`;
 }

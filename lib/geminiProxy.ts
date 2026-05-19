@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { contentsUsesGeminiFileApi } from "./geminiDocumentParts.js";
 import type { HeaderMap } from "./stripeBilling.js";
 import { verifyFirebaseAuthorizationHeader } from "./verifyFirebaseIdToken.js";
 
@@ -8,7 +9,7 @@ type GeminiGenerateRequest = {
   config?: unknown;
 };
 
-type GeminiProxyResult = {
+export type GeminiProxyResult = {
   status: number;
   json: Record<string, unknown>;
 };
@@ -98,7 +99,8 @@ function toClientError(error: unknown): GeminiProxyResult {
 export async function runGeminiGenerate(
   authorization: string | undefined,
   body: GeminiGenerateRequest,
-  headers: HeaderMap = {}
+  headers: HeaderMap = {},
+  options: { allowLargeDocumentPayload?: boolean } = {}
 ): Promise<GeminiProxyResult> {
   try {
     const uid = await verifyFirebaseAuthorizationHeader(authorization);
@@ -113,8 +115,19 @@ export async function runGeminiGenerate(
     if (!body || typeof body !== "object") {
       return { status: 400, json: { error: "Invalid Gemini request body" } };
     }
-    if (estimateJsonBytes(body) > MAX_BODY_BYTES) {
-      return { status: 413, json: { error: "Document is too large for secure processing" } };
+    const usesFileApi = contentsUsesGeminiFileApi(body.contents);
+    if (
+      !options.allowLargeDocumentPayload &&
+      !usesFileApi &&
+      estimateJsonBytes(body) > MAX_BODY_BYTES
+    ) {
+      return {
+        status: 413,
+        json: {
+          error:
+            "Document is too large for secure processing. Re-upload the file so it is stored in Firebase and processed via the Files API.",
+        },
+      };
     }
 
     const model = typeof body.model === "string" ? body.model.trim() : "";

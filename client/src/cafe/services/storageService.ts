@@ -1,5 +1,16 @@
 import { storage } from '../lib/firebase';
-import { ref, uploadBytes, getDownloadURL, deleteObject, getBytes } from 'firebase/storage';
+import {
+  ref,
+  uploadBytes,
+  uploadBytesResumable,
+  getDownloadURL,
+  deleteObject,
+  getBytes,
+} from 'firebase/storage';
+import {
+  FIREBASE_RESUMABLE_UPLOAD_THRESHOLD_BYTES,
+  MAX_STORAGE_DOCUMENT_BYTES,
+} from '@shared/geminiLimits';
 
 const DOC_CACHE_NAME = 'paystack-doc-cache-v1';
 const CACHE_PREFIX = '/__doc-cache__/';
@@ -108,6 +119,13 @@ export async function uploadDocument(
     throw new Error('Firebase Storage not initialized');
   }
 
+  if (file.size > MAX_STORAGE_DOCUMENT_BYTES) {
+    throw new Error(
+      `"${fileName}" is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). ` +
+        `Maximum upload size is ${(MAX_STORAGE_DOCUMENT_BYTES / (1024 * 1024)).toFixed(0)} MB.`
+    );
+  }
+
   // Create a reference to the file location
   // Path: documents/{userId}/{timestamp}_{fileName}
   const timestamp = Date.now();
@@ -117,15 +135,19 @@ export async function uploadDocument(
 
   console.log('📤 Uploading file to Firebase Storage:', filePath);
 
+  const metadata = {
+    contentType: file.type || 'application/octet-stream',
+    customMetadata: {
+      originalName: fileName,
+      uploadedAt: new Date().toISOString(),
+    },
+  };
+
   try {
-    // Upload the file
-    const snapshot = await uploadBytes(storageRef, file, {
-      contentType: file.type,
-      customMetadata: {
-        originalName: fileName,
-        uploadedAt: new Date().toISOString(),
-      },
-    });
+    const snapshot =
+      file.size > FIREBASE_RESUMABLE_UPLOAD_THRESHOLD_BYTES
+        ? await uploadBytesResumable(storageRef, file, metadata)
+        : await uploadBytes(storageRef, file, metadata);
 
     console.log('✅ File uploaded successfully:', snapshot.metadata.fullPath);
 
