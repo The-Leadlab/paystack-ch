@@ -139,7 +139,7 @@ export function BillingPlanPanel() {
   return (
     <div className="billing-plan-panel max-w-3xl mx-auto space-y-8 pb-8">
       <header>
-        <h1 className="text-xl font-black uppercase tracking-wider text-white mb-1">{t('subscriptionManageBilling')}</h1>
+        <h2 className="text-xl font-black uppercase tracking-wider text-white mb-1">{t('subscriptionManageBilling')}</h2>
         <p className="text-xs text-cdlp-muted leading-relaxed max-w-prose">{t('billingPageIntro')}</p>
       </header>
 

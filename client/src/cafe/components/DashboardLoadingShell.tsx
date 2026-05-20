@@ -16,7 +16,7 @@ export function DashboardLoadingShell({ mode = "dashboard" }: { mode?: "dashboar
       />
       <div className="flex-1 min-w-0 p-4 md:p-6 md:pl-8">
         <div className="flex items-center justify-between min-h-[2.75rem]">
-          <h1 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">{title}</h1>
+          <p className="text-xl md:text-2xl font-black text-cdlp-gold uppercase m-0">{title}</p>
         </div>
       </div>
     </div>

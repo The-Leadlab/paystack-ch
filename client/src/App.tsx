@@ -15,6 +15,7 @@ import AdminSignInPage from "./pages/AdminSignInPage";
 import OperatorGatePage from "./pages/OperatorGatePage";
 import StartTrialPage from "./pages/StartTrialPage";
 import { DashboardLoadingShell } from "./cafe/components/DashboardLoadingShell";
+import { SeoHead } from "./components/SeoHead";
 
 const PlatformPage = lazy(() => import("./pages/PlatformPage"));
 
@@ -57,6 +58,7 @@ function App() {
         <LanguageProvider>
           <AuthProvider>
             <TooltipProvider>
+              <SeoHead />
               <Toaster />
               <Router />
               <ThemeToggle />

@@ -19,7 +19,8 @@ const translations = {
     revenue: 'Revenue',
     reports: 'Reports',
     documents: 'Documents',
-    
+    documentsLibraryTitle: 'Document library',
+
     // Sidebar
     employees: 'Employees',
     addEmployee: 'Employee',
@@ -739,7 +740,8 @@ const translations = {
     revenue: 'Revenus',
     reports: 'Rapports',
     documents: 'Documents',
-    
+    documentsLibraryTitle: 'Bibliotheque de documents',
+
     // Sidebar
     employees: 'Employés',
     addEmployee: 'Employé',

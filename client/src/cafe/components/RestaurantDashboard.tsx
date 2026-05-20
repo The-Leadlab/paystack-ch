@@ -769,7 +769,11 @@ export function RestaurantDashboard() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <main
+        id="main-dashboard-content"
+        className="flex-1 flex flex-col overflow-hidden"
+        aria-label={t('financialDashboard')}
+      >
         {/* Tab Navigation â€” desktop only; phones use bottom app bar */}
         <div className="hidden md:block bg-cdlp-black border-b border-cdlp-border px-4 md:px-8 pt-4">
           <div className="flex gap-2 overflow-x-auto">
@@ -869,7 +873,7 @@ export function RestaurantDashboard() {
           {activeTab === 'documents' && <DocumentsTab selectedDocument={selectedDocumentFromFinance} onClearSelection={() => setSelectedDocumentFromFinance(null)} />}
           {activeTab === 'billing' ? <BillingPlanPanel /> : null}
         </div>
-      </div>
+      </main>
 
       {/* Mobile: fixed bottom tab bar (app-style) */}
       <nav
@@ -1441,10 +1445,15 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
 
   return (
     <>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">
-          {isAllSessionsView ? 'All Sessions' : (currentSession ? getSessionDisplayName(currentSession) : 'Dashboard')}
-        </h1>
+      <div className="flex items-center justify-between mb-6 gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">{t('dashboard')}</h1>
+          {isAllSessionsView || currentSession ? (
+            <p className="text-xs md:text-sm font-bold text-white/90 truncate mt-1 tabular-nums">
+              {isAllSessionsView ? t('allSessions') : getSessionDisplayName(currentSession!)}
+            </p>
+          ) : null}
+        </div>
         <button
           onClick={onShowEmployeePanel}
           className="flex items-center gap-2 px-4 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light transition-colors"
@@ -2057,6 +2066,7 @@ function ReportsPlaceholder() {
 }
 
 function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelection }: { selectedDocument?: ProcessedDocument | null; onClearSelection?: () => void }) {
+  const { t } = useLanguage();
   const { documents, updateDocument } = useDocuments();
   const [filter, setFilter] = useState<'all' | 'suppliers' | 'employees' | 'pos'>('all');
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
@@ -2145,7 +2155,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
           >
             <ChevronRight className="w-4 h-4 rotate-180" /> Back to Documents
           </button>
-          <h1 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase truncate">{selectedDocument.fileName}</h1>
+          <h2 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase truncate">{selectedDocument.fileName}</h2>
         </div>
 
         {/* Document Analysis View - Similar to Ypsom */}
@@ -2451,7 +2461,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
           >
             <ChevronRight className="w-4 h-4 rotate-180" /> Back
           </button>
-          <h1 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">{selectedEntity}</h1>
+          <h2 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">{selectedEntity}</h2>
         </div>
 
         {monthlyGroups.length === 0 ? (
@@ -2516,7 +2526,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">Document Library</h1>
+        <h2 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">{t('documentsLibraryTitle')}</h2>
       </div>
 
       {/* Filter Options */}
