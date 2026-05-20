@@ -2,19 +2,21 @@
  * Load analytics tags after the critical path (post-LCP) to reduce main-thread contention.
  */
 
-function onIdle(fn: () => void, timeoutMs = 5000): void {
+/** Run after window `load` so gtag/GTM does not compete with LCP (especially on /app). */
+function afterLoadThenIdle(fn: () => void, idleTimeoutMs = 10_000): void {
   if (typeof window === "undefined") return;
-  if ("requestIdleCallback" in window) {
-    window.requestIdleCallback(() => fn(), { timeout: timeoutMs });
-    return;
+  const run = () => {
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(fn, { timeout: idleTimeoutMs });
+    } else {
+      window.setTimeout(fn, 5000);
+    }
+  };
+  if (document.readyState === "complete") {
+    run();
+  } else {
+    window.addEventListener("load", run, { once: true });
   }
-  window.addEventListener(
-    "load",
-    () => {
-      window.setTimeout(fn, Math.min(timeoutMs, 3500));
-    },
-    { once: true }
-  );
 }
 
 function injectGoogleTagManager(containerId: string): void {
@@ -36,7 +38,7 @@ export function scheduleDeferredThirdParty(): void {
   const gtmId = import.meta.env.VITE_GTM_ID?.trim();
   if (!gtmId) return;
 
-  onIdle(() => {
+  afterLoadThenIdle(() => {
     try {
       injectGoogleTagManager(gtmId);
     } catch (error) {

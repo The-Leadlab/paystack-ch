@@ -14,6 +14,7 @@ import SignUpPage from "./pages/SignUpPage";
 import AdminSignInPage from "./pages/AdminSignInPage";
 import OperatorGatePage from "./pages/OperatorGatePage";
 import StartTrialPage from "./pages/StartTrialPage";
+import { DashboardLoadingShell } from "./cafe/components/DashboardLoadingShell";
 
 const PlatformPage = lazy(() => import("./pages/PlatformPage"));
 
@@ -24,13 +25,7 @@ function CafeShellRoute() {
     <div
       className={`min-h-[100dvh] min-h-screen cafe-shell overscroll-y-contain ${theme === "dark" ? "cafe-theme-dark" : "cafe-theme-light"}`}
     >
-      <Suspense
-        fallback={
-          <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground font-display text-sm">
-            Loading…
-          </div>
-        }
-      >
+      <Suspense fallback={<DashboardLoadingShell />}>
         <PlatformPage />
       </Suspense>
     </div>

@@ -25,10 +25,12 @@
     <script>
       (function () {
         var path = location.pathname || "/";
-        if (path !== "/" && path !== "") {
-          var el = document.getElementById("static-hero-fallback");
-          if (el) el.hidden = true;
-        }
+        var hero = document.getElementById("static-hero-fallback");
+        var appShell = document.getElementById("static-app-lcp-fallback");
+        var isHome = path === "/" || path === "";
+        var isApp = path === "/app" || path.indexOf("/app/") === 0;
+        if (hero) hero.hidden = !isHome;
+        if (appShell) appShell.hidden = !isApp;
       })();
     </script>
 
@@ -58,6 +60,17 @@
       <h1 id="static-hero-fallback" data-route="/">
         Vos finances, <span style="color:#e8423f">automatisees</span>
       </h1>
+      <!-- /app: paint dashboard title + shell before JS (matches DashboardLoadingShell H1) -->
+      <div id="static-app-lcp-fallback" hidden>
+        <div class="static-app-lcp-wrap">
+          <div class="static-app-lcp-main">
+            <header class="static-app-lcp-header">
+              <h1 class="static-app-lcp-title">Dashboard</h1>
+            </header>
+            <div class="static-app-lcp-skeleton" aria-busy="true" aria-label="Loading dashboard"></div>
+          </div>
+        </div>
+      </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

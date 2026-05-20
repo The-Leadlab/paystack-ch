@@ -1,5 +1,5 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAnalytics, isSupported, type Analytics } from 'firebase/analytics';
+import type { Analytics } from 'firebase/analytics';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
@@ -36,27 +36,43 @@ export let db: Firestore | null = null;
 export let storage: FirebaseStorage | null = null;
 export let analytics: Analytics | null = null;
 
+/**
+ * Firebase Analytics pulls gtag (`googletagmanager.com/gtag/js?id=G-…`) and competes with React on /app.
+ * Load only after `window.load`, then in idle time (long timeout), via dynamic import so it is not in the main chunk.
+ */
+function scheduleFirebaseAnalytics(appInstance: FirebaseApp): void {
+  if (typeof window === 'undefined') return;
+  if (!firebaseConfig.measurementId) return;
+
+  const run = () => {
+    void import('firebase/analytics')
+      .then(({ getAnalytics, isSupported }) =>
+        isSupported().then((supported) => {
+          if (supported) analytics = getAnalytics(appInstance);
+        })
+      )
+      .catch(() => {
+        analytics = null;
+      });
+  };
+
+  window.addEventListener(
+    'load',
+    () => {
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(run, { timeout: 10_000 });
+      } else {
+        window.setTimeout(run, 5000);
+      }
+    },
+    { once: true }
+  );
+}
+
 if (firebaseReady) {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
-
-  // Defer Analytics until after idle so it does not compete with LCP on marketing/auth pages.
-  if (typeof window !== 'undefined') {
-    const initAnalytics = () => {
-      isSupported()
-        .then((supported) => {
-          if (supported && app) analytics = getAnalytics(app);
-        })
-        .catch(() => {
-          analytics = null;
-        });
-    };
-    if ('requestIdleCallback' in window) {
-      window.requestIdleCallback(() => initAnalytics(), { timeout: 5000 });
-    } else {
-      window.addEventListener('load', () => window.setTimeout(initAnalytics, 3000), { once: true });
-    }
-  }
+  scheduleFirebaseAnalytics(app);
 }

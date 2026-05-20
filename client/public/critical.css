@@ -42,3 +42,72 @@ h3 {
 #static-hero-fallback[hidden] {
   display: none !important;
 }
+
+/* /app early LCP — mirrors cafe light shell + dashboard H1 (no Tailwind until bundle runs) */
+#static-app-lcp-fallback {
+  box-sizing: border-box;
+  min-height: 100dvh;
+  min-height: 100vh;
+  background-color: #fcfaf4;
+  color: #2b2b2b;
+  touch-action: manipulation;
+}
+
+#static-app-lcp-fallback[hidden] {
+  display: none !important;
+}
+
+.static-app-lcp-wrap {
+  box-sizing: border-box;
+  display: flex;
+  min-height: 100dvh;
+  min-height: 100vh;
+  flex-direction: row;
+}
+
+.static-app-lcp-main {
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .static-app-lcp-main {
+    padding: 1.5rem 1.5rem 1.5rem 2rem;
+  }
+}
+
+.static-app-lcp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  min-height: 2.75rem;
+}
+
+.static-app-lcp-title {
+  box-sizing: border-box;
+  margin: 0;
+  font-family: var(--font-display-fallback);
+  font-size: 1.25rem;
+  line-height: 1.2;
+  font-weight: 900;
+  color: #e8423f;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+@media (min-width: 768px) {
+  .static-app-lcp-title {
+    font-size: 1.5rem;
+  }
+}
+
+.static-app-lcp-skeleton {
+  box-sizing: border-box;
+  min-height: 12rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, #2b2b2b 20%, #ffffff);
+  background-color: color-mix(in srgb, #ffffff 80%, #fcfaf4);
+}

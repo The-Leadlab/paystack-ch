@@ -1,7 +1,6 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Redirect, useSearch } from "wouter";
 import { useAuth } from "@/cafe/context/AuthContext";
-import { useLanguage } from "@/cafe/context/LanguageContext";
 import { SessionProvider } from "@/cafe/context/SessionContext";
 import { EmployeeProvider } from "@/cafe/context/EmployeeContext";
 import { FinanceProvider } from "@/cafe/context/FinanceContext";
@@ -9,12 +8,16 @@ import { DocumentProvider } from "@/cafe/context/DocumentContext";
 import { POSProvider } from "@/cafe/context/POSContext";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { EmailVerificationGate } from "@/cafe/components/EmailVerificationGate";
-import { RestaurantDashboard } from "@/cafe/components/RestaurantDashboard";
+import { DashboardLoadingShell } from "@/cafe/components/DashboardLoadingShell";
 import { SubscriptionProvider } from "@/cafe/context/SubscriptionContext";
 import { SubscriptionGate } from "@/cafe/components/SubscriptionGate";
 import { firebaseReady } from "@/cafe/lib/firebase";
 import { isSubscriptionOrVerificationBypassUser } from "@/cafe/lib/subscriptionBypass";
 import { isSelfServePlan, parsePaystackPlanId, SELECTED_PLAN_STORAGE_KEY } from "@shared/planCatalog";
+
+const RestaurantDashboard = lazy(() =>
+  import("@/cafe/components/RestaurantDashboard").then((m) => ({ default: m.RestaurantDashboard }))
+);
 
 /**
  * Firebase-authenticated dashboard (formerly mounted only from the orphan CafeApp entry).
@@ -29,7 +32,6 @@ export default function PlatformPage() {
 
 function PlatformContent() {
   const { user, loading } = useAuth();
-  const { t } = useLanguage();
   const search = useSearch();
   const appReturnPath = "/app";
 
@@ -42,11 +44,7 @@ function PlatformContent() {
   }, [search]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-cdlp-dark flex items-center justify-center">
-        <div className="animate-pulse font-black text-cdlp-gold uppercase tracking-widest text-sm">{t("appLoading")}</div>
-      </div>
-    );
+    return <DashboardLoadingShell mode="auth" />;
   }
 
   if (!user) {
@@ -68,7 +66,9 @@ function PlatformContent() {
             <POSProvider>
               <DocumentProvider>
                 <SubscriptionGate>
-                  <RestaurantDashboard />
+                  <Suspense fallback={<DashboardLoadingShell />}>
+                    <RestaurantDashboard />
+                  </Suspense>
                 </SubscriptionGate>
               </DocumentProvider>
             </POSProvider>
