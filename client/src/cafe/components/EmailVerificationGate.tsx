@@ -89,6 +89,12 @@ export function EmailVerificationGate() {
               </>
             ) : null}
           </p>
+          <p className="text-[11px] leading-relaxed text-left sm:text-center rounded-lg border border-cdlp-gold/25 bg-cdlp-gold/[0.07] px-3 py-2.5 text-cdlp-muted">
+            <span className="font-bold text-cdlp-gold uppercase tracking-wide text-[10px] block mb-1">
+              {t('emailVerifySpamHeading')}
+            </span>
+            {t('emailVerifySpamHint')}
+          </p>
         </div>
 
         {error ? (

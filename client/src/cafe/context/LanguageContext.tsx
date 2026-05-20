@@ -657,13 +657,18 @@ const translations = {
     emailVerifyTitle: 'Email verification',
     emailVerifyBody: 'Your email and password account is not verified yet.',
     emailVerifySentPrefix: 'A message was sent to',
+    emailVerifySpamHeading: 'Check spam / promotions',
+    emailVerifySpamHint:
+      'If you do not see it within a few minutes, check your Spam or Promotions folder — delivery can filter our messages there.',
     emailVerifyResend: 'Resend verification email',
     emailVerifyResending: 'Sending…',
     emailVerifySignOut: 'Sign out',
     emailVerifyRefresh: "I've verified — check again",
     emailVerifyChecking: 'Checking…',
-    emailVerifyStillPending: 'Not verified yet. Open the link in your inbox, then try again.',
-    emailVerifySuccess: 'Verification email sent. Check your inbox, then tap "I\'ve verified — check again".',
+    emailVerifyStillPending:
+      'Not verified yet. Open the confirmation link from your email (inbox or spam), then try again.',
+    emailVerifySuccess:
+      'Verification email sent. Check your inbox and Spam/Promotions, then tap "I\'ve verified — check again".',
 
     fiEvidenceMeta: 'Audit Evidence Metadata',
     fiOpenTraceTab: 'Open trace in new tab',
@@ -1369,13 +1374,18 @@ const translations = {
     emailVerifyTitle: 'Verification de l\'e-mail',
     emailVerifyBody: 'Votre compte e-mail / mot de passe n\'est pas encore verifie.',
     emailVerifySentPrefix: 'Un message a ete envoye a',
+    emailVerifySpamHeading: 'Courrier indesirable / Promotions',
+    emailVerifySpamHint:
+      'Si vous ne voyez rien sous quelques minutes, verifiez vos courriers indesirables ou l\'onglet Promotions — nos envois peuvent y etre filtres.',
     emailVerifyResend: 'Renvoyer l\'e-mail de verification',
     emailVerifyResending: 'Envoi…',
     emailVerifySignOut: 'Deconnexion',
     emailVerifyRefresh: 'J\'ai verifie — verifier a nouveau',
     emailVerifyChecking: 'Verification…',
-    emailVerifyStillPending: 'Pas encore verifie. Ouvrez le lien dans votre boite, puis reessayez.',
-    emailVerifySuccess: 'E-mail de verification envoye. Consultez votre boite, puis appuyez sur « J\'ai verifie ».',
+    emailVerifyStillPending:
+      'Pas encore verifie. Ouvrez le lien de confirmation dans votre e-mail (boite de reception ou courrier indesirable), puis reessayez.',
+    emailVerifySuccess:
+      'E-mail de verification envoye. Consultez votre boite et les courriers indesirables / Promotions, puis appuyez sur « J\'ai verifie ».',
 
     fiEvidenceMeta: 'Metadonnees de preuve d\'audit',
     fiOpenTraceTab: 'Ouvrir la trace dans un nouvel onglet',
