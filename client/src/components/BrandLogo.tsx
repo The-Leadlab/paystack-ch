@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
-import { BRAND_LOGO_SRC } from "@/const/branding";
+import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/const/branding";
 
 type BrandLogoProps = {
   /** If set, wraps logo + optional wordmark in a wouter Link */
@@ -27,6 +27,8 @@ export function BrandLogo({
       <img
         src={BRAND_LOGO_SRC}
         alt="Paystack.ch"
+        width={BRAND_LOGO_SIZE}
+        height={BRAND_LOGO_SIZE}
         className={markClassName}
         loading="eager"
         decoding="async"

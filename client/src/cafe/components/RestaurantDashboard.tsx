@@ -14,7 +14,7 @@ import { getSessionDisplayName } from '../lib/formatLocalDateTime';
 import { POSManager } from './POSManager';
 import type { FinancialData, ProcessedDocument, POSReading } from '../types';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
-import { BRAND_LOGO_SRC } from '@/const/branding';
+import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from '@/const/branding';
 import type { DocumentReference } from 'firebase/firestore';
 import {
   buildPayrollExpenseLines,
@@ -548,6 +548,8 @@ export function RestaurantDashboard() {
           <img
             src={BRAND_LOGO_SRC}
             alt="Paystack.ch"
+            width={BRAND_LOGO_SIZE}
+            height={BRAND_LOGO_SIZE}
             className="h-11 w-auto max-w-[200px] object-contain shrink-0"
           />
         </div>
@@ -586,6 +588,8 @@ export function RestaurantDashboard() {
             <img
               src={BRAND_LOGO_SRC}
               alt="Paystack.ch"
+              width={BRAND_LOGO_SIZE}
+              height={BRAND_LOGO_SIZE}
               className="h-[3.75rem] w-auto max-w-[220px] object-contain mb-3 shrink-0 mx-auto"
             />
           </div>

@@ -10,13 +10,13 @@
   "theme_color": "#E8423F",
   "icons": [
     {
-      "src": "/brand/paystack-final-logo.png",
+      "src": "/brand/paystack-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/brand/paystack-final-logo.png",
+      "src": "/brand/paystack-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
