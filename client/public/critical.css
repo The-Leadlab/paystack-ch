@@ -68,6 +68,13 @@ h3 {
   display: none !important;
 }
 
+@media (prefers-color-scheme: dark) {
+  #static-app-lcp-fallback {
+    background-color: #160f12;
+    color: #f7f3f4;
+  }
+}
+
 .static-app-lcp-wrap {
   box-sizing: border-box;
   display: flex;
@@ -113,12 +120,4 @@ h3 {
   .static-app-lcp-title {
     font-size: 1.5rem;
   }
-}
-
-.static-app-lcp-skeleton {
-  box-sizing: border-box;
-  min-height: 12rem;
-  border-radius: 0.5rem;
-  border: 1px solid color-mix(in srgb, #2b2b2b 20%, #ffffff);
-  background-color: color-mix(in srgb, #ffffff 80%, #fcfaf4);
 }
