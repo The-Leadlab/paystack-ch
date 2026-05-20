@@ -257,6 +257,82 @@
   border-color: color-mix(in srgb, var(--color-brand-charcoal) 18%, #ffffff) !important;
 }
 
+/* Swiss TVA tables — red grid, no grey wash; dark = white on black, light = dark on white */
+.cafe-shell.cafe-theme-dark .swiss-vat-panel {
+  background-color: #120d0f;
+  border-color: #e8423f;
+}
+.cafe-shell.cafe-theme-light .swiss-vat-panel {
+  background-color: #ffffff;
+  border-color: #e8423f;
+}
+
+.cafe-shell.cafe-theme-dark .swiss-vat-table {
+  border-color: #e8423f;
+}
+.cafe-shell.cafe-theme-dark .swiss-vat-table thead {
+  background-color: #e8423f;
+  color: #ffffff;
+}
+.cafe-shell.cafe-theme-dark .swiss-vat-table tbody {
+  background-color: #120d0f;
+  color: #ffffff;
+}
+.cafe-shell.cafe-theme-dark .swiss-vat-table tbody tr {
+  border-color: #e8423f;
+}
+.cafe-shell.cafe-theme-dark .swiss-vat-table tbody tr.swiss-vat-table-row-total {
+  background-color: #1a1215;
+  border-top: 2px solid #e8423f;
+}
+.cafe-shell.cafe-theme-dark .swiss-vat-table tbody tr.swiss-vat-table-row-total td:last-child {
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.cafe-shell.cafe-theme-light .swiss-vat-table {
+  border-color: #e8423f;
+}
+.cafe-shell.cafe-theme-light .swiss-vat-table thead {
+  background-color: #e8423f;
+  color: #ffffff;
+}
+.cafe-shell.cafe-theme-light .swiss-vat-table tbody {
+  background-color: #ffffff;
+  color: #2b2b2b;
+}
+.cafe-shell.cafe-theme-light .swiss-vat-table tbody tr {
+  border-color: #e8423f;
+}
+.cafe-shell.cafe-theme-light .swiss-vat-table tbody tr.swiss-vat-table-row-total {
+  background-color: #fff5f4;
+  border-top: 2px solid #e8423f;
+}
+.cafe-shell.cafe-theme-light .swiss-vat-table tbody tr.swiss-vat-table-row-total td:last-child {
+  color: #e8423f;
+  font-weight: 900;
+}
+
+.cafe-shell.cafe-theme-dark .swiss-vat-input {
+  background-color: #120d0f !important;
+  color: #ffffff !important;
+  border-color: #e8423f !important;
+}
+.cafe-shell.cafe-theme-light .swiss-vat-input {
+  background-color: #ffffff !important;
+  color: #2b2b2b !important;
+  border-color: #e8423f !important;
+}
+
+.cafe-shell.cafe-theme-dark .swiss-vat-total-input {
+  color: #ffffff !important;
+  font-weight: 800;
+}
+.cafe-shell.cafe-theme-light .swiss-vat-total-input {
+  color: #e8423f !important;
+  font-weight: 800;
+}
+
 /* Billing panel: cream tints need dark text in light mode */
 .cafe-shell.cafe-theme-light .billing-plan-panel .bg-cdlp-cream\/40,
 .cafe-shell.cafe-theme-light .billing-plan-panel .bg-cdlp-cream\/50 {

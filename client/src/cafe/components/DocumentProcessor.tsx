@@ -601,7 +601,7 @@ const SwissVatBreakdownEditor: React.FC<{
   };
 
   return (
-    <div className="mt-8 mb-2 space-y-4 border border-cdlp-border/80 rounded-sm bg-cdlp-card/25 p-4">
+    <div className="swiss-vat-panel mt-8 mb-2 space-y-4 border rounded-sm p-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h5 className="text-[10px] font-black uppercase tracking-widest text-cdlp-gold flex items-center gap-2">
@@ -658,24 +658,24 @@ const SwissVatBreakdownEditor: React.FC<{
       {lines.length > 0 && (
         <>
           <div className="overflow-x-auto custom-scrollbar -mx-1 px-1">
-            <table className="min-w-[640px] w-full text-[10px] border border-cdlp-border/60 rounded-sm overflow-hidden">
-              <thead className="bg-cdlp-gold/20 text-cdlp-black uppercase font-black tracking-tight">
+            <table className="swiss-vat-table min-w-[640px] w-full text-[10px] border rounded-sm overflow-hidden">
+              <thead className="uppercase font-black tracking-tight">
                 <tr>
-                  <th className="px-2 py-2 text-left w-24">TVA %</th>
-                  <th className="px-2 py-2 text-right">Base HT</th>
-                  <th className="px-2 py-2 text-right">TVA</th>
-                  <th className="px-2 py-2 text-center w-28">Calc</th>
-                  <th className="px-2 py-2 w-10" />
+                  <th className="px-2 py-2 text-left w-24 border-b border-inherit">TVA %</th>
+                  <th className="px-2 py-2 text-right border-b border-inherit">Base HT</th>
+                  <th className="px-2 py-2 text-right border-b border-inherit">TVA</th>
+                  <th className="px-2 py-2 text-center w-28 border-b border-inherit">Calc</th>
+                  <th className="px-2 py-2 w-10 border-b border-inherit" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-cdlp-border/50 bg-cdlp-black/40">
+              <tbody className="divide-y divide-[#e8423f]">
                 {lines.map((line, idx) => (
                   <tr key={`vat-line-${idx}`}>
                     <td className="px-2 py-1.5">
                       <input
                         type="number"
                         step="0.01"
-                        className="w-full h-9 px-2 bg-cdlp-card border border-cdlp-border rounded-sm font-mono font-bold text-foreground"
+                        className="swiss-vat-input w-full h-9 px-2 border rounded-sm font-mono font-bold"
                         value={line.ratePercent}
                         onChange={(e) =>
                           updateLine(idx, {
@@ -689,7 +689,7 @@ const SwissVatBreakdownEditor: React.FC<{
                       <input
                         type="number"
                         step="0.01"
-                        className="w-full h-9 px-2 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-right"
+                        className="swiss-vat-input w-full h-9 px-2 border rounded-sm font-mono text-right"
                         value={line.baseExclusive}
                         onChange={(e) =>
                           updateLine(idx, {
@@ -703,7 +703,7 @@ const SwissVatBreakdownEditor: React.FC<{
                       <input
                         type="number"
                         step="0.01"
-                        className="w-full h-9 px-2 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-right text-blue-600"
+                        className="swiss-vat-input w-full h-9 px-2 border rounded-sm font-mono text-right"
                         value={line.vatAmount}
                         onChange={(e) =>
                           updateLine(idx, {
@@ -717,7 +717,7 @@ const SwissVatBreakdownEditor: React.FC<{
                       <button
                         type="button"
                         onClick={() => calcRowVat(idx)}
-                        className="h-8 px-2 rounded-sm border border-blue-600/40 text-[8px] font-black uppercase text-blue-600 hover:bg-blue-600/10"
+                        className="h-8 px-2 rounded-sm border border-cdlp-gold text-[8px] font-black uppercase text-cdlp-gold hover:bg-cdlp-gold/15"
                         title="TVA = base × rate %"
                       >
                         Base×%
@@ -748,7 +748,7 @@ const SwissVatBreakdownEditor: React.FC<{
               <input
                 type="number"
                 step="0.01"
-                className="w-full h-10 px-3 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-[11px] text-foreground"
+                className="w-full h-10 px-3 swiss-vat-input border rounded-sm font-mono text-[11px]"
                 value={totals.merchandiseSubtotal ?? ''}
                 onChange={(e) =>
                   pushSynced({
@@ -767,7 +767,7 @@ const SwissVatBreakdownEditor: React.FC<{
               <input
                 type="number"
                 step="0.01"
-                className="w-full h-10 px-3 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-[11px] text-blue-600"
+                className="w-full h-10 px-3 swiss-vat-input border rounded-sm font-mono text-[11px]"
                 value={totals.vatTotal ?? ''}
                 onChange={(e) =>
                   pushSynced({
@@ -787,7 +787,7 @@ const SwissVatBreakdownEditor: React.FC<{
               <input
                 type="number"
                 step="0.01"
-                className="w-full h-10 px-3 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-[11px] text-foreground"
+                className="w-full h-10 px-3 swiss-vat-input border rounded-sm font-mono text-[11px]"
                 value={totals.deposit ?? ''}
                 onChange={(e) =>
                   pushSynced({
@@ -806,7 +806,7 @@ const SwissVatBreakdownEditor: React.FC<{
               <input
                 type="number"
                 step="0.01"
-                className="w-full h-10 px-3 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-[11px] font-black text-cdlp-gold"
+                className="swiss-vat-total-input w-full h-10 px-3 swiss-vat-input border rounded-sm font-mono text-[11px]"
                 value={totals.totalInclVat ?? ''}
                 onChange={(e) =>
                   pushSynced({
@@ -822,34 +822,34 @@ const SwissVatBreakdownEditor: React.FC<{
 
           {preview && (
             <div className="overflow-x-auto">
-              <table className="min-w-[520px] w-full text-[9px] border border-cdlp-border/50 rounded-sm overflow-hidden">
-                <thead className="bg-cdlp-gold/20 text-foreground uppercase font-black">
+              <table className="swiss-vat-table min-w-[520px] w-full text-[9px] border rounded-sm overflow-hidden">
+                <thead className="uppercase font-black">
                   <tr>
-                    <th className="px-2 py-2 text-left">Form code</th>
-                    <th className="px-2 py-2 text-left">Description</th>
-                    <th className="px-2 py-2 text-right">CHF</th>
+                    <th className="px-2 py-2 text-left border-b border-inherit">Form code</th>
+                    <th className="px-2 py-2 text-left border-b border-inherit">Description</th>
+                    <th className="px-2 py-2 text-right border-b border-inherit">CHF</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-cdlp-border/40 bg-cdlp-card text-foreground">
+                <tbody className="divide-y divide-[#e8423f]">
                   <tr>
                     <td className="px-2 py-1.5 font-mono font-bold">200</td>
-                    <td className="px-2 py-1.5 text-foreground/80">Taxable turnover (HT)</td>
+                    <td className="px-2 py-1.5">Taxable turnover (HT)</td>
                     <td className="px-2 py-1.5 text-right font-mono font-bold">{(preview.code200 ?? 0).toFixed(2)}</td>
                   </tr>
                   <tr>
                     <td className="px-2 py-1.5 font-mono font-bold">220</td>
-                    <td className="px-2 py-1.5 text-foreground/80">TVA collected (sales)</td>
+                    <td className="px-2 py-1.5">TVA collected (sales)</td>
                     <td className="px-2 py-1.5 text-right font-mono font-bold">{(preview.code220 ?? 0).toFixed(2)}</td>
                   </tr>
                   <tr>
                     <td className="px-2 py-1.5 font-mono font-bold">400</td>
-                    <td className="px-2 py-1.5 text-foreground/80">TVA paid (purchases)</td>
+                    <td className="px-2 py-1.5">TVA paid (purchases)</td>
                     <td className="px-2 py-1.5 text-right font-mono font-bold">{(preview.code400 ?? 0).toFixed(2)}</td>
                   </tr>
-                  <tr className="bg-cdlp-gold/10 font-black text-foreground">
+                  <tr className="swiss-vat-table-row-total font-black">
                     <td className="px-2 py-1.5 font-mono">500</td>
                     <td className="px-2 py-1.5">Net TVA (220 − 400)</td>
-                    <td className="px-2 py-1.5 text-right font-mono text-cdlp-gold">{(preview.code500 ?? 0).toFixed(2)}</td>
+                    <td className="px-2 py-1.5 text-right font-mono">{(preview.code500 ?? 0).toFixed(2)}</td>
                   </tr>
                 </tbody>
               </table>
