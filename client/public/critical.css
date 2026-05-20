@@ -15,6 +15,12 @@ body {
   color: #2b2b2b;
 }
 
+#root {
+  box-sizing: border-box;
+  min-height: 100dvh;
+  min-height: 100vh;
+}
+
 .font-display,
 h1,
 h2,
@@ -43,14 +49,19 @@ h3 {
   display: none !important;
 }
 
-/* /app early LCP — mirrors cafe light shell + dashboard H1 (no Tailwind until bundle runs) */
+/* /app early LCP — fullscreen overlay so it paints before React; hidden after first frames in main.tsx */
 #static-app-lcp-fallback {
   box-sizing: border-box;
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
   min-height: 100dvh;
   min-height: 100vh;
   background-color: #fcfaf4;
   color: #2b2b2b;
   touch-action: manipulation;
+  -webkit-overflow-scrolling: touch;
+  overflow: auto;
 }
 
 #static-app-lcp-fallback[hidden] {
