@@ -213,6 +213,107 @@ export function detectCategory(description: string, issuer?: string): CategoryId
   return 'OTHER';
 }
 
+export type LineItemFlowType = 'INCOME' | 'EXPENSE';
+
+export type LineItemTypeInput = {
+  expenseCategory?: string;
+  documentType?: string;
+  description?: string;
+  category?: string;
+  issuer?: string;
+  parentExpenseCategory?: string;
+  /** Trust model when it already classified a row as income */
+  existingType?: string;
+};
+
+const INCOME_CATEGORY_MARKERS = ['REVENUE', 'SALES', 'RESERVATION'] as const;
+
+const INCOME_DOC_MARKERS = [
+  'TICKET',
+  'RECEIPT',
+  'Z2',
+  'Z-READ',
+  'Z READING',
+  'BANK DEPOSIT',
+  'POS',
+] as const;
+
+const INCOME_DESC_KEYWORDS = [
+  'deposit',
+  'dépôt',
+  'depot',
+  'sales',
+  'sale',
+  'revenue',
+  'revenu',
+  'chiffre',
+  'encaissement',
+  'recette',
+  'customer payment',
+  'paiement client',
+  'z-reading',
+  'z report',
+  'caisse',
+  'incoming',
+  'versement',
+  'credit',
+  'crédit',
+] as const;
+
+/**
+ * Infer INCOME vs EXPENSE for a ledger line (matches document-level revenue/expense signals).
+ */
+export function inferLineItemType(input: LineItemTypeInput): LineItemFlowType {
+  if (input.existingType === 'INCOME') return 'INCOME';
+
+  const cats = [input.expenseCategory, input.category, input.parentExpenseCategory].map((c) =>
+    String(c || '').toUpperCase()
+  );
+
+  if (cats.some((c) => INCOME_CATEGORY_MARKERS.some((m) => c.includes(m)))) {
+    return 'INCOME';
+  }
+
+  const docType = String(input.documentType || '').toUpperCase();
+  if (INCOME_DOC_MARKERS.some((m) => docType.includes(m))) {
+    return 'INCOME';
+  }
+
+  const text = `${input.description || ''} ${input.issuer || ''}`.toLowerCase();
+  if (INCOME_DESC_KEYWORDS.some((kw) => text.includes(kw))) {
+    return 'INCOME';
+  }
+
+  if (cats.some((c) => c.includes('PAYROLL') || c.includes('SALARY'))) {
+    return 'EXPENSE';
+  }
+
+  return 'EXPENSE';
+}
+
+/** Reuse AI lineItems type when amount + issuer align with a sub-invoice row */
+export function matchLineItemTypeFromAi(
+  sub: { issuer?: string; totalAmount?: number },
+  aiLineItems: Array<{ amount?: number; description?: string; type?: string }>
+): LineItemFlowType | undefined {
+  const amount = Number(sub.totalAmount || 0);
+  const issuer = String(sub.issuer || '').trim().toLowerCase();
+  if (!aiLineItems.length || amount <= 0) return undefined;
+
+  const match = aiLineItems.find((item) => {
+    const itemAmt = Number(item.amount || 0);
+    if (Math.abs(itemAmt - amount) > 0.06) return false;
+    const desc = String(item.description || '').toLowerCase();
+    if (!issuer) return true;
+    return (
+      desc.includes(issuer) ||
+      issuer.split(/\s+/).some((w) => w.length > 3 && desc.includes(w))
+    );
+  });
+  if (match?.type === 'INCOME' || match?.type === 'EXPENSE') return match.type;
+  return undefined;
+}
+
 /**
  * Detect category with confidence score
  */

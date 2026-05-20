@@ -23,7 +23,7 @@ import {
 import { exportToExcel } from '../services/excelService';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
 import { resolveDocumentProcessingTimeoutMs } from '../lib/documentProcessingTimeout';
-import { detectCategory } from '../services/categoryDetectionService';
+import { detectCategory, inferLineItemType } from '../services/categoryDetectionService';
 import {
   ProcessedDocument,
   BankTransaction,
@@ -206,24 +206,40 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
 const EditableLineItemsTable: React.FC<{
   items: BankTransaction[];
   currency: string;
+  documentContext?: { expenseCategory?: string; documentType?: string };
   onUpdate: (newItems: BankTransaction[]) => void;
-}> = ({ items, currency, onUpdate }) => {
+}> = ({ items, currency, documentContext, onUpdate }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddRow, setShowAddRow] = useState(false);
   
+  const applyInferredType = (row: BankTransaction): BankTransaction => ({
+    ...row,
+    type: inferLineItemType({
+      expenseCategory: row.category,
+      documentType: documentContext?.documentType,
+      description: row.description,
+      category: row.category,
+      parentExpenseCategory: documentContext?.expenseCategory,
+      existingType: row.type,
+    }),
+  });
+
   const handleItemChange = (idx: number, field: keyof BankTransaction, value: any) => {
     const next = [...items];
     next[idx] = { ...next[idx], [field]: value, isHumanVerified: false };
-    
-    // Auto-detect category when description changes
+
     if (field === 'description' && value) {
       const detectedCategory = detectCategory(value);
       if (detectedCategory && detectedCategory !== 'OTHER') {
         next[idx].category = detectedCategory;
-        console.log(`🎯 Auto-detected category for "${value}": ${detectedCategory}`);
       }
+      next[idx] = applyInferredType(next[idx]);
+    } else if (field === 'category') {
+      next[idx] = applyInferredType(next[idx]);
+    } else if (field !== 'type') {
+      next[idx] = applyInferredType(next[idx]);
     }
-    
+
     onUpdate(next);
   };
 
@@ -732,7 +748,7 @@ const SwissVatBreakdownEditor: React.FC<{
               <input
                 type="number"
                 step="0.01"
-                className="w-full h-10 px-3 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-[11px]"
+                className="w-full h-10 px-3 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-[11px] text-foreground"
                 value={totals.merchandiseSubtotal ?? ''}
                 onChange={(e) =>
                   pushSynced({
@@ -771,7 +787,7 @@ const SwissVatBreakdownEditor: React.FC<{
               <input
                 type="number"
                 step="0.01"
-                className="w-full h-10 px-3 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-[11px]"
+                className="w-full h-10 px-3 bg-cdlp-card border border-cdlp-border rounded-sm font-mono text-[11px] text-foreground"
                 value={totals.deposit ?? ''}
                 onChange={(e) =>
                   pushSynced({
@@ -872,11 +888,19 @@ function rollUpMultiInvoiceTotals(data: FinancialData): FinancialData {
 
   const lineItems: BankTransaction[] = subs.map((sub) => {
     const pr = (sub as SubDocPageRange).pageRange;
+    const description = `${sub.issuer || 'Unknown issuer'}${pr ? ` (pages ${pr})` : ''}`;
     return {
       date: sub.date || data.date || new Date().toISOString().slice(0, 10),
-      description: `${sub.issuer || 'Unknown issuer'}${pr ? ` (pages ${pr})` : ''}`,
+      description,
       amount: Number(sub.totalAmount || 0),
-      type: 'EXPENSE',
+      type: inferLineItemType({
+        expenseCategory: sub.expenseCategory,
+        documentType: sub.documentType ?? data.documentType,
+        description,
+        category: sub.expenseCategory || data.expenseCategory,
+        issuer: sub.issuer,
+        parentExpenseCategory: data.expenseCategory,
+      }),
       category: sub.expenseCategory || data.expenseCategory || 'OTHER',
       notes: `VAT Amount ${Number(sub.vatAmount || 0)}`,
     };
@@ -1841,6 +1865,10 @@ const VerificationHub: React.FC<{
                <EditableLineItemsTable
                  items={editedData.lineItems}
                  currency={editedData.originalCurrency}
+                 documentContext={{
+                   expenseCategory: editedData.expenseCategory,
+                   documentType: editedData.documentType,
+                 }}
                  onUpdate={(newItems) => handleFieldChange('lineItems', newItems)}
                />
              ) : (

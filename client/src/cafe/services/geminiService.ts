@@ -16,6 +16,7 @@ import {
   SwissVatFormPreview,
 } from "../types";
 import { prepareDocumentForAi } from "../lib/prepareDocumentForAi";
+import { inferLineItemType, matchLineItemTypeFromAi } from "./categoryDetectionService";
 
 const Type = {
   ARRAY: "ARRAY",
@@ -469,19 +470,46 @@ function repairPaySlipMultiInvoiceBlocks(data: FinancialData, file?: File): Fina
   });
 }
 
+function lineItemFromSubDocument(
+  sub: any,
+  parsed: FinancialData,
+  aiLineItems: BankTransaction[],
+  notesSuffix: string
+): BankTransaction {
+  const description = `${sub.issuer || 'Unknown issuer'}${sub.pageRange ? ` (pages ${sub.pageRange})` : ''}`;
+  const aiType = matchLineItemTypeFromAi(sub, aiLineItems);
+  const type = inferLineItemType({
+    expenseCategory: sub.expenseCategory,
+    documentType: sub.documentType ?? parsed.documentType,
+    description,
+    category: sub.expenseCategory,
+    issuer: sub.issuer,
+    parentExpenseCategory: parsed.expenseCategory,
+    existingType: aiType,
+  });
+  return {
+    date: sub.date || parsed.date || new Date().toISOString().slice(0, 10),
+    description,
+    amount: Number(sub.totalAmount || 0),
+    type,
+    category: sub.expenseCategory || parsed.expenseCategory || 'OTHER',
+    notes: notesSuffix,
+  };
+}
+
 function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
   const subDocs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments : [];
   const normalizedLineItems = Array.isArray(parsed.lineItems) ? parsed.lineItems : [];
 
   // Build stable line items from each detected sub-invoice so analysis table is always populated.
-  const generatedLineItems: BankTransaction[] = subDocs.map((sub: any) => ({
-    date: sub.date || parsed.date || new Date().toISOString().slice(0, 10),
-    description: `${sub.issuer || 'Unknown issuer'}${sub.pageRange ? ` (pages ${sub.pageRange})` : ''}`,
-    amount: Number(sub.totalAmount || 0),
-    type: 'EXPENSE',
-    category: sub.expenseCategory || 'OTHER',
-    notes: `VAT ${Number(sub.vatRate || 0)}% | VAT Amount ${Number(sub.vatAmount || 0)} ${sub.originalCurrency || parsed.originalCurrency || 'CHF'}`
-  }));
+  const generatedLineItems: BankTransaction[] = subDocs.map((sub: any) =>
+    lineItemFromSubDocument(
+      sub,
+      parsed,
+      normalizedLineItems,
+      `VAT ${Number(sub.vatRate || 0)}% | VAT Amount ${Number(sub.vatAmount || 0)} ${sub.originalCurrency || parsed.originalCurrency || 'CHF'}`
+    )
+  );
 
   // If model under-fills subDocuments (single-invoice case), derive additional blocks from expense lines.
   // For true multi-invoice documents, never infer from product-level lines because it inflates totals.
@@ -530,21 +558,20 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
   const subVat = repairedSubs.reduce((sum: number, sub: any) => sum + Number(sub.vatAmount || 0), 0);
   const subNet = repairedSubs.reduce((sum: number, sub: any) => sum + Number(sub.netAmount || 0), 0);
 
-  const rebasedItems: BankTransaction[] = repairedSubs.map((sub: any) => ({
-    date: sub.date || parsed.date || new Date().toISOString().slice(0, 10),
-    description: `${sub.issuer || 'Unknown issuer'}${sub.pageRange ? ` (pages ${sub.pageRange})` : ''}`,
-    amount: Number(sub.totalAmount || 0),
-    type: 'EXPENSE',
-    category: sub.expenseCategory || 'OTHER',
-    notes: `VAT ${Number(sub.vatRate || 0)}% | VAT Amount ${Number(sub.vatAmount || 0)} ${sub.originalCurrency || parsed.originalCurrency || 'CHF'}`,
-  }));
+  const rebasedItems: BankTransaction[] = repairedSubs.map((sub: any) =>
+    lineItemFromSubDocument(
+      sub,
+      parsed,
+      normalizedLineItems,
+      `VAT ${Number(sub.vatRate || 0)}% | VAT Amount ${Number(sub.vatAmount || 0)} ${sub.originalCurrency || parsed.originalCurrency || 'CHF'}`
+    )
+  );
 
-  const expenseSumGenerated = rebasedItems
-    .filter((i) => i.type === 'EXPENSE')
-    .reduce((s, i) => s + Number(i.amount || 0), 0);
+  const sumLineAmounts = (items: BankTransaction[]) =>
+    items.reduce((s, i) => s + Number(i.amount || 0), 0);
   const lineSumMatch =
     normalizedLineItems.length === rebasedItems.length &&
-    Math.abs(expenseSumGenerated - normalizedLineItems.filter((i) => i.type === 'EXPENSE').reduce((s, i) => s + Number(i.amount || 0), 0)) < 1;
+    Math.abs(sumLineAmounts(rebasedItems) - sumLineAmounts(normalizedLineItems)) < 1;
 
   const finalLineItems =
     repairedSubs.length > 1
@@ -553,9 +580,7 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
         ? normalizedLineItems
         : rebasedItems;
 
-  const rollupFromLines = finalLineItems
-    .filter((i) => i.type === 'EXPENSE')
-    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const rollupFromLines = finalLineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   /** For multi-invoice documents, grand total is ALWAYS the sum of invoice-level gross totals. */
   const aggregatedTotal =
@@ -711,15 +736,28 @@ function sanitizeSwissVatFields(
 }
 
 function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
+  const docType = coerceDocumentType(data.documentType);
+  const parentCat = sanitizeLooseText(data.expenseCategory, 80) || 'OTHER';
+
   const safeLineItems: BankTransaction[] = (Array.isArray(data.lineItems) ? data.lineItems : [])
     .map((item) => {
       const amount = toFiniteNumber(item?.amount, 0);
+      const description = sanitizeLooseText(item?.description, 220) || 'Unlabeled line item';
+      const category = sanitizeLooseText(item?.category, 80) || 'OTHER';
+      const rawType = item?.type === 'INCOME' ? 'INCOME' : 'EXPENSE';
       return {
         date: sanitizeLooseText(item?.date, 24),
-        description: sanitizeLooseText(item?.description, 220) || 'Unlabeled line item',
+        description,
         amount,
-        type: (item?.type === 'INCOME' ? 'INCOME' : 'EXPENSE') as 'INCOME' | 'EXPENSE',
-        category: sanitizeLooseText(item?.category, 80) || 'OTHER',
+        type: inferLineItemType({
+          expenseCategory: category,
+          documentType: docType,
+          description,
+          category,
+          parentExpenseCategory: parentCat,
+          existingType: rawType,
+        }),
+        category,
         notes: sanitizeLooseText((item as any)?.notes, 220),
         isHumanVerified: Boolean((item as any)?.isHumanVerified),
       };
