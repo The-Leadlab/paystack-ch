@@ -830,19 +830,22 @@ function shouldRunExhaustivePdfPass(file: File, parsed: FinancialData, userHint?
     name.includes('bulk') ||
     name.includes('z2');
 
+  // Explicit user/filename hint always triggers the second pass
+  if (hasMultiHint) return true;
+
   const extractedSubDocs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments.length : 0;
-  const docType = String(parsed.documentType ?? '');
+
+  // First pass already found multiple sub-documents — no need for exhaustive re-scan
+  if (extractedSubDocs >= 2) return false;
 
   const lineCount = Array.isArray(parsed.lineItems) ? parsed.lineItems.length : 0;
-  const suspiciousUnderSplit = extractedSubDocs <= 1 && lineCount >= 4;
-  const largePdf = file.size > 400_000;
+  // Raise thresholds: only trigger for genuinely suspicious under-splits on large PDFs
+  const largePdf = file.size > 800_000;
+  const suspiciousUnderSplit = extractedSubDocs <= 1 && lineCount >= 6;
 
-  // Second pass only when the first pass likely under-counted invoices (saves server time).
   return (
-    hasMultiHint ||
-    suspiciousUnderSplit ||
-    (extractedSubDocs === 0 && largePdf) ||
-    (extractedSubDocs === 1 && largePdf && lineCount >= 2)
+    (suspiciousUnderSplit && largePdf) ||
+    (extractedSubDocs === 0 && largePdf && lineCount >= 3)
   );
 }
 
@@ -925,7 +928,10 @@ export const analyzeFinancialDocument = async (
     );
   }
 
-  const storageRef = await ensureDocumentStorageForAi(file, existingStorage);
+  // Skip upload when caller already resolved storage (processDoc pre-uploads)
+  const storageRef = (existingStorage?.fileUrl && existingStorage?.storagePath)
+    ? { downloadURL: existingStorage.fileUrl, storagePath: existingStorage.storagePath, mimeType: file.type || 'application/octet-stream' }
+    : await ensureDocumentStorageForAi(file, existingStorage);
   const model = resolveDocumentModel();
   const mimeType = storageRef?.mimeType || file.type || 'application/octet-stream';
 

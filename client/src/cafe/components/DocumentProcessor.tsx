@@ -2093,7 +2093,7 @@ export const DocumentProcessor: React.FC<{
   // Processing throughput: configurable via env, capped to avoid overloading browsers/devices.
   const CONCURRENCY_LIMIT = Math.min(
     6,
-    Math.max(1, parseInt((import.meta.env.VITE_DOCUMENT_PROCESSING_CONCURRENCY || '1').trim(), 10) || 1)
+    Math.max(1, parseInt((import.meta.env.VITE_DOCUMENT_PROCESSING_CONCURRENCY || '3').trim(), 10) || 3)
   );
 
   // Combine Firestore documents with local processing documents
@@ -2187,14 +2187,16 @@ export const DocumentProcessor: React.FC<{
     // Check for duplicate filenames
     const duplicateNames = incoming.filter(f => documents.some(d => d.fileName === f.name));
     
-    // Check for duplicate file content (hash)
+    // Check for duplicate file content (hash) — cache hashes to avoid recomputing later
     const duplicateHashes: string[] = [];
     const uniqueFiles: File[] = [];
+    const fileHashCache = new Map<File, string>();
     
     for (const file of incoming) {
-      if (duplicateNames.includes(file)) continue; // Skip filename duplicates
+      if (duplicateNames.includes(file)) continue;
       
       const hash = await generateFileHash(file);
+      fileHashCache.set(file, hash);
       const isDuplicateHash = documents.some(d => d.fileHash === hash);
       
       if (isDuplicateHash) {
@@ -2214,11 +2216,10 @@ export const DocumentProcessor: React.FC<{
       }
       setUploadError(`Ignored: ${messages.join(', ')}`);
     }
-    
-    // Add files to local state for processing with hash
+
     const news: ProcessedDocument[] = await Promise.all(
       uniqueFiles.map(async (f: File) => {
-        const hash = await generateFileHash(f);
+        const hash = fileHashCache.get(f)!;
         let persistedDocumentId: string | undefined;
         try {
           if (onDocumentQueued) {
@@ -2247,7 +2248,14 @@ export const DocumentProcessor: React.FC<{
     );
     
     setLocalDocs((p) => [...p, ...news]);
+
+    // Auto-start processing when new processable documents are added
+    if (news.some(d => d.status === 'pending' && d.fileRaw) && !isProcessing) {
+      setTimeout(() => processAllRef.current?.(), 100);
+    }
   };
+
+  const processAllRef = useRef<(() => void) | null>(null);
 
   const processDoc = async (doc: ProcessedDocument & { source?: 'firestore' | 'local' }) => {
     const isFirestoreDoc = (doc as any).source === 'firestore';
@@ -2453,7 +2461,6 @@ export const DocumentProcessor: React.FC<{
     while (index < pending.length && !stopProcessingRef.current) {
       while (activeTasks.size < CONCURRENCY_LIMIT && index < pending.length && !stopProcessingRef.current) {
         const doc = pending[index++];
-        // Reset status to pending before processing
         setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'pending', error: undefined } : d));
         const task = processDoc(doc).finally(() => activeTasks.delete(task));
         activeTasks.add(task);
@@ -2464,6 +2471,8 @@ export const DocumentProcessor: React.FC<{
     await Promise.all(activeTasks);
     setIsProcessing(false);
   };
+
+  processAllRef.current = processAll;
 
   const stopBatch = () => {
     stopProcessingRef.current = true;
@@ -2558,7 +2567,7 @@ export const DocumentProcessor: React.FC<{
             </div>
             <div className="mt-3 bg-cdlp-black border border-cdlp-border rounded p-2 flex items-center justify-center gap-2">
               <Zap className="w-3 h-3 text-cdlp-gold" />
-              <span className="text-[10px] font-bold text-cdlp-gold uppercase">5x Parallel Processing</span>
+              <span className="text-[10px] font-bold text-cdlp-gold uppercase">{CONCURRENCY_LIMIT}x Turbo Parallel Processing</span>
             </div>
           </div>
         </div>

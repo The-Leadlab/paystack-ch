@@ -22,7 +22,7 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
   const [files, setFiles] = useState<ProcessingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processingMode, setProcessingMode] = useState<'parallel' | 'sequential'>('sequential');
+  const [processingMode, setProcessingMode] = useState<'parallel' | 'sequential'>('parallel');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
   const stopProcessingRef = useRef(false);
@@ -84,15 +84,24 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
     console.log(`Starting ${processingMode} processing of ${pendingFiles.length} files...`);
 
     if (processingMode === 'sequential') {
-      // Process one by one to avoid rate limits
       for (const fileItem of pendingFiles) {
         if (stopProcessingRef.current) break;
         await processFile(fileItem);
       }
     } else {
-      // Process all in parallel
-      const processingPromises = pendingFiles.map(fileItem => processFile(fileItem));
-      await Promise.allSettled(processingPromises);
+      // Bounded parallel: up to 3 concurrent to avoid rate-limit 429s
+      const PARALLEL_LIMIT = 3;
+      let idx = 0;
+      const active = new Set<Promise<void>>();
+      while (idx < pendingFiles.length && !stopProcessingRef.current) {
+        while (active.size < PARALLEL_LIMIT && idx < pendingFiles.length && !stopProcessingRef.current) {
+          const item = pendingFiles[idx++];
+          const task = processFile(item).finally(() => active.delete(task));
+          active.add(task);
+        }
+        if (active.size > 0) await Promise.race(active);
+      }
+      await Promise.allSettled(active);
     }
 
     console.log('Processing complete!');

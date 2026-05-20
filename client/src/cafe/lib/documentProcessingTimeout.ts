@@ -11,6 +11,13 @@ export function resolveDocumentProcessingTimeoutMs(file: File): number {
     return Math.min(fromEnv, 1_200_000);
   }
   const mb = file.size / (1024 * 1024);
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
+  // Small non-PDF images rarely need the exhaustive second pass — use a tighter timeout.
+  if (!isPdf && mb <= 5) return 180_000;
+  if (!isPdf) return 300_000;
+
+  // PDFs: size-tiered timeouts
   let perFile = 300_000;
   if (mb > 24) perFile = 900_000;
   else if (mb > 12) perFile = 600_000;
