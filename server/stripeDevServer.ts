@@ -3,12 +3,17 @@
  * Vite proxies /api/stripe → this server when STRIPE_DEV_PROXY=1 (see vite.config.ts).
  */
 import express from "express";
+import { loadWorkspaceEnv } from "./loadEnv.js";
 import { registerStripeIfConfigured } from "./stripe";
+
+loadWorkspaceEnv();
 import { registerGeminiRoutes } from "./gemini";
+import { registerAliLabRoutes } from "./aliLab";
 
 const app = express();
 registerStripeIfConfigured(app);
 registerGeminiRoutes(app);
+registerAliLabRoutes(app);
 
 const port = parseInt(process.env.STRIPE_DEV_PORT || "8787", 10);
 app.listen(port, "127.0.0.1", () => {

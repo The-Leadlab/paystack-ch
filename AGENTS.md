@@ -34,3 +34,13 @@ Paystack.ch is a Swiss restaurant/hospitality financial management SaaS (React 1
 - Prettier reports pre-existing formatting issues in ~119 files. This is the baseline state.
 - The app uses `wouter` for routing (not react-router). A patched version is used via `patches/wouter@3.7.1.patch`.
 - Vite config includes a storage proxy and debug collector plugin (for Manus integration); these are safe to ignore in local dev.
+
+### Ali feature lab (`/ali`)
+
+Password-gated sandbox for the **10 competitor-gap features** (budgeting, bank sync, goals, etc.). Production app stays at `/app` until features are promoted.
+
+- **URLs:** `/ali-gate` (login), `/ali` and `/ali/<feature-id>` (lab)
+- **Password:** `ALI_LAB_PASSWORD` in `.env` (see `.env.example`; default `ali123*`)
+- **Super prompt:** `docs/ALI_LAB_SUPER_PROMPT.md`
+- **Registry:** `client/src/ali-lab/featureRegistry.ts`
+- **Local API:** run `pnpm dev:stripe-server` so Vite can proxy `POST /api/ali/verify`; otherwise use `VITE_ALI_LAB_PASSWORD` dev fallback after gate

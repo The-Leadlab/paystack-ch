@@ -28,6 +28,12 @@
     "api/admin/logout.ts": {
       "includeFiles": "lib/**"
     },
+    "api/ali/verify.ts": {
+      "includeFiles": "lib/**"
+    },
+    "api/ali/logout.ts": {
+      "includeFiles": "lib/**"
+    },
     "api/stripe/webhook.ts": {
       "maxDuration": 30,
       "includeFiles": "{lib,shared}/**"

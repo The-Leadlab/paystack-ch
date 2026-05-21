@@ -1,16 +1,19 @@
 /**
- * Vercel Edge: require signed admin cookie before the SPA for `/admin` is served.
- * Password entry lives at `/operator` (POST `/api/admin/verify` sets HttpOnly cookie).
- * Local `vite` dev does not run this file — use `vercel dev` to test middleware locally.
+ * Vercel Edge gates:
+ * - `/admin` → `ADMIN_ACCESS_PASSWORD` via `/operator` + `paystack_admin_session`
+ * - `/ali` → `ALI_LAB_PASSWORD` via `/ali-gate` + `paystack_ali_lab_session`
  *
- * Token = base64url(HMAC-SHA256(UTF-8(ADMIN_ACCESS_PASSWORD), "paystack-admin-cookie-v1")) — must match `lib/adminGateCookie.ts`.
+ * Local `vite` dev does not run this file — use client gate on `/ali` or `vercel dev`.
  */
 export const config = {
-  matcher: ["/admin", "/admin/"],
+  matcher: ["/admin", "/admin/", "/ali", "/ali/", "/ali/:path*"],
 };
 
-const COOKIE_NAME = "paystack_admin_session";
-const COOKIE_MSG = "paystack-admin-cookie-v1";
+const ADMIN_COOKIE = "paystack_admin_session";
+const ADMIN_MSG = "paystack-admin-cookie-v1";
+
+const ALI_COOKIE = "paystack_ali_lab_session";
+const ALI_MSG = "paystack-ali-lab-cookie-v1";
 
 function timingSafeEqualStr(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -29,7 +32,7 @@ function cookieValue(cookieHeader: string | null, name: string): string | null {
   return null;
 }
 
-async function adminSessionCookieValue(password: string): Promise<string> {
+async function hmacCookieValue(password: string, message: string): Promise<string> {
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
@@ -38,26 +41,57 @@ async function adminSessionCookieValue(password: string): Promise<string> {
     false,
     ["sign"]
   );
-  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(COOKIE_MSG)));
+  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(message)));
   let bin = "";
   for (const b of sig) bin += String.fromCharCode(b);
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-export default async function middleware(request: Request): Promise<Response> {
-  const url = new URL(request.url);
-  const password = process.env.ADMIN_ACCESS_PASSWORD?.trim();
+async function gateOrRedirect(
+  request: Request,
+  url: URL,
+  password: string | undefined,
+  cookieName: string,
+  cookieMsg: string,
+  gatePath: string,
+  nextPath: string
+): Promise<Response> {
   if (!password) {
     return fetch(request);
   }
-
-  const expected = await adminSessionCookieValue(password);
-  const got = cookieValue(request.headers.get("cookie"), COOKIE_NAME);
+  const expected = await hmacCookieValue(password, cookieMsg);
+  const got = cookieValue(request.headers.get("cookie"), cookieName);
   if (got && timingSafeEqualStr(got, expected)) {
     return fetch(request);
   }
-
-  const dest = new URL("/operator", url.origin);
-  dest.searchParams.set("next", "/admin");
+  const dest = new URL(gatePath, url.origin);
+  dest.searchParams.set("next", nextPath);
   return Response.redirect(dest.toString(), 302);
+}
+
+export default async function middleware(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const path = url.pathname.replace(/\/$/, "") || "/";
+
+  if (path === "/ali" || path.startsWith("/ali/")) {
+    return gateOrRedirect(
+      request,
+      url,
+      process.env.ALI_LAB_PASSWORD?.trim(),
+      ALI_COOKIE,
+      ALI_MSG,
+      "/ali-gate",
+      path
+    );
+  }
+
+  return gateOrRedirect(
+    request,
+    url,
+    process.env.ADMIN_ACCESS_PASSWORD?.trim(),
+    ADMIN_COOKIE,
+    ADMIN_MSG,
+    "/operator",
+    "/admin"
+  );
 }

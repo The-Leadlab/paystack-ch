@@ -14,6 +14,8 @@ import SignUpPage from "./pages/SignUpPage";
 import AdminSignInPage from "./pages/AdminSignInPage";
 import OperatorGatePage from "./pages/OperatorGatePage";
 import StartTrialPage from "./pages/StartTrialPage";
+import AliGatePage from "./pages/AliGatePage";
+import AliLabPage from "./pages/AliLabPage";
 import { DashboardLoadingShell } from "./cafe/components/DashboardLoadingShell";
 import { SeoHead } from "./components/SeoHead";
 
@@ -45,6 +47,9 @@ function Router() {
       <Route path={"/login"} component={SignInPage} />
       <Route path={"/signup"} component={SignUpPage} />
       <Route path={"/app"} component={CafeShellRoute} />
+      <Route path={"/ali-gate"} component={AliGatePage} />
+      <Route path={"/ali/:featureId"} component={AliLabPage} />
+      <Route path={"/ali"} component={AliLabPage} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
