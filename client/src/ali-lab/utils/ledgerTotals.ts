@@ -1,0 +1,64 @@
+import type { Expense, Income } from "@/cafe/types";
+import { isNetPayrollCategory } from "@/cafe/services/swissPayrollService";
+
+export type LedgerTotals = {
+  totalIncome: number;
+  totalExpenses: number;
+  totalPayroll: number;
+  balance: number;
+  vatReceived: number;
+  vatPaid: number;
+  vatBalance: number;
+  incomeCount: number;
+  expenseCount: number;
+};
+
+export function filterLedgerBySession(
+  income: Income[],
+  expenses: Expense[],
+  opts: {
+    sessionId: string | undefined;
+    allSessions: boolean;
+    existingSessionIds: string[];
+  }
+): { income: Income[]; expenses: Expense[] } {
+  const { sessionId, allSessions, existingSessionIds } = opts;
+  if (allSessions) {
+    return {
+      income: income.filter((i) => existingSessionIds.includes(i.session_id)),
+      expenses: expenses.filter((e) => existingSessionIds.includes(e.session_id)),
+    };
+  }
+  return {
+    income: income.filter((i) => i.session_id === sessionId),
+    expenses: expenses.filter((e) => e.session_id === sessionId),
+  };
+}
+
+/** Same rules as production RestaurantDashboard totals. */
+export function computeLedgerTotals(income: Income[], expenses: Expense[]): LedgerTotals {
+  const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
+  const totalExpenses = expenses
+    .filter((e) => !isNetPayrollCategory(e.category))
+    .reduce((sum, e) => sum + e.amount, 0);
+  const totalPayroll = expenses
+    .filter((e) => isNetPayrollCategory(e.category))
+    .reduce((sum, e) => sum + e.amount, 0);
+  const vatReceived = income.reduce((sum, i) => sum + (i.vat_amount || 0), 0);
+  const vatPaid = expenses.reduce((sum, e) => sum + (e.vat_amount || 0), 0);
+  return {
+    totalIncome,
+    totalExpenses,
+    totalPayroll,
+    balance: totalIncome - totalExpenses - totalPayroll,
+    vatReceived,
+    vatPaid,
+    vatBalance: vatReceived - vatPaid,
+    incomeCount: income.length,
+    expenseCount: expenses.length,
+  };
+}
+
+export function formatChf(n: number): string {
+  return n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}

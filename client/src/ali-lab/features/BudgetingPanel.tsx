@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import type { AliLabFeature } from "../featureRegistry";
 import { useLabLanguage } from "../context/LabLanguageContext";
-import { useFinance } from "@/cafe/context/FinanceContext";
-import { useSession } from "@/cafe/context/SessionContext";
+import { useAliLabLedger } from "../hooks/useAliLabLedger";
 import type { Expense } from "@/cafe/types";
 import type { LabBudgetMode } from "../types";
 import { labCollections } from "../aliLabFirestore";
@@ -22,10 +21,16 @@ function monthKey(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function spentForMonth(expenses: Expense[], month: string, category: string, sessionId?: string): number {
+function spentForMonth(
+  expenses: Expense[],
+  month: string,
+  category: string,
+  sessionId: string | undefined,
+  allSessions: boolean
+): number {
   return expenses
     .filter((e) => {
-      if (sessionId && e.session_id !== sessionId) return false;
+      if (!allSessions && sessionId && e.session_id !== sessionId) return false;
       return e.date.startsWith(month) && e.category === category;
     })
     .reduce((s, e) => s + e.amount, 0);
@@ -33,8 +38,9 @@ function spentForMonth(expenses: Expense[], month: string, category: string, ses
 
 export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   const { t } = useLabLanguage();
-  const { expenses, income, loading: finLoading } = useFinance();
-  const { currentSession } = useSession();
+  const ledger = useAliLabLedger();
+  const { filteredExpenses: expenses, filteredIncome: income, loading: finLoading, currentSession } =
+    ledger;
   const [month, setMonth] = useState(monthKey());
   const [mode, setMode] = useState<LabBudgetMode>("traditional");
 
@@ -49,15 +55,19 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
     return CATEGORIES.map((cat) => {
       const savedRow = saved.find((b) => b.month === month && b.category === cat);
       const budgetChf = savedRow?.budgetChf ?? 0;
-      const spent = spentForMonth(expenses, month, cat, sid);
+      const spent = spentForMonth(expenses, month, cat, sid, ledger.isAllSessionsView);
       return { cat, budgetChf, spent, id: savedRow?.id };
     });
-  }, [saved, month, expenses, currentSession?.id]);
+  }, [saved, month, expenses, currentSession?.id, ledger.isAllSessionsView]);
 
   const totalBudget = rows.reduce((s, r) => s + r.budgetChf, 0);
   const totalSpent = rows.reduce((s, r) => s + r.spent, 0);
   const totalIncome = income
-    .filter((i) => i.date.startsWith(month) && (!currentSession?.id || i.session_id === currentSession.id))
+    .filter((i) => {
+      if (!i.date.startsWith(month)) return false;
+      if (ledger.isAllSessionsView) return true;
+      return !currentSession?.id || i.session_id === currentSession.id;
+    })
     .reduce((s, i) => s + i.amount, 0);
 
   const zeroBasedGap = mode === "zero-based" ? totalIncome - totalBudget : 0;
@@ -108,11 +118,14 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
             <th className="text-right p-2">{t("budget")}</th>
             <th className="text-right p-2">{t("spent")}</th>
             <th className="text-right p-2">{t("variance")}</th>
+            <th className="text-right p-2">{t("variancePct")}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => {
             const v = row.budgetChf - row.spent;
+            const pct =
+              row.budgetChf > 0 ? Math.round((row.spent / row.budgetChf) * 100) : row.spent > 0 ? 999 : 0;
             return (
               <tr key={row.cat} className="border-t border-border">
                 <td className="p-2 font-mono text-xs">{row.cat}</td>
@@ -127,6 +140,9 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
                 <td className="p-2 text-right">{row.spent.toLocaleString("de-CH")}</td>
                 <td className={`p-2 text-right font-medium ${v < 0 ? "text-red-500" : "text-emerald-600"}`}>
                   {v.toLocaleString("de-CH")}
+                </td>
+                <td className={`p-2 text-right text-xs ${pct > 100 ? "text-red-500 font-bold" : "text-muted-foreground"}`}>
+                  {row.budgetChf > 0 ? `${pct}%` : "—"}
                 </td>
               </tr>
             );

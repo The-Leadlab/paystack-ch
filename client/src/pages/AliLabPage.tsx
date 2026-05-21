@@ -89,8 +89,7 @@ export default function AliLabPage() {
             <h1 className="font-display text-sm font-bold uppercase tracking-wider">Ali feature lab</h1>
           </div>
           <p className="text-[10px] text-muted-foreground mb-4 leading-relaxed">
-            Build competitor-gap features here (bank connections excluded). Mark <strong>ready</strong> when testable in this lab —{" "}
-            <strong>do not</strong> promote to <code>/app</code> until you approve in chat.
+            Build competitor-gap features here (bank connections excluded). Live CHF totals above mirror <code>/app</code> — UI stays in <code>/ali</code> until you approve promotion.
           </p>
           <nav className="space-y-1 max-h-[50vh] md:max-h-none overflow-y-auto">
             {ALI_LAB_FEATURES.map((f) => (

@@ -56,3 +56,12 @@ export type LabMember = {
   email: string;
   role: "owner" | "editor" | "viewer" | "accountant";
 };
+
+export type LabFairSplit = {
+  id: string;
+  label: string;
+  payerEmail: string;
+  totalChf: number;
+  splitCount: number;
+  settled: boolean;
+};

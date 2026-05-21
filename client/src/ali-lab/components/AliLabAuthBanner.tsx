@@ -26,7 +26,7 @@ export function AliLabAuthBanner() {
           </button>
         ))}
         {!user && (
-          <Link href="/sign-in?redirect=/ali" className="text-brand-red font-bold uppercase">
+          <Link href="/sign-in?redirect=/ali/budgeting" className="text-brand-red font-bold uppercase">
             Sign in
           </Link>
         )}

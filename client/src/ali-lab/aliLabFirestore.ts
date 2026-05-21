@@ -15,6 +15,9 @@ const BILLS = "ali_lab_bills";
 const GOALS = "ali_lab_goals";
 const RULES = "ali_lab_rules";
 const HOLDINGS = "ali_lab_holdings";
+const MEMBERS = "ali_lab_members";
+const SPLITS = "ali_lab_splits";
+const OFFLINE = "ali_lab_offline_queue";
 
 function localKey(uid: string, suffix: string): string {
   return `ali-lab-${suffix}-${uid || "anon"}`;
@@ -95,4 +98,7 @@ export const labCollections = {
   goals: GOALS,
   rules: RULES,
   holdings: HOLDINGS,
+  members: MEMBERS,
+  splits: SPLITS,
+  offline: OFFLINE,
 } as const;

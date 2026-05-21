@@ -2,8 +2,10 @@ import type { ReactNode } from "react";
 import { SubscriptionProvider } from "@/cafe/context/SubscriptionContext";
 import { SessionProvider } from "@/cafe/context/SessionContext";
 import { FinanceProvider } from "@/cafe/context/FinanceContext";
+import { DocumentProvider } from "@/cafe/context/DocumentContext";
 import { LabLanguageProvider } from "./context/LabLanguageContext";
 import { AliLabAuthBanner } from "./components/AliLabAuthBanner";
+import { LabLedgerSnapshot } from "./components/LabLedgerSnapshot";
 import { firebaseReady } from "@/cafe/lib/firebase";
 
 export function AliLabShell({ children }: { children: ReactNode }) {
@@ -18,10 +20,13 @@ export function AliLabShell({ children }: { children: ReactNode }) {
         <SubscriptionProvider>
           <SessionProvider>
             <FinanceProvider>
-              <div className="p-4 md:p-6 max-w-5xl mx-auto">
-                <AliLabAuthBanner />
-                {children}
-              </div>
+              <DocumentProvider>
+                <div className="p-4 md:p-6 max-w-5xl mx-auto">
+                  <AliLabAuthBanner />
+                  <LabLedgerSnapshot />
+                  {children}
+                </div>
+              </DocumentProvider>
             </FinanceProvider>
           </SessionProvider>
         </SubscriptionProvider>

@@ -4,9 +4,17 @@ import { useLabLanguage } from "../context/LabLanguageContext";
 import type { LabBill } from "../types";
 import { labCollections } from "../aliLabFirestore";
 import { useAliLabPersist } from "../hooks/useAliLabPersist";
+import { useAliLabLedger } from "../hooks/useAliLabLedger";
+
+function annualizedChf(b: LabBill): number {
+  if (b.recurrence === "monthly") return b.amountChf * 12;
+  if (b.recurrence === "yearly") return b.amountChf;
+  return b.amountChf;
+}
 
 export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
   const { t } = useLabLanguage();
+  const ledger = useAliLabLedger();
   const { items, add, remove, uid } = useAliLabPersist<LabBill>(labCollections.bills, "bills", [
     { id: "seed-1", name: "Serafe", dueDate: "2026-06-01", amountChf: 335, recurrence: "yearly", remindDaysBefore: 14 },
     { id: "seed-2", name: "RC insurance", dueDate: "2026-07-15", amountChf: 1200, recurrence: "yearly", remindDaysBefore: 30 },
@@ -17,6 +25,7 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
   const [amountChf, setAmountChf] = useState(0);
 
   const today = new Date().toISOString().slice(0, 10);
+  const monthPrefix = today.slice(0, 7);
 
   const upcoming = useMemo(() => {
     return [...items]
@@ -25,13 +34,23 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
         const due = new Date(b.dueDate);
         const now = new Date(today);
         const days = Math.ceil((due.getTime() - now.getTime()) / 86400000);
-        return { ...b, days, overdue: days < 0 };
+        const paidInLedger = ledger.filteredExpenses.some(
+          (e) =>
+            e.date.startsWith(monthPrefix) &&
+            e.description?.toLowerCase().includes(b.name.toLowerCase().slice(0, 4))
+        );
+        return { ...b, days, overdue: days < 0, paidInLedger, annualChf: annualizedChf(b) };
       });
-  }, [items, today]);
+  }, [items, today, monthPrefix, ledger.filteredExpenses]);
+
+  const totalAnnual = upcoming.reduce((s, b) => s + b.annualChf, 0);
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">{feature.summary}</p>
+      <p className="text-xs text-muted-foreground">
+        {t("annualCost")}: <strong>{totalAnnual.toLocaleString("de-CH")} CHF</strong> (committed recurring)
+      </p>
       <div className="flex flex-wrap gap-2 text-sm">
         <input
           className="border border-border rounded px-2 py-1 flex-1 min-w-[120px]"
@@ -83,6 +102,9 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
           >
             <span>
               <strong>{b.name}</strong> — {t("due")} {b.dueDate}
+              {b.paidInLedger && (
+                <span className="text-emerald-600 ml-2 uppercase text-[10px] font-bold">{t("paidInLedger")}</span>
+              )}
               {b.overdue ? (
                 <span className="text-red-500 ml-2 uppercase text-[10px] font-bold">{t("overdue")}</span>
               ) : (
@@ -92,7 +114,10 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
               )}
             </span>
             <span className="flex items-center gap-2">
-              <span className="font-medium">{b.amountChf.toLocaleString("de-CH")} CHF</span>
+              <span className="font-medium text-right">
+                {b.amountChf.toLocaleString("de-CH")} CHF
+                <span className="block text-[10px] text-muted-foreground">{b.annualChf.toLocaleString("de-CH")}/yr</span>
+              </span>
               <button type="button" className="text-[10px] text-muted-foreground underline" onClick={() => void remove(b.id)}>
                 {t("delete")}
               </button>

@@ -1,17 +1,29 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AliLabFeature } from "../featureRegistry";
 import { useLabLanguage } from "../context/LabLanguageContext";
-import { useFinance } from "@/cafe/context/FinanceContext";
+import { useAliLabLedger } from "../hooks/useAliLabLedger";
 import { buildCashForecast } from "../utils/forecastFromLedger";
+import { computeLedgerTotals } from "../utils/ledgerTotals";
 
 export function ForecastingPanel({ feature }: { feature: AliLabFeature }) {
   const { t } = useLabLanguage();
-  const { income, expenses, loading } = useFinance();
+  const ledger = useAliLabLedger();
   const [startBalance, setStartBalance] = useState(0);
+  const [useLedgerStart, setUseLedgerStart] = useState(true);
+
+  const ledgerBalance = useMemo(
+    () =>
+      computeLedgerTotals(ledger.filteredIncome, ledger.filteredExpenses).balance,
+    [ledger.filteredIncome, ledger.filteredExpenses]
+  );
+
+  useEffect(() => {
+    if (useLedgerStart) setStartBalance(ledgerBalance);
+  }, [useLedgerStart, ledgerBalance]);
 
   const points = useMemo(
-    () => buildCashForecast(income, expenses, startBalance),
-    [income, expenses, startBalance]
+    () => buildCashForecast(ledger.filteredIncome, ledger.filteredExpenses, startBalance),
+    [ledger.filteredIncome, ledger.filteredExpenses, startBalance]
   );
 
   const summary = useMemo(() => {
@@ -20,8 +32,10 @@ export function ForecastingPanel({ feature }: { feature: AliLabFeature }) {
     const min = Math.min(...points.map((p) => p.balanceChf));
     const max = Math.max(...points.map((p) => p.balanceChf));
     const firstNegative = points.find((p) => p.balanceChf < 0);
-    return { end: last.balanceChf, min, max, firstNegativeDay: firstNegative?.date };
-  }, [points]);
+    const avgDailyNet =
+      points.length > 1 ? (last.balanceChf - startBalance) / points.length : 0;
+    return { end: last.balanceChf, min, max, firstNegativeDay: firstNegative?.date, avgDailyNet };
+  }, [points, startBalance]);
 
   const weeklyRows = useMemo(() => {
     const out: { week: string; endBalance: number }[] = [];
@@ -43,12 +57,30 @@ export function ForecastingPanel({ feature }: { feature: AliLabFeature }) {
             type="number"
             className="border border-border rounded px-2 py-1 ml-2 w-28 font-normal"
             value={startBalance}
-            onChange={(e) => setStartBalance(Number(e.target.value) || 0)}
+            onChange={(e) => {
+              setUseLedgerStart(false);
+              setStartBalance(Number(e.target.value) || 0);
+            }}
           />
         </label>
+        <button
+          type="button"
+          className="text-brand-red font-bold uppercase underline"
+          onClick={() => {
+            setUseLedgerStart(true);
+            setStartBalance(ledgerBalance);
+          }}
+        >
+          {t("useLedgerBalance")} ({ledgerBalance.toLocaleString("de-CH")})
+        </button>
       </div>
       <p className="text-xs font-bold uppercase">{t("forecast")}</p>
-      {loading && <p className="text-sm text-muted-foreground">Loading ledger…</p>}
+      {ledger.loading && <p className="text-sm text-muted-foreground">Loading ledger…</p>}
+      {summary && (
+        <p className="text-xs text-muted-foreground">
+          Trailing weekly average net flow ≈ {summary.avgDailyNet.toLocaleString("de-CH")} CHF / day
+        </p>
+      )}
       {summary?.firstNegativeDay && (
         <p className="text-sm text-red-600 dark:text-red-400 font-medium">
           Projected negative balance from {summary.firstNegativeDay} — review expenses or starting balance.
@@ -106,10 +138,6 @@ export function ForecastingPanel({ feature }: { feature: AliLabFeature }) {
           </tbody>
         </table>
       )}
-      <p className="text-xs text-muted-foreground">
-        Projection uses trailing weekly averages from Firestore income/expenses (sign in + sessions in /app). Lab-only —
-        not shown on production dashboard until you approve promotion.
-      </p>
     </div>
   );
 }

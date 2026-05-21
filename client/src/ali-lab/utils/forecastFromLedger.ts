@@ -2,49 +2,68 @@ import type { Expense, Income } from "@/cafe/types";
 
 export type ForecastPoint = { date: string; balanceChf: number; income: number; expense: number };
 
+function isoWeekKey(isoDate: string): string {
+  const d = new Date(isoDate + "T12:00:00");
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() + 4 - day);
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${d.getFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
 /**
- * Simple 90-day cash projection from trailing weekly averages.
+ * 90-day cash projection from trailing weekly net flows (income − expenses).
  */
 export function buildCashForecast(
   income: Income[],
   expenses: Expense[],
   startBalanceChf = 0
 ): ForecastPoint[] {
-  const now = new Date();
   const byWeek = new Map<string, { in: number; out: number }>();
 
-  const add = (isoDate: string, inc: number, exp: number) => {
-    const d = new Date(isoDate);
-    const weekKey = `${d.getFullYear()}-W${Math.ceil((d.getDate() + 6) / 7)}`;
-    const cur = byWeek.get(weekKey) || { in: 0, out: 0 };
-    cur.in += inc;
-    cur.out += exp;
-    byWeek.set(weekKey, cur);
-  };
-
-  income.forEach((i) => add(i.date, i.amount, 0));
-  expenses.forEach((e) => add(e.date, 0, e.amount));
+  income.forEach((i) => {
+    const key = isoWeekKey(i.date);
+    const cur = byWeek.get(key) || { in: 0, out: 0 };
+    cur.in += i.amount;
+    byWeek.set(key, cur);
+  });
+  expenses.forEach((e) => {
+    const key = isoWeekKey(e.date);
+    const cur = byWeek.get(key) || { in: 0, out: 0 };
+    cur.out += e.amount;
+    byWeek.set(key, cur);
+  });
 
   const weeks = [...byWeek.values()];
-  const avgIn = weeks.length ? weeks.reduce((s, w) => s + w.in, 0) / weeks.length : 0;
-  const avgOut = weeks.length ? weeks.reduce((s, w) => s + w.out, 0) / weeks.length : 0;
-  const weeklyNet = (avgIn - avgOut) / Math.max(1, weeks.length);
+  const avgWeeklyIn = weeks.length ? weeks.reduce((s, w) => s + w.in, 0) / weeks.length : 0;
+  const avgWeeklyOut = weeks.length ? weeks.reduce((s, w) => s + w.out, 0) / weeks.length : 0;
+  const weeklyNet = avgWeeklyIn - avgWeeklyOut;
+  const dailyNet = weeklyNet / 7;
 
+  const now = new Date();
   const points: ForecastPoint[] = [];
   let balance = startBalanceChf;
+
   for (let d = 0; d < 90; d++) {
     const date = new Date(now);
     date.setDate(date.getDate() + d);
     const iso = date.toISOString().slice(0, 10);
-    const dayIncome = d % 7 === 0 ? avgIn / 4 : 0;
-    const dayExpense = d % 7 === 3 ? avgOut / 4 : 0;
-    balance += dayIncome - dayExpense + (d > 0 ? weeklyNet / 90 : 0);
+    balance += dailyNet;
     points.push({
       date: iso,
       balanceChf: Math.round(balance * 100) / 100,
-      income: Math.round(dayIncome * 100) / 100,
-      expense: Math.round(dayExpense * 100) / 100,
+      income: Math.round((avgWeeklyIn / 7) * 100) / 100,
+      expense: Math.round((avgWeeklyOut / 7) * 100) / 100,
     });
   }
   return points;
+}
+
+/** Suggested opening balance = current ledger net (same formula as /app balance). */
+export function suggestedOpeningBalance(
+  income: Income[],
+  expenses: Expense[],
+  computeBalance: (inc: Income[], exp: Expense[]) => number
+): number {
+  return Math.round(computeBalance(income, expenses) * 100) / 100;
 }
