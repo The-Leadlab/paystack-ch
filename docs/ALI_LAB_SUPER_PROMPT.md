@@ -1,6 +1,10 @@
 # Ali Feature Lab — Super Prompt
 
-Use this document when implementing the **10 competitor-gap features** for Paystack.ch. All work happens on the password-gated sandbox **`/ali`** before promotion to production **`/app`**.
+Use this document when implementing competitor-gap features for Paystack.ch. All work happens on the password-gated sandbox **`/ali`** before promotion to production **`/app`**.
+
+## Out of scope (do not implement)
+
+**Bank connections** — no CSV import, no Open Banking, no bLink, no live bank sync. Paystack.ch stays on **document upload + AI extraction** (and manual ledger entry). IDs in `ALI_LAB_EXCLUDED_FEATURE_IDS` (`bank-sync`).
 
 ---
 
@@ -31,6 +35,7 @@ Rules:
 3. Match existing patterns: Firestore contexts, planCatalog entitlements, LanguageContext en|fr, CHF, Swiss VAT where relevant.
 4. Update feature status in client/src/ali-lab/featureRegistry.ts as you progress.
 5. Password gate: /ali-gate — do not remove or weaken ali lab auth.
+6. NEVER implement bank-sync / bLink / CSV bank import — product excluded (see ALI_LAB_EXCLUDED_FEATURE_IDS).
 
 For each feature:
 - Read its section below
@@ -47,32 +52,7 @@ When promoting to /app:
 
 ---
 
-## Feature 1 — Bank synchronization (`/ali/bank-sync`)
-
-**Competitors:** Buxfer, BlueBudget (bLink), YNAB (limited CH).
-
-**Goal:** Import transactions from Swiss banks — not only PDF AI upload.
-
-**Implementation plan:**
-
-1. **Phase A — CSV import (lab)**
-   - Upload CSV (PostFinance / UBS export formats)
-   - Parse rows → preview table → map columns → bulk create `income` / `expense` in current session
-   - Reuse `BankStatementAnalyzer.tsx` matching logic where possible
-
-2. **Phase B — bLink / Open Banking (production)**
-   - Research SIX bLink API credentials (sandbox)
-   - Firestore: `users/{uid}/bank_connections/{id}` with encrypted tokens (server-only)
-   - Vercel cron or webhook: sync last 90 days
-   - Deduplicate by `transactionId` hash
-
-3. **Promote to:** Documents tab + `FinanceContext` import pipeline
-
-**Files to touch:** `ali-lab/features/bank-sync.tsx`, `api/bank/` (new), `lib/bankSync/` (new)
-
----
-
-## Feature 2 — Budgeting (`/ali/budgeting`)
+## Feature 1 — Budgeting (`/ali/budgeting`)
 
 **Competitors:** YNAB (zero-based), BudgetCH, BlueBudget (auto from history).
 
@@ -89,7 +69,7 @@ When promoting to /app:
 
 ---
 
-## Feature 3 — Goal tracking (`/ali/goals`)
+## Feature 2 — Goal tracking (`/ali/goals`)
 
 **Competitors:** YNAB, Buxfer, BlueBudget.
 
@@ -105,7 +85,7 @@ When promoting to /app:
 
 ---
 
-## Feature 4 — Forecasting (`/ali/forecasting`)
+## Feature 3 — Forecasting (`/ali/forecasting`)
 
 **Competitors:** Buxfer (cash flow + retirement).
 
@@ -121,7 +101,7 @@ When promoting to /app:
 
 ---
 
-## Feature 5 — Bill reminders (`/ali/bill-reminders`)
+## Feature 4 — Bill reminders (`/ali/bill-reminders`)
 
 **Competitors:** Buxfer, BlueBudget (Serafe, insurance).
 
@@ -137,7 +117,7 @@ When promoting to /app:
 
 ---
 
-## Feature 6 — Shared access (`/ali/shared-access`)
+## Feature 5 — Shared access (`/ali/shared-access`)
 
 **Competitors:** BudgetCH family, YNAB Together, Buxfer access control, BlueBudget FairSplit.
 
@@ -154,7 +134,7 @@ When promoting to /app:
 
 ---
 
-## Feature 7 — Investments (`/ali/investments`)
+## Feature 6 — Investments (`/ali/investments`)
 
 **Competitors:** Buxfer portfolio.
 
@@ -170,7 +150,7 @@ When promoting to /app:
 
 ---
 
-## Feature 8 — German & Italian (`/ali/de-it-i18n`)
+## Feature 7 — German & Italian (`/ali/de-it-i18n`)
 
 **Competitors:** BudgetCH (DE, FR, IT).
 
@@ -186,7 +166,7 @@ When promoting to /app:
 
 ---
 
-## Feature 9 — Offline (`/ali/offline`)
+## Feature 8 — Offline (`/ali/offline`)
 
 **Competitors:** YNAB offline sync.
 
@@ -202,7 +182,7 @@ When promoting to /app:
 
 ---
 
-## Feature 10 — Automation rules (`/ali/automation-rules`)
+## Feature 9 — Automation rules (`/ali/automation-rules`)
 
 **Competitors:** Buxfer rules.
 
@@ -230,13 +210,30 @@ When promoting to /app:
 
 ---
 
+## Lab implementation status (2026-05)
+
+| Feature | Status in `/ali` | Notes |
+|---------|------------------|--------|
+| budgeting | **ready** | Real spent from FinanceContext; budgets in `ali_lab_budgets` |
+| bill-reminders | **ready** | CRUD + overdue/due-soon styling |
+| goals | **ready** | Savings/debt progress |
+| bank-sync | **excluded** | Do not build — document/AI flow only |
+| de-it-i18n | **prototype** | `labStrings.ts` en/fr/de/it |
+| forecasting | **prototype** | 90-day chart from ledger |
+| automation-rules | **prototype** | Rules + `detectCategory` test |
+| shared-access | **prototype** | Mock invites + FairSplit note |
+| offline | **prototype** | Queue simulation |
+| investments | **prototype** | Holdings portfolio |
+
+Code lives under `client/src/ali-lab/` — **not** wired into `/app`.
+
 ## Priority order (recommended)
 
-1. `budgeting` + `bill-reminders` + `goals` (high user value, medium effort)
-2. `bank-sync` CSV phase (high competitive gap)
-3. `de-it-i18n` (Swiss market)
-4. `forecasting` + `automation-rules`
-5. `shared-access` + `bank-sync` bLink + `offline` + `investments`
+1. ~~`budgeting` + `bill-reminders` + `goals`~~ (done in lab)
+2. Promote ready features (`budgeting`, `bill-reminders`, `goals`) to `/app`
+3. `de-it-i18n` merge into LanguageContext
+4. `forecasting` + `automation-rules` harden → ready
+5. `shared-access` + `offline` + `investments`
 
 ---
 

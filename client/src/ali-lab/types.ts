@@ -44,13 +44,6 @@ export type LabHolding = {
   lastPriceChf: number;
 };
 
-export type LabCsvRow = {
-  date: string;
-  description: string;
-  amountChf: number;
-  flow: "INCOME" | "EXPENSE";
-};
-
 export type LabOfflineQueueItem = {
   id: string;
   fileName: string;

@@ -1,5 +1,8 @@
 export type AliLabFeatureStatus = "scaffold" | "prototype" | "ready" | "promoted";
 
+/** Product decision: no bank API / CSV / Open Banking — do not implement. */
+export const ALI_LAB_EXCLUDED_FEATURE_IDS = ["bank-sync"] as const;
+
 export type AliLabFeature = {
   id: string;
   title: string;
@@ -38,15 +41,6 @@ export const ALI_LAB_FEATURES: AliLabFeature[] = [
     status: "ready",
     promoteTo: "Dashboard widget + Firestore goals collection",
     summary: "Savings & debt goals with progress bars",
-  },
-  {
-    id: "bank-sync",
-    title: "Bank synchronization (CSV)",
-    competitors: "Buxfer, BlueBudget (bLink), YNAB",
-    priority: "high",
-    status: "prototype",
-    promoteTo: "Documents tab + FinanceContext",
-    summary: "CSV import → income/expense rows; bLink phase B pending",
   },
   {
     id: "de-it-i18n",
@@ -104,7 +98,12 @@ export const ALI_LAB_FEATURES: AliLabFeature[] = [
   },
 ];
 
+export function isExcludedAliLabFeature(id: string): boolean {
+  return (ALI_LAB_EXCLUDED_FEATURE_IDS as readonly string[]).includes(id);
+}
+
 export function getAliLabFeature(id: string | undefined): AliLabFeature | undefined {
+  if (id && isExcludedAliLabFeature(id)) return undefined;
   if (!id) return ALI_LAB_FEATURES[0];
   return ALI_LAB_FEATURES.find((f) => f.id === id);
 }

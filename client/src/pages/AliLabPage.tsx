@@ -10,8 +10,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { SeoNoIndex } from "@/components/SeoNoIndex";
 import { hasAliLabDevSession, logoutAliLab } from "@/lib/aliLabGateClient";
-import { ALI_LAB_FEATURES, getAliLabFeature } from "@/ali-lab/featureRegistry";
+import { ALI_LAB_FEATURES, getAliLabFeature, isExcludedAliLabFeature } from "@/ali-lab/featureRegistry";
 import { AliLabFeaturePanel } from "@/ali-lab/AliLabFeaturePanels";
+import { ExcludedFeaturePanel } from "@/ali-lab/features/ExcludedFeaturePanel";
 import { AliLabShell } from "@/ali-lab/AliLabShell";
 
 function useAliLabGate(): { allowed: boolean; checking: boolean } {
@@ -43,14 +44,16 @@ export default function AliLabPage() {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/ali/:featureId");
   const featureId = params?.featureId;
-  const feature = getAliLabFeature(featureId) ?? ALI_LAB_FEATURES[0];
+  const excluded = featureId ? isExcludedAliLabFeature(featureId) : false;
+  const feature = excluded ? undefined : (getAliLabFeature(featureId) ?? ALI_LAB_FEATURES[0]);
   const { allowed, checking } = useAliLabGate();
 
   useEffect(() => {
     if (!checking && !allowed) {
-      window.location.href = `/ali-gate?next=${encodeURIComponent("/ali/" + feature.id)}`;
+      const next = featureId && !excluded ? `/ali/${featureId}` : "/ali/budgeting";
+      window.location.href = `/ali-gate?next=${encodeURIComponent(next)}`;
     }
-  }, [checking, allowed, feature.id]);
+  }, [checking, allowed, featureId, excluded]);
 
   if (checking) {
     return (
@@ -79,7 +82,7 @@ export default function AliLabPage() {
             <h1 className="font-display text-sm font-bold uppercase tracking-wider">Ali feature lab</h1>
           </div>
           <p className="text-[10px] text-muted-foreground mb-4 leading-relaxed">
-            Build the 10 Swiss budgeting gaps here. When a feature is <strong>ready</strong>, promote it to{" "}
+            Build competitor-gap features here (bank connections excluded). When a feature is <strong>ready</strong>, promote to{" "}
             <code>/app</code> per <code>docs/ALI_LAB_SUPER_PROMPT.md</code>.
           </p>
           <nav className="space-y-1 max-h-[50vh] md:max-h-none overflow-y-auto">
@@ -88,7 +91,7 @@ export default function AliLabPage() {
                 key={f.id}
                 href={`/ali/${f.id}`}
                 className={`flex items-center gap-2 px-2 py-2 rounded text-xs font-medium transition-colors ${
-                  f.id === feature.id ? "bg-brand-red/10 text-brand-red" : "hover:bg-muted"
+                  feature && f.id === feature.id ? "bg-brand-red/10 text-brand-red" : "hover:bg-muted"
                 }`}
               >
                 <ChevronRight className="size-3 shrink-0 opacity-50" />
@@ -117,16 +120,23 @@ export default function AliLabPage() {
         </aside>
 
         <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-          <header className="mb-6">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {feature.priority} priority · vs {feature.competitors}
-            </p>
-            <h2 className="font-display text-2xl font-bold mt-1">{feature.title}</h2>
-            <p className="text-sm text-muted-foreground mt-2">
-              Promote to: <code className="text-foreground">{feature.promoteTo}</code>
-            </p>
-          </header>
-          <AliLabFeaturePanel feature={feature} />
+          {excluded && featureId ? (
+            <ExcludedFeaturePanel featureId={featureId} />
+          ) : feature ? (
+            <>
+              <header className="mb-6">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  {feature.priority} priority · vs {feature.competitors}
+                </p>
+                <h2 className="font-display text-2xl font-bold mt-1">{feature.title}</h2>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Promote to: <code className="text-foreground">{feature.promoteTo}</code>
+                </p>
+              </header>
+              <AliLabFeaturePanel feature={feature} />
+            </>
+          ) : null}
+          {!excluded && feature ? (
           <section className="mt-8 border border-border rounded-lg p-4 bg-muted/30">
             <h3 className="text-xs font-bold uppercase tracking-wider mb-2">Promotion checklist</h3>
             <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
@@ -144,6 +154,7 @@ export default function AliLabPage() {
               Open /app to integrate
             </Button>
           </section>
+          ) : null}
         </main>
       </div>
     </AliLabShell>

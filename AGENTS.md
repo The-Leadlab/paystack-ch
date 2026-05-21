@@ -37,7 +37,7 @@ Paystack.ch is a Swiss restaurant/hospitality financial management SaaS (React 1
 
 ### Ali feature lab (`/ali`)
 
-Password-gated sandbox for the **10 competitor-gap features** (budgeting, bank sync, goals, etc.). Production app stays at `/app` until features are promoted.
+Password-gated sandbox for competitor-gap features (budgeting, goals, bills, etc.). **Bank connections / CSV / Open Banking are out of scope** — do not implement `bank-sync`. Production app stays at `/app` until features are promoted.
 
 - **URLs:** `/ali-gate` (login), `/ali` and `/ali/<feature-id>` (lab)
 - **Password:** `ALI_LAB_PASSWORD` in `.env` (see `.env.example`; default `ali123*`)

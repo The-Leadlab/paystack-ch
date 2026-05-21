@@ -2,7 +2,6 @@ import type { AliLabFeature } from "./featureRegistry";
 import { BudgetingPanel } from "./features/BudgetingPanel";
 import { BillRemindersPanel } from "./features/BillRemindersPanel";
 import { GoalsPanel } from "./features/GoalsPanel";
-import { BankSyncPanel } from "./features/BankSyncPanel";
 import { ForecastingPanel } from "./features/ForecastingPanel";
 import { DeItPanel } from "./features/DeItPanel";
 import { AutomationRulesPanel } from "./features/AutomationRulesPanel";
@@ -18,8 +17,6 @@ export function AliLabFeaturePanel({ feature }: { feature: AliLabFeature }) {
       return <BillRemindersPanel feature={feature} />;
     case "goals":
       return <GoalsPanel feature={feature} />;
-    case "bank-sync":
-      return <BankSyncPanel feature={feature} />;
     case "forecasting":
       return <ForecastingPanel feature={feature} />;
     case "de-it-i18n":
