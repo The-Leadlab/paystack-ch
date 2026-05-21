@@ -1,6 +1,7 @@
 import express, { type Express, type Request, type Response } from "express";
 import { createHash, timingSafeEqual } from "crypto";
 import { aliLabSessionCookieValue, aliLabSessionSetCookieHeader } from "../lib/aliLabGateCookie.js";
+import { aliLabSessionIsValid } from "../lib/aliLabSession.js";
 
 function passwordMatches(given: string, expected: string): boolean {
   if (!given || !expected) return false;
@@ -25,5 +26,14 @@ export function registerAliLabRoutes(app: Express): void {
     res.setHeader("Set-Cookie", aliLabSessionSetCookieHeader(token, 60 * 60 * 24 * 30));
     res.json({ ok: true });
   });
-  console.info("[ali-lab] POST /api/ali/verify (set ALI_LAB_PASSWORD in .env)");
+  app.get("/api/ali/session", (req: Request, res: Response) => {
+    const expected = process.env.ALI_LAB_PASSWORD?.trim();
+    if (!expected) {
+      res.status(503).json({ error: "ALI_LAB_PASSWORD is not set" });
+      return;
+    }
+    const ok = aliLabSessionIsValid(req.headers.cookie, expected);
+    res.status(ok ? 200 : 401).json({ ok });
+  });
+  console.info("[ali-lab] POST /api/ali/verify, GET /api/ali/session (set ALI_LAB_PASSWORD in .env)");
 }

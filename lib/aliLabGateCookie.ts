@@ -11,12 +11,12 @@ export function aliLabSessionCookieValue(password: string): string {
 
 export function aliLabSessionSetCookieHeader(token: string, maxAgeSec: number): string {
   const secure = useSecureCookieFlag();
-  return `${ALI_LAB_SESSION_COOKIE_NAME}=${token}; HttpOnly; ${secure ? "Secure; " : ""}SameSite=Lax; Path=/ali; Max-Age=${maxAgeSec}`;
+  return `${ALI_LAB_SESSION_COOKIE_NAME}=${token}; HttpOnly; ${secure ? "Secure; " : ""}SameSite=Lax; Path=/; Max-Age=${maxAgeSec}`;
 }
 
 export function aliLabSessionClearCookieHeader(): string {
   const secure = useSecureCookieFlag();
-  return `${ALI_LAB_SESSION_COOKIE_NAME}=; HttpOnly; ${secure ? "Secure; " : ""}SameSite=Lax; Path=/ali; Max-Age=0`;
+  return `${ALI_LAB_SESSION_COOKIE_NAME}=; HttpOnly; ${secure ? "Secure; " : ""}SameSite=Lax; Path=/; Max-Age=0`;
 }
 
 function useSecureCookieFlag(): boolean {

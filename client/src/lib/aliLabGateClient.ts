@@ -42,9 +42,29 @@ export async function verifyAliLabPassword(password: string): Promise<void> {
   }
 }
 
+/** Dev-only fallback when Vite does not run Edge middleware. */
 export function hasAliLabDevSession(): boolean {
   if (!import.meta.env.DEV) return false;
   return sessionStorage.getItem(DEV_SESSION_KEY) === "1";
+}
+
+/**
+ * Production: validates HttpOnly cookie via GET /api/ali/session.
+ * Dev: sessionStorage after gate, or cookie when using stripe dev server + vercel dev.
+ */
+export async function checkAliLabSession(): Promise<boolean> {
+  if (import.meta.env.DEV && hasAliLabDevSession()) return true;
+  try {
+    const res = await fetch(apiUrl("/api/ali/session"), {
+      method: "GET",
+      credentials: "same-origin",
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { ok?: boolean };
+    return data.ok === true;
+  } catch {
+    return import.meta.env.DEV && hasAliLabDevSession();
+  }
 }
 
 export function clearAliLabDevSession(): void {

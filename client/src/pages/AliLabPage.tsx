@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SeoNoIndex } from "@/components/SeoNoIndex";
-import { hasAliLabDevSession, logoutAliLab } from "@/lib/aliLabGateClient";
+import { checkAliLabSession, logoutAliLab } from "@/lib/aliLabGateClient";
 import { ALI_LAB_FEATURES, getAliLabFeature, isExcludedAliLabFeature } from "@/ali-lab/featureRegistry";
 import { AliLabFeaturePanel } from "@/ali-lab/AliLabFeaturePanels";
 import { ExcludedFeaturePanel } from "@/ali-lab/features/ExcludedFeaturePanel";
@@ -20,8 +20,16 @@ function useAliLabGate(): { allowed: boolean; checking: boolean } {
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
-    setAllowed(hasAliLabDevSession());
-    setChecking(false);
+    let cancelled = false;
+    void checkAliLabSession().then((ok) => {
+      if (!cancelled) {
+        setAllowed(ok);
+        setChecking(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return { allowed, checking };

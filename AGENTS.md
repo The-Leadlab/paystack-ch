@@ -46,3 +46,4 @@ Password-gated sandbox for competitor-gap features (budgeting, goals, bills, etc
 - **Super prompt:** `docs/ALI_LAB_SUPER_PROMPT.md`
 - **Registry:** `client/src/ali-lab/featureRegistry.ts`
 - **Local API:** run `pnpm dev:stripe-server` so Vite can proxy `POST /api/ali/verify`; otherwise use `VITE_ALI_LAB_PASSWORD` dev fallback after gate
+- **Production:** set `ALI_LAB_PASSWORD` in Vercel (same value for Edge middleware + `/api/ali/verify`). After login, the SPA checks `GET /api/ali/session` — do not rely on `sessionStorage` on www.paystack.ch
