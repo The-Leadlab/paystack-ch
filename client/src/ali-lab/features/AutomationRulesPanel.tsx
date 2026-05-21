@@ -8,7 +8,7 @@ import { detectCategory } from "@/cafe/services/categoryDetectionService";
 
 export function AutomationRulesPanel({ feature }: { feature: AliLabFeature }) {
   const { t } = useLabLanguage();
-  const { items, add, remove } = useAliLabPersist<LabAutomationRule>(labCollections.rules, "rules", []);
+  const { items, add, remove, update } = useAliLabPersist<LabAutomationRule>(labCollections.rules, "rules", []);
   const [match, setMatch] = useState("");
   const [category, setCategory] = useState("FOOD_SUPPLIES");
   const [testInput, setTestInput] = useState("Migros Lausanne");
@@ -61,13 +61,22 @@ export function AutomationRulesPanel({ feature }: { feature: AliLabFeature }) {
       </div>
       <ul className="text-sm space-y-1">
         {items.map((r) => (
-          <li key={r.id} className="flex justify-between border border-border rounded px-2 py-1">
-            <span>
+          <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 border border-border rounded px-2 py-1">
+            <span className={r.enabled ? "" : "opacity-50 line-through"}>
               IF {r.field} contains &quot;{r.match}&quot; → {r.category}
             </span>
-            <button type="button" className="text-[10px] underline" onClick={() => void remove(r.id)}>
-              {t("delete")}
-            </button>
+            <span className="flex gap-2">
+              <button
+                type="button"
+                className="text-[10px] font-bold uppercase"
+                onClick={() => void update(r.id, { enabled: !r.enabled })}
+              >
+                {r.enabled ? "Disable" : "Enable"}
+              </button>
+              <button type="button" className="text-[10px] underline" onClick={() => void remove(r.id)}>
+                {t("delete")}
+              </button>
+            </span>
           </li>
         ))}
       </ul>

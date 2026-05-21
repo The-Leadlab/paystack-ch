@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useRoute } from "wouter";
+import { Link, useRoute } from "wouter";
 import {
   FlaskConical,
   Lock,
@@ -41,7 +41,6 @@ function statusColor(status: string): string {
 }
 
 export default function AliLabPage() {
-  const [, setLocation] = useLocation();
   const [, params] = useRoute("/ali/:featureId");
   const featureId = params?.featureId;
   const excluded = featureId ? isExcludedAliLabFeature(featureId) : false;
@@ -82,8 +81,8 @@ export default function AliLabPage() {
             <h1 className="font-display text-sm font-bold uppercase tracking-wider">Ali feature lab</h1>
           </div>
           <p className="text-[10px] text-muted-foreground mb-4 leading-relaxed">
-            Build competitor-gap features here (bank connections excluded). When a feature is <strong>ready</strong>, promote to{" "}
-            <code>/app</code> per <code>docs/ALI_LAB_SUPER_PROMPT.md</code>.
+            Build competitor-gap features here (bank connections excluded). Mark <strong>ready</strong> when testable in this lab —{" "}
+            <strong>do not</strong> promote to <code>/app</code> until you approve in chat.
           </p>
           <nav className="space-y-1 max-h-[50vh] md:max-h-none overflow-y-auto">
             {ALI_LAB_FEATURES.map((f) => (
@@ -138,20 +137,22 @@ export default function AliLabPage() {
           ) : null}
           {!excluded && feature ? (
           <section className="mt-8 border border-border rounded-lg p-4 bg-muted/30">
-            <h3 className="text-xs font-bold uppercase tracking-wider mb-2">Promotion checklist</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider mb-2">Before promotion to /app</h3>
+            <p className="text-sm text-muted-foreground mb-2">
+              Test this feature here first. Tell the agent in chat when you want it moved to production — agents will not
+              auto-integrate into <code>/app</code>.
+            </p>
             <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
               <li>Feature works with real Firebase session (not just localStorage)</li>
               <li>Plan entitlements / gating defined in planCatalog.ts</li>
               <li>EN + FR strings in LanguageContext (DE/IT when applicable)</li>
-              <li>Move UI into RestaurantDashboard or new tab under /app</li>
+              <li>Move UI into RestaurantDashboard or new tab under /app (after your approval)</li>
               <li>Mark feature status <code>promoted</code> in featureRegistry.ts</li>
             </ol>
-            <Button
-              className="mt-4 bg-brand-red text-white text-xs font-bold uppercase"
-              size="sm"
-              onClick={() => setLocation("/app")}
-            >
-              Open /app to integrate
+            <Button variant="outline" className="mt-4 text-xs font-bold uppercase" size="sm" asChild>
+              <Link href="/app">
+                <ExternalLink className="size-3 mr-1" /> Compare with production /app
+              </Link>
             </Button>
           </section>
           ) : null}

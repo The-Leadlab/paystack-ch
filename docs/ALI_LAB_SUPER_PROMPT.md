@@ -20,7 +20,9 @@ Use this document when implementing competitor-gap features for Paystack.ch. All
 | **Registry** | `client/src/ali-lab/featureRegistry.ts` |
 | **Panels** | `client/src/ali-lab/AliLabFeaturePanels.tsx` |
 
-**Workflow:** scaffold in `/ali` → prototype → `ready` → integrate into `RestaurantDashboard` / `/app` → set status `promoted`.
+**Workflow:** scaffold in `/ali` → prototype → `ready` (user tests in lab) → **user approves in chat** → integrate into `RestaurantDashboard` / `/app` → set status `promoted`.
+
+**Never auto-promote:** Cloud agents must not move UI into `/app` or mark `promoted` without explicit user approval in the conversation after lab testing.
 
 ---
 
@@ -31,11 +33,12 @@ You are implementing Paystack.ch competitor features in the Ali Feature Lab.
 
 Rules:
 1. Work only under client/src/ali-lab/ and related shared types until the feature is "ready".
-2. Do NOT wire half-finished features into /app — promote only after the checklist at the bottom of AliLabPage.
-3. Match existing patterns: Firestore contexts, planCatalog entitlements, LanguageContext en|fr, CHF, Swiss VAT where relevant.
-4. Update feature status in client/src/ali-lab/featureRegistry.ts as you progress.
-5. Password gate: /ali-gate — do not remove or weaken ali lab auth.
-6. NEVER implement bank-sync / bLink / CSV bank import — product excluded (see ALI_LAB_EXCLUDED_FEATURE_IDS).
+2. Do NOT wire features into /app unless the user explicitly asked to promote in chat after testing /ali.
+3. Do NOT wire half-finished features into /app — use the promotion checklist only after user approval.
+4. Match existing patterns: Firestore contexts, planCatalog entitlements, LanguageContext en|fr, CHF, Swiss VAT where relevant.
+5. Update feature status in client/src/ali-lab/featureRegistry.ts as you progress.
+6. Password gate: /ali-gate — do not remove or weaken ali lab auth.
+7. NEVER implement bank-sync / bLink / CSV bank import — product excluded (see ALI_LAB_EXCLUDED_FEATURE_IDS).
 
 For each feature:
 - Read its section below
@@ -218,9 +221,9 @@ When promoting to /app:
 | bill-reminders | **ready** | CRUD + overdue/due-soon styling |
 | goals | **ready** | Savings/debt progress |
 | bank-sync | **excluded** | Do not build — document/AI flow only |
-| de-it-i18n | **prototype** | `labStrings.ts` en/fr/de/it |
-| forecasting | **prototype** | 90-day chart from ledger |
-| automation-rules | **prototype** | Rules + `detectCategory` test |
+| de-it-i18n | **ready** | `labStrings.ts` + coverage table (lab only) |
+| forecasting | **ready** | 90-day chart, starting balance, weekly table |
+| automation-rules | **ready** | Rules CRUD, enable/disable, `detectCategory` test |
 | shared-access | **prototype** | Mock invites + FairSplit note |
 | offline | **prototype** | Queue simulation |
 | investments | **prototype** | Holdings portfolio |
@@ -230,10 +233,9 @@ Code lives under `client/src/ali-lab/` — **not** wired into `/app`.
 ## Priority order (recommended)
 
 1. ~~`budgeting` + `bill-reminders` + `goals`~~ (done in lab)
-2. Promote ready features (`budgeting`, `bill-reminders`, `goals`) to `/app`
-3. `de-it-i18n` merge into LanguageContext
-4. `forecasting` + `automation-rules` harden → ready
-5. `shared-access` + `offline` + `investments`
+2. Harden `de-it-i18n`, `forecasting`, `automation-rules` → `ready` in lab (user tests)
+3. `shared-access` + `offline` + `investments` prototypes → ready when solid
+4. **Only after user says promote in chat:** move ready features to `/app` + `promoted` status
 
 ---
 
