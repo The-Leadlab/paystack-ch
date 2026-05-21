@@ -12,6 +12,7 @@ import { SeoNoIndex } from "@/components/SeoNoIndex";
 import { hasAliLabDevSession, logoutAliLab } from "@/lib/aliLabGateClient";
 import { ALI_LAB_FEATURES, getAliLabFeature } from "@/ali-lab/featureRegistry";
 import { AliLabFeaturePanel } from "@/ali-lab/AliLabFeaturePanels";
+import { AliLabShell } from "@/ali-lab/AliLabShell";
 
 function useAliLabGate(): { allowed: boolean; checking: boolean } {
   const [checking, setChecking] = useState(true);
@@ -69,9 +70,9 @@ export default function AliLabPage() {
   };
 
   return (
-    <>
+    <AliLabShell>
       <SeoNoIndex />
-      <div className="min-h-[100dvh] bg-background text-foreground flex flex-col md:flex-row">
+      <div className="flex flex-col md:flex-row -mx-4 md:-mx-6">
         <aside className="w-full md:w-72 border-b md:border-b-0 md:border-r border-border bg-card/50 p-4 shrink-0">
           <div className="flex items-center gap-2 mb-4">
             <FlaskConical className="size-5 text-brand-red" />
@@ -145,6 +146,6 @@ export default function AliLabPage() {
           </section>
         </main>
       </div>
-    </>
+    </AliLabShell>
   );
 }

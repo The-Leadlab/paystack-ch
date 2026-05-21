@@ -78,6 +78,28 @@ service cloud.firestore {
       allow create: if createOwnedByUser();
     }
 
+    /** Ali feature lab — pre-production competitor features (promote to /app when ready). */
+    match /ali_lab_budgets/{id} {
+      allow read, update, delete: if resourceOwnedByUser();
+      allow create: if createOwnedByUser();
+    }
+    match /ali_lab_bills/{id} {
+      allow read, update, delete: if resourceOwnedByUser();
+      allow create: if createOwnedByUser();
+    }
+    match /ali_lab_goals/{id} {
+      allow read, update, delete: if resourceOwnedByUser();
+      allow create: if createOwnedByUser();
+    }
+    match /ali_lab_rules/{id} {
+      allow read, update, delete: if resourceOwnedByUser();
+      allow create: if createOwnedByUser();
+    }
+    match /ali_lab_holdings/{id} {
+      allow read, update, delete: if resourceOwnedByUser();
+      allow create: if createOwnedByUser();
+    }
+
     /**
      * Billing profile for the signed-in user (Option B: client writes after server-verified Stripe link).
      * Stripe + email are validated on the server before the client receives billing fields to merge.
