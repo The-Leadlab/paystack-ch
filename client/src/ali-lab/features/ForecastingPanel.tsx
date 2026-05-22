@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AliLabFeature } from "../featureRegistry";
-import { useLabLanguage } from "../context/LabLanguageContext";
+import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import { useAliLabLedger } from "../hooks/useAliLabLedger";
 import { buildCashForecast } from "../utils/forecastFromLedger";
 import { computeLedgerTotals } from "../utils/ledgerTotals";
@@ -49,7 +49,7 @@ export function ForecastingPanel({ feature }: { feature: AliLabFeature }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{feature.summary}</p>
+      <p className="text-sm text-muted-foreground">{summary}</p>
       <div className="flex flex-wrap gap-3 items-center text-xs">
         <label className="font-bold uppercase">
           Starting balance (CHF)
@@ -122,7 +122,7 @@ export function ForecastingPanel({ feature }: { feature: AliLabFeature }) {
         <table className="w-full text-xs border border-border rounded overflow-hidden">
           <thead className="bg-muted/50">
             <tr>
-              <th className="text-left p-2">Week</th>
+              <th className="text-left p-2">{t("week")}</th>
               <th className="text-right p-2">End balance CHF</th>
             </tr>
           </thead>

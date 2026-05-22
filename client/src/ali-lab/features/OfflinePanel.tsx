@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import type { AliLabFeature } from "../featureRegistry";
-import { useLabLanguage } from "../context/LabLanguageContext";
+import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import type { LabOfflineQueueItem } from "../types";
 import { labCollections } from "../aliLabFirestore";
 import { useAliLabPersist } from "../hooks/useAliLabPersist";
 import { useDocuments } from "@/cafe/context/DocumentContext";
 
 export function OfflinePanel({ feature }: { feature: AliLabFeature }) {
-  const { t } = useLabLanguage();
+  const { t, summary } = useLabFeatureText(feature);
   const { documents, loading: docsLoading, refreshDocuments } = useDocuments();
   const { items: queue, add, update, remove, uid } = useAliLabPersist<LabOfflineQueueItem>(
     labCollections.offline,
@@ -47,10 +47,10 @@ export function OfflinePanel({ feature }: { feature: AliLabFeature }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{feature.summary}</p>
+      <p className="text-sm text-muted-foreground">{summary}</p>
       <div className="grid grid-cols-2 gap-2 text-sm">
         <div className="border border-border rounded p-3">
-          <p className="text-[10px] uppercase text-muted-foreground">Network</p>
+          <p className="text-[10px] uppercase text-muted-foreground">{t("network")}</p>
           <p className={`font-bold ${onlineState ? "text-emerald-600" : "text-red-500"}`}>
             {onlineState ? "online" : "offline"}
           </p>
@@ -58,7 +58,7 @@ export function OfflinePanel({ feature }: { feature: AliLabFeature }) {
         <div className="border border-border rounded p-3">
           <p className="text-[10px] uppercase text-muted-foreground">/app documents</p>
           <p className="font-bold">
-            {docsLoading ? "…" : documents.length} in library
+            {docsLoading ? "…" : documents.length} {t("inLibrary")}
           </p>
         </div>
       </div>

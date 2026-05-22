@@ -75,6 +75,7 @@ export function RestaurantDashboard() {
   const { signOut, user } = useAuth();
   const { enforcementEnabled, entitlements } = useSubscription();
   const { language, setLanguage, t } = useLanguage();
+  const errMsg = (error: unknown) => (error instanceof Error ? error.message : t('errorUnknown'));
 
   const openBillingTab = () => {
     setActiveTab('billing');
@@ -131,7 +132,7 @@ export function RestaurantDashboard() {
       );
     } catch (err) {
       console.error('Failed to delete document and linked finances:', err);
-      alert('Could not fully delete this document. Linked income/expense rows may still exist â€” please refresh and try again.');
+      alert(t('alertDocumentDeleteFailed'));
       throw err;
     }
   };
@@ -180,11 +181,11 @@ export function RestaurantDashboard() {
   console.log('=== END DEBUG ===');
 
   const handleMasterReset = async () => {
-    if (!confirm('ðŸ—‘ï¸ MASTER RESET\n\nThis will permanently delete EVERYTHING:\nâ€¢ All sessions\nâ€¢ All income & expenses\nâ€¢ All POS readings\nâ€¢ All documents\nâ€¢ All employees\n\nThis cannot be undone!\n\nAre you absolutely sure?')) {
+    if (!confirm(t('alertMasterResetConfirm'))) {
       return;
     }
     
-    if (!confirm('âš ï¸ FINAL WARNING!\n\nYou are about to delete ALL data from the entire system.\n\nType YES in your mind and click OK to proceed.')) {
+    if (!confirm(t('alertMasterResetFinal'))) {
       return;
     }
 
@@ -236,13 +237,13 @@ export function RestaurantDashboard() {
 
       const deleteCount = await commitDeletesInChunks(db, allRefs);
       
-      alert(`âœ… Master Reset Complete!\n\nDeleted ${deleteCount} records.\n\nThe page will now reload.`);
+      alert(t('alertMasterResetComplete').replace('{count}', String(deleteCount)));
       
       // Refresh data
       window.location.reload();
     } catch (error) {
       console.error('Master reset error:', error);
-      alert('âŒ Error during master reset: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      alert(t('alertMasterResetError').replace('{msg}', errMsg(error)));
     }
   };
 
@@ -255,7 +256,7 @@ export function RestaurantDashboard() {
   };
 
   const handleDeleteSession = async (id: string) => {
-    if (confirm('Delete this session and all its data (income, expenses, documents, POS readings)?')) {
+    if (confirm(t('alertDeleteSessionConfirm'))) {
       await deleteSession(id);
     }
   };
@@ -276,7 +277,7 @@ export function RestaurantDashboard() {
   const handleQueueDocument = async (fileName: string, fileHash?: string, fileRaw?: File): Promise<string> => {
     if (!currentSession) {
       console.error('âŒ No session selected');
-      alert('Please select a session first');
+      alert(t('alertSelectSessionFirst'));
       throw new Error('No session selected');
     }
 
@@ -285,7 +286,7 @@ export function RestaurantDashboard() {
       const existingDoc = documents.find(d => d.fileHash === fileHash);
       if (existingDoc) {
         console.log('âš ï¸ Duplicate document detected:', fileHash);
-        alert(`âš ï¸ This document has already been processed: "${existingDoc.fileName}"\n\nSkipping to avoid duplicate entries.`);
+        alert(t('alertDuplicateDocument').replace('{name}', existingDoc.fileName));
         throw new Error('Duplicate document');
       }
     }
@@ -333,7 +334,7 @@ export function RestaurantDashboard() {
       return createdId;
     } catch (error) {
       console.error('âŒ Error queue-saving document:', error);
-      alert('Failed to queue-save document: ' + (error as Error).message);
+      alert(t('alertQueueSaveFailed').replace('{msg}', errMsg(error)));
       throw error;
     }
   };
@@ -343,7 +344,7 @@ export function RestaurantDashboard() {
 
     if (!currentSession) {
       console.error('âŒ No session selected');
-      alert('Please select a session first');
+      alert(t('alertSelectSessionFirst'));
       throw new Error('No session selected');
     }
 
@@ -371,7 +372,7 @@ export function RestaurantDashboard() {
       }
     } catch (error) {
       console.error('âŒ Error saving document:', error);
-      alert('Failed to save document: ' + (error as Error).message);
+      alert(t('alertSaveDocumentFailed').replace('{msg}', errMsg(error)));
       throw error;
     }
 
@@ -533,10 +534,10 @@ export function RestaurantDashboard() {
       }
       
       console.log('âœ… Document update complete');
-      alert('âœ… Document updated successfully! Dashboard numbers have been refreshed.');
+      alert(t('alertDocumentUpdated'));
     } catch (error) {
       console.error('âŒ Error updating document:', error);
-      alert('Failed to update document: ' + (error as Error).message);
+      alert(t('alertUpdateDocumentFailed').replace('{msg}', errMsg(error)));
     }
   };
 
@@ -567,7 +568,7 @@ export function RestaurantDashboard() {
             onClick={() => setShowSidebar(!showSidebar)}
             className="min-h-11 min-w-11 shrink-0 flex items-center justify-center hover:bg-cdlp-border rounded-lg active:opacity-80"
             aria-expanded={showSidebar}
-            aria-label="Menu"
+            aria-label={t('menuAria')}
           >
             <Menu className="w-6 h-6 text-cdlp-gold" />
           </button>
@@ -878,7 +879,7 @@ export function RestaurantDashboard() {
       {/* Mobile: fixed bottom tab bar (app-style) */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-[45] border-t border-cdlp-border bg-cdlp-black/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] pt-1 shadow-[0_-8px_24px_rgba(0,0,0,0.25)]"
-        aria-label="Navigation principale"
+        aria-label={t('navMainAria')}
       >
         <div className="flex max-w-lg mx-auto items-stretch justify-between gap-1 px-1">
           <button
@@ -984,7 +985,7 @@ export function RestaurantDashboard() {
                 </li>
               </ul>
               <div className="bg-red-600/10 border border-red-600/30 rounded p-3 mt-4">
-                <p className="text-xs text-red-400 font-bold">âš ï¸ This action cannot be undone!</p>
+                <p className="text-xs text-red-400 font-bold">{t('resetCannotUndo')}</p>
               </div>
             </div>
             
@@ -1077,7 +1078,7 @@ export function RestaurantDashboard() {
                         </div>
                         <button
                           onClick={() => {
-                            if (confirm(`Delete employee ${emp.name}?`)) {
+                            if (confirm(t('alertDeleteEmployeeConfirm').replace('{name}', emp.name))) {
                               deleteEmployee(emp.id);
                             }
                           }}
@@ -1224,11 +1225,11 @@ function IncomeExpenseSection({
         console.log('onDrop completed successfully');
       } else {
         console.log('Drop rejected - not from opposite type');
-        alert('Cannot drop here - item is already in this section');
+        alert(t('alertDropRejected'));
       }
     } catch (err) {
       console.error('Drop error:', err);
-      alert('Error during drop: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      alert(t('alertDropError').replace('{msg}', err instanceof Error ? err.message : t('errorUnknown')));
     }
   };
 
@@ -1261,10 +1262,10 @@ function IncomeExpenseSection({
       await onUpdate(editForm.id, updates);
       setEditingId(null);
       setEditForm(null);
-      alert('âœ… Updated successfully!');
+      alert(t('alertUpdatedSuccess'));
     } catch (err) {
       console.error('Save edit error:', err);
-      alert('âŒ Error saving: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      alert(t('alertSaveError').replace('{msg}', err instanceof Error ? err.message : t('errorUnknown')));
     }
   };
 
@@ -1387,7 +1388,7 @@ function IncomeExpenseSection({
                         {isIncome ? item.type : item.category}
                       </p>
                       {item.document_id && (
-                        <FileText className="w-3 h-3 text-cdlp-gold flex-shrink-0" title="Linked to document" />
+                        <FileText className="w-3 h-3 text-cdlp-gold flex-shrink-0" title={t('linkedToDocument')} />
                       )}
                     </div>
                     <p className="text-[10px] md:text-xs text-cdlp-muted">{item.date}</p>
@@ -1438,7 +1439,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
       if (doc) {
         onNavigateToDocument(doc);
       } else {
-        alert('Document not found');
+        alert(t('alertDocumentNotFound'));
       }
     }
   };
@@ -1508,37 +1509,37 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
         <div className="bg-cdlp-black border border-blue-500/30 p-3 md:p-4 rounded-lg shadow-card">
           <div className="flex items-center gap-2 mb-2">
             <Receipt className="w-4 md:w-5 h-4 md:h-5 text-blue-400" />
-            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">VAT Received</span>
+            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('vatReceivedLabel')}</span>
           </div>
           <p className="text-lg md:text-2xl font-black text-blue-400">{vatReceived.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <p className="text-xs text-cdlp-muted">From customers ({vatOnSalesRate.toFixed(2)}% of sales)</p>
+          <p className="text-xs text-cdlp-muted">{t('vatFromCustomersHint').replace('{rate}', vatOnSalesRate.toFixed(2))}</p>
         </div>
 
         <div className="bg-cdlp-black border border-orange-500/30 p-3 md:p-4 rounded-lg shadow-card">
           <div className="flex items-center gap-2 mb-2">
             <Receipt className="w-4 md:w-5 h-4 md:h-5 text-orange-400" />
-            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">VAT Paid</span>
+            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('vatPaidLabel')}</span>
           </div>
           <p className="text-lg md:text-2xl font-black text-orange-400">{vatPaid.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <p className="text-xs text-cdlp-muted">On purchases ({vatOnPurchasesRate.toFixed(2)}% effective)</p>
+          <p className="text-xs text-cdlp-muted">{t('vatOnPurchasesHint').replace('{rate}', vatOnPurchasesRate.toFixed(2))}</p>
         </div>
 
         <div className="bg-cdlp-black border border-purple-500/30 p-3 md:p-4 rounded-lg shadow-card">
           <div className="flex items-center gap-2 mb-2">
             <Receipt className="w-4 md:w-5 h-4 md:h-5 text-purple-400" />
-            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">VAT Balance</span>
+            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('vatBalanceLabel')}</span>
           </div>
           <p className={`text-lg md:text-2xl font-black ${vatBalance >= 0 ? 'text-purple-400' : 'text-red-400'}`}>
             {vatBalance.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
-          <p className="text-xs text-cdlp-muted">{vatBalance >= 0 ? 'To pay (received - paid)' : 'Refund (received - paid)'}</p>
+          <p className="text-xs text-cdlp-muted">{vatBalance >= 0 ? t('vatBalanceToPay') : t('vatBalanceRefund')}</p>
         </div>
       </div>
 
       {/* Document Upload Section */}
       {!currentSession && !isAllSessionsView && (
         <div className="mb-6 bg-cdlp-gold/10 border border-cdlp-gold rounded-lg p-4">
-          <p className="text-sm text-cdlp-gold">âš ï¸ Please create or select a session to upload documents</p>
+          <p className="text-sm text-cdlp-gold">{t('alertSelectSessionForUpload')}</p>
         </div>
       )}
       {currentSession && (
@@ -1564,7 +1565,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           onAdd={currentSession ? onAddIncome : undefined}
           onEdit={(item) => {/* TODO: Implement edit */}}
           onDelete={async (id) => {
-            if (confirm('Delete this income entry?')) {
+            if (confirm(t('alertDeleteIncomeConfirm'))) {
               await deleteIncome(id);
             }
           }}
@@ -1580,7 +1581,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             console.log('Item has category?', !!item.category);
             console.log('Item has type?', !!item.type);
             
-            if (confirm('Convert this expense to income?')) {
+            if (confirm(t('alertConvertExpenseToIncomeConfirm'))) {
               try {
                 console.log('User confirmed conversion');
                 console.log('Calling addIncome with params:', {
@@ -1598,14 +1599,14 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                   console.log('Income added successfully, now deleting expense:', item.id);
                   await deleteExpense(item.id);
                   console.log('Expense deleted successfully');
-                  alert('âœ… Converted to income successfully!');
+                  alert(t('alertConvertedToIncomeSuccess'));
                 } else {
                   console.error('addIncome returned null');
-                  alert('âŒ Failed to add income - check console for details');
+                  alert(t('alertAddIncomeFailed'));
                 }
               } catch (err) {
                 console.error('Error converting to income:', err);
-                alert('âŒ Error: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                alert(t('alertGenericError').replace('{msg}', err instanceof Error ? err.message : t('errorUnknown')));
               }
             } else {
               console.log('User cancelled conversion');
@@ -1622,7 +1623,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           onAdd={currentSession ? onAddExpense : undefined}
           onEdit={(item) => {/* TODO: Implement edit */}}
           onDelete={async (id) => {
-            if (confirm('Delete this expense entry?')) {
+            if (confirm(t('alertDeleteExpenseConfirm'))) {
               await deleteExpense(id);
             }
           }}
@@ -1638,7 +1639,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             console.log('Item has category?', !!item.category);
             console.log('Item has type?', !!item.type);
             
-            if (confirm('Convert this income to expense?')) {
+            if (confirm(t('alertConvertIncomeToExpenseConfirm'))) {
               try {
                 console.log('User confirmed conversion');
                 console.log('Calling addExpense with params:', {
@@ -1656,14 +1657,14 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                   console.log('Expense added successfully, now deleting income:', item.id);
                   await deleteIncome(item.id);
                   console.log('Income deleted successfully');
-                  alert('âœ… Converted to expense successfully!');
+                  alert(t('alertConvertedToExpenseSuccess'));
                 } else {
                   console.error('addExpense returned null');
-                  alert('âŒ Failed to add expense - check console for details');
+                  alert(t('alertAddExpenseFailed'));
                 }
               } catch (err) {
                 console.error('Error converting to expense:', err);
-                alert('âŒ Error: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                alert(t('alertGenericError').replace('{msg}', err instanceof Error ? err.message : t('errorUnknown')));
               }
             } else {
               console.log('User cancelled conversion');

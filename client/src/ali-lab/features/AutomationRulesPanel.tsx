@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { AliLabFeature } from "../featureRegistry";
-import { useLabLanguage } from "../context/LabLanguageContext";
+import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import type { LabAutomationRule } from "../types";
 import { labCollections } from "../aliLabFirestore";
 import { useAliLabPersist } from "../hooks/useAliLabPersist";
@@ -8,7 +8,7 @@ import { detectCategory } from "@/cafe/services/categoryDetectionService";
 import { useAliLabLedger } from "../hooks/useAliLabLedger";
 
 export function AutomationRulesPanel({ feature }: { feature: AliLabFeature }) {
-  const { t } = useLabLanguage();
+  const { t, summary } = useLabFeatureText(feature);
   const ledger = useAliLabLedger();
   const { items, add, remove, update } = useAliLabPersist<LabAutomationRule>(labCollections.rules, "rules", []);
   const [match, setMatch] = useState("");
@@ -50,7 +50,7 @@ export function AutomationRulesPanel({ feature }: { feature: AliLabFeature }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{feature.summary}</p>
+      <p className="text-sm text-muted-foreground">{summary}</p>
       <div className="flex flex-wrap gap-2 text-sm">
         <input
           className="border border-border rounded px-2 py-1 flex-1 min-w-[120px]"
@@ -115,7 +115,7 @@ export function AutomationRulesPanel({ feature }: { feature: AliLabFeature }) {
         {testResult && <p className="text-sm">{testResult}</p>}
       </div>
       <div className="border border-border rounded p-3">
-        <p className="text-xs font-bold uppercase mb-2">Batch test (live /app descriptions)</p>
+        <p className="text-xs font-bold uppercase mb-2">{t("batchTestTitle")}</p>
         <ul className="text-xs space-y-1">
           {batchResults.map((r) => (
             <li key={r.desc} className="flex justify-between gap-2 border-t border-border/50 pt-1 first:border-0 first:pt-0">

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { AliLabFeature } from "../featureRegistry";
-import { useLabLanguage } from "../context/LabLanguageContext";
+import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import type { LabBill } from "../types";
 import { labCollections } from "../aliLabFirestore";
 import { useAliLabPersist } from "../hooks/useAliLabPersist";
@@ -13,7 +13,7 @@ function annualizedChf(b: LabBill): number {
 }
 
 export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
-  const { t } = useLabLanguage();
+  const { t, summary } = useLabFeatureText(feature);
   const ledger = useAliLabLedger();
   const { items, add, remove, uid } = useAliLabPersist<LabBill>(labCollections.bills, "bills", [
     { id: "seed-1", name: "Serafe", dueDate: "2026-06-01", amountChf: 335, recurrence: "yearly", remindDaysBefore: 14 },
@@ -47,14 +47,14 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{feature.summary}</p>
+      <p className="text-sm text-muted-foreground">{summary}</p>
       <p className="text-xs text-muted-foreground">
-        {t("annualCost")}: <strong>{totalAnnual.toLocaleString("de-CH")} CHF</strong> (committed recurring)
+        {t("annualCost")}: <strong>{totalAnnual.toLocaleString("de-CH")} CHF</strong> {t("committedRecurringSuffix")}
       </p>
       <div className="flex flex-wrap gap-2 text-sm">
         <input
           className="border border-border rounded px-2 py-1 flex-1 min-w-[120px]"
-          placeholder="Serafe, LAMal, rent…"
+          placeholder={t("billPlaceholder")}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
@@ -116,7 +116,10 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
             <span className="flex items-center gap-2">
               <span className="font-medium text-right">
                 {b.amountChf.toLocaleString("de-CH")} CHF
-                <span className="block text-[10px] text-muted-foreground">{b.annualChf.toLocaleString("de-CH")}/yr</span>
+                <span className="block text-[10px] text-muted-foreground">
+                  {b.annualChf.toLocaleString("de-CH")}
+                  {t("perYear")}
+                </span>
               </span>
               <button type="button" className="text-[10px] text-muted-foreground underline" onClick={() => void remove(b.id)}>
                 {t("delete")}
@@ -125,7 +128,7 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
           </li>
         ))}
       </ul>
-      {!uid && <p className="text-xs text-muted-foreground">Swiss presets (Serafe) stored locally until sign-in.</p>}
+      {!uid && <p className="text-xs text-muted-foreground">{t("swissPresetsLocal")}</p>}
     </div>
   );
 }

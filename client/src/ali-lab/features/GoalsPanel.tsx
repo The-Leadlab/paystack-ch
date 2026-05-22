@@ -1,13 +1,13 @@
 import { useState } from "react";
 import type { AliLabFeature } from "../featureRegistry";
-import { useLabLanguage } from "../context/LabLanguageContext";
+import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import type { LabGoal } from "../types";
 import { labCollections } from "../aliLabFirestore";
 import { useAliLabPersist } from "../hooks/useAliLabPersist";
 import { useAliLabLedger } from "../hooks/useAliLabLedger";
 
 export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
-  const { t } = useLabLanguage();
+  const { t, summary } = useLabFeatureText(feature);
   const { items, add, update, remove } = useAliLabPersist<LabGoal>(labCollections.goals, "goals", []);
   const ledger = useAliLabLedger();
   const surplus = Math.max(0, ledger.balance);
@@ -26,7 +26,7 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{feature.summary}</p>
+      <p className="text-sm text-muted-foreground">{summary}</p>
       <p className="text-xs rounded border border-border bg-muted/30 px-3 py-2">
         Available surplus from live ledger: <strong>{surplus.toLocaleString("de-CH")} CHF</strong>
       </p>

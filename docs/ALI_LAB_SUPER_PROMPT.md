@@ -255,3 +255,9 @@ Run for local API gate:
 pnpm dev:stripe-server   # port 8787 — serves POST /api/ali/verify
 pnpm dev                 # proxies /api/ali → 8787
 ```
+
+---
+
+## Related docs
+
+- `docs/I18N_SUPER_PROMPT.md` — full-site translation fixes (landing, `/app`, `/ali`)

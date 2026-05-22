@@ -3,20 +3,25 @@ import { SubscriptionProvider } from "@/cafe/context/SubscriptionContext";
 import { SessionProvider } from "@/cafe/context/SessionContext";
 import { FinanceProvider } from "@/cafe/context/FinanceContext";
 import { DocumentProvider } from "@/cafe/context/DocumentContext";
-import { LabLanguageProvider } from "./context/LabLanguageContext";
+import { LabLanguageProvider, useLabLanguage } from "./context/LabLanguageContext";
 import { AliLabAuthBanner } from "./components/AliLabAuthBanner";
 import { LabLedgerSnapshot } from "./components/LabLedgerSnapshot";
 import { firebaseReady } from "@/cafe/lib/firebase";
+
+function FirebaseLabBanner() {
+  const { t } = useLabLanguage();
+  return (
+    <p className="text-xs bg-amber-500/10 text-amber-800 dark:text-amber-200 px-4 py-2 text-center">
+      {t("firebaseNotConfigured")}
+    </p>
+  );
+}
 
 export function AliLabShell({ children }: { children: ReactNode }) {
   return (
     <LabLanguageProvider>
       <div className="min-h-[100dvh] bg-background text-foreground">
-        {!firebaseReady && (
-          <p className="text-xs bg-amber-500/10 text-amber-800 dark:text-amber-200 px-4 py-2 text-center">
-            Firebase not configured — lab features use localStorage only.
-          </p>
-        )}
+        {!firebaseReady && <FirebaseLabBanner />}
         <SubscriptionProvider>
           <SessionProvider>
             <FinanceProvider>

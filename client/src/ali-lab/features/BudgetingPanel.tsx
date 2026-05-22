@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { AliLabFeature } from "../featureRegistry";
-import { useLabLanguage } from "../context/LabLanguageContext";
+import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import { useAliLabLedger } from "../hooks/useAliLabLedger";
 import type { Expense } from "@/cafe/types";
 import type { LabBudgetMode } from "../types";
@@ -37,7 +37,7 @@ function spentForMonth(
 }
 
 export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
-  const { t } = useLabLanguage();
+  const { t, summary } = useLabFeatureText(feature);
   const ledger = useAliLabLedger();
   const { filteredExpenses: expenses, filteredIncome: income, loading: finLoading, currentSession } =
     ledger;
@@ -81,7 +81,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{feature.summary}</p>
+      <p className="text-sm text-muted-foreground">{summary}</p>
       <div className="flex flex-wrap gap-3 items-center text-xs">
         <label className="font-bold uppercase">
           {t("month")}{" "}
@@ -100,12 +100,12 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
           <option value="traditional">{t("traditional")}</option>
           <option value="zero-based">{t("zeroBased")}</option>
         </select>
-        {finLoading && <span className="text-muted-foreground">Loading ledger…</span>}
-        {!uid && <span className="text-amber-600">Using local budget cache</span>}
+        {finLoading && <span className="text-muted-foreground">{t("loadingLedger")}</span>}
+        {!uid && <span className="text-amber-600">{t("localBudgetCache")}</span>}
       </div>
       {mode === "zero-based" && (
         <p className="text-xs rounded bg-muted/50 p-2">
-          Income this month: <strong>{totalIncome.toLocaleString("de-CH")} CHF</strong> — unallocated:{" "}
+          {t("incomeThisMonth")}: <strong>{totalIncome.toLocaleString("de-CH")} CHF</strong> — {t("unallocated")}:{" "}
           <strong className={zeroBasedGap < 0 ? "text-red-500" : "text-emerald-600"}>
             {zeroBasedGap.toLocaleString("de-CH")} CHF
           </strong>
@@ -150,7 +150,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
         </tbody>
         <tfoot className="bg-muted/30 font-bold">
           <tr>
-            <td className="p-2">Total</td>
+            <td className="p-2">{t("total")}</td>
             <td className="p-2 text-right">{totalBudget.toLocaleString("de-CH")}</td>
             <td className="p-2 text-right">{totalSpent.toLocaleString("de-CH")}</td>
             <td className="p-2 text-right">{(totalBudget - totalSpent).toLocaleString("de-CH")}</td>

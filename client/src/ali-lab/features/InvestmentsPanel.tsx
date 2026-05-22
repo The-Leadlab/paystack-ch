@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import type { AliLabFeature } from "../featureRegistry";
-import { useLabLanguage } from "../context/LabLanguageContext";
+import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import type { LabHolding } from "../types";
 import { labCollections } from "../aliLabFirestore";
 import { useAliLabPersist } from "../hooks/useAliLabPersist";
 import { useAliLabLedger } from "../hooks/useAliLabLedger";
 
 export function InvestmentsPanel({ feature }: { feature: AliLabFeature }) {
-  const { t } = useLabLanguage();
+  const { t, summary } = useLabFeatureText(feature);
   const ledger = useAliLabLedger();
   const { items, add, remove, update } = useAliLabPersist<LabHolding>(labCollections.holdings, "holdings", []);
   const [symbol, setSymbol] = useState("");
@@ -27,7 +27,7 @@ export function InvestmentsPanel({ feature }: { feature: AliLabFeature }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{feature.summary}</p>
+      <p className="text-sm text-muted-foreground">{summary}</p>
       {vsOperating != null && Number.isFinite(vsOperating) && (
         <p className="text-xs text-muted-foreground">
           Portfolio vs operating balance: <strong>{vsOperating.toFixed(1)}%</strong> of session net ({ledger.balance.toLocaleString("de-CH")} CHF)

@@ -1,10 +1,10 @@
 import type { AliLabFeature } from "../featureRegistry";
-import { useLabLanguage } from "../context/LabLanguageContext";
+import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import { labT, type LabLang } from "../i18n/labStrings";
 import { LAB_I18N_KEYS, labTranslationCoverage } from "../i18n/labCoverage";
 
 export function DeItPanel({ feature }: { feature: AliLabFeature }) {
-  const { lang, setLang } = useLabLanguage();
+  const { lang, setLang, summary, t } = useLabFeatureText(feature);
   const coverage = labTranslationCoverage(lang);
 
   return (
@@ -29,7 +29,9 @@ export function DeItPanel({ feature }: { feature: AliLabFeature }) {
       </div>
       <div className="grid grid-cols-2 gap-2 text-sm">
         <div className="border border-border rounded p-3">
-          <p className="text-[10px] uppercase text-muted-foreground">Coverage ({lang})</p>
+          <p className="text-[10px] uppercase text-muted-foreground">
+            {t("coverage")} ({lang})
+          </p>
           <p className="text-2xl font-bold">{coverage.percent}%</p>
           <p className="text-xs text-muted-foreground">
             {coverage.localized}/{coverage.total} keys localized

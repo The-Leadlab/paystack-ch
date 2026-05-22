@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { AliLabFeature } from "../featureRegistry";
-import { useLabLanguage } from "../context/LabLanguageContext";
+import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import type { LabFairSplit, LabMember } from "../types";
 import { labCollections } from "../aliLabFirestore";
 import { useAliLabPersist } from "../hooks/useAliLabPersist";
@@ -8,7 +8,7 @@ import { useAuth } from "@/cafe/context/AuthContext";
 import { useAliLabLedger } from "../hooks/useAliLabLedger";
 
 export function SharedAccessPanel({ feature }: { feature: AliLabFeature }) {
-  const { t } = useLabLanguage();
+  const { t, summary } = useLabFeatureText(feature);
   const { user } = useAuth();
   const ledger = useAliLabLedger();
   const { items: members, add: addMember, remove: removeMember } = useAliLabPersist<LabMember>(
@@ -42,10 +42,9 @@ export function SharedAccessPanel({ feature }: { feature: AliLabFeature }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{feature.summary}</p>
+      <p className="text-sm text-muted-foreground">{summary}</p>
       <p className="text-xs rounded border border-emerald-500/30 bg-emerald-500/5 p-3">
-        Recent session expenses (last 5 rows): <strong>{recentExpenseTotal.toLocaleString("de-CH")} CHF</strong> — use
-        when creating FairSplit from real spend.
+        {t("recentExpensesHint")} <strong>{recentExpenseTotal.toLocaleString("de-CH")} CHF</strong> — {t("useForSplit")}
       </p>
       <div className="flex flex-wrap gap-2 text-sm">
         <input
@@ -91,7 +90,7 @@ export function SharedAccessPanel({ feature }: { feature: AliLabFeature }) {
         ))}
       </ul>
       <div className="border border-border rounded p-3 space-y-2">
-        <p className="text-xs font-bold uppercase">FairSplit</p>
+        <p className="text-xs font-bold uppercase">{t("fairSplit")}</p>
         <div className="flex flex-wrap gap-2 text-sm">
           <input
             className="border border-border rounded px-2 py-1 flex-1"
@@ -134,7 +133,7 @@ export function SharedAccessPanel({ feature }: { feature: AliLabFeature }) {
               setSplitLabel("");
             }}
           >
-            Add split
+            {t("addSplit")}
           </button>
         </div>
         <ul className="text-xs space-y-2">
