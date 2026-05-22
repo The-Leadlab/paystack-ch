@@ -6,7 +6,7 @@ import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
-import { useLanguage } from '../context/LanguageContext';
+import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useDocuments } from '../context/DocumentContext';
 import { usePOS } from '../context/POSContext';
 import { DocumentProcessor } from './DocumentProcessor';
@@ -600,7 +600,7 @@ export function RestaurantDashboard() {
             onClick={() => setShowMasterReset(true)}
             className="w-full flex items-center justify-center gap-2 py-2 mb-3 bg-red-600/10 border border-red-600 text-red-400 text-xs font-bold uppercase rounded hover:bg-red-600/20"
           >
-            <Trash2 className="w-4 h-4" /> Master Reset
+            <Trash2 className="w-4 h-4" /> {t('dashMasterReset')}
           </button>
           
           <div className="flex items-center justify-between mb-3">
@@ -630,7 +630,7 @@ export function RestaurantDashboard() {
 
         {/* Mobile Header in Sidebar */}
         <div className="md:hidden shrink-0 p-4 border-b border-cdlp-border flex items-center justify-between">
-          <span className="font-bold text-cdlp-gold text-sm uppercase">Sessions</span>
+          <span className="font-bold text-cdlp-gold text-sm uppercase">{t('sessions')}</span>
           <button onClick={() => setShowSidebar(false)}>
             <X className="w-5 h-5 text-cdlp-muted" />
           </button>
@@ -951,37 +951,37 @@ export function RestaurantDashboard() {
                 <Trash2 className="w-6 h-6 text-red-500" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-red-500 uppercase">Master Reset</h3>
-                <p className="text-xs text-red-400">Permanent deletion</p>
+                <h3 className="text-lg font-black text-red-500 uppercase">{t('dashMasterReset')}</h3>
+                <p className="text-xs text-red-400">{t('dashPermanentDeletion')}</p>
               </div>
             </div>
             
             <div className="mb-6 space-y-3">
-              <p className="text-sm text-white font-bold">This will permanently delete EVERYTHING:</p>
+              <p className="text-sm text-white font-bold">{t('dashDeleteEverything')}</p>
               <ul className="space-y-2 text-xs text-cdlp-muted">
                 <li className="flex items-center gap-2">
                   <X className="w-4 h-4 text-red-500" />
-                  <span>All sessions ({sessions.length})</span>
+                  <span>{t('dashAllSessionsCount').replace('{n}', String(sessions.length))}</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <X className="w-4 h-4 text-red-500" />
-                  <span>All income entries ({income.length})</span>
+                  <span>{t('dashAllIncomeCount').replace('{n}', String(income.length))}</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <X className="w-4 h-4 text-red-500" />
-                  <span>All expense entries ({expenses.length})</span>
+                  <span>{t('dashAllExpensesCount').replace('{n}', String(expenses.length))}</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <X className="w-4 h-4 text-red-500" />
-                  <span>All POS readings</span>
+                  <span>{t('dashAllPosReadings')}</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <X className="w-4 h-4 text-red-500" />
-                  <span>All documents ({documents.length})</span>
+                  <span>{t('dashAllDocumentsCount').replace('{n}', String(documents.length))}</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <X className="w-4 h-4 text-red-500" />
-                  <span>All employees ({employees.length})</span>
+                  <span>{t('dashAllEmployeesCount').replace('{n}', String(employees.length))}</span>
                 </li>
               </ul>
               <div className="bg-red-600/10 border border-red-600/30 rounded p-3 mt-4">
@@ -997,13 +997,13 @@ export function RestaurantDashboard() {
                 }}
                 className="flex-1 py-3 bg-red-600 text-white text-sm font-bold uppercase rounded hover:bg-red-700"
               >
-                Yes, Delete Everything
+                {t('dashYesDeleteEverything')}
               </button>
               <button
                 onClick={() => setShowMasterReset(false)}
                 className="flex-1 py-3 bg-cdlp-card border border-cdlp-border text-white text-sm font-bold uppercase rounded hover:bg-cdlp-border/50"
               >
-                Cancel
+                {t('cancel')}
               </button>
             </div>
           </div>
@@ -1025,8 +1025,8 @@ export function RestaurantDashboard() {
               {/* Header */}
               <div className="flex items-center justify-between mb-6 pb-4 border-b border-cdlp-border">
                 <div>
-                  <h2 className="text-xl font-black text-cdlp-gold uppercase">Employees</h2>
-                  <p className="text-xs text-cdlp-muted mt-1">Payroll & State Contributions</p>
+                  <h2 className="text-xl font-black text-cdlp-gold uppercase">{t('employees')}</h2>
+                  <p className="text-xs text-cdlp-muted mt-1">{t('dashEmployeesSubtitle')}</p>
                 </div>
                 <button
                   onClick={() => setShowEmployeePanel(false)}
@@ -1051,7 +1051,7 @@ export function RestaurantDashboard() {
               </button>
               {enforcementEnabled && entitlements.maxEmployeeSlots != null ? (
                 <p className={`mb-6 text-[10px] font-bold uppercase tracking-tight ${canAddEmployee ? 'text-cdlp-muted' : 'text-red-400'}`}>
-                  {employees.length}/{entitlements.maxEmployeeSlots} employee slot(s)
+                  {t('dashEmployeeSlots').replace('{n}', String(employees.length)).replace('{max}', String(entitlements.maxEmployeeSlots))}
                   {!canAddEmployee ? ` Â· ${employeeLimitMessage}` : ''}
                 </p>
               ) : (
@@ -1062,8 +1062,8 @@ export function RestaurantDashboard() {
               {employees.length === 0 ? (
                 <div className="text-center py-12">
                   <Users className="w-12 h-12 text-cdlp-muted/30 mx-auto mb-3" />
-                  <p className="text-sm text-cdlp-muted">No employees yet</p>
-                  <p className="text-xs text-cdlp-muted/60 mt-1">Add your first employee to track payroll</p>
+                  <p className="text-sm text-cdlp-muted">{t('dashNoEmployeesYet')}</p>
+                  <p className="text-xs text-cdlp-muted/60 mt-1">{t('dashAddFirstEmployee')}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -1099,7 +1099,7 @@ export function RestaurantDashboard() {
                         )}
                         {emp.social_contributions && (
                           <div className="flex justify-between items-center">
-                            <span className="text-xs text-cdlp-muted">Social Contributions</span>
+                            <span className="text-xs text-cdlp-muted">{t('dashSocialCharges')}</span>
                             <span className="text-sm font-bold text-blue-400">
                               {emp.social_contributions.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
                             </span>
@@ -1107,7 +1107,7 @@ export function RestaurantDashboard() {
                         )}
                         {emp.state_rest && (
                           <div className="flex justify-between items-center">
-                            <span className="text-xs text-cdlp-muted">State Rest</span>
+                            <span className="text-xs text-cdlp-muted">{t('dashStateRest')}</span>
                             <span className="text-sm font-bold text-purple-400">
                               {emp.state_rest.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
                             </span>
@@ -1115,7 +1115,7 @@ export function RestaurantDashboard() {
                         )}
                         {emp.monthly_salary && (
                           <div className="flex justify-between items-center pt-2 border-t border-cdlp-border">
-                            <span className="text-xs font-bold text-cdlp-gold uppercase">Total Cost</span>
+                            <span className="text-xs font-bold text-cdlp-gold uppercase">{t('dashTotalCost')}</span>
                             <span className="text-sm font-black text-cdlp-gold">
                               {emp.monthly_salary.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
                             </span>
@@ -1131,7 +1131,7 @@ export function RestaurantDashboard() {
               {employees.length > 0 && (
                 <div className="mt-6 p-4 bg-cdlp-gold/10 border border-cdlp-gold/30 rounded-lg">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-bold text-cdlp-gold uppercase">Total Payroll</span>
+                    <span className="text-sm font-bold text-cdlp-gold uppercase">{t('dashTotalPayroll')}</span>
                     <span className="text-lg font-black text-cdlp-gold">
                       {employees.reduce((sum, emp) => sum + (emp.monthly_salary || 0), 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
                     </span>
@@ -1336,7 +1336,7 @@ function IncomeExpenseSection({
                     type="text"
                     value={editForm.description || ''}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                    placeholder="Description"
+                    placeholder={t('dashDescription')}
                     className="w-full px-2 py-1 bg-cdlp-dark border border-cdlp-border rounded text-xs text-white"
                   />
                   {isIncome ? (
@@ -1365,13 +1365,13 @@ function IncomeExpenseSection({
                       onClick={saveEdit}
                       className="flex-1 px-2 py-1 bg-emerald-600 text-white text-[10px] font-bold uppercase rounded hover:bg-emerald-700"
                     >
-                      <Check className="w-3 h-3 inline mr-1" /> Save
+                      <Check className="w-3 h-3 inline mr-1" /> {t('dashSave')}
                     </button>
                     <button
                       onClick={cancelEdit}
                       className="flex-1 px-2 py-1 bg-cdlp-card border border-cdlp-border text-white text-[10px] font-bold uppercase rounded hover:bg-cdlp-border/50"
                     >
-                      <X className="w-3 h-3 inline mr-1" /> Cancel
+                      <X className="w-3 h-3 inline mr-1" /> {t('cancel')}
                     </button>
                   </div>
                 </div>
@@ -1404,14 +1404,14 @@ function IncomeExpenseSection({
                       <button
                         onClick={() => startEdit(item)}
                         className="p-1 hover:bg-cdlp-gold/20 rounded transition-colors"
-                        title="Edit"
+                        title={t('dashActionEdit')}
                       >
                         <Edit2 className="w-3 h-3 text-cdlp-gold" />
                       </button>
                       <button
                         onClick={() => onDelete(item.id)}
                         className="p-1 hover:bg-red-500/20 rounded transition-colors"
-                        title="Delete"
+                        title={t('dashActionDelete')}
                       >
                         <Trash2 className="w-3 h-3 text-red-500" />
                       </button>
@@ -1459,7 +1459,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           onClick={onShowEmployeePanel}
           className="flex items-center gap-2 px-4 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light transition-colors"
         >
-          <Users className="w-4 h-4" /> Employees
+          <Users className="w-4 h-4" /> {t('employees')}
         </button>
       </div>
 
@@ -1684,7 +1684,14 @@ function ReportsPlaceholder() {
   const { currentSession, isAllSessionsView, sessions } = useSession();
   const { enforcementEnabled, entitlements } = useSubscription();
   const { t } = useLanguage();
+  const chfLocale = useChfLocale();
   const advancedReports = !enforcementEnabled || entitlements.advancedAnalyticsAndReports;
+
+  const categoryLabel = (cat: string) => {
+    const known = ['BILLS', 'SUPPLIERS', 'PAYROLL', 'PAYROLL_TAXES', 'OTHER'] as const;
+    if ((known as readonly string[]).includes(cat)) return t(cat);
+    return cat;
+  };
   const [dateFrom, setDateFrom] = React.useState('');
   const [dateTo, setDateTo] = React.useState('');
   const [filterActive, setFilterActive] = React.useState(false);
@@ -1820,7 +1827,7 @@ function ReportsPlaceholder() {
       supplierData,
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
-      sessionName: isAllSessionsView ? 'All Sessions' : (currentSession ? getSessionDisplayName(currentSession) : undefined)
+      sessionName: isAllSessionsView ? t('allSessions') : (currentSession ? getSessionDisplayName(currentSession) : undefined)
     };
     
     if (format === 'csv') {
@@ -1839,7 +1846,7 @@ function ReportsPlaceholder() {
       supplierData,
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
-      sessionName: isAllSessionsView ? 'All Sessions' : (currentSession ? getSessionDisplayName(currentSession) : undefined)
+      sessionName: isAllSessionsView ? t('allSessions') : (currentSession ? getSessionDisplayName(currentSession) : undefined)
     };
 
     if (format === 'csv') {
@@ -1855,7 +1862,7 @@ function ReportsPlaceholder() {
       <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">Date Range Filter</label>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">{t('repDateRangeFilter')}</label>
             <div className="flex gap-2">
               <input
                 type="date"
@@ -1872,27 +1879,27 @@ function ReportsPlaceholder() {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">Category Filter</label>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">{t('repCategoryFilter')}</label>
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
               className="w-full px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
             >
-              <option value="all">All Categories</option>
+              <option value="all">{t('repAllCategories')}</option>
               {uniqueCategories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat}>{categoryLabel(cat)}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">Supplier Filter</label>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">{t('repSupplierFilter')}</label>
             <select
               value={supplierFilter}
               onChange={(e) => setSupplierFilter(e.target.value)}
               className="w-full px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
               disabled={uniqueSuppliers.length === 0}
             >
-              <option value="all">All Suppliers</option>
+              <option value="all">{t('repAllSuppliers')}</option>
               {uniqueSuppliers.map(sup => (
                 <option key={sup} value={sup}>{sup}</option>
               ))}
@@ -1901,26 +1908,32 @@ function ReportsPlaceholder() {
         </div>
         <div className="flex flex-wrap gap-2 mb-3">
           <button onClick={() => setQuickFilter('thisMonth')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
-            This Month
+            {t('repThisMonth')}
           </button>
           <button onClick={() => setQuickFilter('lastMonth')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
-            Last Month
+            {t('repLastMonth')}
           </button>
           <button onClick={() => setQuickFilter('last3Months')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
-            Last 3 Months
+            {t('repLast3Months')}
           </button>
           <button onClick={() => setQuickFilter('thisYear')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
-            This Year
+            {t('repThisYear')}
           </button>
           <button onClick={clearFilter} className="px-3 py-1.5 bg-red-600/10 border border-red-600 text-red-400 text-xs font-bold uppercase rounded hover:bg-red-600/20">
-            Clear All
+            {t('repClearAll')}
           </button>
         </div>
         {(filterActive || categoryFilter !== 'all' || supplierFilter !== 'all') && (
           <div className="text-xs text-cdlp-gold flex flex-wrap gap-2">
-            {filterActive && dateFrom && dateTo && <span>ðŸ“… Date: {dateFrom} â†’ {dateTo}</span>}
-            {categoryFilter !== 'all' && <span>ðŸ“‚ Category: {categoryFilter}</span>}
-            {supplierFilter !== 'all' && <span>ðŸ¢ Supplier: {supplierFilter}</span>}
+            {filterActive && dateFrom && dateTo && (
+              <span>{t('repFilterDate').replace('{from}', dateFrom).replace('{to}', dateTo)}</span>
+            )}
+            {categoryFilter !== 'all' && (
+              <span>{t('repFilterCategory').replace('{cat}', categoryLabel(categoryFilter))}</span>
+            )}
+            {supplierFilter !== 'all' && (
+              <span>{t('repFilterSupplier').replace('{name}', supplierFilter)}</span>
+            )}
           </div>
         )}
       </div>
@@ -1930,15 +1943,13 @@ function ReportsPlaceholder() {
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="space-y-3 w-full lg:w-auto">
             <div>
-              <h3 className="text-sm font-bold text-cdlp-gold uppercase mb-1">Export Report</h3>
-              <p className="text-xs text-cdlp-muted">Download filtered data in your preferred format</p>
+              <h3 className="text-sm font-bold text-cdlp-gold uppercase mb-1">{t('repExportReport')}</h3>
+              <p className="text-xs text-cdlp-muted">{t('repExportReportDesc')}</p>
             </div>
             {advancedReports ? (
               <div>
-                <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-1">Swiss TVA Statement</h4>
-                <p className="text-[11px] text-cdlp-muted">
-                  TVA collected from clients minus TVA paid to suppliers, with warnings when TVA is missing.
-                </p>
+                <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-1">{t('repSwissVatStatement')}</h4>
+                <p className="text-[11px] text-cdlp-muted">{t('repSwissVatDesc')}</p>
               </div>
             ) : null}
           </div>
@@ -1948,7 +1959,7 @@ function ReportsPlaceholder() {
                 onClick={() => handleExport('csv')}
                 className="flex items-center gap-2 px-4 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light transition-colors"
               >
-                <Download className="w-4 h-4" /> Download CSV
+                <Download className="w-4 h-4" /> {t('repDownloadCsv')}
               </button>
               <button
                 type="button"
@@ -1957,7 +1968,7 @@ function ReportsPlaceholder() {
                 onClick={() => advancedReports && handleExport('pdf')}
                 className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-gold text-cdlp-gold text-xs font-bold uppercase rounded hover:bg-cdlp-gold/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <Download className="w-4 h-4" /> Download PDF
+                <Download className="w-4 h-4" /> {t('repDownloadPdf')}
               </button>
             </div>
             {advancedReports ? (
@@ -1967,24 +1978,24 @@ function ReportsPlaceholder() {
                   onChange={(e) => setVatPeriodMode(e.target.value as 'month' | 'semester' | 'year' | 'allYears')}
                   className="px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-xs font-bold uppercase text-white"
                 >
-                  <option value="month">TVA by Month</option>
-                  <option value="semester">TVA by 6 Months</option>
-                  <option value="year">TVA by Year</option>
-                  <option value="allYears">TVA Every Year</option>
+                  <option value="month">{t('repTvaByMonth')}</option>
+                  <option value="semester">{t('repTvaBy6Months')}</option>
+                  <option value="year">{t('repTvaByYear')}</option>
+                  <option value="allYears">{t('repTvaEveryYear')}</option>
                 </select>
                 <button
                   type="button"
                   onClick={() => handleVatExport('csv')}
                   className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold uppercase rounded hover:bg-blue-700 transition-colors"
                 >
-                  <Download className="w-4 h-4" /> TVA CSV
+                  <Download className="w-4 h-4" /> {t('repTvaCsv')}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleVatExport('pdf')}
                   className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-blue-500 text-blue-400 text-xs font-bold uppercase rounded hover:bg-blue-500/10 transition-colors"
                 >
-                  <Download className="w-4 h-4" /> TVA PDF
+                  <Download className="w-4 h-4" /> {t('repTvaPdf')}
                 </button>
               </div>
             ) : (
@@ -1998,38 +2009,38 @@ function ReportsPlaceholder() {
       <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-4 md:p-6">
         <div className="flex items-center gap-2 mb-4">
           <BarChart3 className="w-5 h-5 text-cdlp-gold" />
-          <h2 className="text-sm md:text-base font-black text-cdlp-gold uppercase">Monthly Revenue Analysis</h2>
+          <h2 className="text-sm md:text-base font-black text-cdlp-gold uppercase">{t('repMonthlyAnalysis')}</h2>
         </div>
         {monthlyData.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-cdlp-muted text-sm">No data available</p>
-            <p className="text-cdlp-muted/70 text-xs mt-2">Add income and expenses to see monthly breakdown</p>
+            <p className="text-cdlp-muted text-sm">{t('repNoData')}</p>
+            <p className="text-cdlp-muted/70 text-xs mt-2">{t('repNoDataHint')}</p>
           </div>
         ) : (
           <div className="space-y-3">
             {monthlyData.map(([month, data]) => {
-              const monthName = new Date(month + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+              const monthName = new Date(month + '-01').toLocaleDateString(chfLocale, { year: 'numeric', month: 'long' });
               return (
                 <div key={month} className="bg-cdlp-card border border-cdlp-border rounded p-4">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-sm font-bold text-cdlp-gold uppercase">{monthName}</h3>
                     <span className={`text-lg font-black ${data.balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                      {data.balance.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                      {data.balance.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-4 text-xs">
                     <div>
-                      <p className="text-cdlp-muted uppercase mb-1">Income</p>
-                      <p className="font-bold text-emerald-500">{data.income.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="text-cdlp-muted uppercase mb-1">{t('repIncome')}</p>
+                      <p className="font-bold text-emerald-500">{data.income.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                     <div>
-                      <p className="text-cdlp-muted uppercase mb-1">Expenses</p>
-                      <p className="font-bold text-red-500">{data.expenses.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="text-cdlp-muted uppercase mb-1">{t('repExpenses')}</p>
+                      <p className="font-bold text-red-500">{data.expenses.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                     <div>
-                      <p className="text-cdlp-muted uppercase mb-1">Balance</p>
+                      <p className="text-cdlp-muted uppercase mb-1">{t('repBalance')}</p>
                       <p className={`font-bold ${data.balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                        {data.balance.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {data.balance.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>
@@ -2044,19 +2055,19 @@ function ReportsPlaceholder() {
       <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-4 md:p-6">
         <div className="flex items-center gap-2 mb-4">
           <Users className="w-5 h-5 text-cdlp-gold" />
-          <h2 className="text-sm md:text-base font-black text-cdlp-gold uppercase">Top Suppliers</h2>
+          <h2 className="text-sm md:text-base font-black text-cdlp-gold uppercase">{t('repTopSuppliers')}</h2>
         </div>
         {supplierData.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-cdlp-muted text-sm">No supplier expenses recorded</p>
-            <p className="text-cdlp-muted/70 text-xs mt-2">Upload supplier invoices to see spending analysis</p>
+            <p className="text-cdlp-muted text-sm">{t('repNoSuppliers')}</p>
+            <p className="text-cdlp-muted/70 text-xs mt-2">{t('repNoSuppliersHint')}</p>
           </div>
         ) : (
           <div className="space-y-2">
             {supplierData.map(([supplier, amount]) => (
               <div key={supplier} className="flex justify-between items-center p-3 bg-cdlp-card border border-cdlp-border rounded">
                 <span className="text-sm font-bold text-white truncate flex-1">{supplier}</span>
-                <span className="text-sm font-black text-cdlp-gold ml-4">{amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
+                <span className="text-sm font-black text-cdlp-gold ml-4">{amount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
               </div>
             ))}
           </div>
@@ -2068,6 +2079,8 @@ function ReportsPlaceholder() {
 
 function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelection }: { selectedDocument?: ProcessedDocument | null; onClearSelection?: () => void }) {
   const { t } = useLanguage();
+  const chfLocale = useChfLocale();
+  const posReportsLabel = t('docPosReports');
   const { documents, updateDocument } = useDocuments();
   const [filter, setFilter] = useState<'all' | 'suppliers' | 'employees' | 'pos'>('all');
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
@@ -2101,7 +2114,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
       const docType = doc.data.documentType;
       
       if (docType === 'Pay Slip') {
-        const employeeName = doc.data.paySlip?.employee?.name || 'Unknown Employee';
+        const employeeName = doc.data.paySlip?.employee?.name || t('docUnknownEmployee');
         if (!employees[employeeName]) employees[employeeName] = [];
         employees[employeeName].push(doc);
       } else if (docType === 'Ticket/Receipt' || docType === 'Z2 Multi-Ticket Sheet' || docType === 'Bank Deposit') {
@@ -2120,15 +2133,15 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
   const filteredEntities = useMemo(() => {
     if (filter === 'suppliers') return Object.entries(groupedDocs.suppliers);
     if (filter === 'employees') return Object.entries(groupedDocs.employees);
-    if (filter === 'pos') return [['POS Reports', groupedDocs.posReports]];
+    if (filter === 'pos') return [[posReportsLabel, groupedDocs.posReports]];
     
     // All documents
     return [
       ...Object.entries(groupedDocs.suppliers),
       ...Object.entries(groupedDocs.employees),
-      ...(groupedDocs.posReports.length > 0 ? [['POS Reports', groupedDocs.posReports]] : [])
+      ...(groupedDocs.posReports.length > 0 ? [[posReportsLabel, groupedDocs.posReports]] : [])
     ];
-  }, [filter, groupedDocs]);
+  }, [filter, groupedDocs, posReportsLabel]);
 
   // Group documents by month within an entity
   const groupByMonth = (docs: ProcessedDocument[]) => {
@@ -2154,7 +2167,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
             }}
             className="flex items-center gap-2 text-cdlp-gold hover:text-cdlp-gold-light text-sm font-bold uppercase"
           >
-            <ChevronRight className="w-4 h-4 rotate-180" /> Back to Documents
+            <ChevronRight className="w-4 h-4 rotate-180" /> {t('docBackToDocuments')}
           </button>
           <h2 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase truncate">{selectedDocument.fileName}</h2>
         </div>
@@ -2165,7 +2178,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
             {/* Document Preview Panel */}
             <div className="lg:col-span-4 bg-slate-900 border-r border-cdlp-border">
               <div className="p-4 border-b border-white/10">
-                <h3 className="text-xs font-black uppercase text-emerald-400 tracking-widest">Document Preview</h3>
+                <h3 className="text-xs font-black uppercase text-emerald-400 tracking-widest">{t('docPreview')}</h3>
               </div>
               <div className="aspect-[3/4] bg-slate-950 overflow-hidden flex items-center justify-center">
                 {(selectedDocument.fileUrl || selectedDocument.fileDataUrl || selectedDocument.fileRaw) ? (
@@ -2185,8 +2198,8 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 ) : (
                   <div className="text-center p-8">
                     <FileText className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                    <p className="text-sm text-slate-400 mb-2">Document file not available</p>
-                    <p className="text-xs text-slate-500">The original file was not stored with this document</p>
+                    <p className="text-sm text-slate-400 mb-2">{t('docFileNotAvailable')}</p>
+                    <p className="text-xs text-slate-500">{t('docFileNotStored')}</p>
                   </div>
                 )}
               </div>
@@ -2197,11 +2210,11 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     onClick={() => openDocumentInNewTab(selectedDocument)}
                     className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-sm text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-lg transition-all"
                   >
-                    <ExternalLink className="w-4 h-4" /> Open Raw Trace
+                    <ExternalLink className="w-4 h-4" /> {t('docOpenRawTrace')}
                   </button>
                 ) : (
                   <div className="text-center text-xs text-slate-500 italic">
-                    Original file not available for viewing
+                    {t('docOriginalUnavailable')}
                   </div>
                 )}
               </div>
@@ -2212,39 +2225,39 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
               <div className="space-y-6">
                 {/* Document Info */}
                 <div>
-                  <h3 className="text-sm font-black uppercase text-cdlp-gold mb-4">Document Information</h3>
+                  <h3 className="text-sm font-black uppercase text-cdlp-gold mb-4">{t('docInformation')}</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Issuer Entity</label>
-                      <p className="text-sm font-bold text-white">{selectedDocument.data?.issuer || 'N/A'}</p>
+                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docIssuerEntity')}</label>
+                      <p className="text-sm font-bold text-white">{selectedDocument.data?.issuer || t('na')}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Date</label>
-                      <p className="text-sm font-bold text-white">{selectedDocument.data?.date || 'N/A'}</p>
+                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docDate')}</label>
+                      <p className="text-sm font-bold text-white">{selectedDocument.data?.date || t('na')}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Total Amount</label>
-                      <p className="text-lg font-black text-cdlp-gold">{(selectedDocument.data?.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
+                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docTotalAmount')}</label>
+                      <p className="text-lg font-black text-cdlp-gold">{(selectedDocument.data?.totalAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Document Type</label>
-                      <p className="text-sm font-bold text-white">{selectedDocument.data?.documentType || 'Unknown'}</p>
+                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docDocumentType')}</label>
+                      <p className="text-sm font-bold text-white">{selectedDocument.data?.documentType || t('repUnknown')}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">VAT Amount</label>
-                      <p className="text-sm font-bold text-blue-400">{(selectedDocument.data?.vatAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
+                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docVatAmount')}</label>
+                      <p className="text-sm font-bold text-blue-400">{(selectedDocument.data?.vatAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Net Amount</label>
-                      <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data?.netAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
+                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docNetAmount')}</label>
+                      <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data?.netAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
                     </div>
                     <div className="col-span-2">
-                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Category</label>
-                      <p className="text-sm font-bold text-white">{selectedDocument.data?.expenseCategory || 'Uncategorized'}</p>
+                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docCategory')}</label>
+                      <p className="text-sm font-bold text-white">{selectedDocument.data?.expenseCategory || t('docUncategorized')}</p>
                     </div>
                     {selectedDocument.data?.notes && (
                       <div className="col-span-2">
-                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Notes</label>
+                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docNotes')}</label>
                         <p className="text-sm text-white">{selectedDocument.data.notes}</p>
                       </div>
                     )}
@@ -2254,7 +2267,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 {/* AI Interpretation */}
                 {selectedDocument.data?.aiInterpretation && (
                   <div>
-                    <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">AI Analysis</h3>
+                    <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">{t('docAiAnalysis')}</h3>
                     <div className="bg-cdlp-card border border-cdlp-border rounded p-4">
                       <p className="text-sm text-cdlp-muted italic">{selectedDocument.data.aiInterpretation}</p>
                     </div>
@@ -2265,11 +2278,9 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 {selectedDocument.data?.subDocuments && selectedDocument.data.subDocuments.length > 0 && (
                   <div>
                     <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">
-                      Invoice Breakdown ({selectedDocument.data.subDocuments.length})
+                      {t('docInvoiceBreakdown').replace('{n}', String(selectedDocument.data.subDocuments.length))}
                     </h3>
-                    <p className="text-[10px] text-cdlp-muted mb-3">
-                      Document total above is the sum of all invoices in this PDF. Use tabs to review each issuer and VAT block.
-                    </p>
+                    <p className="text-[10px] text-cdlp-muted mb-3">{t('docInvoiceBreakdownHint')}</p>
                     <div className="flex flex-wrap gap-2 mb-3">
                       {selectedDocument.data.subDocuments.map((subDoc: any, idx: number) => {
                         const active = idx === invoiceBreakdownTab;
@@ -2282,9 +2293,9 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                               active ? 'border-cdlp-gold bg-cdlp-gold/15 text-white' : 'border-cdlp-border bg-cdlp-card text-cdlp-muted hover:border-cdlp-gold/40'
                             }`}
                           >
-                            <span className="font-bold block truncate">{subDoc.issuer || `Invoice ${idx + 1}`}</span>
+                            <span className="font-bold block truncate">{subDoc.issuer || t('docInvoiceN').replace('{n}', String(idx + 1))}</span>
                             <span className="font-mono text-[10px] text-cdlp-gold">
-                              {(Number(subDoc.totalAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2 })}
+                              {(Number(subDoc.totalAmount || 0)).toLocaleString(chfLocale, { minimumFractionDigits: 2 })}
                             </span>
                           </button>
                         );
@@ -2297,43 +2308,43 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                       return (
                         <div className="bg-cdlp-card border border-cdlp-border rounded p-4 grid grid-cols-2 gap-3 text-xs">
                           <div>
-                            <p className="text-cdlp-muted uppercase">Date</p>
-                            <p className="font-bold text-foreground">{subDoc.date || 'N/A'}</p>
+                            <p className="text-cdlp-muted uppercase">{t('docDate')}</p>
+                            <p className="font-bold text-foreground">{subDoc.date || t('na')}</p>
                           </div>
                           <div>
-                            <p className="text-cdlp-muted uppercase">Currency</p>
+                            <p className="text-cdlp-muted uppercase">{t('docCurrency')}</p>
                             <p className="font-bold text-foreground">{subDoc.originalCurrency || selectedDocument.data?.originalCurrency || 'CHF'}</p>
                           </div>
                           <div>
-                            <p className="text-cdlp-muted uppercase">Gross Total</p>
+                            <p className="text-cdlp-muted uppercase">{t('docGrossTotal')}</p>
                             <p className="font-black text-cdlp-gold">
-                              {(Number(subDoc.totalAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {(Number(subDoc.totalAmount || 0)).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
                           </div>
                           <div>
-                            <p className="text-cdlp-muted uppercase">Net Amount</p>
+                            <p className="text-cdlp-muted uppercase">{t('docNetAmount')}</p>
                             <p className="font-bold text-foreground">
-                              {(Number(subDoc.netAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {(Number(subDoc.netAmount || 0)).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
                           </div>
                           <div>
-                            <p className="text-cdlp-muted uppercase">VAT Amount</p>
+                            <p className="text-cdlp-muted uppercase">{t('docVatAmount')}</p>
                             <p className="font-bold text-foreground">
-                              {(Number(subDoc.vatAmount || 0)).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {(Number(subDoc.vatAmount || 0)).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
                           </div>
                           <div>
-                            <p className="text-cdlp-muted uppercase">VAT Rate</p>
+                            <p className="text-cdlp-muted uppercase">{t('docVatRate')}</p>
                             <p className="font-bold text-foreground">{Number(subDoc.vatRate || 0)}%</p>
                           </div>
                           {subDoc.pageRange && (
                             <div className="col-span-2">
-                              <p className="text-cdlp-muted uppercase">Pages</p>
+                              <p className="text-cdlp-muted uppercase">{t('docPages')}</p>
                               <p className="font-bold text-foreground">{subDoc.pageRange}</p>
                             </div>
                           )}
                           <div className="col-span-2">
-                            <p className="text-cdlp-muted uppercase">Category</p>
+                            <p className="text-cdlp-muted uppercase">{t('docCategory')}</p>
                             <p className="font-bold text-foreground">{subDoc.expenseCategory || 'OTHER'}</p>
                           </div>
                         </div>
@@ -2345,15 +2356,15 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 {/* Line Items if available */}
                 {selectedDocument.data?.lineItems && selectedDocument.data.lineItems.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">Line Items</h3>
+                    <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">{t('docLineItems')}</h3>
                     <div className="border border-cdlp-border rounded overflow-hidden">
                       <table className="min-w-full text-xs">
                         <thead className="bg-cdlp-gold text-cdlp-black">
                           <tr className="font-bold uppercase">
-                            <th className="px-3 py-2 text-left">Date</th>
-                            <th className="px-3 py-2 text-left">Description</th>
-                            <th className="px-3 py-2 text-right">Amount</th>
-                            <th className="px-3 py-2 text-center">Type</th>
+                            <th className="px-3 py-2 text-left">{t('docDate')}</th>
+                            <th className="px-3 py-2 text-left">{t('docDescription')}</th>
+                            <th className="px-3 py-2 text-right">{t('docAmount')}</th>
+                            <th className="px-3 py-2 text-center">{t('docType')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-cdlp-border">
@@ -2362,13 +2373,13 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                               <td className="px-3 py-2 text-cdlp-muted">{item.date}</td>
                               <td className="px-3 py-2 text-white font-bold">{item.description}</td>
                               <td className={`px-3 py-2 text-right font-bold ${item.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {item.amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {item.amount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
                               <td className="px-3 py-2 text-center">
                                 <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded-full ${
                                   item.type === 'INCOME' ? 'bg-emerald-600/20 text-emerald-400' : 'bg-red-600/20 text-red-400'
                                 }`}>
-                                  {item.type}
+                                  {item.type === 'INCOME' ? t('dpFlowIncome') : t('dpFlowExpense')}
                                 </span>
                               </td>
                             </tr>
@@ -2382,23 +2393,23 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 {/* Payslip Details if available */}
                 {selectedDocument.data?.paySlip && (
                   <div>
-                    <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">Payslip Details</h3>
+                    <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">{t('docPayslipDetails')}</h3>
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
-                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Employee</label>
-                        <p className="text-sm font-bold text-white">{selectedDocument.data.paySlip.employee?.name || 'N/A'}</p>
+                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docEmployee')}</label>
+                        <p className="text-sm font-bold text-white">{selectedDocument.data.paySlip.employee?.name || t('na')}</p>
                       </div>
                       <div>
-                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Employer</label>
-                        <p className="text-sm font-bold text-white">{selectedDocument.data.paySlip.employer?.name || 'N/A'}</p>
+                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docEmployer')}</label>
+                        <p className="text-sm font-bold text-white">{selectedDocument.data.paySlip.employer?.name || t('na')}</p>
                       </div>
                       <div>
-                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Gross Pay</label>
-                        <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data.paySlip.grossPay || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</p>
+                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docGrossPay')}</label>
+                        <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data.paySlip.grossPay || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</p>
                       </div>
                       <div>
-                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">Net Pay</label>
-                        <p className="text-sm font-bold text-cdlp-gold">{(selectedDocument.data.paySlip.netPay || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</p>
+                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docNetPay')}</label>
+                        <p className="text-sm font-bold text-cdlp-gold">{(selectedDocument.data.paySlip.netPay || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</p>
                       </div>
                     </div>
                     {selectedDocument.data.paySlip.components && selectedDocument.data.paySlip.components.length > 0 && (
@@ -2406,9 +2417,9 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                         <table className="min-w-full text-xs">
                           <thead className="bg-cdlp-gold text-cdlp-black">
                             <tr className="font-bold uppercase">
-                              <th className="px-3 py-2 text-left">Component</th>
-                              <th className="px-3 py-2 text-right">Amount</th>
-                              <th className="px-3 py-2 text-center">Type</th>
+                              <th className="px-3 py-2 text-left">{t('docComponent')}</th>
+                              <th className="px-3 py-2 text-right">{t('docAmount')}</th>
+                              <th className="px-3 py-2 text-center">{t('docType')}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-cdlp-border">
@@ -2416,13 +2427,13 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                               <tr key={idx} className="hover:bg-cdlp-card">
                                 <td className="px-3 py-2 text-white font-bold">{comp.description}</td>
                                 <td className={`px-3 py-2 text-right font-bold ${comp.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}>
-                                  {comp.amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  {comp.amount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
                                 <td className="px-3 py-2 text-center">
                                   <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded-full ${
                                     comp.type === 'INCOME' ? 'bg-emerald-600/20 text-emerald-400' : 'bg-red-600/20 text-red-400'
                                   }`}>
-                                    {comp.type}
+                                    {comp.type === 'INCOME' ? t('dpFlowIncome') : t('dpFlowExpense')}
                                   </span>
                                 </td>
                               </tr>
@@ -2460,7 +2471,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
             onClick={() => setSelectedEntity(null)}
             className="flex items-center gap-2 text-cdlp-gold hover:text-cdlp-gold-light text-sm font-bold uppercase"
           >
-            <ChevronRight className="w-4 h-4 rotate-180" /> Back
+            <ChevronRight className="w-4 h-4 rotate-180" /> {t('docBack')}
           </button>
           <h2 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">{selectedEntity}</h2>
         </div>
@@ -2468,21 +2479,21 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
         {monthlyGroups.length === 0 ? (
           <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-12 text-center">
             <FileText className="w-16 h-16 text-cdlp-gold/30 mx-auto mb-4" />
-            <h3 className="text-lg font-black text-cdlp-gold uppercase mb-2">No Documents Found</h3>
-            <p className="text-cdlp-muted text-sm">No documents available for this entity</p>
+            <h3 className="text-lg font-black text-cdlp-gold uppercase mb-2">{t('docNoDocuments')}</h3>
+            <p className="text-cdlp-muted text-sm">{t('docNoDocumentsEntity')}</p>
           </div>
         ) : (
           monthlyGroups.map(([month, docs]) => {
           const totalAmount = docs.reduce((sum, d) => sum + (d.data?.totalAmount || 0), 0);
-          const monthName = new Date(month + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+          const monthName = new Date(month + '-01').toLocaleDateString(chfLocale, { year: 'numeric', month: 'long' });
 
           return (
             <div key={month} className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card overflow-hidden">
               <div className="bg-cdlp-card border-b border-cdlp-border p-4 flex justify-between items-center">
                 <h3 className="text-sm font-bold text-cdlp-gold uppercase">{monthName}</h3>
                 <div className="text-right">
-                  <p className="text-xs text-cdlp-muted uppercase">Total</p>
-                  <p className="text-lg font-black text-white">{totalAmount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</p>
+                  <p className="text-xs text-cdlp-muted uppercase">{t('docTotalChf')}</p>
+                  <p className="text-lg font-black text-white">{totalAmount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</p>
                 </div>
               </div>
               <div className="divide-y divide-cdlp-border">
@@ -2501,13 +2512,13 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                       </button>
                       <div className="text-right ml-4 flex items-center gap-3">
                         <div>
-                          <p className="font-black text-white text-base">{(doc.data?.totalAmount || 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          <p className="font-black text-white text-base">{(doc.data?.totalAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                           <p className="text-xs text-cdlp-muted">{doc.data?.originalCurrency || 'CHF'}</p>
                         </div>
                         <button
                           onClick={() => setSelectedDocument(doc)}
                           className="p-2 hover:bg-cdlp-gold/10 rounded transition-colors"
-                          title="View Details"
+                          title={t('docViewDetails')}
                         >
                           <ChevronRight className="w-4 h-4 text-cdlp-muted group-hover:text-cdlp-gold transition-colors" />
                         </button>
@@ -2541,7 +2552,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
             }`}
           >
-            All Documents
+            {t('docAllDocuments')}
           </button>
           <button
             onClick={() => setFilter('suppliers')}
@@ -2551,7 +2562,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
             }`}
           >
-            Suppliers ({Object.keys(groupedDocs.suppliers).length})
+            {t('docSuppliersCount').replace('{n}', String(Object.keys(groupedDocs.suppliers).length))}
           </button>
           <button
             onClick={() => setFilter('employees')}
@@ -2561,7 +2572,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
             }`}
           >
-            Employees ({Object.keys(groupedDocs.employees).length})
+            {t('docEmployeesCount').replace('{n}', String(Object.keys(groupedDocs.employees).length))}
           </button>
           <button
             onClick={() => setFilter('pos')}
@@ -2571,7 +2582,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
             }`}
           >
-            POS Reports ({groupedDocs.posReports.length})
+            {t('docPosCount').replace('{n}', String(groupedDocs.posReports.length))}
           </button>
         </div>
       </div>
@@ -2580,20 +2591,20 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
       {filteredEntities.length === 0 ? (
         <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-12 text-center">
           <FileText className="w-16 h-16 text-cdlp-gold/30 mx-auto mb-4" />
-          <h3 className="text-lg font-black text-cdlp-gold uppercase mb-2">No Documents Yet</h3>
-          <p className="text-cdlp-muted text-sm mb-4">Upload documents in the Dashboard tab to see them organized here</p>
+          <h3 className="text-lg font-black text-cdlp-gold uppercase mb-2">{t('docNoDocumentsYet')}</h3>
+          <p className="text-cdlp-muted text-sm mb-4">{t('docNoDocumentsYetHint')}</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 text-left">
             <div className="bg-cdlp-card border border-cdlp-border rounded p-4">
-              <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-2">Supplier Documents</h4>
-              <p className="text-[10px] text-cdlp-muted">Invoices and receipts organized by supplier with monthly grouping</p>
+              <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-2">{t('docSupplierDocsTitle')}</h4>
+              <p className="text-[10px] text-cdlp-muted">{t('docSupplierDocsDesc')}</p>
             </div>
             <div className="bg-cdlp-card border border-cdlp-border rounded p-4">
-              <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-2">Employee Documents</h4>
-              <p className="text-[10px] text-cdlp-muted">Payslips with Swiss social security contributions breakdown</p>
+              <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-2">{t('docEmployeeDocsTitle')}</h4>
+              <p className="text-[10px] text-cdlp-muted">{t('docEmployeeDocsDesc')}</p>
             </div>
             <div className="bg-cdlp-card border border-cdlp-border rounded p-4">
-              <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-2">POS Reports</h4>
-              <p className="text-[10px] text-cdlp-muted">Z-readings with revenue, payment methods, and tips tracking</p>
+              <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-2">{t('docPosReports')}</h4>
+              <p className="text-[10px] text-cdlp-muted">{t('docPosDocsDesc')}</p>
             </div>
           </div>
         </div>
@@ -2616,19 +2627,19 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                       {entityName}
                     </h3>
                     <p className="text-xs text-cdlp-muted uppercase">
-                      {isEmployee ? 'Employee' : 'Supplier'}
+                      {isEmployee ? t('docEntityEmployee') : t('docEntitySupplier')}
                     </p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-cdlp-muted group-hover:text-cdlp-gold transition-colors" />
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-cdlp-muted uppercase">Documents</span>
+                    <span className="text-xs text-cdlp-muted uppercase">{t('documents')}</span>
                     <span className="text-sm font-bold text-white">{docCount}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-cdlp-muted uppercase">Total Amount</span>
-                    <span className="text-lg font-black text-cdlp-gold">{totalAmount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
+                    <span className="text-xs text-cdlp-muted uppercase">{t('docTotalAmount')}</span>
+                    <span className="text-lg font-black text-cdlp-gold">{totalAmount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
                   </div>
                 </div>
               </button>
@@ -2657,10 +2668,10 @@ function AddEmployeeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
       <div className="bg-cdlp-black border border-cdlp-border rounded-t-lg md:rounded-lg p-4 md:p-6 w-full md:max-w-md max-h-[90vh] overflow-y-auto">
-        <h3 className="text-base md:text-lg font-black text-cdlp-gold uppercase mb-4">Add Employee</h3>
+        <h3 className="text-base md:text-lg font-black text-cdlp-gold uppercase mb-4">{t('addEmployeeTitle')}</h3>
         <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">Name</label>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">{t('name')}</label>
             <input
               type="text"
               value={name}
@@ -2670,7 +2681,7 @@ function AddEmployeeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (
             />
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">Position</label>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">{t('position')}</label>
             <input
               type="text"
               value={position}
@@ -2679,7 +2690,7 @@ function AddEmployeeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (
             />
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">Monthly Salary</label>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">{t('monthlySalary')}</label>
             <input
               type="number"
               step="0.01"
@@ -2689,7 +2700,7 @@ function AddEmployeeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (
             />
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">Social Contributions</label>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">{t('socialContributions')}</label>
             <input
               type="number"
               step="0.01"
@@ -2727,10 +2738,10 @@ function AddIncomeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (da
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
       <div className="bg-cdlp-black border border-cdlp-border rounded-t-lg md:rounded-lg p-4 md:p-6 w-full md:max-w-md max-h-[90vh] overflow-y-auto">
-        <h3 className="text-base md:text-lg font-black text-cdlp-gold uppercase mb-4">Add Income</h3>
+        <h3 className="text-base md:text-lg font-black text-cdlp-gold uppercase mb-4">{t('addIncomeTitle')}</h3>
         <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">Date</label>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">{t('date')}</label>
             <input
               type="date"
               value={date}
@@ -2740,18 +2751,18 @@ function AddIncomeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (da
             />
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">Type</label>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">{t('type')}</label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value as 'SALES' | 'RESERVATION')}
               className="w-full px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
             >
-              <option value="SALES">Sales</option>
-              <option value="RESERVATION">Reservation</option>
+              <option value="SALES">{t('SALES')}</option>
+              <option value="RESERVATION">{t('RESERVATION')}</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">Amount</label>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">{t('amount')}</label>
             <input
               type="number"
               step="0.01"
@@ -2762,7 +2773,7 @@ function AddIncomeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (da
             />
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">Description</label>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">{t('description')}</label>
             <input
               type="text"
               value={description}
@@ -2772,10 +2783,10 @@ function AddIncomeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (da
           </div>
           <div className="flex gap-2 pt-2">
             <button type="submit" className="flex-1 py-2.5 md:py-2 bg-emerald-600 text-white text-xs font-bold uppercase rounded hover:bg-emerald-700">
-              Add
+              {t('addIncome')}
             </button>
             <button type="button" onClick={onClose} className="px-4 py-2.5 md:py-2 border border-cdlp-border text-xs font-bold uppercase rounded hover:bg-cdlp-border/50 text-white">
-              Cancel
+              {t('cancel')}
             </button>
           </div>
         </form>
@@ -2799,10 +2810,10 @@ function AddExpenseModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (d
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
       <div className="bg-cdlp-black border border-cdlp-border rounded-t-lg md:rounded-lg p-4 md:p-6 w-full md:max-w-md max-h-[90vh] overflow-y-auto">
-        <h3 className="text-base md:text-lg font-black text-cdlp-gold uppercase mb-4">Add Expense</h3>
+        <h3 className="text-base md:text-lg font-black text-cdlp-gold uppercase mb-4">{t('addExpenseTitle')}</h3>
         <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">Date</label>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">{t('date')}</label>
             <input
               type="date"
               value={date}
@@ -2812,20 +2823,20 @@ function AddExpenseModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (d
             />
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">Category</label>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">{t('category')}</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value as any)}
               className="w-full px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
             >
-              <option value="BILLS">Bills</option>
-              <option value="SUPPLIERS">Suppliers</option>
-              <option value="PAYROLL">Payroll</option>
-              <option value="OTHER">Other</option>
+              <option value="BILLS">{t('BILLS')}</option>
+              <option value="SUPPLIERS">{t('SUPPLIERS')}</option>
+              <option value="PAYROLL">{t('PAYROLL')}</option>
+              <option value="OTHER">{t('OTHER')}</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">Amount</label>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">{t('amount')}</label>
             <input
               type="number"
               step="0.01"
@@ -2836,7 +2847,7 @@ function AddExpenseModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (d
             />
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">Description</label>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">{t('description')}</label>
             <input
               type="text"
               value={description}
@@ -2847,10 +2858,10 @@ function AddExpenseModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (d
           </div>
           <div className="flex gap-2 pt-2">
             <button type="submit" className="flex-1 py-2.5 md:py-2 bg-red-600 text-white text-xs font-bold uppercase rounded hover:bg-red-700">
-              Add
+              {t('addExpense')}
             </button>
             <button type="button" onClick={onClose} className="px-4 py-2.5 md:py-2 border border-cdlp-border text-xs font-bold uppercase rounded hover:bg-cdlp-border/50 text-white">
-              Cancel
+              {t('cancel')}
             </button>
           </div>
         </form>

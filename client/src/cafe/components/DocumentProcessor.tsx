@@ -33,7 +33,7 @@ import {
   SwissVatRateLine,
 } from '../types';
 import { useSubscription } from '../context/SubscriptionContext';
-import { useLanguage } from '../context/LanguageContext';
+import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { countCompletedDocumentsThisMonth } from '@shared/planCatalog';
 
 // Restaurant-specific categories adapted from Ypsom - comprehensive categorization
@@ -2078,6 +2078,17 @@ export const DocumentProcessor: React.FC<{
 }> = ({ documents, updateDocument, onDeleteDocument, onDocumentQueued, onDataExtracted, onDocumentUpdated }) => {
   const { enforcementEnabled, entitlements } = useSubscription();
   const { t } = useLanguage();
+  const chfLocale = useChfLocale();
+  const docStatusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      pending: t('dpStatusPending'),
+      processing: t('dpStatusProcessing'),
+      completed: t('dpStatusCompleted'),
+      error: t('dpStatusError'),
+      skipped: t('dpStatusSkipped'),
+    };
+    return map[status] ?? status;
+  };
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -2523,12 +2534,14 @@ export const DocumentProcessor: React.FC<{
               {documentLimitReached ? <Ban className="w-8 h-8 mb-3 text-red-400" /> : <Upload className="w-8 h-8 mb-3 text-cdlp-muted" />}
               <div className="text-center px-4">
                 <span className={`text-xs font-bold uppercase tracking-wider block ${documentLimitReached ? 'text-red-400' : 'text-cdlp-gold'}`}>
-                  {documentLimitReached ? 'Document limit reached' : 'Upload Documents'}
+                  {documentLimitReached ? t('dpDocumentLimitReached') : t('dpUploadDocuments')}
                 </span>
                 <span className="text-[10px] text-cdlp-muted uppercase tracking-wider mt-1 block">
-                  {monthlyRemaining != null ? `${monthlyRemaining}/${documentCap} processing slots left this month` : 'Drop PDF / JPG / PNG files'}
+                  {monthlyRemaining != null
+                    ? t('dpSlotsLeft').replace('{left}', String(monthlyRemaining)).replace('{cap}', String(documentCap))
+                    : t('dpDropFiles')}
                 </span>
-                <span className="text-[9px] text-cdlp-muted/60 uppercase tracking-wider mt-1 block">Click rows below to view & edit</span>
+                <span className="text-[9px] text-cdlp-muted/60 uppercase tracking-wider mt-1 block">{t('dpClickRowsHint')}</span>
               </div>
               <input type="file" className="hidden" multiple accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp" disabled={documentLimitReached} onChange={(e) => addFiles(e.target.files)} />
             </label>
@@ -2538,7 +2551,7 @@ export const DocumentProcessor: React.FC<{
           <div className="lg:col-span-3 flex flex-col justify-between gap-3">
             {isProcessing ? (
               <button onClick={stopBatch} className="w-full h-12 bg-red-600 text-white rounded font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-red-700">
-                <Ban className="w-4 h-4" /> Stop Processing
+                <Ban className="w-4 h-4" /> {t('dpStopProcessing')}
               </button>
             ) : (
               <button 
@@ -2546,7 +2559,7 @@ export const DocumentProcessor: React.FC<{
                 disabled={allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any)).length === 0} 
                 className="w-full h-12 bg-cdlp-gold text-cdlp-black rounded font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-30 hover:bg-cdlp-gold-light"
               >
-                <ShieldCheck className="w-4 h-4" /> Start Processing ({allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any)).length})
+                <ShieldCheck className="w-4 h-4" /> {t('dpStartProcessing').replace('{n}', String(allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any)).length))}
               </button>
             )}
           </div>
@@ -2555,19 +2568,19 @@ export const DocumentProcessor: React.FC<{
           <div className="lg:col-span-4 flex flex-col h-40 border border-cdlp-border rounded bg-cdlp-card p-4">
             <div className="flex justify-between items-start mb-3">
               <div>
-                <p className="text-[10px] font-bold text-cdlp-muted uppercase tracking-wider mb-1">Queue Status</p>
-                <p className="text-xs font-bold text-cdlp-gold">{stats.completed} / {stats.total} DONE</p>
+                <p className="text-[10px] font-bold text-cdlp-muted uppercase tracking-wider mb-1">{t('dpQueueStatus')}</p>
+                <p className="text-xs font-bold text-cdlp-gold">{t('dpDone').replace('{done}', String(stats.completed)).replace('{total}', String(stats.total))}</p>
               </div>
             </div>
             <div className="flex-1 flex flex-col justify-center">
               <div className="w-full h-1.5 bg-cdlp-border rounded-full overflow-hidden mb-2">
                 <div className="h-full bg-cdlp-gold transition-all duration-1000" style={{ width: `${stats.progress}%` }} />
               </div>
-              <p className="text-[10px] font-bold text-cdlp-muted text-center uppercase tracking-wider">{stats.progress.toFixed(0)}% Complete</p>
+              <p className="text-[10px] font-bold text-cdlp-muted text-center uppercase tracking-wider">{t('dpPercentComplete').replace('{n}', stats.progress.toFixed(0))}</p>
             </div>
             <div className="mt-3 bg-cdlp-black border border-cdlp-border rounded p-2 flex items-center justify-center gap-2">
               <Zap className="w-3 h-3 text-cdlp-gold" />
-              <span className="text-[10px] font-bold text-cdlp-gold uppercase">{CONCURRENCY_LIMIT}x Turbo Parallel Processing</span>
+              <span className="text-[10px] font-bold text-cdlp-gold uppercase">{t('dpTurboParallel').replace('{n}', String(CONCURRENCY_LIMIT))}</span>
             </div>
           </div>
         </div>
@@ -2580,12 +2593,12 @@ export const DocumentProcessor: React.FC<{
             <table className="min-w-[720px] w-full text-xs">
               <thead className="bg-cdlp-gold text-cdlp-black uppercase font-bold text-[10px] tracking-wider">
                 <tr>
-                  <th className="px-4 py-3 text-left">Document</th>
-                  <th className="px-4 py-3 text-left hidden md:table-cell">Date</th>
-                  <th className="px-4 py-3 text-right hidden md:table-cell">Amount</th>
-                  <th className="px-4 py-3 text-left hidden md:table-cell">Type</th>
-                  <th className="px-4 py-3 text-right hidden md:table-cell">TVA Calc</th>
-                  <th className="px-4 py-3 text-right">Status</th>
+                  <th className="px-4 py-3 text-left">{t('dpColDocument')}</th>
+                  <th className="px-4 py-3 text-left hidden md:table-cell">{t('dpColDate')}</th>
+                  <th className="px-4 py-3 text-right hidden md:table-cell">{t('dpColAmount')}</th>
+                  <th className="px-4 py-3 text-left hidden md:table-cell">{t('dpColType')}</th>
+                  <th className="px-4 py-3 text-right hidden md:table-cell">{t('dpColTvaCalc')}</th>
+                  <th className="px-4 py-3 text-right">{t('dpColStatus')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-cdlp-border">
@@ -2636,7 +2649,7 @@ export const DocumentProcessor: React.FC<{
                         <td className="px-4 py-3 font-mono text-[10px] text-cdlp-muted hidden md:table-cell">{doc.data?.date || '---'}</td>
                         <td className="px-4 py-3 text-right font-bold font-mono text-[11px] text-white hidden md:table-cell">
                           {doc.data
-                            ? documentTableDisplayAmount(doc.data).toLocaleString('en-CH', {
+                            ? documentTableDisplayAmount(doc.data).toLocaleString(chfLocale, {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })
@@ -2655,11 +2668,11 @@ export const DocumentProcessor: React.FC<{
                                 );
                               }}
                               className="h-8 min-w-[120px] bg-cdlp-black border border-cdlp-border rounded px-2 text-[10px] font-bold uppercase text-white"
-                              title="Select document flow type"
+                              title={t('dpSelectFlowType')}
                             >
-                              <option value="INCOME">Income</option>
-                              <option value="EXPENSE">Expense</option>
-                              <option value="SALARY">Salary</option>
+                              <option value="INCOME">{t('dpFlowIncome')}</option>
+                              <option value="EXPENSE">{t('dpFlowExpense')}</option>
+                              <option value="SALARY">{t('dpFlowSalary')}</option>
                             </select>
                           ) : (
                             <span className="text-[10px] text-cdlp-muted">---</span>
@@ -2671,28 +2684,29 @@ export const DocumentProcessor: React.FC<{
                               <div className="font-mono leading-snug space-y-0.5">
                                 <p className={`text-[10px] font-bold ${vat > 0 ? 'text-blue-400' : 'text-amber-400'}`}>
                                   Σ{' '}
-                                  {vat.toLocaleString('en-CH', {
+                                  {vat.toLocaleString(chfLocale, {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
                                   })}
                                 </p>
                                 {swissLines.slice(0, 5).map((l, i) => (
                                   <p key={i} className="text-[8px] text-cdlp-muted">
-                                    {(Number(l.ratePercent || 0)).toFixed(2)}% du{' '}
-                                    {(Number(l.baseExclusive || 0)).toFixed(2)} ={' '}
-                                    {(Number(l.vatAmount || 0)).toFixed(2)}
+                                    {t('dpVatLineFormat')
+                                      .replace('{rate}', (Number(l.ratePercent || 0)).toFixed(2))
+                                      .replace('{base}', (Number(l.baseExclusive || 0)).toFixed(2))
+                                      .replace('{vat}', (Number(l.vatAmount || 0)).toFixed(2))}
                                   </p>
                                 ))}
                               </div>
                             ) : (
                               <div className="font-mono leading-tight">
                                 <p className={`text-[11px] font-bold ${vatNeedsAttention ? 'text-amber-400' : 'text-blue-400'}`}>
-                                  {vat.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  {vat.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </p>
                                 <p className="text-[9px] text-cdlp-muted">
                                   {vatNeedsAttention
-                                    ? 'Warning: VAT 0.00 — file needs attention'
-                                    : extractedRateLabel || 'Rate missing in source'}
+                                    ? t('dpVatWarning')
+                                    : extractedRateLabel || t('dpRateMissing')}
                                 </p>
                               </div>
                             )
@@ -2711,7 +2725,7 @@ export const DocumentProcessor: React.FC<{
                               doc.status === 'error' ? 'text-red-500' : 
                               doc.status === 'skipped' ? 'text-amber-500' :
                               'text-cdlp-muted'
-                            }`}>{doc.status}</span>
+                            }`}>{docStatusLabel(doc.status)}</span>
                             {doc.status === 'completed' && (
                               <button
                                 onClick={(e) => {
@@ -2719,9 +2733,9 @@ export const DocumentProcessor: React.FC<{
                                   if (!isExpanded) toggleRow(doc.id);
                                 }}
                                 className="px-2 py-1 bg-cdlp-gold/15 hover:bg-cdlp-gold/25 text-cdlp-gold text-[9px] font-bold uppercase rounded transition-colors"
-                                title="Open Document Verification Center"
+                                title={t('dpVerificationCenter')}
                               >
-                                Verification Center
+                                {t('dpVerificationCenter')}
                               </button>
                             )}
                             
@@ -2735,14 +2749,14 @@ export const DocumentProcessor: React.FC<{
                                     }}
                                     disabled={Boolean(retryingDocId) || isProcessing}
                                     className="px-2 py-1 bg-cdlp-gold/20 hover:bg-cdlp-gold/30 disabled:opacity-50 text-cdlp-gold text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
-                                    title="Run AI extraction again on this file"
+                                    title={t('dpRetryAiTitle')}
                                   >
                                     {retryingDocId === doc.id ? (
                                       <Loader2 className="w-3 h-3 animate-spin" />
                                     ) : (
                                       <RefreshCcw className="w-3 h-3" />
                                     )}
-                                    <span className="hidden lg:inline">Process again</span>
+                                    <span className="hidden lg:inline">{t('dpProcessAgain')}</span>
                                   </button>
                                 ) : (
                                   <button
@@ -2752,10 +2766,10 @@ export const DocumentProcessor: React.FC<{
                                     }}
                                     disabled={Boolean(retryingDocId) || isProcessing}
                                     className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/30 disabled:opacity-50 text-blue-400 text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
-                                    title="Select the file from your computer and process again"
+                                    title={t('dpReattachProcess')}
                                   >
                                     <Upload className="w-3 h-3" />
-                                    <span className="hidden lg:inline">Reattach & process</span>
+                                    <span className="hidden lg:inline">{t('dpReattachProcess')}</span>
                                   </button>
                                 )}
                               </>
@@ -2769,14 +2783,14 @@ export const DocumentProcessor: React.FC<{
                                 }}
                                 disabled={Boolean(retryingDocId) || isProcessing}
                                 className="px-2 py-1 bg-cdlp-gold/20 hover:bg-cdlp-gold/30 disabled:opacity-50 text-cdlp-gold text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
-                                title="Process this document again"
+                                title={t('dpProcessAgain')}
                               >
                                 {retryingDocId === doc.id ? (
                                   <Loader2 className="w-3 h-3 animate-spin" />
                                 ) : (
                                   <RefreshCcw className="w-3 h-3" />
                                 )}
-                                <span className="hidden lg:inline">Process again</span>
+                                <span className="hidden lg:inline">{t('dpProcessAgain')}</span>
                               </button>
                             )}
 
@@ -2787,10 +2801,10 @@ export const DocumentProcessor: React.FC<{
                                   skipDoc(doc.id);
                                 }}
                                 className="px-2 py-1 bg-amber-600/20 hover:bg-amber-600/30 text-amber-500 text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
-                                title="Skip this document"
+                                title={t('dpSkip')}
                               >
                                 <Ban className="w-3 h-3" />
-                                <span className="hidden lg:inline">Skip</span>
+                                <span className="hidden lg:inline">{t('dpSkip')}</span>
                               </button>
                             )}
                             
@@ -2802,7 +2816,7 @@ export const DocumentProcessor: React.FC<{
                                   window.open(url, '_blank');
                                 }} 
                                 className="text-cdlp-muted/50 hover:text-cdlp-gold transition-colors"
-                                title="View document in new tab"
+                                title={t('dpViewDocTitle')}
                               >
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
@@ -2812,13 +2826,13 @@ export const DocumentProcessor: React.FC<{
                                 e.stopPropagation();
                                 if (
                                   !confirm(
-                                    `Delete "${doc.fileName}"?\n\nThis removes the document and all linked income, expenses, payroll, and VAT totals from the dashboard.`
+                                    t('dpDeleteConfirm').replace('{name}', doc.fileName)
                                   )
                                 )
                                   return;
                                 if (typeof onDeleteDocument !== 'function') {
                                   console.error('Document delete handler is unavailable');
-                                  alert('Delete action is temporarily unavailable. Please refresh and try again.');
+                                  alert(t('dpDeleteUnavailable'));
                                   return;
                                 }
                                 if ((doc as any).source === 'firestore') {
@@ -2839,7 +2853,7 @@ export const DocumentProcessor: React.FC<{
                                     await onDeleteDocument(recordId);
                                   } catch (deleteErr) {
                                     console.error('Failed to delete document record:', deleteErr);
-                                    alert('Could not delete the document record. Please try again.');
+                                    alert(t('dpDeleteFailed'));
                                   }
                                 } else {
                                   const recordId = firestoreRecordId(doc);
@@ -2848,7 +2862,7 @@ export const DocumentProcessor: React.FC<{
                                       await onDeleteDocument(recordId);
                                     } catch (deleteErr) {
                                       console.error('Failed to delete queued document finances:', deleteErr);
-                                      alert('Could not delete linked income/expenses for this document.');
+                                      alert(t('dpDeleteLinkedFailed'));
                                       return;
                                     }
                                   }
@@ -2856,7 +2870,7 @@ export const DocumentProcessor: React.FC<{
                                 }
                               }} 
                               className="text-cdlp-muted/30 hover:text-red-500 transition-colors"
-                              title="Delete document"
+                              title={t('dpDeleteDocTitle')}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -2869,9 +2883,10 @@ export const DocumentProcessor: React.FC<{
                             <div className="font-mono space-y-0.5 border border-cdlp-border rounded bg-cdlp-card/40 p-2">
                               {swissLines.slice(0, 3).map((l, i) => (
                                 <p key={i} className="text-[8px] text-cdlp-muted">
-                                  {(Number(l.ratePercent || 0)).toFixed(2)}% du{' '}
-                                  {(Number(l.baseExclusive || 0)).toFixed(2)} ={' '}
-                                  {(Number(l.vatAmount || 0)).toFixed(2)}
+                                  {t('dpVatLineFormat')
+                                    .replace('{rate}', (Number(l.ratePercent || 0)).toFixed(2))
+                                    .replace('{base}', (Number(l.baseExclusive || 0)).toFixed(2))
+                                    .replace('{vat}', (Number(l.vatAmount || 0)).toFixed(2))}
                                 </p>
                               ))}
                             </div>
@@ -2883,12 +2898,12 @@ export const DocumentProcessor: React.FC<{
                           <td colSpan={6} className="px-4 pb-3">
                             <div className="font-mono space-y-0.5 border border-cdlp-border rounded bg-cdlp-card/40 p-2">
                               <p className={`text-[10px] font-bold ${vatNeedsAttention ? 'text-amber-400' : 'text-blue-400'}`}>
-                                TVA {vat.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {t('docVatAmount')} {vat.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </p>
                               <p className="text-[8px] text-cdlp-muted">
                                 {vatNeedsAttention
-                                  ? 'Warning: VAT 0.00 — file needs attention'
-                                  : extractedRateLabel || 'Rate missing in source'}
+                                  ? t('dpVatWarning')
+                                  : extractedRateLabel || t('dpRateMissing')}
                               </p>
                             </div>
                           </td>

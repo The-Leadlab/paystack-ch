@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { dashboardEn, dashboardFr } from '../i18n/dashboardTranslations';
 
 type Language = 'en' | 'fr';
 
@@ -773,6 +774,7 @@ const translations = {
     vatPaidLabel: 'VAT paid',
     vatFromCustomersHint: 'From customers ({rate}% of sales)',
     vatOnPurchasesHint: 'On purchases ({rate}% effective)',
+    ...dashboardEn,
     appLoading: 'Loading…',
   },
   fr: {
@@ -1536,6 +1538,7 @@ const translations = {
     vatPaidLabel: 'TVA payée',
     vatFromCustomersHint: 'Des clients ({rate} % des ventes)',
     vatOnPurchasesHint: 'Sur achats ({rate} % effectif)',
+    ...dashboardFr,
     appLoading: 'Chargement…',
     bankStatus_error: 'erreur',
   },
@@ -1592,4 +1595,10 @@ export function useLanguage() {
   const ctx = useContext(LanguageContext);
   if (!ctx) throw new Error('useLanguage must be used within LanguageProvider');
   return ctx;
+}
+
+/** Swiss locale for dates and CHF number formatting from active UI language. */
+export function useChfLocale(): 'en-CH' | 'fr-CH' {
+  const { language } = useLanguage();
+  return language === 'fr' ? 'fr-CH' : 'en-CH';
 }
