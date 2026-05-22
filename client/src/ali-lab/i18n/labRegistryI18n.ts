@@ -214,7 +214,7 @@ const STATUS_LABELS: Record<AliLabFeatureStatus, Record<LabLang, string>> = {
   scaffold: { en: "scaffold", fr: "ébauche", de: "gerüst", it: "bozza" },
   prototype: { en: "prototype", fr: "prototype", de: "prototyp", it: "prototipo" },
   ready: { en: "ready", fr: "prêt", de: "bereit", it: "pronto" },
-  promoted: { en: "promoted", fr: "promu", de: "promoted", it: "promosso" },
+  promoted: { en: "promoted", fr: "promu", de: "übernommen", it: "promosso" },
 };
 
 export function labFeatureCopy(

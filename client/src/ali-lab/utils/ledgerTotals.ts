@@ -60,5 +60,6 @@ export function computeLedgerTotals(income: Income[], expenses: Expense[]): Ledg
 }
 
 export function formatChf(n: number): string {
+  /** Swiss German number format — locale `de-CH`, not Dutch (`nl-NL`). */
   return n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }

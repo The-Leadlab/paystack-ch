@@ -13,6 +13,8 @@ Use this document when fixing **hard-coded copy**, **language switcher bugs**, o
 | **Production i18n** | `client/src/cafe/context/LanguageContext.tsx` | `en` \| `fr` only | Entire SPA (landing + `/app` + auth) via `LanguageProvider` in `App.tsx` |
 | **SEO meta** | `client/src/components/SeoHead.tsx` | `SEO_EN` / `SEO_FR` tables | `document.title`, description, OG tags per route |
 | **Ali lab i18n** | `client/src/ali-lab/context/LabLanguageContext.tsx`, `client/src/ali-lab/i18n/labStrings.ts` | `en` \| `fr` \| `de` \| `it` | **Only** components under `/ali` that call `useLabLanguage()` |
+
+**`de` = German (Deutsch, Switzerland `de-CH`), NOT Dutch (`nl`).** UI buttons show `DE` with title “Deutsch (German)”. Never put Dutch (Nederlands) copy under the `de` locale.
 | **Coverage helper** | `client/src/ali-lab/i18n/labCoverage.ts` | — | Compares lab keys vs English fallback |
 
 **Storage:** `localStorage` key `paystack_language` — values `en` or `fr`. First visit defaults to **French** unless the user previously chose English.
@@ -79,7 +81,7 @@ Rules:
 3. User-visible strings must not be hard-coded in JSX, alerts, confirms, aria-label, title, or placeholder attributes.
 4. Ali lab (/ali): either sync with global LanguageContext (en/fr) OR use useLabLanguage() + labStrings.ts for all visible text including AliLabPage shell and featureRegistry labels.
 5. Do NOT promote Ali features to /app as part of this task unless the user explicitly asked.
-6. DE/IT: complete in lab (labStrings.ts) first; add de|it to LanguageContext only when user asks for production DE/IT.
+6. DE/IT: complete in lab (labStrings.ts) first; `de` must be proper **German**, never Dutch; add de|it to LanguageContext only when user asks for production DE/IT.
 7. Run pnpm build after substantive changes. Manually test: toggle EN/FR on /, /app, and /ali (each feature route).
 
 Workflow per surface:

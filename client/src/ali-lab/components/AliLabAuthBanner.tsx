@@ -2,6 +2,9 @@ import { Link } from "wouter";
 import { useAuth } from "@/cafe/context/AuthContext";
 import { useLabLanguage } from "../context/LabLanguageContext";
 import type { LabLang } from "../i18n/labStrings";
+import { LAB_LANG_DISPLAY } from "../i18n/labLangDisplay";
+
+const LAB_LANGS: LabLang[] = ["en", "fr", "de", "it"];
 
 export function AliLabAuthBanner() {
   const { user, loading } = useAuth();
@@ -13,18 +16,22 @@ export function AliLabAuthBanner() {
         {loading ? "…" : user ? `✓ ${t("firebaseOk")} (${user.email})` : `${t("localOnly")} — ${t("signInHint")}`}
       </span>
       <div className="flex items-center gap-2">
-        {(["en", "fr", "de", "it"] as LabLang[]).map((l) => (
-          <button
-            key={l}
-            type="button"
-            onClick={() => setLang(l)}
-            className={`px-2 py-0.5 rounded uppercase font-bold ${
-              lang === l ? "bg-brand-red text-white" : "border border-border"
-            }`}
-          >
-            {l}
-          </button>
-        ))}
+        {LAB_LANGS.map((l) => {
+          const label = LAB_LANG_DISPLAY[l];
+          return (
+            <button
+              key={l}
+              type="button"
+              onClick={() => setLang(l)}
+              title={l === "de" ? `${label.title} — ${t("langNotDutch")}` : label.title}
+              className={`px-2 py-0.5 rounded uppercase font-bold ${
+                lang === l ? "bg-brand-red text-white" : "border border-border"
+              }`}
+            >
+              {label.short}
+            </button>
+          );
+        })}
         {!user && (
           <Link href="/sign-in?redirect=/ali/budgeting" className="text-brand-red font-bold uppercase">
             {t("signIn")}

@@ -95,6 +95,13 @@ const en: Dict = {
   recentExpensesHint: "Recent session expenses (last 5 rows):",
   useForSplit: "use when creating FairSplit from real spend.",
   committedRecurringSuffix: "(committed recurring)",
+  langDeutsch: "German",
+  langNotDutch: "German (not Dutch)",
+  keysLocalized: "keys localized",
+  labOnlyDevNote:
+    "Strings live in labStrings.ts. Production LanguageContext stays EN/FR until you approve promotion in chat.",
+  stillEnglishFallback: "Still English fallback:",
+  moreKeys: "more",
 };
 
 const fr: Dict = {
@@ -188,6 +195,13 @@ const fr: Dict = {
   recentExpensesHint: "Dépenses récentes de la session (5 dernières lignes) :",
   useForSplit: "utiliser pour le total FairSplit",
   committedRecurringSuffix: "(récurrent engagé)",
+  langDeutsch: "Allemand",
+  langNotDutch: "Allemand (pas néerlandais)",
+  keysLocalized: "clés localisées",
+  labOnlyDevNote:
+    "Textes dans labStrings.ts. LanguageContext reste EN/FR jusqu'à promotion approuvée en chat.",
+  stillEnglishFallback: "Encore en anglais :",
+  moreKeys: "de plus",
 };
 
 const de: Dict = {
@@ -243,7 +257,7 @@ const de: Dict = {
   splitPerPerson: "Pro Person",
   loadingLedger: "Ledger wird geladen…",
   localBudgetCache: "Lokaler Budget-Cache",
-  total: "Total",
+  total: "Gesamt",
   week: "Woche",
   incomeThisMonth: "Einnahmen diesen Monat",
   unallocated: "nicht zugewiesen",
@@ -252,34 +266,41 @@ const de: Dict = {
   swissPresetsLocal: "Schweizer Voreinstellungen lokal bis Anmeldung.",
   batchTestTitle: "Stapeltest (/app-Beschreibungen)",
   network: "Netzwerk",
-  addSplit: "Split hinzufügen",
+  addSplit: "Aufteilung hinzufügen",
   inLibrary: "in Bibliothek",
   firebaseNotConfigured: "Firebase nicht konfiguriert — nur localStorage.",
   labTitle: "Ali Feature-Lab",
   labIntro:
-    "Konkurrenz-Features hier (keine Bankverbindungen). CHF-Totals spiegeln /app — UI bleibt in /ali bis Freigabe.",
+    "Konkurrenz-Features hier (keine Bankverbindungen). CHF-Summen spiegeln /app — UI bleibt in /ali bis zur Freigabe.",
   superPromptRepo: "Super-Prompt (Repo)",
   productionApp: "Produktion /app",
   lockLab: "Lab sperren",
   loadingLab: "Lab wird geladen…",
   priorityVs: "Priorität · vs",
-  promoteToLabel: "Promote nach:",
-  beforePromotionTitle: "Vor Promotion nach /app",
+  promoteToLabel: "Ziel in Produktion:",
+  beforePromotionTitle: "Vor der Übernahme in /app",
   beforePromotionBody:
-    "Zuerst hier testen. Agent in Chat informieren — keine Auto-Integration in /app.",
-  promoCheckFirebase: "Mit echter Firebase-Session (nicht nur localStorage)",
+    "Zuerst hier testen. Agent im Chat informieren — keine automatische Integration in /app.",
+  promoCheckFirebase: "Funktioniert mit echter Firebase-Sitzung (nicht nur localStorage)",
   promoCheckPlans: "Plan-Rechte in planCatalog.ts",
   promoCheckI18n: "EN + FR in LanguageContext (DE/IT bei Bedarf)",
-  promoCheckMove: "UI nach RestaurantDashboard (nach Freigabe)",
-  promoCheckStatus: "Status promoted in featureRegistry.ts",
+  promoCheckMove: "UI nach RestaurantDashboard (nach Ihrer Freigabe)",
+  promoCheckStatus: "Status «promoted» in featureRegistry.ts",
   compareProduction: "Mit Produktion /app vergleichen",
   coverage: "Abdeckung",
   sampleDashboard: "Beispiel-Dashboard",
   sampleExpenses: "Beispiel-Ausgaben",
   perYear: "/Jahr",
   recentExpensesHint: "Aktuelle Sitzungsausgaben (letzte 5 Zeilen):",
-  useForSplit: "für FairSplit-Summe",
+  useForSplit: "beim FairSplit aus realen Ausgaben übernehmen.",
   committedRecurringSuffix: "(gebundene Wiederholungen)",
+  langDeutsch: "Deutsch",
+  langNotDutch: "Deutsch (nicht Niederländisch)",
+  keysLocalized: "Schlüssel lokalisiert",
+  labOnlyDevNote:
+    "Zeichenketten in labStrings.ts. LanguageContext bleibt EN/FR bis zur Freigabe im Chat.",
+  stillEnglishFallback: "Noch englischer Fallback:",
+  moreKeys: "weitere",
 };
 
 const it: Dict = {
@@ -370,8 +391,15 @@ const it: Dict = {
   sampleExpenses: "Esempio spese",
   perYear: "/anno",
   recentExpensesHint: "Spese recenti sessione (ultime 5 righe):",
-  useForSplit: "usa per totale FairSplit",
+  useForSplit: "usa per FairSplit da spese reali.",
   committedRecurringSuffix: "(ricorrenti impegnati)",
+  langDeutsch: "Tedesco",
+  langNotDutch: "Tedesco (non olandese)",
+  keysLocalized: "chiavi localizzate",
+  labOnlyDevNote:
+    "Stringhe in labStrings.ts. LanguageContext resta EN/FR fino ad approvazione in chat.",
+  stillEnglishFallback: "Ancora in inglese:",
+  moreKeys: "altre",
 };
 
 const MAP: Record<LabLang, Dict> = { en, fr, de, it };
