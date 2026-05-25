@@ -184,18 +184,16 @@ export default function SignInPage() {
               {t("authSignInExistingOnlyNote")}
             </p>
           ) : null}
-          {!registrationClosed ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full font-display gap-2 border-border bg-background hover:bg-secondary/80"
-              onClick={handleGoogle}
-              disabled={googleLoading || submitting}
-            >
-              <GoogleGIcon className="size-[18px] shrink-0" />
-              {googleLoading ? t("authWorking") : t("authContinueGoogle")}
-            </Button>
-          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full font-display gap-2 border-border bg-background hover:bg-secondary/80"
+            onClick={handleGoogle}
+            disabled={googleLoading || submitting}
+          >
+            <GoogleGIcon className="size-[18px] shrink-0" />
+            {googleLoading ? t("authWorking") : t("authContinueGoogle")}
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="relative py-2">

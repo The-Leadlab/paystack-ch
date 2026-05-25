@@ -35,6 +35,7 @@ import {
 import { useSubscription } from '../context/SubscriptionContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useExpenseCategoryMeta } from '../i18n/expenseCategoryI18n';
+import { formatIssuerForDisplay, invoicesDetectedIssuer } from '../i18n/documentDisplayI18n';
 import { countCompletedDocumentsThisMonth } from '@shared/planCatalog';
 
 // Neural Log Component (from Ypsom)
@@ -1425,15 +1426,15 @@ const VerificationHub: React.FC<{
               <div className="space-y-5">
                  <div>
                     <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">
-                      Issuer Entity
+                      {t('dpIssuerEntity')}
                       {hasMultipleSubs && (
                         <span className="block text-[8px] font-bold text-cdlp-muted/70 normal-case tracking-normal mt-0.5">
-                          Rolled up from invoices below — edit each sub-invoice issuer.
+                          {t('dpIssuerRolledUpHint')}
                         </span>
                       )}
                     </label>
                     <input
-                      value={editedData.issuer}
+                      value={hasMultipleSubs ? formatIssuerForDisplay(editedData.issuer, t) : editedData.issuer}
                       onChange={(e) => handleFieldChange('issuer', e.target.value)}
                       readOnly={hasMultipleSubs}
                       className={`w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-foreground outline-none focus:border-cdlp-gold transition-colors ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`}
@@ -1446,14 +1447,14 @@ const VerificationHub: React.FC<{
                       onClick={() => setShowSubInvoiceModal(true)}
                       className="h-11 px-4 bg-cdlp-gold/15 border border-cdlp-gold/40 rounded-sm text-xs font-black text-cdlp-gold uppercase tracking-wider hover:bg-cdlp-gold/25 transition-colors"
                     >
-                      {subDocuments.length} invoices detected
+                      {invoicesDetectedIssuer(subDocuments.length, t)}
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowSubInvoiceModal(true)}
                       className="h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-black text-foreground uppercase tracking-wider hover:border-cdlp-gold transition-colors"
                     >
-                      Open sub-table analysis
+                      {t('dpOpenSubTable')}
                     </button>
                   </div>
                  )}
@@ -1463,20 +1464,20 @@ const VerificationHub: React.FC<{
                      onClick={() => openDocumentInNewTab(doc)}
                      className="w-full h-11 px-4 bg-cdlp-gold text-cdlp-black rounded-sm text-xs font-black uppercase tracking-wider hover:bg-cdlp-gold-light transition-colors flex items-center justify-center gap-2"
                    >
-                     <ExternalLink className="w-4 h-4" /> Open PDF
+                     <ExternalLink className="w-4 h-4" /> {t('dpOpenPdf')}
                    </button>
                  ) : (
                    <div className="text-[10px] font-bold text-cdlp-muted bg-cdlp-card border border-cdlp-border rounded-sm px-3 py-2">
-                     PDF source is unavailable for this record.
+                     {t('dpPdfUnavailable')}
                    </div>
                  )}
                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                       <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Currency</label>
+                       <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">{t('dpCurrency')}</label>
                        <input value={editedData.originalCurrency} onChange={e => handleFieldChange('originalCurrency', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-foreground outline-none uppercase" placeholder="CHF" />
                     </div>
                     <div>
-                       <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Document #</label>
+                       <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">{t('dpDocumentNumber')}</label>
                        <input value={editedData.documentNumber} onChange={e => handleFieldChange('documentNumber', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-foreground outline-none" />
                     </div>
                  </div>
@@ -1485,8 +1486,8 @@ const VerificationHub: React.FC<{
                  <div>
                     <label className={`text-[9px] font-black uppercase tracking-[0.2em] block mb-2 flex justify-between ${isZeroValue ? 'text-red-600' : 'text-cdlp-muted'}`}>
                        <span>
-                         Total Amount
-                         {hasMultipleSubs && <span className="text-[8px] font-bold text-cdlp-muted ml-2">(rollup)</span>}
+                         {t('dpTotalAmount')}
+                         {hasMultipleSubs && <span className="text-[8px] font-bold text-cdlp-muted ml-2">{t('dpRollup')}</span>}
                          {isZeroValue && <AlertTriangle className="w-3 h-3 inline ml-1 align-text-top" />}
                        </span>
                     </label>
@@ -1500,14 +1501,14 @@ const VerificationHub: React.FC<{
                         className={`w-full h-11 px-4 rounded-sm text-xs font-black text-foreground outline-none transition-all ${isZeroValue ? 'bg-red-600/10 border-2 border-red-600' : 'bg-cdlp-card border border-cdlp-border'} ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`} 
                       />
                       {isZeroValue && (
-                        <div className="absolute -bottom-5 left-0 text-[8px] font-black text-red-600 uppercase tracking-widest animate-pulse">Value cannot be zero</div>
+                        <div className="absolute -bottom-5 left-0 text-[8px] font-black text-red-600 uppercase tracking-widest animate-pulse">{t('dpValueCannotBeZero')}</div>
                       )}
                     </div>
                  </div>
                  <div className="grid grid-cols-2 gap-3">
                     <div>
                        <label className="text-[9px] font-black uppercase text-blue-600 tracking-[0.2em] block mb-2">
-                         VAT Amount{hasMultipleSubs && <span className="text-[8px] text-cdlp-muted ml-1">(rollup)</span>}
+                         {t('dpVatAmount')}{hasMultipleSubs && <span className="text-[8px] text-cdlp-muted ml-1">{t('dpRollup')}</span>}
                        </label>
                        <input 
                          type="number" 
@@ -1520,7 +1521,7 @@ const VerificationHub: React.FC<{
                     </div>
                     <div>
                        <label className="text-[9px] font-black uppercase text-emerald-600 tracking-[0.2em] block mb-2">
-                         Net Amount{hasMultipleSubs && <span className="text-[8px] text-cdlp-muted ml-1">(rollup)</span>}
+                         {t('dpNetAmount')}{hasMultipleSubs && <span className="text-[8px] text-cdlp-muted ml-1">{t('dpRollup')}</span>}
                        </label>
                        <input 
                          type="number" 
@@ -1536,7 +1537,7 @@ const VerificationHub: React.FC<{
               <div className="space-y-5 md:col-span-2 xl:col-span-1">
                  <div>
                     <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">
-                      Date{hasMultipleSubs && <span className="text-[8px] font-bold text-cdlp-muted/80 ml-2">(earliest)</span>}
+                      {t('date')}{hasMultipleSubs && <span className="text-[8px] font-bold text-cdlp-muted/80 ml-2">{t('dpDateEarliest')}</span>}
                     </label>
                     <input
                       type="date"
@@ -1547,19 +1548,19 @@ const VerificationHub: React.FC<{
                     />
                  </div>
                  <div className="pt-1 sm:pt-0">
-                    <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">Category</label>
+                    <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">{t('category')}</label>
                     <div className="flex gap-2">
                       {isAddingCustom ? (
                         <input 
                           autoFocus
                           value={editedData.expenseCategory} 
                           onChange={e => handleFieldChange('expenseCategory', e.target.value)} 
-                          placeholder="Type custom..."
+                          placeholder={t('dpTypeCustom')}
                           className="flex-1 h-11 px-4 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-foreground uppercase outline-none shadow-inner"
                         />
                       ) : (
                         <select value={editedData.expenseCategory} onChange={e => handleFieldChange('expenseCategory', e.target.value)} className={`flex-1 h-11 px-4 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-foreground uppercase outline-none`}>
-                           <option value="">-- Uncategorized --</option>
+                           <option value="">{t('dpUncategorized')}</option>
                            {CATEGORY_GROUPS.map(group => (
                              <optgroup key={group.id} label={group.label}>
                                {RESTAURANT_CATEGORIES.filter(cat => cat.group === group.id).map(cat => (
@@ -1591,10 +1592,10 @@ const VerificationHub: React.FC<{
              <div className="mt-8 mb-6 space-y-3">
                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-cdlp-border pb-2">
                  <h5 className="text-[10px] font-black uppercase tracking-widest text-cdlp-gold flex items-center gap-2">
-                   <ListOrdered className="w-3.5 h-3.5" /> Document verification — per invoice
+                   <ListOrdered className="w-3.5 h-3.5" /> {t('dpPerInvoiceTitle')}
                  </h5>
                  <span className="text-[8px] text-cdlp-muted uppercase tracking-tight">
-                   One tab per invoice; header Total = sum of all tabs.
+                   {t('dpPerInvoiceHint')}
                  </span>
                </div>
                <div className="flex flex-wrap gap-2 pb-2 overflow-x-auto border-b border-cdlp-border/80">
@@ -1613,7 +1614,7 @@ const VerificationHub: React.FC<{
                        }`}
                      >
                        <span className="block text-[9px] font-black uppercase tracking-tight truncate">
-                         #{idx + 1} {sub.issuer || 'Invoice'}
+                         #{idx + 1} {formatIssuerForDisplay(sub.issuer, t) || t('dpInvoice')}
                        </span>
                        <span className="block font-mono text-[10px] mt-1 opacity-90">
                          {(Number(sub.totalAmount || 0)).toLocaleString(chfLocale, {
@@ -1635,15 +1636,15 @@ const VerificationHub: React.FC<{
                    <div className="border border-cdlp-border rounded-sm bg-cdlp-card/35 p-4 mt-3">
                      <div className="flex items-center justify-between gap-2 mb-4 pb-2 border-b border-cdlp-border/50">
                        <span className="text-[10px] font-black uppercase text-cdlp-gold tracking-widest">
-                         Invoice {idx + 1} of {subDocuments.length}
+                         {t('dpInvoiceNofM').replace('{current}', String(idx + 1)).replace('{total}', String(subDocuments.length))}
                        </span>
                        {pageRange && (
-                         <span className="text-[9px] font-bold text-cdlp-muted">Pages {pageRange}</span>
+                         <span className="text-[9px] font-bold text-cdlp-muted">{t('dpPagesRange').replace('{range}', pageRange)}</span>
                        )}
                      </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                        <div className="space-y-2 md:col-span-2 xl:col-span-1">
-                         <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Issuer</label>
+                         <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">{t('dpIssuer')}</label>
                          <input
                            value={sub.issuer ?? ''}
                            onChange={(e) => patchSubDocument(idx, { issuer: e.target.value })}
@@ -1663,7 +1664,7 @@ const VerificationHub: React.FC<{
                          />
                        </div>
                        <div className="space-y-2">
-                         <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Date</label>
+                         <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">{t('date')}</label>
                          <input
                            type="date"
                            value={sub.date ?? ''}
@@ -1672,13 +1673,13 @@ const VerificationHub: React.FC<{
                          />
                        </div>
                        <div className="space-y-2 md:col-span-2 xl:col-span-3">
-                         <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Category</label>
+                         <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">{t('category')}</label>
                          <select
                            value={sub.expenseCategory || ''}
                            onChange={(e) => patchSubDocument(idx, { expenseCategory: e.target.value })}
                            className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-foreground uppercase outline-none"
                          >
-                           <option value="">— Uncategorized —</option>
+                           <option value="">{t('dpUncategorized')}</option>
                            {CATEGORY_GROUPS.map((group) => (
                              <optgroup key={group.id} label={group.label}>
                                {RESTAURANT_CATEGORIES.filter((cat) => cat.group === group.id).map((cat) => (
@@ -1691,7 +1692,7 @@ const VerificationHub: React.FC<{
                          </select>
                        </div>
                        <div className="space-y-2">
-                         <label className="text-[8px] font-black uppercase text-emerald-600 tracking-widest">Net</label>
+                         <label className="text-[8px] font-black uppercase text-emerald-600 tracking-widest">{t('dpNet')}</label>
                          <input
                            type="number"
                            step="0.01"
@@ -1708,7 +1709,7 @@ const VerificationHub: React.FC<{
                          />
                        </div>
                        <div className="space-y-2">
-                         <label className="text-[8px] font-black uppercase text-blue-600 tracking-widest">VAT</label>
+                         <label className="text-[8px] font-black uppercase text-blue-600 tracking-widest">{t('dpVat')}</label>
                          <input
                            type="number"
                            step="0.01"
@@ -1725,7 +1726,7 @@ const VerificationHub: React.FC<{
                          />
                        </div>
                        <div className="space-y-2">
-                         <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">Total (gross)</label>
+                         <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">{t('dpTotalGross')}</label>
                          <input
                            type="number"
                            step="0.01"
@@ -1882,7 +1883,7 @@ const VerificationHub: React.FC<{
                 <RefreshCcw className="w-5 h-5" />
               </button>
               <p className="text-center text-[9px] text-cdlp-gold-light mt-3 uppercase tracking-wider font-black">
-                ⚡ Click to apply all changes and sync with dashboard
+                ⚡ {t('dpSaveApplyHint')}
               </p>
            </div>
         </div>
@@ -1898,14 +1899,14 @@ const VerificationHub: React.FC<{
           >
             <div className="flex items-center justify-between gap-3 mb-4">
               <h4 className="text-sm sm:text-base font-black uppercase tracking-wider text-foreground">
-                Invoice Breakdown ({subDocuments.length})
+                {t('dpInvoiceBreakdown').replace('{n}', String(subDocuments.length))}
               </h4>
               <button
                 type="button"
                 onClick={() => setShowSubInvoiceModal(false)}
                 className="h-8 px-3 rounded border border-border bg-background text-foreground text-xs font-bold hover:border-cdlp-gold transition-colors"
               >
-                Close
+                {t('cancel')}
               </button>
             </div>
             <div className="overflow-x-auto">
@@ -1913,13 +1914,13 @@ const VerificationHub: React.FC<{
                 <thead className="bg-muted text-foreground uppercase font-bold">
                   <tr>
                     <th className="px-3 py-2 text-left">#</th>
-                    <th className="px-3 py-2 text-left">Issuer</th>
-                    <th className="px-3 py-2 text-left">Pages</th>
-                    <th className="px-3 py-2 text-left">Date</th>
-                    <th className="px-3 py-2 text-left">Category</th>
-                    <th className="px-3 py-2 text-right">Total</th>
-                    <th className="px-3 py-2 text-right">Net</th>
-                    <th className="px-3 py-2 text-right">VAT</th>
+                    <th className="px-3 py-2 text-left">{t('dpIssuer')}</th>
+                    <th className="px-3 py-2 text-left">{t('dpPagesLabel')}</th>
+                    <th className="px-3 py-2 text-left">{t('date')}</th>
+                    <th className="px-3 py-2 text-left">{t('category')}</th>
+                    <th className="px-3 py-2 text-right">{t('dpTotalAmount')}</th>
+                    <th className="px-3 py-2 text-right">{t('dpNet')}</th>
+                    <th className="px-3 py-2 text-right">{t('dpVat')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">

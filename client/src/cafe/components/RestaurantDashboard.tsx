@@ -7,6 +7,7 @@ import { useSession } from '../context/SessionContext';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
+import { formatIssuerForDisplay, formatMonthYearLabel, parseMonthKey } from '../i18n/documentDisplayI18n';
 import { useDocuments } from '../context/DocumentContext';
 import { usePOS } from '../context/POSContext';
 import { DocumentProcessor } from './DocumentProcessor';
@@ -1736,13 +1737,15 @@ function ReportsPlaceholder() {
     const months: Record<string, { income: number; expenses: number; balance: number }> = {};
     
     dateFilteredIncome.forEach(item => {
-      const month = item.date.substring(0, 7); // YYYY-MM
+      const month = parseMonthKey(item.date);
+      if (!month) return;
       if (!months[month]) months[month] = { income: 0, expenses: 0, balance: 0 };
       months[month].income += item.amount;
     });
     
     dateFilteredExpenses.forEach(item => {
-      const month = item.date.substring(0, 7);
+      const month = parseMonthKey(item.date);
+      if (!month) return;
       if (!months[month]) months[month] = { income: 0, expenses: 0, balance: 0 };
       months[month].expenses += item.amount;
     });
@@ -2019,7 +2022,7 @@ function ReportsPlaceholder() {
         ) : (
           <div className="space-y-3">
             {monthlyData.map(([month, data]) => {
-              const monthName = new Date(month + '-01').toLocaleDateString(chfLocale, { year: 'numeric', month: 'long' });
+              const monthName = formatMonthYearLabel(month, chfLocale, t('repInvalidMonth'));
               return (
                 <div key={month} className="bg-cdlp-card border border-cdlp-border rounded p-4">
                   <div className="flex justify-between items-center mb-3">
@@ -2147,8 +2150,8 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
   const groupByMonth = (docs: ProcessedDocument[]) => {
     const byMonth: Record<string, ProcessedDocument[]> = {};
     docs.forEach(doc => {
-      if (!doc.data?.date) return;
-      const monthKey = doc.data.date.substring(0, 7); // YYYY-MM
+      const monthKey = parseMonthKey(doc.data?.date);
+      if (!monthKey) return;
       if (!byMonth[monthKey]) byMonth[monthKey] = [];
       byMonth[monthKey].push(doc);
     });
@@ -2473,7 +2476,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
           >
             <ChevronRight className="w-4 h-4 rotate-180" /> {t('docBack')}
           </button>
-          <h2 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">{selectedEntity}</h2>
+          <h2 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">{formatIssuerForDisplay(selectedEntity, t)}</h2>
         </div>
 
         {monthlyGroups.length === 0 ? (
@@ -2485,7 +2488,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
         ) : (
           monthlyGroups.map(([month, docs]) => {
           const totalAmount = docs.reduce((sum, d) => sum + (d.data?.totalAmount || 0), 0);
-          const monthName = new Date(month + '-01').toLocaleDateString(chfLocale, { year: 'numeric', month: 'long' });
+          const monthName = formatMonthYearLabel(month, chfLocale, t('repInvalidMonth'));
 
           return (
             <div key={month} className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card overflow-hidden">
@@ -2624,7 +2627,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <h3 className="font-bold text-white text-base mb-1 group-hover:text-cdlp-gold transition-colors">
-                      {entityName}
+                      {formatIssuerForDisplay(entityName, t)}
                     </h3>
                     <p className="text-xs text-cdlp-muted uppercase">
                       {isEmployee ? t('docEntityEmployee') : t('docEntitySupplier')}
