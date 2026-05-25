@@ -6,7 +6,7 @@ import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
-import { useChfLocale, useLanguage } from '../context/LanguageContext';
+import { useChfLocale, useFormatChf, useLanguage } from '../context/LanguageContext';
 import { formatIssuerForDisplay, formatMonthYearLabel, parseMonthKey } from '../i18n/documentDisplayI18n';
 import { useDocuments } from '../context/DocumentContext';
 import { usePOS } from '../context/POSContext';
@@ -1173,6 +1173,7 @@ function IncomeExpenseSection({
   onItemClick?: (item: any) => void;
   t: (key: string) => string;
 }) {
+  const formatChf = useFormatChf();
   const [draggedOver, setDraggedOver] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editForm, setEditForm] = React.useState<any>(null);
@@ -1401,7 +1402,7 @@ function IncomeExpenseSection({
                   </button>
                   <div className="flex items-center gap-2 ml-2">
                     <p className={`font-black text-sm md:text-base text-${colorClass}-500`}>
-                      {item.amount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatChf(item.amount)}
                     </p>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
@@ -1432,7 +1433,7 @@ function IncomeExpenseSection({
 
 // Dashboard Tab Component
 function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument, onShowEmployeePanel }: any) {
-  const chfLocale = language === 'fr' ? 'fr-CH' : 'en-CH';
+  const chfLocale = useChfLocale();
   const vatOnSalesRate = totalIncome > 0 ? (vatReceived / totalIncome) * 100 : 0;
   const expenseBaseForVat = totalExpenses + totalPayroll;
   const vatOnPurchasesRate = expenseBaseForVat > 0 ? (vatPaid / expenseBaseForVat) * 100 : 0;

@@ -79,6 +79,7 @@ Rules:
 1. Production UI (landing + /app + auth): use useLanguage() and keys in client/src/cafe/context/LanguageContext.tsx — BOTH en and fr for every new key.
 2. Never ship a key in only one language — en and fr blocks must stay in sync (613+ keys today).
 3. User-visible strings must not be hard-coded in JSX, alerts, confirms, aria-label, title, or placeholder attributes.
+3b. **CHF amounts:** use `useFormatChf()` or `formatChfAmount()` from `LanguageContext.tsx` — never bare `chfLocale` unless `useChfLocale()` is in the **same** React component. Run `node scripts/check-chf-locale.mjs` after dashboard money UI edits.
 4. Ali lab (/ali): either sync with global LanguageContext (en/fr) OR use useLabLanguage() + labStrings.ts for all visible text including AliLabPage shell and featureRegistry labels.
 5. Do NOT promote Ali features to /app as part of this task unless the user explicitly asked.
 6. DE/IT: complete in lab (labStrings.ts) first; `de` must be proper **German**, never Dutch; add de|it to LanguageContext only when user asks for production DE/IT.

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useState, useEffect } from 'react';
 import { dashboardEn, dashboardFr } from '../i18n/dashboardTranslations';
 
 type Language = 'en' | 'fr';
@@ -1607,8 +1607,38 @@ export function useLanguage() {
   return ctx;
 }
 
+export type ChfLocale = 'en-CH' | 'fr-CH';
+
 /** Swiss locale for dates and CHF number formatting from active UI language. */
-export function useChfLocale(): 'en-CH' | 'fr-CH' {
+export function useChfLocale(): ChfLocale {
   const { language } = useLanguage();
   return language === 'fr' ? 'fr-CH' : 'en-CH';
+}
+
+const CHF_FORMAT: Intl.NumberFormatOptions = {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+};
+
+/** Format a CHF amount with Swiss grouping (safe without React hooks). */
+export function formatChfAmount(
+  amount: number,
+  locale: ChfLocale = 'fr-CH',
+  options?: Intl.NumberFormatOptions
+): string {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return (0).toLocaleString(locale, { ...CHF_FORMAT, ...options });
+  return n.toLocaleString(locale, { ...CHF_FORMAT, ...options });
+}
+
+/**
+ * Prefer this in components that display money — avoids `chfLocale is not defined`
+ * when a nested helper uses locale without calling useChfLocale().
+ */
+export function useFormatChf() {
+  const locale = useChfLocale();
+  return useCallback(
+    (amount: number, options?: Intl.NumberFormatOptions) => formatChfAmount(amount, locale, options),
+    [locale]
+  );
 }
