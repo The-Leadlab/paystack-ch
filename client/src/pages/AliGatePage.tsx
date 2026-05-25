@@ -8,8 +8,10 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { AuthLayout } from "./auth/AuthLayout";
 import { verifyAliLabPassword } from "@/lib/aliLabGateClient";
 import { SeoNoIndex } from "@/components/SeoNoIndex";
+import { useLanguage } from "@/cafe/context/LanguageContext";
 
 export default function AliGatePage() {
+  const { t } = useLanguage();
   const search = useSearch();
   const next = (() => {
     const qs = search.startsWith("?") ? search.slice(1) : search;
@@ -75,7 +77,7 @@ export default function AliGatePage() {
               <FlaskConical className="size-3" /> Set <code>ALI_LAB_PASSWORD</code> on server (see .env.example)
             </p>
             <Button asChild variant="ghost" size="sm" className="font-display text-muted-foreground">
-              <Link href="/">Back home</Link>
+              <Link href="/">{t('authBackHome')}</Link>
             </Button>
           </CardFooter>
         </Card>

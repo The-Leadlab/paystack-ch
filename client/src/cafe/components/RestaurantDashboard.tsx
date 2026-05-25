@@ -75,6 +75,7 @@ export function RestaurantDashboard() {
   const { signOut, user } = useAuth();
   const { enforcementEnabled, entitlements } = useSubscription();
   const { language, setLanguage, t } = useLanguage();
+  const chfLocale = useChfLocale();
   const errMsg = (error: unknown) => (error instanceof Error ? error.message : t('errorUnknown'));
 
   const openBillingTab = () => {
@@ -681,7 +682,7 @@ export function RestaurantDashboard() {
           ) : null}
 
           {sessions.length === 0 ? (
-            <p className="text-xs text-cdlp-muted/60">No sessions yet</p>
+            <p className="text-xs text-cdlp-muted/60">{t('noSessionsYet')}</p>
           ) : (
             <div className="space-y-2">
               {sessions.map((session) => (
@@ -1091,9 +1092,9 @@ export function RestaurantDashboard() {
                       <div className="space-y-2">
                         {emp.net_salary && (
                           <div className="flex justify-between items-center">
-                            <span className="text-xs text-cdlp-muted">Net Salary</span>
+                            <span className="text-xs text-cdlp-muted">{t('dashNetSalary')}</span>
                             <span className="text-sm font-bold text-emerald-400">
-                              {emp.net_salary.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                              {emp.net_salary.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
                             </span>
                           </div>
                         )}
@@ -1101,7 +1102,7 @@ export function RestaurantDashboard() {
                           <div className="flex justify-between items-center">
                             <span className="text-xs text-cdlp-muted">{t('dashSocialCharges')}</span>
                             <span className="text-sm font-bold text-blue-400">
-                              {emp.social_contributions.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                              {emp.social_contributions.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
                             </span>
                           </div>
                         )}
@@ -1109,7 +1110,7 @@ export function RestaurantDashboard() {
                           <div className="flex justify-between items-center">
                             <span className="text-xs text-cdlp-muted">{t('dashStateRest')}</span>
                             <span className="text-sm font-bold text-purple-400">
-                              {emp.state_rest.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                              {emp.state_rest.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
                             </span>
                           </div>
                         )}
@@ -1117,7 +1118,7 @@ export function RestaurantDashboard() {
                           <div className="flex justify-between items-center pt-2 border-t border-cdlp-border">
                             <span className="text-xs font-bold text-cdlp-gold uppercase">{t('dashTotalCost')}</span>
                             <span className="text-sm font-black text-cdlp-gold">
-                              {emp.monthly_salary.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                              {emp.monthly_salary.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
                             </span>
                           </div>
                         )}
@@ -1133,10 +1134,10 @@ export function RestaurantDashboard() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-bold text-cdlp-gold uppercase">{t('dashTotalPayroll')}</span>
                     <span className="text-lg font-black text-cdlp-gold">
-                      {employees.reduce((sum, emp) => sum + (emp.monthly_salary || 0), 0).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                      {employees.reduce((sum, emp) => sum + (emp.monthly_salary || 0), 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
                     </span>
                   </div>
-                  <p className="text-xs text-cdlp-muted mt-2">{employees.length} employee{employees.length !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-cdlp-muted mt-2">{t('dashEmployeeCount').replace('{n}', String(employees.length))}</p>
                 </div>
               )}
             </div>
@@ -1298,14 +1299,14 @@ function IncomeExpenseSection({
       {draggedOver && (
         <div className={`mb-4 p-3 border-2 border-dashed border-${colorClass}-500 rounded bg-${colorClass}-500/5 text-center`}>
           <p className={`text-xs font-bold text-${colorClass}-500 uppercase`}>
-            Drop here to convert to {type}
+            {t('dropConvertTo').replace('{type}', type === 'income' ? t('income') : t('expenses'))}
           </p>
         </div>
       )}
       
       <div className="space-y-2 max-h-64 md:max-h-96 overflow-y-auto custom-scrollbar">
         {items.length === 0 ? (
-          <p className="text-xs text-cdlp-muted/60">No {type} entries</p>
+          <p className="text-xs text-cdlp-muted/60">{type === 'income' ? t('noIncomeEntries') : t('noExpenseEntries')}</p>
         ) : (
           items.map((item: any) => (
             <div 
@@ -1345,8 +1346,8 @@ function IncomeExpenseSection({
                       onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
                       className="w-full px-2 py-1 bg-cdlp-dark border border-cdlp-border rounded text-xs text-white"
                     >
-                      <option value="SALES">SALES</option>
-                      <option value="RESERVATION">RESERVATION</option>
+                      <option value="SALES">{t('SALES')}</option>
+                      <option value="RESERVATION">{t('RESERVATION')}</option>
                     </select>
                   ) : (
                     <select
@@ -1354,10 +1355,11 @@ function IncomeExpenseSection({
                       onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
                       className="w-full px-2 py-1 bg-cdlp-dark border border-cdlp-border rounded text-xs text-white"
                     >
-                      <option value="BILLS">BILLS</option>
-                      <option value="SUPPLIERS">SUPPLIERS</option>
-                      <option value="PAYROLL">PAYROLL</option>
-                      <option value="OTHER">OTHER</option>
+                      <option value="BILLS">{t('BILLS')}</option>
+                      <option value="SUPPLIERS">{t('SUPPLIERS')}</option>
+                      <option value="PAYROLL">{t('PAYROLL')}</option>
+                      <option value="PAYROLL_TAXES">{t('PAYROLL_TAXES')}</option>
+                      <option value="OTHER">{t('OTHER')}</option>
                     </select>
                   )}
                   <div className="flex gap-2">
@@ -1398,7 +1400,7 @@ function IncomeExpenseSection({
                   </button>
                   <div className="flex items-center gap-2 ml-2">
                     <p className={`font-black text-sm md:text-base text-${colorClass}-500`}>
-                      {item.amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {item.amount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
@@ -1429,6 +1431,7 @@ function IncomeExpenseSection({
 
 // Dashboard Tab Component
 function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument, onShowEmployeePanel }: any) {
+  const chfLocale = language === 'fr' ? 'fr-CH' : 'en-CH';
   const vatOnSalesRate = totalIncome > 0 ? (vatReceived / totalIncome) * 100 : 0;
   const expenseBaseForVat = totalExpenses + totalPayroll;
   const vatOnPurchasesRate = expenseBaseForVat > 0 ? (vatPaid / expenseBaseForVat) * 100 : 0;
@@ -1470,7 +1473,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <TrendingUp className="w-4 md:w-5 h-4 md:h-5 text-emerald-500" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('income')}</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-emerald-500">{totalIncome.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-lg md:text-2xl font-black text-emerald-500">{totalIncome.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
         </div>
 
@@ -1479,7 +1482,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <TrendingDown className="w-4 md:w-5 h-4 md:h-5 text-red-500" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('expenses')}</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-red-500">{totalExpenses.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-lg md:text-2xl font-black text-red-500">{totalExpenses.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
         </div>
 
@@ -1488,7 +1491,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <Users className="w-4 md:w-5 h-4 md:h-5 text-cdlp-gold" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('payroll')}</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-cdlp-gold">{totalPayroll.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-lg md:text-2xl font-black text-cdlp-gold">{totalPayroll.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <p className="text-xs text-cdlp-muted">CHF</p>
         </div>
 
@@ -1498,7 +1501,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('balance')}</span>
           </div>
           <p className={`text-lg md:text-2xl font-black ${balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-            {balance.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {balance.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <p className="text-xs text-cdlp-muted">CHF</p>
         </div>
@@ -1511,7 +1514,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <Receipt className="w-4 md:w-5 h-4 md:h-5 text-blue-400" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('vatReceivedLabel')}</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-blue-400">{vatReceived.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-lg md:text-2xl font-black text-blue-400">{vatReceived.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <p className="text-xs text-cdlp-muted">{t('vatFromCustomersHint').replace('{rate}', vatOnSalesRate.toFixed(2))}</p>
         </div>
 
@@ -1520,7 +1523,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <Receipt className="w-4 md:w-5 h-4 md:h-5 text-orange-400" />
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('vatPaidLabel')}</span>
           </div>
-          <p className="text-lg md:text-2xl font-black text-orange-400">{vatPaid.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-lg md:text-2xl font-black text-orange-400">{vatPaid.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <p className="text-xs text-cdlp-muted">{t('vatOnPurchasesHint').replace('{rate}', vatOnPurchasesRate.toFixed(2))}</p>
         </div>
 
@@ -1530,7 +1533,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('vatBalanceLabel')}</span>
           </div>
           <p className={`text-lg md:text-2xl font-black ${vatBalance >= 0 ? 'text-purple-400' : 'text-red-400'}`}>
-            {vatBalance.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {vatBalance.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <p className="text-xs text-cdlp-muted">{vatBalance >= 0 ? t('vatBalanceToPay') : t('vatBalanceRefund')}</p>
         </div>
@@ -1683,7 +1686,7 @@ function ReportsPlaceholder() {
   const { income, expenses } = useFinance();
   const { currentSession, isAllSessionsView, sessions } = useSession();
   const { enforcementEnabled, entitlements } = useSubscription();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const chfLocale = useChfLocale();
   const advancedReports = !enforcementEnabled || entitlements.advancedAnalyticsAndReports;
 
@@ -1758,7 +1761,7 @@ function ReportsPlaceholder() {
     dateFilteredExpenses
       .filter(e => e.category === 'SUPPLIERS')
       .forEach(item => {
-        const supplier = item.description || 'Unknown';
+        const supplier = item.description || t('repUnknown');
         suppliers[supplier] = (suppliers[supplier] || 0) + item.amount;
       });
     
@@ -1817,18 +1820,23 @@ function ReportsPlaceholder() {
     setSupplierFilter('all');
   };
   
+  const reportPayload = () => ({
+    income: dateFilteredIncome,
+    expenses: dateFilteredExpenses,
+    monthlyData,
+    supplierData,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+    sessionName: isAllSessionsView ? t('allSessions') : (currentSession ? getSessionDisplayName(currentSession) : undefined),
+    locale: language,
+    labelCategory: categoryLabel,
+    labelIncomeType: (type: string) =>
+      type === 'SALES' || type === 'RESERVATION' ? t(type) : type,
+  });
+
   const handleExport = async (format: 'csv' | 'pdf') => {
     const { exportToCSV, exportToPDF } = await import('../services/reportExportService');
-    
-    const reportData = {
-      income: dateFilteredIncome,
-      expenses: dateFilteredExpenses,
-      monthlyData,
-      supplierData,
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
-      sessionName: isAllSessionsView ? t('allSessions') : (currentSession ? getSessionDisplayName(currentSession) : undefined)
-    };
+    const reportData = reportPayload();
     
     if (format === 'csv') {
       exportToCSV(reportData);
@@ -1839,15 +1847,7 @@ function ReportsPlaceholder() {
 
   const handleVatExport = async (format: 'csv' | 'pdf') => {
     const { exportSwissVatCSV, exportSwissVatPDF } = await import('../services/reportExportService');
-    const reportData = {
-      income: dateFilteredIncome,
-      expenses: dateFilteredExpenses,
-      monthlyData,
-      supplierData,
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
-      sessionName: isAllSessionsView ? t('allSessions') : (currentSession ? getSessionDisplayName(currentSession) : undefined)
-    };
+    const reportData = reportPayload();
 
     if (format === 'csv') {
       exportSwissVatCSV(reportData, vatPeriodMode);

@@ -34,46 +34,12 @@ import {
 } from '../types';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
+import { useExpenseCategoryMeta } from '../i18n/expenseCategoryI18n';
 import { countCompletedDocumentsThisMonth } from '@shared/planCatalog';
-
-// Restaurant-specific categories adapted from Ypsom - comprehensive categorization
-const RESTAURANT_CATEGORIES = [
-  { id: 'SALARY', label: 'Salary / Wages', group: 'Personnel' },
-  { id: 'PAYROLL_TAXES', label: 'Payroll Taxes / Social Charges', group: 'Personnel' },
-  { id: 'RENT', label: 'Rent / Lease', group: 'Fixed Costs' },
-  { id: 'UTILITIES', label: 'Utilities / Energy', group: 'Fixed Costs' },
-  { id: 'INSURANCE', label: 'Insurance', group: 'Fixed Costs' },
-  { id: 'FOOD_SUPPLIES', label: 'Food / Groceries', group: 'Inventory' },
-  { id: 'BEVERAGES', label: 'Beverages / Drinks', group: 'Inventory' },
-  { id: 'RESTAURANT_SUPPLIES', label: 'Restaurant Supplies / Equipment', group: 'Inventory' },
-  { id: 'PACKAGING', label: 'Packaging / Disposables', group: 'Inventory' },
-  { id: 'CLEANING', label: 'Cleaning Supplies', group: 'Operations' },
-  { id: 'MAINTENANCE', label: 'Maintenance / Repairs', group: 'Operations' },
-  { id: 'BANK_FEES', label: 'Bank Fees / Charges', group: 'Financial' },
-  { id: 'ACCOUNTING', label: 'Accounting / Professional Services', group: 'Financial' },
-  { id: 'MARKETING', label: 'Marketing / Advertising', group: 'Marketing' },
-  { id: 'DELIVERY', label: 'Delivery / Transport', group: 'Operations' },
-  { id: 'TELECOM', label: 'Internet / Telecom Services', group: 'Fixed Costs' },
-  { id: 'OFFICE_SUPPLIES', label: 'Office Supplies', group: 'Operations' },
-  { id: 'LICENSES', label: 'Licenses / Permits', group: 'Legal' },
-  { id: 'TAXES', label: 'Taxes / VAT', group: 'Financial' },
-  { id: 'OTHER', label: 'Other / Miscellaneous', group: 'Other' },
-];
-
-// Group categories for better organization
-const CATEGORY_GROUPS = [
-  { id: 'Personnel', label: 'Personnel Costs' },
-  { id: 'Inventory', label: 'Inventory & Supplies' },
-  { id: 'Fixed Costs', label: 'Fixed Costs' },
-  { id: 'Operations', label: 'Operations' },
-  { id: 'Financial', label: 'Financial' },
-  { id: 'Marketing', label: 'Marketing' },
-  { id: 'Legal', label: 'Legal & Compliance' },
-  { id: 'Other', label: 'Other' },
-];
 
 // Neural Log Component (from Ypsom)
 const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
+  const { t } = useLanguage();
   const [docUrl, setDocUrl] = useState<string | null>(null);
   const [showZoom, setShowZoom] = useState(false);
 
@@ -91,11 +57,11 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
   }, [doc.fileUrl, doc.fileRaw, doc.fileDataUrl]);
 
   const steps = [
-    { label: 'Neural Buffer Ingestion', icon: Terminal, delay: '0s' },
-    { label: 'Multi-Page Pattern Scan', icon: SearchCode, delay: '0.2s' },
-    { label: 'OCR Extraction Logic', icon: Cpu, delay: '0.4s' },
-    { label: 'Semantic Fiduciary Mapping', icon: Landmark, delay: '0.6s' },
-    { label: 'Integrity Rule Validation', icon: ShieldCheck, delay: '0.8s' },
+    { label: t('dpNeuralStep1'), icon: Terminal, delay: '0s' },
+    { label: t('dpNeuralStep2'), icon: SearchCode, delay: '0.2s' },
+    { label: t('dpNeuralStep3'), icon: Cpu, delay: '0.4s' },
+    { label: t('dpNeuralStep4'), icon: Landmark, delay: '0.6s' },
+    { label: t('dpNeuralStep5'), icon: ShieldCheck, delay: '0.8s' },
   ];
 
   const displayUrl = docUrl;
@@ -107,13 +73,13 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
         <div 
           className="flex-1 bg-slate-950 border-b border-white/10 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity relative group"
           onClick={() => setShowZoom(true)}
-          title="Click to zoom"
+          title={t('dpClickZoom')}
         >
           {doc.fileName?.toLowerCase().endsWith('.pdf') || doc.fileRaw?.type === 'application/pdf' ? (
             <iframe 
               src={displayUrl} 
               className="w-full h-full pointer-events-none"
-              title="Document Preview"
+              title={t('dpDocPreviewTitle')}
             />
           ) : (
             <img 
@@ -162,9 +128,9 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <h5 className="flex items-center gap-2 text-emerald-400 font-black uppercase tracking-widest text-[9px] md:text-[10px]">
-            <TerminalSquare className="w-3 h-3" /> Extraction Sequence
+            <TerminalSquare className="w-3 h-3" /> {t('dpExtractionSequence')}
           </h5>
-          <span className="bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full text-[8px] animate-pulse whitespace-nowrap">Live Trace</span>
+          <span className="bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full text-[8px] animate-pulse whitespace-nowrap">{t('dpLiveTrace')}</span>
         </div>
 
         <div className="space-y-4">
@@ -173,15 +139,15 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
               <step.icon className="w-3 h-3 text-slate-500" />
               <span className="uppercase tracking-tighter text-slate-400">{step.label}</span>
-              <span className="ml-auto text-emerald-500 font-bold opacity-50 hidden sm:inline">COMPLETED</span>
+              <span className="ml-auto text-emerald-500 font-bold opacity-50 hidden sm:inline">{t('dpStepCompleted').toUpperCase()}</span>
             </div>
           ))}
         </div>
 
         <div className="mt-4 border-t border-white/10 pt-4">
-          <h6 className="text-slate-500 uppercase tracking-widest font-black mb-3 text-[8px]">AI Interpretation Log:</h6>
+          <h6 className="text-slate-500 uppercase tracking-widest font-black mb-3 text-[8px]">{t('dpAiInterpretationLog')}:</h6>
           <div className="bg-white/5 p-4 rounded-sm italic border-l-2 border-emerald-500/50 leading-relaxed text-slate-200">
-            {doc.data?.aiInterpretation || "Scanning document layers for semantic context."}
+            {doc.data?.aiInterpretation || t('dpScanningContext')}
           </div>
         </div>
         
@@ -209,6 +175,8 @@ const EditableLineItemsTable: React.FC<{
   documentContext?: { expenseCategory?: string; documentType?: string };
   onUpdate: (newItems: BankTransaction[]) => void;
 }> = ({ items, currency, documentContext, onUpdate }) => {
+  const { t } = useLanguage();
+  const { categories: RESTAURANT_CATEGORIES, groups: CATEGORY_GROUPS } = useExpenseCategoryMeta();
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddRow, setShowAddRow] = useState(false);
   
@@ -263,7 +231,7 @@ const EditableLineItemsTable: React.FC<{
   };
 
   const deleteRow = (idx: number) => {
-    if (confirm('Delete this line item?')) {
+    if (confirm(t('dpDeleteLineConfirm'))) {
       const next = items.filter((_, i) => i !== idx);
       onUpdate(next);
     }
@@ -938,11 +906,14 @@ function rollUpMultiInvoiceTotals(data: FinancialData): FinancialData {
 }
 
 // Verification Hub - Main editing interface
-const VerificationHub: React.FC<{ 
-  doc: ProcessedDocument; 
+const VerificationHub: React.FC<{
+  doc: ProcessedDocument;
   onUpdate: (data: FinancialData) => void;
   onSave: (data: FinancialData) => void;
 }> = ({ doc, onUpdate, onSave }) => {
+  const { t } = useLanguage();
+  const chfLocale = useChfLocale();
+  const { categories: RESTAURANT_CATEGORIES, groups: CATEGORY_GROUPS } = useExpenseCategoryMeta();
   const [isAddingCustom, setIsAddingCustom] = useState(false);
   const [showSubInvoiceModal, setShowSubInvoiceModal] = useState(false);
   const [activeSubInvoiceTab, setActiveSubInvoiceTab] = useState(0);
@@ -1166,7 +1137,7 @@ const VerificationHub: React.FC<{
            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 border-b border-cdlp-border pb-5 gap-4">
               <div>
                  <h4 className="text-[12px] sm:text-[13px] font-black uppercase tracking-widest text-cdlp-gold flex items-center gap-3">
-                   Document Verification Center
+                   {t('dpVerificationCenter')}
                  </h4>
                  <p className="text-[9px] sm:text-[10px] font-bold text-cdlp-muted uppercase opacity-50 mt-1 truncate max-w-[200px] sm:max-w-md">{doc.fileName}</p>
               </div>
@@ -1177,11 +1148,11 @@ const VerificationHub: React.FC<{
                      onClick={() => openDocumentInNewTab(doc)}
                      className="h-8 px-3 bg-cdlp-card border border-cdlp-border text-cdlp-gold rounded-sm text-[9px] sm:text-[10px] font-black uppercase flex items-center gap-2 hover:border-cdlp-gold transition-colors whitespace-nowrap"
                    >
-                     <ExternalLink className="w-3.5 h-3.5" /> Open PDF
+                     <ExternalLink className="w-3.5 h-3.5" /> {t('dpOpenPdf')}
                    </button>
                  )}
                  <div className="px-3 py-1.5 bg-emerald-600/10 text-emerald-400 border border-emerald-600/20 rounded-sm text-[9px] sm:text-[10px] font-black uppercase flex items-center gap-2 shadow-sm whitespace-nowrap">
-                    <Cpu className="w-3.5 h-3.5" /> Match: {((doc.data?.confidenceScore || 0.95) * 100).toFixed(0)}%
+                    <Cpu className="w-3.5 h-3.5" /> {t('dpMatchConfidence').replace('{pct}', ((doc.data?.confidenceScore || 0.95) * 100).toFixed(0))}
                  </div>
               </div>
            </div>
@@ -1189,7 +1160,7 @@ const VerificationHub: React.FC<{
            {isBankStatement && (
              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 p-4 sm:p-6 bg-cdlp-card rounded-sm border border-cdlp-border shadow-sm">
                 <div>
-                   <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Opening Bal</label>
+                   <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">{t('dpOpeningBalance')}</label>
                    <input 
                      type="number" 
                      value={editedData.openingBalance || 0} 
@@ -1198,7 +1169,7 @@ const VerificationHub: React.FC<{
                    />
                 </div>
                 <div>
-                   <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Income (+)</label>
+                   <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">{t('dpIncomePlus')}</label>
                    <div className="relative">
                       <input 
                         type="number" 
@@ -1210,7 +1181,7 @@ const VerificationHub: React.FC<{
                    </div>
                 </div>
                 <div>
-                   <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Expense (-)</label>
+                   <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">{t('dpExpenseMinus')}</label>
                    <div className="relative">
                       <input 
                         type="number" 
@@ -1222,7 +1193,7 @@ const VerificationHub: React.FC<{
                    </div>
                 </div>
                 <div>
-                   <label className="text-[8px] font-black uppercase text-amber-600 tracking-widest block mb-2">Final Balance</label>
+                   <label className="text-[8px] font-black uppercase text-amber-600 tracking-widest block mb-2">{t('dpFinalBalance')}</label>
                    <div className="relative">
                       <input 
                         type="number" 
@@ -1240,7 +1211,7 @@ const VerificationHub: React.FC<{
              <>
              <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 p-4 sm:p-6 bg-indigo-900/20 rounded-sm border border-cdlp-border shadow-sm">
                <div className="lg:col-span-1">
-                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Employee Name</label>
+                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">{t('dpEmployeeName')}</label>
                  <input
                    value={currentPaySlip.employee?.name ?? ''}
                    onChange={(e) =>
@@ -1253,7 +1224,7 @@ const VerificationHub: React.FC<{
                  />
                </div>
                <div>
-                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Employee ID</label>
+                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">{t('dpEmployeeId')}</label>
                  <input
                    value={currentPaySlip.employee?.idNumber ?? ''}
                    onChange={(e) =>
@@ -1266,7 +1237,7 @@ const VerificationHub: React.FC<{
                  />
                </div>
                <div className="lg:col-span-1">
-                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Employer Name</label>
+                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">{t('dpEmployerName')}</label>
                  <input
                    value={currentPaySlip.employer?.name ?? ''}
                    onChange={(e) =>
@@ -1280,7 +1251,7 @@ const VerificationHub: React.FC<{
                </div>
 
                <div>
-                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Period Start</label>
+                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">{t('dpPeriodStart')}</label>
                  <input
                    type="date"
                    value={currentPaySlip.periodStart ?? ''}
@@ -1291,7 +1262,7 @@ const VerificationHub: React.FC<{
                  />
                </div>
                <div>
-                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Period End</label>
+                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">{t('dpPeriodEnd')}</label>
                  <input
                    type="date"
                    value={currentPaySlip.periodEnd ?? ''}
@@ -1302,7 +1273,7 @@ const VerificationHub: React.FC<{
                  />
                </div>
                <div>
-                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Pay Date</label>
+                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">{t('dpPayDate')}</label>
                  <input
                    type="date"
                    value={currentPaySlip.payDate ?? ''}
@@ -1314,25 +1285,25 @@ const VerificationHub: React.FC<{
                </div>
 
                <div className="lg:col-span-1">
-                 <label className="text-[8px] font-black uppercase text-emerald-600 tracking-widest block mb-2">Gross Pay</label>
+                 <label className="text-[8px] font-black uppercase text-emerald-600 tracking-widest block mb-2">{t('dpGrossPay')}</label>
                  <div className="w-full bg-cdlp-black border border-emerald-600/20 h-9 px-3 flex items-center font-mono text-[10px] font-black text-emerald-400">
                    {computedGrossPay.toFixed(2)} {editedData.originalCurrency || 'CHF'}
                  </div>
                </div>
                <div className="lg:col-span-1">
-                 <label className="text-[8px] font-black uppercase text-red-600 tracking-widest block mb-2">Deductions</label>
+                 <label className="text-[8px] font-black uppercase text-red-600 tracking-widest block mb-2">{t('dpDeductions')}</label>
                  <div className="w-full bg-cdlp-black border border-red-600/20 h-9 px-3 flex items-center font-mono text-[10px] font-black text-red-400">
                    {computedDeductions.toFixed(2)} {editedData.originalCurrency || 'CHF'}
                  </div>
                </div>
                <div className="lg:col-span-1">
-                 <label className="text-[8px] font-black uppercase text-amber-600 tracking-widest block mb-2">Net salary (on slip)</label>
+                 <label className="text-[8px] font-black uppercase text-amber-600 tracking-widest block mb-2">{t('dpNetSalaryOnSlip')}</label>
                  <div className="w-full bg-cdlp-black border border-amber-600/20 h-9 px-3 flex items-center font-mono text-[10px] font-black text-cdlp-gold">
                    {computedNetPay.toFixed(2)} {editedData.originalCurrency || 'CHF'}
                  </div>
                </div>
                <div className="lg:col-span-1">
-                 <label className="text-[8px] font-black uppercase text-cdlp-gold tracking-widest block mb-2">Payment to employee</label>
+                 <label className="text-[8px] font-black uppercase text-cdlp-gold tracking-widest block mb-2">{t('dpPaymentToEmployee')}</label>
                  <input
                    type="number"
                    step="0.01"
@@ -1348,38 +1319,36 @@ const VerificationHub: React.FC<{
                  />
                </div>
                <div className="lg:col-span-1">
-                 <label className="text-[8px] font-black uppercase text-red-600 tracking-widest block mb-2">2nd payment — state</label>
+                 <label className="text-[8px] font-black uppercase text-red-600 tracking-widest block mb-2">{t('dpSecondPaymentState')}</label>
                  <div
                    className="w-full bg-cdlp-black border border-red-600/30 h-9 px-3 flex items-center font-mono text-[10px] font-black text-red-400"
-                   title="Gross minus payment to employee"
+                   title={t('dpGrossMinusEmployee')}
                  >
-                   {computedStatePayment.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+                   {computedStatePayment.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
                    {editedData.originalCurrency || 'CHF'}
                  </div>
                </div>
                <div className="lg:col-span-1">
-                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">Employer total (gross)</label>
+                 <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-2">{t('dpEmployerTotalGross')}</label>
                  <div className="w-full bg-cdlp-black border border-cdlp-gold/30 h-9 px-3 flex items-center font-mono text-[10px] font-black text-cdlp-gold">
-                   {totalEmployerPayrollCost(editedData).toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+                   {totalEmployerPayrollCost(editedData).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
                    {editedData.originalCurrency || 'CHF'}
                  </div>
                </div>
              </div>
 
              <div className="mb-8 p-4 sm:p-6 bg-cdlp-card border border-cdlp-border rounded-sm space-y-4">
-               <h5 className="text-[10px] font-black uppercase tracking-widest text-cdlp-gold">Swiss payroll mode</h5>
+               <h5 className="text-[10px] font-black uppercase tracking-widest text-cdlp-gold">{t('dpSwissPayrollMode')}</h5>
                <p className="text-[9px] text-cdlp-muted leading-relaxed max-w-3xl">
-                 Tax at source: two payments — (1) salary payment to the employee, (2) gross minus that payment to the state
-                 for taxes and contributions (e.g. 5&apos;150 gross → 4&apos;536.86 employee + 613.14 state). Use the final Payment
-                 line after any advance (e.g. 25&apos;288.35 − 12&apos;872.80). Permit C / Swiss: one gross payment.
+                 {t('dpSwissPayrollModeDesc')}
                </p>
                <div className="flex flex-wrap gap-2">
                  {(
                    [
-                     { id: 'B' as SwissPermitType, label: 'Permit B' },
-                     { id: 'G' as SwissPermitType, label: 'Frontalier G/F' },
-                     { id: 'C' as SwissPermitType, label: 'Permit C' },
-                     { id: 'CH' as SwissPermitType, label: 'Swiss national' },
+                     { id: 'B' as SwissPermitType, label: t('dpPermitB') },
+                     { id: 'G' as SwissPermitType, label: t('dpPermitG') },
+                     { id: 'C' as SwissPermitType, label: t('dpPermitC') },
+                     { id: 'CH' as SwissPermitType, label: t('dpSwissNational') },
                    ] as const
                  ).map((p) => (
                    <button
@@ -1406,9 +1375,12 @@ const VerificationHub: React.FC<{
                        : 'bg-cdlp-black border-cdlp-border text-cdlp-muted'
                    }`}
                  >
-                   Tax at source (2 payments)
+                   {t('dpTaxAtSource2Payments')}
                    <span className="block text-[8px] font-bold normal-case mt-1 opacity-80">
-                     Employee {payrollAmounts.employeePayment.toFixed(2)} + 2nd payment (state) {payrollAmounts.statePayment.toFixed(2)} = gross {payrollAmounts.gross.toFixed(2)}
+                     {t('dpPayrollEmployeeLine')
+                       .replace('{amount}', payrollAmounts.employeePayment.toFixed(2))
+                       .replace('{state}', payrollAmounts.statePayment.toFixed(2))
+                       .replace('{gross}', payrollAmounts.gross.toFixed(2))}
                    </span>
                  </button>
                  <button
@@ -1420,9 +1392,9 @@ const VerificationHub: React.FC<{
                        : 'bg-cdlp-black border-cdlp-border text-cdlp-muted'
                    }`}
                  >
-                   Paid gross (1 payment)
+                   {t('dpPaidGross1Payment')}
                    <span className="block text-[8px] font-bold normal-case mt-1 opacity-80">
-                     Gross {payrollAmounts.gross.toFixed(2)} to employee
+                     {t('dpPayrollGrossToEmployee').replace('{gross}', payrollAmounts.gross.toFixed(2))}
                    </span>
                  </button>
                </div>
@@ -1438,7 +1410,7 @@ const VerificationHub: React.FC<{
                        <li key={idx} className="px-3 py-2 flex justify-between gap-4 text-[10px]">
                          <span className="text-cdlp-muted font-bold uppercase shrink-0">{line.category.replace('_', ' ')}</span>
                          <span className="font-mono font-bold text-white text-right">
-                           {line.amount.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} — {line.description}
+                           {line.amount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} — {line.description}
                          </span>
                        </li>
                      ))
@@ -1644,7 +1616,7 @@ const VerificationHub: React.FC<{
                          #{idx + 1} {sub.issuer || 'Invoice'}
                        </span>
                        <span className="block font-mono text-[10px] mt-1 opacity-90">
-                         {(Number(sub.totalAmount || 0)).toLocaleString('en-CH', {
+                         {(Number(sub.totalAmount || 0)).toLocaleString(chfLocale, {
                            minimumFractionDigits: 2,
                            maximumFractionDigits: 2,
                          })}{' '}
@@ -1813,36 +1785,36 @@ const VerificationHub: React.FC<{
              <div className="mt-6 mb-4 p-4 bg-gradient-to-r from-emerald-900/20 to-red-900/20 border border-cdlp-border rounded-lg">
                <div className="flex items-center justify-between mb-3">
                  <h5 className="text-[10px] font-black uppercase tracking-widest text-cdlp-gold flex items-center gap-2">
-                   <RefreshCcw className="w-3.5 h-3.5" /> Live Calculation
+                   <RefreshCcw className="w-3.5 h-3.5" /> {t('dpLiveCalculation')}
                  </h5>
-                 <span className="text-[8px] text-cdlp-muted uppercase">Auto-updates as you edit</span>
+                 <span className="text-[8px] text-cdlp-muted uppercase">{t('dpAutoUpdatesHint')}</span>
                </div>
                <div className="grid grid-cols-3 gap-4">
                  <div className="bg-emerald-900/20 border border-emerald-600/30 rounded p-3">
-                   <p className="text-[8px] font-black uppercase text-emerald-600 mb-1">Total Income</p>
+                   <p className="text-[8px] font-black uppercase text-emerald-600 mb-1">{t('dpTotalIncome')}</p>
                    <p className="text-lg font-black text-emerald-400">
-                     {lineIncomeSum.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                     {lineIncomeSum.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                    </p>
                    <p className="text-[8px] text-emerald-600/60">{editedData.originalCurrency || 'CHF'}</p>
                  </div>
                  <div className="bg-red-900/20 border border-red-600/30 rounded p-3">
-                   <p className="text-[8px] font-black uppercase text-red-600 mb-1">Total Expenses</p>
+                   <p className="text-[8px] font-black uppercase text-red-600 mb-1">{t('dpTotalExpenses')}</p>
                    <p className="text-lg font-black text-red-400">
-                     {totalExpensesDisplay.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                     {totalExpensesDisplay.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                    </p>
                    <p className="text-[8px] text-red-600/60">{editedData.originalCurrency || 'CHF'}</p>
                  </div>
                  <div className="bg-cdlp-gold/20 border border-cdlp-gold/30 rounded p-3">
-                   <p className="text-[8px] font-black uppercase text-cdlp-gold mb-1">Document Total</p>
+                   <p className="text-[8px] font-black uppercase text-cdlp-gold mb-1">{t('dpDocumentTotal')}</p>
                    <p className="text-lg font-black text-cdlp-gold">
-                     {documentTotalDisplay.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                     {documentTotalDisplay.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                    </p>
                    <p className="text-[8px] text-cdlp-gold/60">{editedData.originalCurrency || 'CHF'}</p>
                  </div>
                </div>
                <div className="mt-3 text-center">
                  <p className="text-[9px] text-cdlp-muted">
-                   Document total mirrors the Total Amount field (above). Income and expenses columns come from live line types. Save to sync the dashboard.
+                   {t('dpLiveCalcFootnote')}
                  </p>
                </div>
              </div>
@@ -2952,13 +2924,13 @@ export const DocumentProcessor: React.FC<{
           </div>
           <div className="p-4 border-t border-cdlp-border bg-cdlp-card flex justify-between items-center">
             <div className="text-[10px] font-bold text-cdlp-muted uppercase tracking-wider">
-              {stats.completed} Documents Processed
+              {t('dpDocsProcessed').replace('{n}', String(stats.completed))}
             </div>
             <button 
               onClick={() => {
                 const completedDocs = allDocs.filter(d => d.status === 'completed' && d.data);
                 if (completedDocs.length === 0) {
-                  alert('No completed documents to export');
+                  alert(t('dpNoDocsExport'));
                   return;
                 }
                 const dataToExport = completedDocs.map(d => d.data!);
@@ -2967,7 +2939,7 @@ export const DocumentProcessor: React.FC<{
               disabled={stats.completed === 0}
               className="h-10 px-6 bg-cdlp-gold text-cdlp-black rounded font-bold text-[10px] uppercase tracking-wider flex items-center gap-2 hover:bg-cdlp-gold-light disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              <FileSpreadsheet className="w-4 h-4" /> Export to Excel
+              <FileSpreadsheet className="w-4 h-4" /> {t('dpExportExcel')}
             </button>
           </div>
         </div>

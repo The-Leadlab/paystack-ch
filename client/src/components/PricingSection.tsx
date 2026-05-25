@@ -8,14 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Check, ArrowRight } from "lucide-react";
 import ScrollReveal from "./ScrollReveal";
 import SectionLabel from "./SectionLabel";
+import { useMemo } from "react";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import { PLAN_ENTERPRISE_SALES_MAILTO } from "@/cafe/components/PlanMarketingPanel";
 import { withStripeTestQuery } from "@/cafe/lib/stripeCheckoutClient";
 
 export default function PricingSection() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const trialHref = (plan: string) => withStripeTestQuery(`/start-trial?plan=${plan}`);
-  const plans = [
+  const plans = useMemo(() => [
     {
       name: t("planStarterName"),
       price: t("pricingStarterAmount"),
@@ -88,7 +89,7 @@ export default function PricingSection() {
       href: PLAN_ENTERPRISE_SALES_MAILTO,
       external: true,
     },
-  ];
+  ], [t, language]);
 
   return (
     <section id="pricing" className="relative py-24 lg:py-32 border-t border-border">

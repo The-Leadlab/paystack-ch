@@ -1,7 +1,12 @@
 import * as XLSX from 'xlsx';
 import { Income, Expense } from '../types';
+import {
+  chfLocaleFor,
+  getReportExportLabels,
+  type ReportExportLocale,
+} from '../i18n/reportExportTranslations';
 
-interface ReportData {
+export interface ReportData {
   income: Income[];
   expenses: Expense[];
   monthlyData: [string, { income: number; expenses: number; balance: number }][];
@@ -9,6 +14,9 @@ interface ReportData {
   dateFrom?: string;
   dateTo?: string;
   sessionName?: string;
+  locale?: ReportExportLocale;
+  labelCategory?: (category: string) => string;
+  labelIncomeType?: (type: string) => string;
 }
 
 export type SwissVatPeriodMode = 'month' | 'semester' | 'year' | 'allYears';
@@ -49,13 +57,15 @@ function toPeriodKey(date: string, mode: SwissVatPeriodMode): string {
   return year;
 }
 
-function toPeriodLabel(periodKey: string, mode: SwissVatPeriodMode): string {
+function toPeriodLabel(periodKey: string, mode: SwissVatPeriodMode, locale: ReportExportLocale): string {
+  const L = getReportExportLabels(locale);
+  const chfLoc = chfLocaleFor(locale);
   if (mode === 'month') {
-    return new Date(`${periodKey}-01`).toLocaleDateString('en-CH', { year: 'numeric', month: 'long' });
+    return new Date(`${periodKey}-01`).toLocaleDateString(chfLoc, { year: 'numeric', month: 'long' });
   }
   if (mode === 'semester') {
     const [year, half] = periodKey.split('-');
-    return `${half === 'H1' ? 'Jan-Jun' : 'Jul-Dec'} ${year}`;
+    return `${half === 'H1' ? L.semesterH1 : L.semesterH2} ${year}`;
   }
   return periodKey;
 }
@@ -63,8 +73,10 @@ function toPeriodLabel(periodKey: string, mode: SwissVatPeriodMode): string {
 function buildSwissVatStatement(
   income: Income[],
   expenses: Expense[],
-  mode: SwissVatPeriodMode
+  mode: SwissVatPeriodMode,
+  locale: ReportExportLocale = 'en'
 ): SwissVatStatementData {
+  const L = getReportExportLabels(locale);
   const normalizedMode: SwissVatPeriodMode = mode === 'allYears' ? 'year' : mode;
   const buckets: Record<string, SwissVatPeriodRow> = {};
 
@@ -73,7 +85,7 @@ function buildSwissVatStatement(
     if (!buckets[key]) {
       buckets[key] = {
         periodKey: key,
-        periodLabel: toPeriodLabel(key, normalizedMode),
+        periodLabel: toPeriodLabel(key, normalizedMode, locale),
         turnover: 0,
         purchases: 0,
         vatCollected: 0,
@@ -95,7 +107,7 @@ function buildSwissVatStatement(
     if (!buckets[key]) {
       buckets[key] = {
         periodKey: key,
-        periodLabel: toPeriodLabel(key, normalizedMode),
+        periodLabel: toPeriodLabel(key, normalizedMode, locale),
         turnover: 0,
         purchases: 0,
         vatCollected: 0,
@@ -136,7 +148,7 @@ function buildSwissVatStatement(
     }),
     {
       periodKey: 'TOTAL',
-      periodLabel: 'TOTAL',
+      periodLabel: L.total,
       turnover: 0,
       purchases: 0,
       vatCollected: 0,
@@ -164,66 +176,64 @@ function buildSwissVatFormMapping(totals: SwissVatPeriodRow): SwissVatFormMappin
  */
 export const exportToCSV = (data: ReportData) => {
   const { income, expenses, monthlyData, supplierData, dateFrom, dateTo, sessionName } = data;
-  
+  const locale = data.locale ?? 'en';
+  const L = getReportExportLabels(locale);
+  const chfLoc = chfLocaleFor(locale);
+  const cat = data.labelCategory ?? ((c: string) => c);
+  const incType = data.labelIncomeType ?? ((t: string) => t);
+
   let csvContent = '';
-  
-  // Header
-  csvContent += `Financial Report - ${sessionName || 'All Sessions'}\n`;
+
+  csvContent += `${L.financialReport} - ${sessionName || L.allSessions}\n`;
   if (dateFrom && dateTo) {
-    csvContent += `Period: ${dateFrom} to ${dateTo}\n`;
+    csvContent += `${L.period}: ${dateFrom} ${L.periodTo} ${dateTo}\n`;
   }
-  csvContent += `Generated: ${new Date().toLocaleString()}\n\n`;
-  
-  // Summary
+  csvContent += `${L.generated}: ${new Date().toLocaleString(chfLoc)}\n\n`;
+
   const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
   const balance = totalIncome - totalExpenses;
-  
-  csvContent += `SUMMARY\n`;
-  csvContent += `Total Income,${totalIncome.toFixed(2)} CHF\n`;
-  csvContent += `Total Expenses,${totalExpenses.toFixed(2)} CHF\n`;
-  csvContent += `Balance,${balance.toFixed(2)} CHF\n\n`;
-  
-  // Monthly Breakdown
-  csvContent += `MONTHLY BREAKDOWN\n`;
-  csvContent += `Month,Income (CHF),Expenses (CHF),Balance (CHF)\n`;
-  monthlyData.forEach(([month, data]) => {
-    const monthName = new Date(month + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
-    csvContent += `${monthName},${data.income.toFixed(2)},${data.expenses.toFixed(2)},${data.balance.toFixed(2)}\n`;
+
+  csvContent += `${L.summary}\n`;
+  csvContent += `${L.totalIncome},${totalIncome.toFixed(2)} CHF\n`;
+  csvContent += `${L.totalExpenses},${totalExpenses.toFixed(2)} CHF\n`;
+  csvContent += `${L.balance},${balance.toFixed(2)} CHF\n\n`;
+
+  csvContent += `${L.monthlyBreakdown}\n`;
+  csvContent += `${L.month},${L.incomeChf},${L.expensesChf},${L.balanceChf}\n`;
+  monthlyData.forEach(([month, row]) => {
+    const monthName = new Date(month + '-01').toLocaleDateString(chfLoc, { year: 'numeric', month: 'long' });
+    csvContent += `${monthName},${row.income.toFixed(2)},${row.expenses.toFixed(2)},${row.balance.toFixed(2)}\n`;
   });
   csvContent += `\n`;
-  
-  // Top Suppliers
+
   if (supplierData.length > 0) {
-    csvContent += `TOP SUPPLIERS\n`;
-    csvContent += `Supplier,Amount (CHF)\n`;
+    csvContent += `${L.topSuppliers}\n`;
+    csvContent += `${L.supplier},${L.amountChf}\n`;
     supplierData.forEach(([supplier, amount]) => {
       csvContent += `"${supplier}",${amount.toFixed(2)}\n`;
     });
     csvContent += `\n`;
   }
-  
-  // Income Details
-  csvContent += `INCOME DETAILS\n`;
-  csvContent += `Date,Type,Amount (CHF),Description\n`;
-  income.forEach(item => {
-    csvContent += `${item.date},${item.type},${item.amount.toFixed(2)},"${item.description || ''}"\n`;
+
+  csvContent += `${L.incomeDetails}\n`;
+  csvContent += `${L.date},${L.type},${L.amountChf},${L.description}\n`;
+  income.forEach((item) => {
+    csvContent += `${item.date},${incType(item.type)},${item.amount.toFixed(2)},"${item.description || ''}"\n`;
   });
   csvContent += `\n`;
-  
-  // Expense Details
-  csvContent += `EXPENSE DETAILS\n`;
-  csvContent += `Date,Category,Amount (CHF),Description\n`;
-  expenses.forEach(item => {
-    csvContent += `${item.date},${item.category},${item.amount.toFixed(2)},"${item.description}"\n`;
+
+  csvContent += `${L.expenseDetails}\n`;
+  csvContent += `${L.date},${L.category},${L.amountChf},${L.description}\n`;
+  expenses.forEach((item) => {
+    csvContent += `${item.date},${cat(item.category)},${item.amount.toFixed(2)},"${item.description}"\n`;
   });
-  
-  // Download
+
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
   link.setAttribute('href', url);
-  link.setAttribute('download', `Financial_Report_${new Date().toISOString().split('T')[0]}.csv`);
+  link.setAttribute('download', `${L.csvFilenameReport}_${new Date().toISOString().split('T')[0]}.csv`);
   link.style.visibility = 'hidden';
   document.body.appendChild(link);
   link.click();
@@ -235,6 +245,11 @@ export const exportToCSV = (data: ReportData) => {
  */
 export const exportToPDF = async (data: ReportData) => {
   const { income, expenses, monthlyData, supplierData, dateFrom, dateTo, sessionName } = data;
+  const locale = data.locale ?? 'en';
+  const L = getReportExportLabels(locale);
+  const chfLoc = chfLocaleFor(locale);
+  const cat = data.labelCategory ?? ((c: string) => c);
+  const incType = data.labelIncomeType ?? ((t: string) => t);
   
   // Calculate summary
   const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
@@ -271,8 +286,8 @@ export const exportToPDF = async (data: ReportData) => {
     return acc;
   }, {} as Record<string, number>);
   
-  // Format number with Swiss locale
-  const formatCHF = (num: number) => num.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatCHF = (num: number) =>
+    num.toLocaleString(chfLoc, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   
   // Create HTML content for PDF
   const htmlContent = `
@@ -413,66 +428,66 @@ export const exportToPDF = async (data: ReportData) => {
     <body>
       <div class="header">
         <h1>PAYSTACK</h1>
-        <p>Financial Report - ${sessionName || 'All Sessions'}</p>
-        ${dateFrom && dateTo ? `<p>Period: ${dateFrom} to ${dateTo}</p>` : ''}
-        <p>Generated: ${new Date().toLocaleString()}</p>
+        <p>${L.financialReport} - ${sessionName || L.allSessions}</p>
+        ${dateFrom && dateTo ? `<p>${L.period}: ${dateFrom} ${L.periodTo} ${dateTo}</p>` : ''}
+        <p>${L.generated}: ${new Date().toLocaleString(chfLoc)}</p>
       </div>
       
       <div class="summary">
         <div class="summary-grid">
           <div class="summary-item">
-            <div class="summary-label">Total Income</div>
+            <div class="summary-label">${L.totalIncome}</div>
             <div class="summary-value positive">${formatCHF(totalIncome)} CHF</div>
           </div>
           <div class="summary-item">
-            <div class="summary-label">Total Expenses</div>
+            <div class="summary-label">${L.totalExpenses}</div>
             <div class="summary-value negative">${formatCHF(totalExpenses)} CHF</div>
           </div>
           <div class="summary-item">
-            <div class="summary-label">Balance</div>
+            <div class="summary-label">${L.balance}</div>
             <div class="summary-value ${balance >= 0 ? 'positive' : 'negative'}">${formatCHF(balance)} CHF</div>
           </div>
         </div>
       </div>
       
       <div class="vat-section">
-        <div class="section-title" style="color: #0284c7; border-color: #0284c7;">VAT Summary</div>
+        <div class="section-title" style="color: #0284c7; border-color: #0284c7;">${L.vatSummary}</div>
         <div class="vat-grid">
           <div class="summary-item">
-            <div class="summary-label">VAT Received</div>
+            <div class="summary-label">${L.vatReceived}</div>
             <div class="summary-value blue">${formatCHF(vatReceived)} CHF</div>
-            <div class="summary-label">From customers</div>
+            <div class="summary-label">${L.fromCustomers}</div>
           </div>
           <div class="summary-item">
-            <div class="summary-label">VAT Paid</div>
+            <div class="summary-label">${L.vatPaid}</div>
             <div class="summary-value orange">${formatCHF(vatPaid)} CHF</div>
-            <div class="summary-label">On expenses</div>
+            <div class="summary-label">${L.onExpenses}</div>
           </div>
           <div class="summary-item">
-            <div class="summary-label">VAT Balance</div>
+            <div class="summary-label">${L.vatBalance}</div>
             <div class="summary-value ${vatBalance >= 0 ? 'purple' : 'negative'}">${formatCHF(vatBalance)} CHF</div>
-            <div class="summary-label">${vatBalance >= 0 ? 'To pay' : 'Refund'}</div>
+            <div class="summary-label">${vatBalance >= 0 ? L.toPay : L.refund}</div>
           </div>
         </div>
       </div>
       
       <div class="expense-breakdown">
-        <div class="section-title" style="color: #ca8a04; border-color: #ca8a04;">Expense Breakdown by Category</div>
+        <div class="section-title" style="color: #ca8a04; border-color: #ca8a04;">${L.expenseBreakdown}</div>
         <div class="expense-grid">
           <div class="summary-item">
-            <div class="summary-label">Suppliers</div>
+            <div class="summary-label">${L.suppliers}</div>
             <div class="summary-value neutral">${formatCHF(suppliersTotal)} CHF</div>
           </div>
           <div class="summary-item">
-            <div class="summary-label">Bills</div>
+            <div class="summary-label">${L.bills}</div>
             <div class="summary-value neutral">${formatCHF(billsTotal)} CHF</div>
           </div>
           <div class="summary-item">
-            <div class="summary-label">Payroll</div>
+            <div class="summary-label">${L.payroll}</div>
             <div class="summary-value neutral">${formatCHF(payrollTotal)} CHF</div>
           </div>
           <div class="summary-item">
-            <div class="summary-label">Other</div>
+            <div class="summary-label">${L.other}</div>
             <div class="summary-value neutral">${formatCHF(otherTotal)} CHF</div>
           </div>
         </div>
@@ -480,13 +495,13 @@ export const exportToPDF = async (data: ReportData) => {
       
       ${Object.keys(employeePayroll).length > 0 ? `
         <div class="section">
-          <div class="section-title">Employee Payroll Breakdown</div>
+          <div class="section-title">${L.employeePayroll}</div>
           <table>
             <thead>
               <tr>
-                <th>Employee Name</th>
-                <th class="text-right">Total Paid (CHF)</th>
-                <th class="text-center">Payments</th>
+                <th>${L.employeeName}</th>
+                <th class="text-right">${L.totalPaid}</th>
+                <th class="text-center">${L.payments}</th>
               </tr>
             </thead>
             <tbody>
@@ -501,7 +516,7 @@ export const exportToPDF = async (data: ReportData) => {
                 `;
               }).join('')}
               <tr style="background: #fef3c7; font-weight: bold;">
-                <td>TOTAL PAYROLL</td>
+                <td>${L.totalPayroll}</td>
                 <td class="text-right">${formatCHF(payrollTotal)}</td>
                 <td class="text-center">${payrollExpenses.length}</td>
               </tr>
@@ -511,19 +526,19 @@ export const exportToPDF = async (data: ReportData) => {
       ` : ''}
       
       <div class="section">
-        <div class="section-title">Monthly Breakdown</div>
+        <div class="section-title">${L.monthlyBreakdown}</div>
         <table>
           <thead>
             <tr>
-              <th>Month</th>
-              <th class="text-right">Income (CHF)</th>
-              <th class="text-right">Expenses (CHF)</th>
-              <th class="text-right">Balance (CHF)</th>
+              <th>${L.month}</th>
+              <th class="text-right">${L.incomeChf}</th>
+              <th class="text-right">${L.expensesChf}</th>
+              <th class="text-right">${L.balanceChf}</th>
             </tr>
           </thead>
           <tbody>
             ${monthlyData.map(([month, data]) => {
-              const monthName = new Date(month + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+              const monthName = new Date(month + '-01').toLocaleDateString(chfLoc, { year: 'numeric', month: 'long' });
               return `
                 <tr>
                   <td>${monthName}</td>
@@ -539,13 +554,13 @@ export const exportToPDF = async (data: ReportData) => {
       
       ${supplierData.length > 0 ? `
         <div class="section">
-          <div class="section-title">Top Suppliers</div>
+          <div class="section-title">${L.topSuppliers}</div>
           <table>
             <thead>
               <tr>
-                <th>Supplier</th>
-                <th class="text-right">Amount (CHF)</th>
-                <th class="text-right">% of Total Suppliers</th>
+                <th>${L.supplier}</th>
+                <th class="text-right">${L.amountChf}</th>
+                <th class="text-right">${L.pctOfSuppliers}</th>
               </tr>
             </thead>
             <tbody>
@@ -562,29 +577,29 @@ export const exportToPDF = async (data: ReportData) => {
       ` : ''}
       
       <div class="section">
-        <div class="section-title">Income Details (${income.length} entries)</div>
+        <div class="section-title">${L.incomeDetailsN.replace('{n}', String(income.length))}</div>
         <table>
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Type</th>
-              <th class="text-right">Amount (CHF)</th>
-              <th class="text-right">VAT (CHF)</th>
-              <th>Description</th>
+              <th>${L.date}</th>
+              <th>${L.type}</th>
+              <th class="text-right">${L.amountChf}</th>
+              <th class="text-right">${L.vatChf}</th>
+              <th>${L.description}</th>
             </tr>
           </thead>
           <tbody>
             ${income.map(item => `
               <tr>
                 <td>${item.date}</td>
-                <td>${item.type}</td>
+                <td>${incType(item.type)}</td>
                 <td class="text-right">${formatCHF(item.amount)}</td>
                 <td class="text-right">${formatCHF(item.vat_amount || 0)}</td>
                 <td>${item.description || '-'}</td>
               </tr>
             `).join('')}
             <tr style="background: #f0fdf4; font-weight: bold;">
-              <td colspan="2">TOTAL INCOME</td>
+              <td colspan="2">${L.totalIncomeRow}</td>
               <td class="text-right">${formatCHF(totalIncome)}</td>
               <td class="text-right">${formatCHF(vatReceived)}</td>
               <td></td>
@@ -594,29 +609,29 @@ export const exportToPDF = async (data: ReportData) => {
       </div>
       
       <div class="section">
-        <div class="section-title">Expense Details (${expenses.length} entries)</div>
+        <div class="section-title">${L.expenseDetailsN.replace('{n}', String(expenses.length))}</div>
         <table>
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Category</th>
-              <th class="text-right">Amount (CHF)</th>
-              <th class="text-right">VAT (CHF)</th>
-              <th>Description</th>
+              <th>${L.date}</th>
+              <th>${L.category}</th>
+              <th class="text-right">${L.amountChf}</th>
+              <th class="text-right">${L.vatChf}</th>
+              <th>${L.description}</th>
             </tr>
           </thead>
           <tbody>
             ${expenses.map(item => `
               <tr>
                 <td>${item.date}</td>
-                <td>${item.category}</td>
+                <td>${cat(item.category)}</td>
                 <td class="text-right">${formatCHF(item.amount)}</td>
                 <td class="text-right">${formatCHF(item.vat_amount || 0)}</td>
                 <td>${item.description || '-'}</td>
               </tr>
             `).join('')}
             <tr style="background: #fef2f2; font-weight: bold;">
-              <td colspan="2">TOTAL EXPENSES</td>
+              <td colspan="2">${L.totalExpensesRow}</td>
               <td class="text-right">${formatCHF(totalExpenses)}</td>
               <td class="text-right">${formatCHF(vatPaid)}</td>
               <td></td>
@@ -626,8 +641,8 @@ export const exportToPDF = async (data: ReportData) => {
       </div>
       
       <div class="footer">
-        <p>This report was generated automatically by Café de la Place Financial Management System</p>
-        <p>© ${new Date().getFullYear()} Café de la Place - All rights reserved</p>
+        <p>${L.footerGenerated}</p>
+        <p>© ${new Date().getFullYear()} Paystack.ch</p>
       </div>
     </body>
     </html>
@@ -646,40 +661,45 @@ export const exportToPDF = async (data: ReportData) => {
       }, 250);
     };
   } else {
-    alert('Please allow pop-ups to download PDF');
+    alert(L.allowPopups);
   }
 };
 
 export const exportSwissVatCSV = (data: ReportData, mode: SwissVatPeriodMode) => {
-  const statement = buildSwissVatStatement(data.income, data.expenses, mode);
+  const locale = data.locale ?? 'en';
+  const L = getReportExportLabels(locale);
+  const chfLoc = chfLocaleFor(locale);
+  const statement = buildSwissVatStatement(data.income, data.expenses, mode, locale);
   const mapping = buildSwissVatFormMapping(statement.totals);
-  const modeLabel = mode === 'month' ? 'Monthly' : mode === 'semester' ? 'Semiannual' : 'Yearly';
+  const modeLabel =
+    mode === 'month' ? L.modeMonthly : mode === 'semester' ? L.modeSemiannual : L.modeYearly;
 
   let csvContent = '';
-  csvContent += `Swiss TVA Report - ${data.sessionName || 'All Sessions'}\n`;
-  csvContent += `Mode,${modeLabel}\n`;
-  if (data.dateFrom && data.dateTo) csvContent += `Filtered Period,${data.dateFrom} to ${data.dateTo}\n`;
-  csvContent += `Generated,${new Date().toLocaleString()}\n\n`;
-  csvContent += `Period,Turnover CHF (Sales),Purchases CHF,TVA Collected CHF (Clients),TVA Paid CHF (Suppliers),Net TVA Due CHF,Sales Missing TVA,Purchases Missing TVA\n`;
+  csvContent += `${L.swissVatReport} - ${data.sessionName || L.allSessions}\n`;
+  csvContent += `${L.mode},${modeLabel}\n`;
+  if (data.dateFrom && data.dateTo)
+    csvContent += `${L.filteredPeriod},${data.dateFrom} ${L.periodTo} ${data.dateTo}\n`;
+  csvContent += `${L.generated},${new Date().toLocaleString(chfLoc)}\n\n`;
+  csvContent += `${L.periodCol},${L.turnoverClients},${L.purchases},${L.tvaCollected},${L.tvaPaid},${L.netTvaDue},${L.salesMissingTva},${L.purchasesMissingTva}\n`;
 
   statement.rows.forEach((row) => {
     csvContent += `${row.periodLabel},${row.turnover.toFixed(2)},${row.purchases.toFixed(2)},${row.vatCollected.toFixed(2)},${row.vatPaid.toFixed(2)},${row.netVatDue.toFixed(2)},${row.salesWithoutVatCount},${row.purchasesWithoutVatCount}\n`;
   });
 
-  csvContent += `TOTAL,${statement.totals.turnover.toFixed(2)},${statement.totals.purchases.toFixed(2)},${statement.totals.vatCollected.toFixed(2)},${statement.totals.vatPaid.toFixed(2)},${statement.totals.netVatDue.toFixed(2)},${statement.totals.salesWithoutVatCount},${statement.totals.purchasesWithoutVatCount}\n`;
+  csvContent += `${L.total},${statement.totals.turnover.toFixed(2)},${statement.totals.purchases.toFixed(2)},${statement.totals.vatCollected.toFixed(2)},${statement.totals.vatPaid.toFixed(2)},${statement.totals.netVatDue.toFixed(2)},${statement.totals.salesWithoutVatCount},${statement.totals.purchasesWithoutVatCount}\n`;
   csvContent += `\n`;
-  csvContent += `SWISS VAT RETURN MAPPING (ACCOUNTANT REVIEW)\n`;
-  csvContent += `Form code,Description,Amount CHF\n`;
-  csvContent += `200,Taxable turnover (domestic supplies),${mapping.code200_taxableTurnover.toFixed(2)}\n`;
-  csvContent += `220,Output tax / TVA collected on clients,${mapping.code220_outputVat.toFixed(2)}\n`;
-  csvContent += `400,Input tax / TVA paid on suppliers,${mapping.code400_inputVat.toFixed(2)}\n`;
-  csvContent += `500,Net VAT payable (220 - 400),${mapping.code500_netVatPayable.toFixed(2)}\n`;
+  csvContent += `${L.formMappingTitle}\n`;
+  csvContent += `${L.formCode},${L.formDescription},${L.amountChf}\n`;
+  csvContent += `200,${L.form200},${mapping.code200_taxableTurnover.toFixed(2)}\n`;
+  csvContent += `220,${L.form220},${mapping.code220_outputVat.toFixed(2)}\n`;
+  csvContent += `400,${L.form400},${mapping.code400_inputVat.toFixed(2)}\n`;
+  csvContent += `500,${L.form500},${mapping.code500_netVatPayable.toFixed(2)}\n`;
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
   link.setAttribute('href', url);
-  link.setAttribute('download', `Swiss_TVA_${modeLabel}_${new Date().toISOString().split('T')[0]}.csv`);
+  link.setAttribute('download', `${L.csvFilenameVat}_${modeLabel}_${new Date().toISOString().split('T')[0]}.csv`);
   link.style.visibility = 'hidden';
   document.body.appendChild(link);
   link.click();
@@ -687,12 +707,16 @@ export const exportSwissVatCSV = (data: ReportData, mode: SwissVatPeriodMode) =>
 };
 
 export const exportSwissVatPDF = async (data: ReportData, mode: SwissVatPeriodMode) => {
-  const statement = buildSwissVatStatement(data.income, data.expenses, mode);
+  const locale = data.locale ?? 'en';
+  const L = getReportExportLabels(locale);
+  const chfLoc = chfLocaleFor(locale);
+  const statement = buildSwissVatStatement(data.income, data.expenses, mode, locale);
   const mapping = buildSwissVatFormMapping(statement.totals);
-  const modeLabel = mode === 'month' ? 'Monthly' : mode === 'semester' ? 'Semiannual' : 'Yearly';
+  const modeLabel =
+    mode === 'month' ? L.modeMonthly : mode === 'semester' ? L.modeSemiannual : L.modeYearly;
 
   const formatCHF = (num: number) =>
-    num.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    num.toLocaleString(chfLoc, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -712,29 +736,29 @@ export const exportSwissVatPDF = async (data: ReportData, mode: SwissVatPeriodMo
       </style>
     </head>
     <body>
-      <h1>Swiss TVA Statement</h1>
+      <h1>${L.swissTvaStatement}</h1>
       <div class="meta">
-        Session: ${data.sessionName || 'All Sessions'}<br/>
-        Mode: ${modeLabel}<br/>
-        ${data.dateFrom && data.dateTo ? `Filtered period: ${data.dateFrom} to ${data.dateTo}<br/>` : ''}
-        Generated: ${new Date().toLocaleString()}
+        ${L.session}: ${data.sessionName || L.allSessions}<br/>
+        ${L.mode}: ${modeLabel}<br/>
+        ${data.dateFrom && data.dateTo ? `${L.filteredPeriod}: ${data.dateFrom} ${L.periodTo} ${data.dateTo}<br/>` : ''}
+        ${L.generated}: ${new Date().toLocaleString(chfLoc)}
       </div>
       ${
         statement.totals.salesWithoutVatCount > 0 || statement.totals.purchasesWithoutVatCount > 0
-          ? `<div class="warn"><strong>Warning:</strong> Missing TVA detected on ${statement.totals.salesWithoutVatCount} sales entries and ${statement.totals.purchasesWithoutVatCount} purchase entries.</div>`
+          ? `<div class="warn"><strong>${L.warningMissingTva}:</strong> ${L.warningMissingTvaDetail.replace('{sales}', String(statement.totals.salesWithoutVatCount)).replace('{purchases}', String(statement.totals.purchasesWithoutVatCount))}</div>`
           : ''
       }
       <table>
         <thead>
           <tr>
-            <th>Period</th>
-            <th class="num">Turnover (Clients)</th>
-            <th class="num">Purchases</th>
-            <th class="num">TVA Collected</th>
-            <th class="num">TVA Paid</th>
-            <th class="num">Net TVA Due</th>
-            <th class="num">Sales w/o TVA</th>
-            <th class="num">Purchases w/o TVA</th>
+            <th>${L.periodCol}</th>
+            <th class="num">${L.turnoverClients}</th>
+            <th class="num">${L.purchases}</th>
+            <th class="num">${L.tvaCollected}</th>
+            <th class="num">${L.tvaPaid}</th>
+            <th class="num">${L.netTvaDue}</th>
+            <th class="num">${L.salesMissingTva}</th>
+            <th class="num">${L.purchasesMissingTva}</th>
           </tr>
         </thead>
         <tbody>
@@ -766,34 +790,34 @@ export const exportSwissVatPDF = async (data: ReportData, mode: SwissVatPeriodMo
           </tr>
         </tbody>
       </table>
-      <h2 style="margin-top: 20px;">Swiss VAT Return Mapping (Accountant Review)</h2>
+      <h2 style="margin-top: 20px;">${L.formMappingTitle}</h2>
       <table>
         <thead>
           <tr>
-            <th>Form Code</th>
-            <th>Description</th>
-            <th class="num">Amount CHF</th>
+            <th>${L.formCode}</th>
+            <th>${L.formDescription}</th>
+            <th class="num">${L.amountChf}</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td>200</td>
-            <td>Taxable turnover (domestic supplies)</td>
+            <td>${L.form200}</td>
             <td class="num">${formatCHF(mapping.code200_taxableTurnover)}</td>
           </tr>
           <tr>
             <td>220</td>
-            <td>Output tax / TVA collected on clients</td>
+            <td>${L.form220}</td>
             <td class="num">${formatCHF(mapping.code220_outputVat)}</td>
           </tr>
           <tr>
             <td>400</td>
-            <td>Input tax / TVA paid on suppliers</td>
+            <td>${L.form400}</td>
             <td class="num">${formatCHF(mapping.code400_inputVat)}</td>
           </tr>
           <tr class="total-row">
             <td>500</td>
-            <td>Net VAT payable (220 - 400)</td>
+            <td>${L.form500}</td>
             <td class="num">${formatCHF(mapping.code500_netVatPayable)}</td>
           </tr>
         </tbody>
@@ -812,6 +836,6 @@ export const exportSwissVatPDF = async (data: ReportData, mode: SwissVatPeriodMo
       }, 250);
     };
   } else {
-    alert('Please allow pop-ups to download PDF');
+    alert(L.allowPopups);
   }
 };
