@@ -7,9 +7,15 @@ type AuthLayoutProps = {
   children: ReactNode;
   heading: string;
   description?: string;
+  showFooterSecure?: boolean;
 };
 
-export function AuthLayout({ children, heading, description }: AuthLayoutProps) {
+export function AuthLayout({
+  children,
+  heading,
+  description,
+  showFooterSecure = true,
+}: AuthLayoutProps) {
   const { t } = useLanguage();
 
   return (
@@ -38,9 +44,11 @@ export function AuthLayout({ children, heading, description }: AuthLayoutProps) 
             <div className="mb-8" />
           )}
           {children}
-          <p className="mt-8 text-center font-display text-xs text-muted-foreground">
-            {t("authFooterSecure")}
-          </p>
+          {showFooterSecure ? (
+            <p className="mt-8 text-center font-display text-xs text-muted-foreground">
+              {t("authFooterSecure")}
+            </p>
+          ) : null}
         </div>
       </main>
     </div>

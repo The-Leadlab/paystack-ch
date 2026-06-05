@@ -89,7 +89,11 @@ export default function AdminSignInPage() {
   return (
     <>
       <SeoNoIndex />
-      <AuthLayout heading={t("authAdminTitle")} description={t("authAdminDescription")}>
+      <AuthLayout
+        heading={t("authAdminTitle")}
+        description={t("authAdminDescription")}
+        showFooterSecure={false}
+      >
         <div className="max-w-lg mx-auto space-y-6">
           <Card className="border-border shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
