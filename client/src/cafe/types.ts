@@ -171,6 +171,23 @@ export interface SwissVatReceiptTotals {
   totalInclVat?: number;
 }
 
+/** Agentic Plan comptable CH classification (RAG + Gemini). */
+export interface SwissAccountClassification {
+  account_code: string;
+  account_name: string;
+  reasoning: string;
+  confidence: number;
+  requires_human_review: boolean;
+  vat_account_code?: string;
+  candidate_codes?: string[];
+  splits?: Array<{
+    account_code: string;
+    amount?: number;
+    description: string;
+    confidence?: number;
+  }>;
+}
+
 /** Preview mapping for accountant review (aligns with Swiss TVA statement export codes) */
 export interface SwissVatFormPreview {
   code200?: number;
@@ -208,6 +225,8 @@ export interface FinancialData {
   swissVatBreakdown?: SwissVatRateLine[];
   swissVatReceiptTotals?: SwissVatReceiptTotals;
   swissVatFormPreview?: SwissVatFormPreview;
+  /** AI-assigned Plan comptable CH konto with confidence (see swissAccountClassifierService). */
+  swissAccountClassification?: SwissAccountClassification;
   // Bank specific fields for audit
   openingBalance?: number;
   finalBalance?: number;

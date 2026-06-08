@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { Upload, FileText, Loader, CheckCircle, XCircle, Play, StopCircle, Trash2 } from 'lucide-react';
 import { resolveDocumentProcessingTimeoutMs } from '../lib/documentProcessingTimeout';
 import { analyzeFinancialDocument } from '../services/geminiService';
+import { enrichFinancialDataWithSwissAccount } from '../services/swissAccountClassifierService';
+import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
 import type { FinancialData } from '../types';
 
 type ProcessingFile = {
@@ -89,19 +91,12 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
         await processFile(fileItem);
       }
     } else {
-      // Bounded parallel: up to 3 concurrent to avoid rate-limit 429s
-      const PARALLEL_LIMIT = 3;
-      let idx = 0;
-      const active = new Set<Promise<void>>();
-      while (idx < pendingFiles.length && !stopProcessingRef.current) {
-        while (active.size < PARALLEL_LIMIT && idx < pendingFiles.length && !stopProcessingRef.current) {
-          const item = pendingFiles[idx++];
-          const task = processFile(item).finally(() => active.delete(task));
-          active.add(task);
-        }
-        if (active.size > 0) await Promise.race(active);
-      }
-      await Promise.allSettled(active);
+      await runInDocumentBatches(
+        pendingFiles,
+        resolveDocumentBatchSize(),
+        () => stopProcessingRef.current,
+        (item) => processFile(item)
+      );
     }
 
     console.log('Processing complete!');
@@ -133,10 +128,15 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
         }, timeoutMs)
       );
 
-      const data = (await Promise.race([
+      let data = (await Promise.race([
         analyzeFinancialDocument(fileItem.file, 'CHF', undefined, undefined, abortController.signal),
         timeoutPromise,
       ])) as any;
+      try {
+        data = await enrichFinancialDataWithSwissAccount(data, abortController.signal);
+      } catch {
+        /* classification optional */
+      }
       
       console.log(`✅ AI analysis complete for: ${fileItem.name}`);
       

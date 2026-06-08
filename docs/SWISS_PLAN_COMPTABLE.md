@@ -39,8 +39,22 @@ Each **income** and **expense** row can carry an optional **`account_code`** (ko
 
 Fixed assets, inventory, cash, receivables, and financial investments are in section **ACTIFS**. When posting capital purchases (equipment, vehicles, software), prefer kontos **1500–1799** rather than expense classes **4xxx–6xxx**.
 
+## Agentic AI classification (document upload)
+
+After Gemini OCR (`analyzeFinancialDocument`), the pipeline runs automatically:
+
+1. **RAG** — `shared/swissAccountRag.ts` retrieves top **15** candidates from `shared/data/swiss_chart_of_accounts_taxonomy.json` (942 accounts + classification rules).
+2. **Agentic reasoning** — `swissAccountClassifierService.ts` asks Gemini to pick one konto from candidates only (not the full chart).
+3. **Confidence** — `≥ 0.85` → auto-assign on ledger row; `< 0.85` → amber **needs review** in document UI.
+4. **Splits** — mixed receipts can return multiple kontos (office + meals).
+
+Taxonomy source: `Implementing AI for Swiss Tax Asset Code Classification/swiss_chart_of_accounts_taxonomy.json`.
+
+Env: optional `VITE_GEMINI_CLASSIFIER_MODEL` (defaults to `VITE_GEMINI_MODEL` / `gemini-2.5-flash`).
+
 ## Agent rules
 
 1. Do not invent kontos — use `searchSwissAccounts()` or the JSON file.
 2. Asset purchases → 1xxx (balance sheet); operating expenses → 4xxx–6xxx (P&L).
 3. Keep EN + FR labels from the official chart; UI language picks `labelEn` or `labelFr`.
+4. Bank statement lines use RAG-only (no extra Gemini per line) via `classifyLineItemAccountCode`.

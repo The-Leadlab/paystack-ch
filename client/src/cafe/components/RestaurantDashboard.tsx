@@ -13,7 +13,7 @@ import { usePOS } from '../context/POSContext';
 import { DocumentProcessor } from './DocumentProcessor';
 import { getSessionDisplayName } from '../lib/formatLocalDateTime';
 import { POSManager } from './POSManager';
-import type { FinancialData, ProcessedDocument, POSReading } from '../types';
+import type { ProcessedDocument, POSReading } from '../types';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
 import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from '@/const/branding';
 import type { DocumentReference } from 'firebase/firestore';
@@ -24,6 +24,8 @@ import {
 } from '../services/swissPayrollService';
 import { SwissAccountCodeBadge, SwissAccountCodeField } from './SwissAccountCodeField';
 import { suggestSwissAccountCode } from '@shared/suggestSwissAccountCode';
+import { classifyLineItemAccountCode } from '../services/swissAccountClassifierService';
+import type { FinancialData } from '../types';
 
 type Tab = 'dashboard' | 'revenue' | 'reports' | 'documents' | 'billing';
 
@@ -343,6 +345,29 @@ export function RestaurantDashboard() {
     }
   };
 
+  const resolveDocumentAccountCode = (
+    data: FinancialData,
+    opts: { kind: 'income' | 'expense'; category?: string; description?: string; isIncome?: boolean }
+  ): string | undefined => {
+    const ai = data.swissAccountClassification;
+    if (ai?.account_code && !ai.splits?.length) {
+      return ai.account_code;
+    }
+    if (opts.description) {
+      return classifyLineItemAccountCode({
+        vendor: data.issuer,
+        description: opts.description,
+        isIncome: opts.isIncome ?? opts.kind === 'income',
+      });
+    }
+    return suggestSwissAccountCode({
+      kind: opts.kind,
+      category: opts.category,
+      incomeType: opts.kind === 'income' ? 'SALES' : undefined,
+      description: `${data.issuer || ''} ${data.notes || ''}`,
+    });
+  };
+
   const handleDocumentData = async (data: FinancialData, fileName: string, fileHash?: string, fileRaw?: File, persistedDocumentId?: string) => {
     console.log('ðŸ”µ handleDocumentData called:', { fileName, hasData: !!data, currentSession: currentSession?.id, persistedDocumentId });
 
@@ -400,12 +425,22 @@ export function RestaurantDashboard() {
             console.log('âž• Adding income:', item.amount, item.description);
             // Extract VAT if available (typically 7.7% or 8.1% in Switzerland)
             const vatAmount = data.vatAmount || 0;
-            await addIncome(date, 'SALES', item.amount, item.description || fileName, currentSession.id, documentId, vatAmount);
+            const incCode = resolveDocumentAccountCode(data, {
+              kind: 'income',
+              description: item.description || fileName,
+              isIncome: true,
+            });
+            await addIncome(date, 'SALES', item.amount, item.description || fileName, currentSession.id, documentId, vatAmount, incCode);
           } else if (item.type === 'EXPENSE') {
             console.log('âž– Adding expense:', item.amount, item.description);
             const description = item.description || data.issuer || fileName;
             const vatAmount = data.vatAmount || 0;
-            await addExpense(date, 'OTHER', item.amount, description, currentSession.id, undefined, documentId, vatAmount);
+            const expCode = resolveDocumentAccountCode(data, {
+              kind: 'expense',
+              category: 'OTHER',
+              description,
+            });
+            await addExpense(date, 'OTHER', item.amount, description, currentSession.id, undefined, documentId, vatAmount, expCode);
           }
         }
       }
@@ -432,6 +467,11 @@ export function RestaurantDashboard() {
       }
 
       for (const line of payrollLines) {
+        const payrollCode = suggestSwissAccountCode({
+          kind: 'expense',
+          category: line.category,
+          description: line.description,
+        });
         await addExpense(
           date,
           line.category,
@@ -439,14 +479,17 @@ export function RestaurantDashboard() {
           line.description,
           currentSession.id,
           undefined,
-          documentId
+          documentId,
+          undefined,
+          payrollCode
         );
       }
     } else if (isRevenue && amount > 0) {
       console.log('ðŸ’µ Adding revenue:', amount);
       const description = data.issuer || data.notes || fileName;
       const vatAmount = data.vatAmount || 0;
-      await addIncome(date, 'SALES', amount, description, currentSession.id, documentId, vatAmount);
+      const incCode = resolveDocumentAccountCode(data, { kind: 'income', description });
+      await addIncome(date, 'SALES', amount, description, currentSession.id, documentId, vatAmount, incCode);
     } else if (amount > 0) {
       console.log('ðŸ’¸ Adding expense:', amount);
       const category = data.expenseCategory?.toLowerCase().includes('supplier') ? 'SUPPLIERS' : 
@@ -455,7 +498,26 @@ export function RestaurantDashboard() {
                       'OTHER';
       const description = data.issuer || data.notes || fileName;
       const vatAmount = data.vatAmount || 0;
-      await addExpense(date, category as any, amount, description, currentSession.id, undefined, documentId, vatAmount);
+      const splits = data.swissAccountClassification?.splits;
+      if (splits?.length) {
+        for (const split of splits) {
+          const splitAmount = split.amount ?? amount / splits.length;
+          await addExpense(
+            date,
+            category as any,
+            splitAmount,
+            split.description || description,
+            currentSession.id,
+            undefined,
+            documentId,
+            vatAmount / splits.length,
+            split.account_code
+          );
+        }
+      } else {
+        const expCode = resolveDocumentAccountCode(data, { kind: 'expense', category, description });
+        await addExpense(date, category as any, amount, description, currentSession.id, undefined, documentId, vatAmount, expCode);
+      }
     }
     
     console.log('âœ… Document processing complete:', fileName);

@@ -8,6 +8,8 @@ import {
   ArrowUpRight, ArrowDownRight, Scale as ScaleIcon, Eye, Plus
 } from 'lucide-react';
 import { analyzeFinancialDocument, syncSwissVatDerivedFields } from '../services/geminiService';
+import { enrichFinancialDataWithSwissAccount } from '../services/swissAccountClassifierService';
+import { formatSwissAccountRef } from '@shared/swissChartOfAccounts';
 import {
   buildPayrollExpenseLines,
   resolvePayrollAmounts,
@@ -37,6 +39,7 @@ import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useExpenseCategoryMeta } from '../i18n/expenseCategoryI18n';
 import { formatIssuerForDisplay, invoicesDetectedIssuer } from '../i18n/documentDisplayI18n';
 import { countCompletedDocumentsThisMonth } from '@shared/planCatalog';
+import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
 
 // Neural Log Component (from Ypsom)
 const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
@@ -912,7 +915,7 @@ const VerificationHub: React.FC<{
   onUpdate: (data: FinancialData) => void;
   onSave: (data: FinancialData) => void;
 }> = ({ doc, onUpdate, onSave }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const chfLocale = useChfLocale();
   const { categories: RESTAURANT_CATEGORIES, groups: CATEGORY_GROUPS } = useExpenseCategoryMeta();
   const [isAddingCustom, setIsAddingCustom] = useState(false);
@@ -1581,6 +1584,39 @@ const VerificationHub: React.FC<{
                       </button>
                     </div>
                  </div>
+                 {editedData.swissAccountClassification && (
+                   <div
+                     className={`p-3 rounded-sm border text-[10px] ${
+                       editedData.swissAccountClassification.requires_human_review
+                         ? 'border-amber-500/40 bg-amber-500/10'
+                         : 'border-emerald-500/30 bg-emerald-500/5'
+                     }`}
+                   >
+                     <p className="font-black uppercase tracking-wider text-cdlp-gold flex items-center gap-1.5">
+                       <Landmark className="w-3.5 h-3.5" />
+                       {t('swissAccountAiTitle')}
+                       {editedData.swissAccountClassification.requires_human_review && (
+                         <AlertTriangle className="w-3.5 h-3.5 text-amber-400" title={t('swissAccountNeedsReview')} />
+                       )}
+                     </p>
+                     <p className="font-mono font-bold text-white mt-1">
+                       {editedData.swissAccountClassification.account_code} —{' '}
+                       {formatSwissAccountRef(
+                         editedData.swissAccountClassification.account_code,
+                         language === 'fr' ? 'fr' : 'en'
+                       )}
+                     </p>
+                     <p className="text-cdlp-muted mt-1">
+                       {t('swissAccountConfidence').replace(
+                         '{pct}',
+                         String(Math.round((editedData.swissAccountClassification.confidence || 0) * 100))
+                       )}
+                     </p>
+                     <p className="text-cdlp-muted/90 mt-2 leading-relaxed">
+                       {editedData.swissAccountClassification.reasoning}
+                     </p>
+                   </div>
+                 )}
               </div>
            </div>
 
@@ -2074,11 +2110,8 @@ export const DocumentProcessor: React.FC<{
   const stopProcessingRef = useRef(false);
   const dragCounter = useRef(0);
 
-  // Processing throughput: configurable via env, capped to avoid overloading browsers/devices.
-  const CONCURRENCY_LIMIT = Math.min(
-    6,
-    Math.max(1, parseInt((import.meta.env.VITE_DOCUMENT_PROCESSING_CONCURRENCY || '3').trim(), 10) || 3)
-  );
+  /** Documents processed per batch; next batch starts only after the current batch completes. */
+  const BATCH_SIZE = resolveDocumentBatchSize();
 
   // Combine Firestore documents with local processing documents
   const allDocs = useMemo(() => {
@@ -2332,7 +2365,7 @@ export const DocumentProcessor: React.FC<{
           );
         }, processingTimeoutMs)
       );
-      const res = await Promise.race([
+      let res = await Promise.race([
         analyzeFinancialDocument(
           inputFile,
           reportingCurrency,
@@ -2342,6 +2375,14 @@ export const DocumentProcessor: React.FC<{
         ),
         timeoutPromise,
       ]);
+      try {
+        res = await enrichFinancialDataWithSwissAccount(res, abortController.signal);
+        console.log(
+          `📒 Swiss account: ${res.swissAccountClassification?.account_code} (${((res.swissAccountClassification?.confidence || 0) * 100).toFixed(0)}%)`
+        );
+      } catch (classifyErr) {
+        console.warn(`⚠️ Swiss account classification skipped for ${doc.fileName}:`, classifyErr);
+      }
       console.log(`✅ Completed: ${doc.fileName}`);
       
       const completedAt = doc.created_at || new Date().toISOString();
@@ -2439,20 +2480,18 @@ export const DocumentProcessor: React.FC<{
       }
       pending = pending.slice(0, remaining);
     }
-    let index = 0;
-    const activeTasks = new Set<Promise<void>>();
-
-    while (index < pending.length && !stopProcessingRef.current) {
-      while (activeTasks.size < CONCURRENCY_LIMIT && index < pending.length && !stopProcessingRef.current) {
-        const doc = pending[index++];
-        setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'pending', error: undefined } : d));
-        const task = processDoc(doc).finally(() => activeTasks.delete(task));
-        activeTasks.add(task);
+    await runInDocumentBatches(
+      pending,
+      BATCH_SIZE,
+      () => stopProcessingRef.current,
+      async (doc) => {
+        setLocalDocs((prev) =>
+          prev.map((d) => (d.id === doc.id ? { ...d, status: 'pending', error: undefined } : d))
+        );
+        await processDoc(doc);
       }
-      if (activeTasks.size > 0) await Promise.race(activeTasks);
-    }
-    
-    await Promise.all(activeTasks);
+    );
+
     setIsProcessing(false);
   };
 
@@ -2553,7 +2592,7 @@ export const DocumentProcessor: React.FC<{
             </div>
             <div className="mt-3 bg-cdlp-black border border-cdlp-border rounded p-2 flex items-center justify-center gap-2">
               <Zap className="w-3 h-3 text-cdlp-gold" />
-              <span className="text-[10px] font-bold text-cdlp-gold uppercase">{t('dpTurboParallel').replace('{n}', String(CONCURRENCY_LIMIT))}</span>
+              <span className="text-[10px] font-bold text-cdlp-gold uppercase">{t('dpTurboParallel').replace('{n}', String(BATCH_SIZE))}</span>
             </div>
           </div>
         </div>
