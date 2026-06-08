@@ -217,16 +217,16 @@ export const exportToCSV = (data: ReportData) => {
   }
 
   csvContent += `${L.incomeDetails}\n`;
-  csvContent += `${L.date},${L.type},${L.amountChf},${L.description}\n`;
+  csvContent += `${L.date},${L.type},${L.amountChf},${L.accountCode},${L.description}\n`;
   income.forEach((item) => {
-    csvContent += `${item.date},${incType(item.type)},${item.amount.toFixed(2)},"${item.description || ''}"\n`;
+    csvContent += `${item.date},${incType(item.type)},${item.amount.toFixed(2)},${item.account_code || ''},"${item.description || ''}"\n`;
   });
   csvContent += `\n`;
 
   csvContent += `${L.expenseDetails}\n`;
-  csvContent += `${L.date},${L.category},${L.amountChf},${L.description}\n`;
+  csvContent += `${L.date},${L.category},${L.amountChf},${L.accountCode},${L.description}\n`;
   expenses.forEach((item) => {
-    csvContent += `${item.date},${cat(item.category)},${item.amount.toFixed(2)},"${item.description}"\n`;
+    csvContent += `${item.date},${cat(item.category)},${item.amount.toFixed(2)},${item.account_code || ''},"${item.description}"\n`;
   });
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -583,6 +583,7 @@ export const exportToPDF = async (data: ReportData) => {
             <tr>
               <th>${L.date}</th>
               <th>${L.type}</th>
+              <th>${L.accountCode}</th>
               <th class="text-right">${L.amountChf}</th>
               <th class="text-right">${L.vatChf}</th>
               <th>${L.description}</th>
@@ -593,13 +594,14 @@ export const exportToPDF = async (data: ReportData) => {
               <tr>
                 <td>${item.date}</td>
                 <td>${incType(item.type)}</td>
+                <td>${item.account_code || '-'}</td>
                 <td class="text-right">${formatCHF(item.amount)}</td>
                 <td class="text-right">${formatCHF(item.vat_amount || 0)}</td>
                 <td>${item.description || '-'}</td>
               </tr>
             `).join('')}
             <tr style="background: #f0fdf4; font-weight: bold;">
-              <td colspan="2">${L.totalIncomeRow}</td>
+              <td colspan="3">${L.totalIncomeRow}</td>
               <td class="text-right">${formatCHF(totalIncome)}</td>
               <td class="text-right">${formatCHF(vatReceived)}</td>
               <td></td>
@@ -615,6 +617,7 @@ export const exportToPDF = async (data: ReportData) => {
             <tr>
               <th>${L.date}</th>
               <th>${L.category}</th>
+              <th>${L.accountCode}</th>
               <th class="text-right">${L.amountChf}</th>
               <th class="text-right">${L.vatChf}</th>
               <th>${L.description}</th>
@@ -625,13 +628,14 @@ export const exportToPDF = async (data: ReportData) => {
               <tr>
                 <td>${item.date}</td>
                 <td>${cat(item.category)}</td>
+                <td>${item.account_code || '-'}</td>
                 <td class="text-right">${formatCHF(item.amount)}</td>
                 <td class="text-right">${formatCHF(item.vat_amount || 0)}</td>
                 <td>${item.description || '-'}</td>
               </tr>
             `).join('')}
             <tr style="background: #fef2f2; font-weight: bold;">
-              <td colspan="2">${L.totalExpensesRow}</td>
+              <td colspan="3">${L.totalExpensesRow}</td>
               <td class="text-right">${formatCHF(totalExpenses)}</td>
               <td class="text-right">${formatCHF(vatPaid)}</td>
               <td></td>

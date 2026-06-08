@@ -36,6 +36,8 @@ export interface Income {
   amount: number;
   vat_amount?: number; // VAT received from customers
   description?: string;
+  /** Plan comptable CH konto (e.g. 3200, 1020) */
+  account_code?: string;
   document_id?: string; // Link to source document
   created_at: string;
 }
@@ -49,6 +51,8 @@ export interface Expense {
   amount: number;
   vat_amount?: number; // VAT paid on expenses
   description: string;
+  /** Plan comptable CH konto (e.g. 4200, 1500) */
+  account_code?: string;
   employee_id?: string;
   document_id?: string; // Link to source document
   created_at: string;

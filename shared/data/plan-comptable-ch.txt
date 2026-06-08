@@ -1,0 +1,1805 @@
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+Plan comptable suisse PME Swiss chart of accounts for SME
+BILAN BALANCE SHEET
+ACTIFS ASSETS
+1000 Caisse A Cash on hand A 1 100 CHF
+1005 Caisse en devise A Cash on hand in foreign currency A 1 100 CHF
+1020 Compte courant bancaire A Bank account A 1 100 CHF
+1025 Compte courant bancaire en devise A Bank account in foreign currency A 1 100 CHF
+1040 Chéques Cheques 1 100 CHF
+1041 Effetts à recevoir Promissory notes to collect 1 100 CHF
+1045 Cartes de crédit / Cartes de débit Credit cards / Debit cards 1 100 CHF
+1050 Placements fixes à court terme Short-term deposit investments 1 100 CHF
+1051 Placements fiduciaires à court terme Short-term fiduciary investments 1 100 CHF
+100 Liquidités Cash and cash equivalents 10
+1060 Actions (cotées) Stocks (listed) 1 106 CHF
+1061 Bons de partecipation (cotés) Participation certificates (listed) 1 106 CHF
+1062 Bons de jouissance (coté) Investment funds (listed) 1 106 CHF
+1063 Obligations (cotés) Bonds (listed) 1 106 CHF
+1064 Cryptomonnaies Cryptocurrencies 1 106 CHF
+1068 Réserve de fluctuation de valeur sur titres à court terme Short-term securities fluctuation reserve 1 106 CHF
+1069 Corrections de valeur sur titre réalisables à court terme Short-term securities value adjustments 1 106 CHF
+1070 Instruments financiers dérivés Financial derivatives 1 106 CHF
+1078 Réserve de fluctuation de valeur sur autres placements
+à court terme
+Other short-term assets fluctuation reserve 1 106 CHF
+1079 Corrections de valeur sur autres placements à court
+terme
+Other short-term assets value adjustments 1 106 CHF
+106 Avoirs à court terme cotés en bourse Short-term assets listed on the stock exchange 10
+-1-
+
+-- 1 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+1090 Comptes d'attente en monnaie Internal transfers 1 109 CHF
+1091 Compte pour l'elaboration des salaires Transfer account for salaries 1 109 CHF
+1099 Compte d'attente pour des montants à clarifier Clarification account 1 109 CHF
+109 Compte d'attente Transfer accounts 10
+1100 Créances envers des tiers suisses Receivables Switzerland 1 110 CHF
+1101 Créances envers des tiers étrangers Receivables abroad 1 110 CHF
+1102 Créances étrangères en monnaie étrangère A Receivables abroad in foreign currency 1 110 CHF
+1109 Provisions pour pertes sur créances envers des tiers Receivables towards third parties value adjustments 1 110 CHF
+1110 Créances envers la filiale A Receivables towards subsidiary A 1 110 CHF
+1119 Provisions pour pertes sur créances envers des
+sociétés du groupe
+Receivables towards group companies value
+adjustments
+1 110 CHF
+1120 Créances envers personne concernée A Receivables towards person involved A 1 110 CHF
+1121 Créances envers le conseil d'administration A Receivables towards member of the Board of Directors
+A
+1 110 CHF
+1122 Créances envers le membre de la direction A Receivables towards member of Executive Board A 1 110 CHF
+1123 Créances envers la société du groupe A Receivables towards group company A 1 110 CHF
+1124 Créances envers personne proche A Receivables towards close person A 1 110 CHF
+1125 Créances envers l'organe de révision Receivables towards auditor 1 110 CHF
+1129 Provisions pour pertes sur créances envers des
+actionnaires
+Receivables towards shareholders value adjustments 1 110 CHF
+110 Créances résultant de livraisons et prestations Receivables from deliveries and services 10
+1140 Avances à court terme Advances and loans 1 114 CHF
+1149 Provisions pour pertes sur autres créances envers des
+tiers
+Other short-term receivables towards third parties
+value adjustments
+1 114 CHF
+1150 Créances d'emprunt envers la filiale A Loans to subsidiary A 1 114 CHF
+1159 Provisions pour pertes sur autres créances envers des
+sociétés du groupe
+Other short-term receivables towards group
+companies value adjustments
+1 114 CHF
+1160 Prêts envers personne concernée A Loans to person involved A 1 114 CHF
+1161 Prêts envers le conseil d'administration A Loans to member of the Board of Directors A 1 114 CHF
+1162 Prêts envers le membre de la direction A Loans to member of Executive Board A 1 114 CHF
+-2-
+
+-- 2 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+1163 Prêts envers la société du groupe A Loans to group company A 1 114 CHF
+1164 Prêts envers personne proche A Loans to close person A 1 114 CHF
+1169 Provisions pour pertes sur autres créances envers des
+actionnaires
+Other loans to shareholders value adjustments 1 114 CHF
+1170 TVA déductible sur achats de matières et prestations
+de services
+Input tax on materials, goods, services and energy, cl.
+4
+1 114 CHF
+1171 TVA déductible sur investissements et autres charges
+d'exploitation
+Input tax on investments, remaining operating
+expenses, cl. 1/5-8
+1 114 CHF
+1172 Réconciliation de l'impot préalable lors de changement
+de méthode
+Input tax compensation under the reporting method 1 114 CHF
+1173 Réduction de l'impot préalable Input tax reduction 1 114 CHF
+1174 Corrections sur TVA déductible Input tax correction 1 114 CHF
+1175 Décompte TVA Settlement account VAT 1 114 CHF
+1176 Impôt anticipé à récupérer Withholding tax 1 114 CHF
+1177 Créances envers l'administration des douanes Receivables towards Directorate General of Customs 1 114 CHF
+1178 Impôts directs Direct taxes 1 114 CHF
+1179 Impôt à la source Tax at source 1 114 CHF
+1180 Compte courant AVS, AI, APG, AC AHV, IV, EO, ALV current account 1 114 CHF
+1181 Compte courant Caisse d'allocations familiales (CAF) Current account family allowance fund 1 114 CHF
+1182 Compte courant Institutions de prévoyance
+professionnelle
+Current account pension funds 1 114 CHF
+1183 Compte courant Assurance-accidents Current account accident insurance 1 114 CHF
+1184 Compte courant Assurance maladie (indemnité
+journalière maladie)
+Daily sickness benefits insurance current account 1 114 CHF
+1190 Créances WIR WIR accounts 1 114 CHF
+1191 Cautionnements en espèces Deposits 1 114 CHF
+1192 Acomptes aux fournisseurs Advance payments to suppliers 1 114 CHF
+1193 Dépot de garantie de loyer Rent deposits 1 114 CHF
+1199 Provisions pour pertes sur autres créances à court
+terme
+Other short-term receivables value adjustments 1 114 CHF
+114 Autres créances à court terme Other short-term receivables 10
+-3-
+
+-- 3 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+1200 Stocks de marchandises A Inventories of commercial products A 1 120 CHF
+1207 Variation de stocks de marchandises Change in commercial product inventories 1 120 CHF
+1208 Acomptes versés pour marchandises Advance payments for commercial products 1 120 CHF
+1209 Corrections de valeur sur stocks de marchandises Commercial products inventories value adjustments 1 120 CHF
+1210 Stocks de matières premières A Inventories of raw materials A 1 120 CHF
+1217 Variations des matières premières Change in raw materials 1 120 CHF
+1218 Acomptes versés pour matiéres premières Advance payments for raw materials 1 120 CHF
+1219 Corrections de valeur sur stocks de matières premières Raw material inventories value adjustments 1 120 CHF
+1220 Stocks de pièces terminées Inventories of finished products 1 120 CHF
+1221 Stocks de pièces semi-ouvrées Inventories of semi-finished products 1 120 CHF
+1227 Variation de matières de production Change in production material 1 120 CHF
+1228 Acomptes versés pour autres approvisionnements Advance payments for production material 1 120 CHF
+1229 Corrections de valeur sur stocks d'autres
+approvisionnements
+Production material inventories value adjustments 1 120 CHF
+1230 Stocks de matières auxiliaires Auxiliary material inventories 1 120 CHF
+1231 Stocks de fournitures d'exploitation Consumables inventories 1 120 CHF
+1232 Stocks d'emballage Packaging inventories 1 120 CHF
+1237 Corrections de valeur sur stocks de matières auxiliaires
+et de fournitures d'exploitation
+Change in auxiliary material and consumables 1 120 CHF
+1238 Acomptes versés pour matières auxiliaires et de
+fournitures d'exploitation
+Advance payments for auxiliary material and
+consumables
+1 120 CHF
+1239 Corrections de valeur sur stocks de matières auxiliaires
+et de fournitures d'exploitation
+Auxiliary material and consumables value adjustments 1 120 CHF
+1240 Stocks obligatoires Compulsory inventories 1 120 CHF
+1247 Variations de stocks obligatoires Changes in compulsory inventories 1 120 CHF
+1249 Corrections de valeur sur stocks obligatoires Compulsory inventories value adjustments 1 120 CHF
+1250 Marchandise en consignation Goods on delivery 1 120 CHF
+1257 Variations de marchandise en consignation Changes in goods on delivery 1 120 CHF
+1259 Corrections de valeur sur marchandise en consignation Goods on delivery value adjustments 1 120 CHF
+1260 Stocks de produits finis Finished products 1 120 CHF
+1267 Variations de produits finis Changes in finished products 1 120 CHF
+-4-
+
+-- 4 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+1269 Corrections de valeur sur produit finis Finished products value adjustments 1 120 CHF
+1270 Stocks de produits semi-ouvrés Semi-finished products 1 120 CHF
+1277 Variations de produits semi-ouvrés Changes in semi-finished products 1 120 CHF
+1279 Corrections de valeur de produits semi-ouvrés Semi-finished products value adjustments 1 120 CHF
+1280 Stocks de produits en cours Non-invoiced services 1 120 CHF
+1287 Variations de produits en cours Changes in non-invoiced services 1 120 CHF
+1289 Corrections de valeur de produits en cours Non-invoiced services value adjustments 1 120 CHF
+120 Stocks et prestations non facturées Inventories and non-invoiced services 10
+1300 Charges constatées d'avance Prepaid expenses 1 130 CHF
+1301 Produits à recevoir Accrued income 1 130 CHF
+1303 Remise de dettes Discount on liabilities 1 130 CHF
+130 Compte de régularisation de l’actif Accrued income and prepaid expenses 10
+10 Actifs circulants Current assets 1
+1400 Actions Stocks 1 140 CHF
+1401 Bons de partecipation Participation certificates 1 140 CHF
+1402 Bons de jouissance Investment funds 1 140 CHF
+1403 Obligations Bonds 1 140 CHF
+1404 Cryptomonnaies (Investissements) Cryptocurrencies (Investments) 1 140 CHF
+1408 Réserve de fluctuation de valeur des immobilisations
+financières
+Fixed assets securities fluctuation reserve 1 140 CHF
+1409 Correction de valeur sur titres à long terme Fixed assets securities value adjustments 1 140 CHF
+1410 Comptes de placemnet Long-term financial investments 1 140 CHF
+1411 Dépot de garantie de loyer Rent deposits 1 140 CHF
+1419 Correction de valeur sur autres placements à long
+terme
+Other financial investments value adjustments 1 140 CHF
+1440 Prêts à long terme à des tiers Loans 1 140 CHF
+1441 Prêts hypothécaires à des tiers Mortgages 1 140 CHF
+1449 Corrections de la valeur des créances à long terme
+envers des tiers
+Long-term receivables towards third parties value
+adjustments
+1 140 CHF
+-5-
+
+-- 5 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+1450 Prêts envers la participation A Loans to participation A 1 140 CHF
+1451 Prêts hypothécaires envers la participation A Mortgages to participation A 1 140 CHF
+1459 Correction de la valeur des créances à long terme
+envers des participations
+Long-term receivables towards participations value
+adjustments
+1 140 CHF
+1460 Prêt/Prêts hypothécaires envers personne concernée A Loans/Mortgages to person involved A 1 140 CHF
+1461 Prêt/Prêts hypothécaires envers le conseil
+d'administration A
+Loans/Mortgages to member of the Board of Directors
+A
+1 140 CHF
+1462 Prêt/Prêts hypothécaires envers le membre de la
+direction A
+Loans/Mortgages to member of Executive Board A 1 140 CHF
+1463 Prêt/Prêts hypothécaires envers la société du groupe A Loans/Mortgages to group company A 1 140 CHF
+1464 Prêt/Prêts hypothécaires envers personne proche A Loans/Mortgages to close person A 1 140 CHF
+1469 Correction de la valeur des créances envers les
+actionnaires
+Long-term receivables towards shareholders value
+adjustments
+1 140 CHF
+1470 Réserve de contributions de l'employeur Employer contribution reserve 1 140 CHF
+140 Immobilisations financières Financial assets 14
+1480 Participation A Participation A 1 148 CHF
+1489 Corrections de la valeur des participations Participations value adjustments 1 148 CHF
+148 Participations Participations 14
+1500 Machines et appareils Machinery and equipment 1 150 CHF
+1501 Chaînes de production Production plants 1 150 CHF
+1507 Machines et appareils en leasing Leased machinery and equipment 1 150 CHF
+1508 Acomptes versés sur machines et appareils Advance payments for machinery and equipment 1 150 CHF
+1509 Amortissements et corrections de la valeur des
+machines et appareils
+Depreciation and value adjustments to machinery and
+equipment
+1 150 CHF
+1510 Mobilier et installations Furniture and installations 1 150 CHF
+1511 Installations/équipements d'ateliers Workshop installations 1 150 CHF
+1512 Installations/équipements de magasins Shop installations 1 150 CHF
+1513 Mobilier de bureau Office furniture 1 150 CHF
+1517 Mobilier et installations en leasing Leased furniture and installations 1 150 CHF
+1518 Acomptes sur mobilier et installations Advance payments for furniture and installations 1 150 CHF
+-6-
+
+-- 6 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+1519 Amortissements et corrections de la valeur du mobilier
+et installations
+Depreciation and value adjustments to furniture and
+installations
+1 150 CHF
+1520 Machines de bureau, informatique, systèmes de
+communication
+Office machines 1 150 CHF
+1521 Informatique Information technology 1 150 CHF
+1522 Systèmes de communication Communication technology 1 150 CHF
+1527 Machines de bureau, informatique, systèmes de
+communication en leasing
+Leased office machines, information and
+communication technology
+1 150 CHF
+1528 Acomptes sur machines de bureau, informatique,
+systèmes de communication
+Advance payments for office machines, information
+and communication technology
+1 150 CHF
+1529 Amortissements et corrections de la valeur des
+machines de bureau,informatique, systèmes de
+communication
+Depreciation and value adjustments to office
+machines, information and communication technology
+1 150 CHF
+1530 Véhicules Vehicle A 1 150 CHF
+1537 Véhicules en leasing Leased vehicles 1 150 CHF
+1538 Acomptes sur véhicules Advance payments for vehicles 1 150 CHF
+1539 Amortissements et corrections de la valeur des
+véhicules
+Depreciation and value adjustments to vehicles 1 150 CHF
+1540 Outillages et appareils Tools and equipment 1 150 CHF
+1547 Outillage et appareils en leasing Leased tools and equipment 1 150 CHF
+1548 Acomptes sur outillage et appareils Advance payments for tools and equipment 1 150 CHF
+1549 Amortissements et corrections de la valeur de l'outillage
+et appareils
+Depreciation and value adjustments to tools and
+equipment
+1 150 CHF
+1550 Installations de stockage Storage facilities 1 150 CHF
+1557 Installations de stockage en leasing Leased storage facilities 1 150 CHF
+1558 Acomptes sur installations de stockage Advance payments for storage facilities 1 150 CHF
+1559 Amortissements et corrections de la valeur des
+installations de stockage
+Depreciation and value adjustments to storage
+facilities
+1 150 CHF
+1570 Equipements Fixed facilities 1 150 CHF
+1571 Installations Installations 1 150 CHF
+1572 Structures mobiles Movable structures 1 150 CHF
+1577 Equipements et installations en leasing Leased fixed facilities and installations 1 150 CHF
+-7-
+
+-- 7 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+1578 Acomptes sur équipements et installations Advance payments for fixed facilities and installations 1 150 CHF
+1579 Amortissements et corrections de la valeur des
+équipements et installations
+Depreciation and value adjustments to fixed facilities
+and installations
+1 150 CHF
+1590 Lingerie et habits de travail Linen and work clothing 1 150 CHF
+1591 Modèles, empreintes, gabarits, moulages Moulds and models 1 150 CHF
+1597 Autres immobilisations corporelles meubles en leasing Other leased movable tangible assets 1 150 CHF
+1598 Acomptes sur autres immobilisations corporelles
+meubles
+Advance payments for other movable tangible assets 1 150 CHF
+1599 Amortissements et corrections de la valeur des autres
+immobilisations corporelles meubles
+Depreciation and value adjustments to other movable
+tangible assets
+1 150 CHF
+150 Immobilisations corporelles meubles Movable tangible assets 14
+1600 Immeubles d’exploitation Commercial properties 1 160 CHF
+1601 Terrains Commercial properties land 1 160 CHF
+1606 Transformation d'immeubles d'exploitation Commercial properties renovation 1 160 CHF
+1607 Immeubles d'exploitation en leasing Leased commercial properties 1 160 CHF
+1608 Acomptes sur immeubles d'exploitation Advance payments for commercial properties 1 160 CHF
+1609 Amortissements et corrections de la valeur des
+immeubles d'exploitation
+Depreciation and value adjustments to commercial
+properties
+1 160 CHF
+1610 Usines Factories 1 160 CHF
+1611 Terrains Factories land 1 160 CHF
+1617 Usines en leasing Leased factories 1 160 CHF
+1618 Acomptes sur usines Advance payments for factories 1 160 CHF
+1619 Amortissements et corrections de la valeur des usines Depreciation and value adjustments to factories 1 160 CHF
+1620 Ateliers Workshops and ateliers 1 160 CHF
+1621 Terrains Workshops and ateliers land 1 160 CHF
+1627 Ateliers en leasing Leased workshops and ateliers 1 160 CHF
+1628 Acomptes sur ateliers Advance payments for workshops and ateliers 1 160 CHF
+1629 Amortissements et corrections de la valeur des ateliers Depreciation and value adjustments to workshops and
+ateliers
+1 160 CHF
+1630 Entrepôts Warehouses 1 160 CHF
+-8-
+
+-- 8 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+1631 Terrains Warehouses land 1 160 CHF
+1637 Entrepôts en leasing Leased warehouses 1 160 CHF
+1638 Acomptes sur entrepôts Advance payments for warehouses 1 160 CHF
+1639 Amortissements et corrections de la valeur des
+entrepôts
+Depreciation and value adjustments to warehouses 1 160 CHF
+1640 Halles d'exposition Exhibition buildings 1 160 CHF
+1641 Halles de vente Sales buildings 1 160 CHF
+1642 Terrains Sales buildings land 1 160 CHF
+1647 Halles d'exposition et de vente en leasing Leased exhibition and sales buildings 1 160 CHF
+1648 Acomptes sur immeubles d’exposition et de vente Advance payments for exhibition and sales buildings 1 160 CHF
+1649 Amortissements et corrections de la valeur des
+immeubles d'exposition et de vente
+Depreciation and value adjustments to exhibition and
+sales buildings
+1 160 CHF
+1650 Immeubles administratifs Office and administration buildings 1 160 CHF
+1652 Terrains Office and administration buildings land 1 160 CHF
+1657 Immeubles administratifs en leasing Leased office and administration buildings 1 160 CHF
+1658 Acomptes sur immeubles administratifs Advance payments for office and administration
+buildings
+1 160 CHF
+1659 Amortissements et corrections de la valeur des
+immeubles administratifs
+Depreciation and value adjustments to office and
+administration buildings
+1 160 CHF
+1660 Maisons d'habitation du personnel Staff housing 1 160 CHF
+1661 Autres maisons d'habitation Other residential buildings 1 160 CHF
+1662 Terrains Other residential buildings land 1 160 CHF
+1667 Immeubles d'habitation en leasing Leased residential buildings 1 160 CHF
+1668 Acomptes sur immeubles d'habitation Advance payments for residential buildings 1 160 CHF
+1669 Amortissements et corrections de la valeur des
+immeubles d’habitation
+Depreciation and value adjustments to residential
+buildings
+1 160 CHF
+1680 Biens-fonds non bâtis Undeveloped land 1 160 CHF
+1687 Biens-fonds non bâtis en leasing Leased undeveloped land 1 160 CHF
+1688 Acomptes sur biens-fonds non bâtis Advance payments for undeveloped land 1 160 CHF
+1689 Corrections de la valeur des biens-fonds non bâtis Depreciation and value adjustments to undeveloped
+land
+1 160 CHF
+-9-
+
+-- 9 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+160 Immobilisations corporelles immeubles Fixed tangible assets 14
+1700 Brevets Patents 1 170 CHF
+1701 Know-how Know-how 1 170 CHF
+1702 Processus de fabrication Recipes 1 170 CHF
+1709 Amortissements et corrections de la valeur des brevets,
+know-how, processus de fabrication
+Depreciation and value adjustments to patents, know-
+how and recipes
+1 170 CHF
+1710 Marques commerciales Brands 1 170 CHF
+1711 Echantillons Samples 1 170 CHF
+1712 Modèles Models 1 170 CHF
+1713 Plans Plans 1 170 CHF
+1719 Amortissements et corrections de la valeur des
+marques commerciales, échantillons, modèles, plans
+Depreciation and value adjustments to brands,
+samples, models and plans
+1 170 CHF
+1720 Droits de licences Licences 1 170 CHF
+1721 Concessions Concessions 1 170 CHF
+1722 Droits de jouissance Rights of use 1 170 CHF
+1723 Droits des sociétés Company rights 1 170 CHF
+1729 Amortissements et corrections de la valeur sur droits de
+licences, concessions, droits de jouissance, raisons de
+commerce
+Depreciation and value adjustments to licences,
+concessions, rights of use and company rights
+1 170 CHF
+1730 Droits de propriété intellectuelle Copyrights 1 170 CHF
+1731 Droits d'édition Publishing rights 1 170 CHF
+1732 Droits conventionnels Contractual rights 1 170 CHF
+1739 Amortissements et corrections de la valeur des droits
+de propriété intellectuelle, droits d'édition, droits
+conventionnels
+Depreciation and value adjustments to copyrights,
+publishing rights and contractual rights
+1 170 CHF
+1740 Logiciels développés en interne In-house developed software 1 170 CHF
+1741 Logiciels et licences achetés Purchased software and licences 1 170 CHF
+1749 Amortissements et corrections de la valeur des logiciels Depreciation and value adjustments to software 1 170 CHF
+1750 Développements spécifiques internes Own development 1 170 CHF
+1751 Développements spécifiques acquis Purchased development 1 170 CHF
+-10-
+
+-- 10 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+1759 Amortissements et corrections de la valeur sur
+développements spécifiques
+Depreciation and value adjustments to development 1 170 CHF
+1770 Goodwill Goodwill 1 170 CHF
+1779 Amortissements et corrections de la valeur du goodwill Depreciation and value adjustments to goodwill 1 170 CHF
+1790 Autres immobilisations incorporelles Other intangible assets 1 170 CHF
+1799 Amortissements et corrections de valeur des autres
+immobilisations incorporelles
+Depreciation and value adjustments to other intangible
+assets
+1 170 CHF
+170 Immobilisations incorporelles Intangible assets 14
+1850 Capital-actions non libéré Unpaid share capital 1 180 CHF
+1850(2) Capital social non libéré Unpaid nominal capital 1 180 CHF
+1850(3) Parts sociales non libérées Unpaid participation certificate capital 1 180 CHF
+1850(4) Capital de fondation non libéré Unpaid foundation capital 1 180 CHF
+1851 Capital participation non libéré Unpaid participation capital 1 180 CHF
+180 Capital social ou capital de fondation non libéré Unpaid share capital or foundation capital 14
+14 Actifs immobilisés Fixed assets 1
+1 Total actifs Total assets 00
+PASSIFS LIABILITIES
+2000 Dettes résultant d’achats et de prestation de services
+(créanciers)
+Costs of materials and goods payables 2 200 CHF
+2001 Dettes résultant de prestations de services de tiers Third-party/subcontracted services payables 2 200 CHF
+2002 Dettes résultant de charges de personnel Personnel expenses payables 2 200 CHF
+2004 Dettes résultant d'autres charges d'exploitation Other operating expenses payables 2 200 CHF
+2030 Acomptes de clients Advance payments from third parties 2 200 CHF
+2050 Dettes envers la participation A Payables due to participation A 2 200 CHF
+2060 Dettes envers personne concernée A Payables due to person involved A 2 200 CHF
+2061 Dettes envers le conseil d'administration A Payables due to member of the Board of Directors A 2 200 CHF
+2062 Dettes envers le membre de la direction A Payables due to member of Executive Board A 2 200 CHF
+-11-
+
+-- 11 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+2063 Dettes envers la société du groupe A Payables due to group company A 2 200 CHF
+2064 Dettes envers personne proche A Payables due to close person A 2 200 CHF
+2065 Dettes envers l'organe de révision Payables due to auditor 2 200 CHF
+200 Dettes à court terme résultant d’achats et de
+prestations de services
+Accounts payable 20
+2100 Compte courant A Current account A 2 210 CHF
+2107 Emprunts A Loan A 2 210 CHF
+2109 Hypothèque A Mortgage A 2 210 CHF
+2111 Dettes envers les sociétés de virement (WIR) WIR commitments 2 210 CHF
+2120 Engagements de financement par leasing Financial leasing commitments 2 210 CHF
+2130 Emprunts obligataires Bond loans 2 210 CHF
+2140 Dettes envers des tiers Other onerous debts due to third parties 2 210 CHF
+2150 Dettes envers la participation A Debts due to participation A 2 210 CHF
+2160 Dettes envers personne concernée A Debts due to person involved A 2 210 CHF
+2161 Dettes envers le conseil d'administration A Debts due to member of the Board of Directors A 2 210 CHF
+2162 Dettes envers le membre de la direction A Debts due to member of Executive Board A 2 210 CHF
+2163 Dettes envers la société du groupe A Debts due to group company A 2 210 CHF
+2164 Dettes envers personne proche A Debts due to close person A 2 210 CHF
+2170 Dettes envers des institutions de prévoyance Debts due to pension funds 2 210 CHF
+210 Dettes à court terme rémunérées Short-term interest-bearing debts 20
+2200 TVA due VAT due 2 220 CHF
+2200A TVA automatique Automatic VAT 2 220 CHF
+2201 Décompte TVA VAT settlement account 2 220 CHF
+2202 Réconciliation du chiffre d'affaires suite à un
+changement de méthode
+VAT due compensation according to the reporting
+method
+2 220 CHF
+2203 Impôt sur les acquisitions Acquisition tax 2 220 CHF
+2206 Impôt anticipé à payer Withholding tax 2 220 CHF
+2207 Droits de timbre Stamp duty 2 220 CHF
+2208 Impôts directs Direct taxes 2 220 CHF
+-12-
+
+-- 12 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+2209 Impôt à la source Tax at source 2 220 CHF
+2210 Autres dettes envers les tiers Debts due to third parties 2 220 CHF
+2250 Autres dettes envers la participation A Debts due to participation A 2 220 CHF
+2260 Autres dettes envers personne concernée A Debts due to person involved A 2 220 CHF
+2261 Autres dettes envers le conseil d'administration A Debts due to member of the Board of Directors A 2 220 CHF
+2262 Autres dettes envers le membre de la direction A Debts due to member of Executive Board A 2 220 CHF
+2263 Autres dettes envers la société du groupe A Debts due to group company A 2 220 CHF
+2264 Autres dettes envers personne proche A Debts due to close person A 2 220 CHF
+2265 Autres dettes envers l'organe de révision Debts due to auditor 2 220 CHF
+2269 Distributions délibéré (dividendes) Adopted distributions (dividends) 2 220 CHF
+2270 Compte courant AVS, AI, APG, AC AHV, IV, EO, ALV current account 2 220 CHF
+2271 Compte courant caisse d'allocations familiales (CAF) Family allowance fund current account 2 220 CHF
+2272 Compte courant institutions de prévoyance Pension funds current account 2 220 CHF
+2273 Compte courant Assurance-accidents Accident insurance current account 2 220 CHF
+2274 Compte courant Assurance maladie (indemnité
+journalière maladie)
+Daily sickness benefits insurance current account 2 220 CHF
+220 Autres dettes à court terme Other short-term debts 20
+2300 Charges à payer Accrued expenses 2 230 CHF
+2301 Produits encaissés d’avance Revenues received in advance 2 230 CHF
+2303 Abandon de créances Receivables discount 2 230 CHF
+2330 Provisions à court terme Provisions for warranty commitments 2 230 CHF
+2331 Provisions pour risques liés aux engagements
+découlant d'obligations de prendre livraison
+Provisions for purchase commitments 2 230 CHF
+2340 Provisions pour impôts directs Provisions for direct taxes 2 230 CHF
+2341 Provisions pour impôts indirects Provisions for indirect taxes 2 230 CHF
+2350 Provisions pour réparation et entretien Provisions for repairs and maintenance 2 230 CHF
+2351 Provisions pour rénovation des immobilisations Provisions for renovation of tangible assets 2 230 CHF
+2352 Provisions pour recherche Provisions for research 2 230 CHF
+2353 Provisions pour développement Provisions for development 2 230 CHF
+2354 Provisions pour restructuration Provisions for restructuring 2 230 CHF
+-13-
+
+-- 13 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+2355 Provisions pour protection de l'environnement Provisions for environmental protection measures 2 230 CHF
+2360 Provisions pour pertes futures Provisions for threatening losses from ongoing
+business
+2 230 CHF
+2370 Provisions pour engagements envers l'institution de
+prévoyance professionnelle
+Provisions for pension funds commitments 2 230 CHF
+2371 Provisions pour charges salariales Provisions for salary commitments 2 230 CHF
+2380 Provisions pour engagements envers participations Provisions for participations commitments 2 230 CHF
+2381 Provisions pour engagements envers actionnaires Provisions for commitments to shareholders 2 230 CHF
+2390 Provisions pour assurer la prospérité durable de
+l'entreprise
+Provisions to ensure the lastingly prosperity of the
+company
+2 230 CHF
+2391 Autres provisions à court terme Other short-term provisions 2 230 CHF
+230 Passifs de régularisation et provisions à court
+terme
+Accruals and deferred income, short-term
+provisions
+20
+20 Dettes à court terme Short-term third party capital 2
+2400 Emprunts A Loan A 2 240 CHF
+2401 Hypothèque A Mortgage A 2 240 CHF
+2420 Engagements de financement par leasing Financial leasing commitments 2 240 CHF
+2430 Emprunts obligataires Debenture loans 2 240 CHF
+2450 Emprunts Loans 2 240 CHF
+2451 Hypothèques Mortgages 2 240 CHF
+2470 Emprunts auprès de la participation A Loans to participation A 2 240 CHF
+2471 Emprunts hypothécaires auprès de participation A Mortgage to participation A 2 240 CHF
+2480 Emprunts/Emprunts hypothécaires auprès de la
+personne concernée A
+Loans/Mortgages to person involved A 2 240 CHF
+2481 Emprunts/Emprunts hypothécaires auprès de le conseil
+d'administration A
+Loans/Mortgages to the Board of Directors A 2 240 CHF
+2482 Emprunts/Emprunts hypothécaires auprès de le
+membre de la direction A
+Loans/Mortgages to member of Executive Board A 2 240 CHF
+2483 Emprunts/Emprunts hypothécaires auprès de la société
+du groupe A
+Loans/Mortgages to group company A 2 240 CHF
+-14-
+
+-- 14 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+2484 Emprunts/Emprunts hypothécaires auprès de la
+personne proche A
+Loans/Mortgages to close person A 2 240 CHF
+2490 Emprunts auprès des institutions de prévoyance
+professionnelle
+Pension funds loans 2 240 CHF
+2491 Dettes hypothécaires auprès des institutions de
+prévoyance professionnelle
+Mortgages to pension funds 2 240 CHF
+240 Dettes à long terme rémunérées Long-term interest-bearing debts 24
+2500 Autres dettes envers des tiers Debts due to third parties 2 250 CHF
+2550 Autres dettes envers la participation A Debts due to participation A 2 250 CHF
+2560 Autres dettes envers la personne concernée A Debts due to person involved A 2 250 CHF
+2561 Autres dettes envers le conseil d'administration A Debts due to member of the Board of Directors A 2 250 CHF
+2562 Autres dettes envers le membre de la direction A Debts due to member of Executive Board A 2 250 CHF
+2563 Autres dettes envers la société du groupe A Debts due to group company A 2 250 CHF
+2564 Autres dettes envers la personne proche A Debts due to close person A 2 250 CHF
+2570 Dettes envers des institutions de prévoyance Debts due to pension funds 2 250 CHF
+250 Autres dettes à long terme Other long-term debts 24
+2630 Provisions pour travaux de garantie Provisions for warranty commitments 2 260 CHF
+2631 Provisions pour risques liés aux engagements
+découlant d'obligations de prendre livraison
+Provisions for purchase commitments 2 260 CHF
+2640 Provisions pour impôts directs Provisions for direct taxes 2 260 CHF
+2641 Provisions pour impôts indirects Provisions for indirect taxes 2 260 CHF
+2650 Provisions pour réparation et entretien Provisions for repairs and maintenance 2 260 CHF
+2651 Provisions pour rénovation des immobilisations Provisions for renovation of tangible assets 2 260 CHF
+2652 Provisions pour recherche Provisions for research 2 260 CHF
+2653 Provisions pour développement Provisions for development 2 260 CHF
+2654 Provisions pour restructuration Provisions for restructuring 2 260 CHF
+2655 Provisions pour protection de l'environnement Provisions for environmental protection measures 2 260 CHF
+2660 Provisions pour affaires en cours Provisions for threatening losses from ongoing
+business
+2 260 CHF
+-15-
+
+-- 15 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+2670 Provisions pour engagements envers l'institution de
+prévoyance professionnelle
+Provisions for pension funds commitments 2 260 CHF
+2671 Provisions pour charges salariales Provisions for salary commitments 2 260 CHF
+2680 Provisions pour engagements envers participations Provisions for participations commitments 2 260 CHF
+2681 Provisions pour engagements envers les actionnaires Provisions for commitments to shareholders 2 260 CHF
+2690 Provisions pour assurer la prospérité durable de
+l'entreprise
+Provisions to ensure the lastingly prosperity of the
+company
+2 260 CHF
+2691 Autres provisions à long terme Other long-term provisions 2 260 CHF
+260 Provisions à long termes et provisions légales Long-term provisions and similar statutory
+positions
+24
+24 Dettes à long terme Long-term third party capital 2
+Fonds propres (personnes morales) Equity (legal entities)
+2800 Capital-actions catégorie A Share capital category A 2 280 CHF
+2800(2) Capital social catégorie A Nominal capital category A 2 280 CHF
+2800(3) Parts sociales catégorie A Participation certificate capital category A 2 280 CHF
+2800(4) Capital de fondation Foundation capital 2 280 CHF
+2810 Capital-participation Participation capital 2 280 CHF
+280 Capital social ou capital de fondation Nominal capital or capital of the foundation 28
+2900 Agio à la fondation ou lors d'augmentations de capital Premium at foundation or in the event of a capital
+increase
+2 290 CHF
+2901 Autres apports et contributions Other contributions or allocations 2 290 CHF
+2902 Agio lors de fusion, de scission ou de cession d'actifs Premium from merger, demerger or asset transfer 2 290 CHF
+2903 Réserves de contributions en capital (reconnues
+fiscalement)
+Reserves from capital contributions (fiscally
+recognised)
+2 290 CHF
+2904 Gain lors de réduction du capital Profit from capital reduction 2 290 CHF
+2905 Profit/Perte de l'achat du propres parts du capital Profit/loss from own capital share acquisition 2 290 CHF
+2950 Réserve légale issue du bénéfice Legal retained earnings 2 290 CHF
+2955 Réserve d'évaluation Revaluation reserve 2 290 CHF
+2959 Réserve pour actions propres (acquisition indirecte) Reserves for own shares (indirect acquisition) 2 290 CHF
+2960 Réserve libre Statutory retained earnings 2 290 CHF
+-16-
+
+-- 16 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+2961 Réserves facultatives issues du bénéfice Decided retained earnings 2 290 CHF
+2962 Profit/Perte de l'achat du propres parts du capital Profit/loss from own capital share acquisition 2 290 CHF
+2965 Propres actions Own shares 2 290 CHF
+2965(2) Propres parts sociales Own nominal shares 2 290 CHF
+2965(3) Propres parts en commandite Own share certificates 2 290 CHF
+2966 Commandite propre Own participation certificates 2 290 CHF
+2970 Bénéfice ou perte reporté Profit or loss carried forward 2 290 CHF
+2971 Acompte sur distribution des dividendes Interim dividend distribution 2 290 CHF
+2972 Apport de le bénéfice intermédiaire dans la réserve
+légale de bénéfice
+Contribution of interim profit to the legal retained
+earnings
+2 290 CHF
+2973 Apport de le bénéfice intermédiaire dans la réserve
+volontaire de bénéfice
+Contribution of interim profit to the voluntary retained
+earnings
+2 290 CHF
+2979 Bénéfice ou perte de l'exercice Annual profit or loss 2 290 CHF
+290 Réserves, propres parts du capital et bénéfices ou
+pertes
+Reserves, own capital share and profit or loss 28
+Capital propre (raisons individuelles) Equity (sole proprietorships)
+2800.E Capital propre Own capital 2 28 CHF
+2801.E Capital propre du conjoint Spouse individual property 2 28 CHF
+2820.E Apports en capital et retraits Capital contributions and capital withdrawals 2 28 CHF
+2821.E Apports en capital et retraits du conjoint Individual property contributions and individual
+property withdrawals of the spouse
+2 28 CHF
+2850.E Prélèvements privés en espèces Private cash withdrawals 2 28 CHF
+2851.E Prélèvements en nature In kind withdrawals 2 28 CHF
+2852.E Participations privées aux charges d'exploitation Private share of operating expenses 2 28 CHF
+2853.E Valeur locative de l'appartement privé Private flat rental value 2 28 CHF
+2854.E Primes d'assurance privées Private insurance premiums 2 28 CHF
+2855.E Cotisations privées à titre de prévoyance
+professionnelle
+Private pension contributions 2 28 CHF
+2856.E Impôts privés Private taxes 2 28 CHF
+2891.E Bénéfice ou perte de l'exercice Annual profit or loss 2 28 CHF
+-17-
+
+-- 17 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+Capital propre (sociétés de personnes) Equity (partnership)
+2800.P Capital propre associé A au début de l'exercice Partner A equity at the beginning of the financial year 2 28 CHF
+2810.P Apports en capital et retraits de l'associé Partner A capital contributions and capital withdrawals 2 28 CHF
+2820.P Prélèvements en espèces de l’associé A Partner A cash withdrawals 2 28 CHF
+2821.P Prélèvements en nature de l'associé A Partner A in kind withdrawals 2 28 CHF
+2822.P Participations privées aux charges d'exploitation de
+l'associé A
+Partner A private share of operating expenses 2 28 CHF
+2823.P Valeur locative de l'appartement privé de l'associé A Partner A private flat rental value 2 28 CHF
+2824.P Primes d'assurance privées de l'associé A Partner A private insurance premiums 2 28 CHF
+2825.P Cotisations privées à titre de prévoyance
+professionnelle de l'associé A
+Partner A private pension contributions 2 28 CHF
+2826.P Impôts privés de l'associé A Partner A private taxes 2 28 CHF
+2830.P Bénéfice ou perte de l'exercice de l'associé A Partner A annual profit or loss 2 28 CHF
+2850.P Apports du commanditaire A au début de l'exercice Limited partner A equity at the beginning of the
+financial year
+2 28 CHF
+2860.P Apports complémentaires et retraits de la commandite
+du commanditaire A
+Limited partner A capital contributions and capital
+withdrawals
+2 28 CHF
+2870.P Prélèvements en espèces du commanditaire A Limited partner A cash withdrawals 2 28 CHF
+2871.P Prélèvements en nature du commanditaire A Limited partner A in kind withdrawals 2 28 CHF
+2872.P Participations privées aux charges d’exploitation du
+commanditaire A
+Limited partner A private share of operating expenses 2 28 CHF
+2873.P Valeur locative de l'appartement privé du
+commanditaire A
+Limited partner A private flat rental value 2 28 CHF
+2874.P Primes d'assurance privées du commanditaire A Limited partner A private insurance premiums 2 28 CHF
+2875.P Cotisations privées à titre de prévoyance
+professionnelle du commanditaire A
+Limited partner A private pension contributions 2 28 CHF
+2876.P Impôts privés du commanditaire A Limited partner A private taxes 2 28 CHF
+2880.P Bénéfice ou perte de l'exercice du commanditaire A Limited partner A annual profit or loss 2 28 CHF
+297 Bénéfice de l'exercice / Perte de l'exercice Profit/Loss from Balance Sheet 28
+28 Fonds propres Equity 2
+-18-
+
+-- 18 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+2 Total passifs Total liabilities 00
+COMPTE DE PERTES ET PROFITS PROFIT & LOSS STATEMENT
+PRODUITS REVENUES
+3000 Ventes brutes de produits A Gross revenues from product A 4 30 CHF
+3000(2) Ventes de produits fabriqués au comptant Gross revenues from cash sales 4 30 CHF
+3001 Ventes de produits fabriqués au détail à crédit Gross revenues from retail credit sales 4 30 CHF
+3002 Ventes de produits fabriqués en gros à crédit Gross revenues from wholesale credit sales 4 30 CHF
+3007 Ventes de produits fabriqués résultant de prestations
+annexes (port et emballage)
+Gross revenues from ancillary services (postage and
+packing)
+4 30 CHF
+3008 Variation des créances/débiteurs Changes in receivables 4 30 CHF
+3090 Escomptes Discounts 4 30 CHF
+3091 Rabais et réductions de prix Rebates and price reductions 4 30 CHF
+3092 Ristournes Refunds 4 30 CHF
+3093 Commissions de tiers Commissions to third parties 4 30 CHF
+3094 Frais d'encaissement Collection charges 4 30 CHF
+3095 Pertes sur clients, variation de prix Losses on receivables, changes in value adjustments 4 30 CHF
+3096 Différences de change Exchange rate differences 4 30 CHF
+3097 Frets et ports Freights, postages 4 30 CHF
+30 Chiffre d'affaires de la production vendue Manufactured products revenues 3
+3200 Ventes de marchandises article A Gross revenues from item A 4 32 CHF
+3200(2) Ventes de marchandises au comptant Gross revenues from cash sales 4 32 CHF
+3201 Ventes de marchandises au détail à crédit Gross revenues from retail credit sales 4 32 CHF
+3202 Ventes de marchandises en gros à crédit Gross revenues from wholesale credit sales 4 32 CHF
+3203 Ventes brutes des prix d'achat Gross revenues from purchase prices 4 32 CHF
+3207 Ventes de marchandises de prestations annexes (port
+et emballage)
+Gross revenues from ancillary services (postage and
+packing)
+4 32 CHF
+3208 Variation des créances/débiteurs Changes in receivables 4 32 CHF
+-19-
+
+-- 19 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+3290 Escomptes Discounts 4 32 CHF
+3291 Rabais et réductions de prix Rebates and price reductions 4 32 CHF
+3292 Ristournes Refunds 4 32 CHF
+3293 Commissions de tiers Commissions to third parties 4 32 CHF
+3294 Frais d'encaissement Collection charges 4 32 CHF
+3295 Pertes sur clients, variation de prix Losses on receivables, changes in value adjustments 4 32 CHF
+3296 Différences de change Exchange rate differences 4 32 CHF
+3297 Frets et ports Freights, postages 4 32 CHF
+32 Ventes de marchandises Revenues from resale of goods 3
+3400 Ventes de prestations A Gross revenues from provided service A 4 34 CHF
+3400(2) Ventes de prestations au comptant Gross revenues in cash 4 34 CHF
+3401 Ventes de prestations à crédit Gross revenues on credit 4 34 CHF
+3407 Ventes de prestations annexes d'exploitation Gross revenues from ancillary services 4 34 CHF
+3408 Variation des créances/débiteurs Changes in receivables 4 34 CHF
+3490 Escomptes Discounts 4 34 CHF
+3491 Rabais et réductions de prix Rebates and price reductions 4 34 CHF
+3492 Ristournes Refunds 4 34 CHF
+3493 Commissions de tiers Commissions to third parties 4 34 CHF
+3494 Frais d'encaissement Collection charges 4 34 CHF
+3495 Pertes sur clients, variation de prix Losses on receivables, changes in value adjustments 4 34 CHF
+3496 Différences de change Exchange rate differences 4 34 CHF
+3497 Ports Postages 4 34 CHF
+34 Ventes de prestations Revenues from provided services 3
+3600 Ventes de matières premières Revenues from raw materials 4 36 CHF
+3601 Ventes de matières auxiliaires Revenues from auxiliary materials 4 36 CHF
+3602 Ventes de déchets Revenues from garbages 4 36 CHF
+3607 Ventes de prestations annexes Revenues from ancillary services 4 36 CHF
+3608 Variation des créances/débiteurs Changes in receivables 4 36 CHF
+3609 Déductions sur les produits accessoires Decrease in ancillary revenues 4 36 CHF
+-20-
+
+-- 20 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+3610 Produits de licences pour produit A Revenues from product A licence 4 36 CHF
+3619 Déductions sur les produits des licences, des brevets,
+etc.
+Decrease in revenues from licences, patents, etc. 4 36 CHF
+3670 Produits résultant de la mise à disposition du personnel Revenues from staff provision 4 36 CHF
+3680 Autres produits Other revenues 4 36 CHF
+3690 Escomptes Discounts 4 36 CHF
+3691 Rabais et réductions de prix Rebates and price reductions 4 36 CHF
+36 Produits annexes résultant de la vente de biens et
+de prestations de services
+Other revenues from deliveries and services 3
+3700 Propre production d'immobilisations corporelles
+meubles
+Own production of movable tangible assets 4 37 CHF
+3701 Propre production d'immobilisations corporelles
+immeubles
+Own production of fixed tangible assets 4 37 CHF
+3702 Propres réparations d'immobilisations corporelles
+meubles
+Own repair of movable tangible assets 4 37 CHF
+3703 Propres réparations d'immobilisations corporelles
+immeubles
+Own repair of fixed tangible assets 4 37 CHF
+3710 Propres consommations produit A Own consumption of product A 4 37 CHF
+3720 Propres consommations de marchandises A Own consumption of product A 4 37 CHF
+3740 Propres consommations de service A Own consumption of provided service A 4 37 CHF
+3790 Prélèvements en nature In kind withdrawals 4 37 CHF
+37 Propres prestations et propres consommations Own contributions and own consumption 3
+3800 Escomptes Discounts 4 38 CHF
+3801 Rabais et réductions de prix Rebates and price reductions 4 38 CHF
+3802 Ristournes Refunds 4 38 CHF
+3803 Commissions de tiers Commissions to third parties 4 38 CHF
+3804 Frais d'encaissement Collection charges 4 38 CHF
+3805 Pertes sur clients, variation du ducroire Losses on receivables, changes in value adjustments 4 38 CHF
+3806 Différences de change Exchange rate differences 4 38 CHF
+3807 Frais d'expédition Shipping costs 4 38 CHF
+-21-
+
+-- 21 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+3809 TVA - Taux de la dette fiscale nette VAT net tax rate 4 38 CHF
+3810 Commissions cartes de crédit/débit Credit/debit card fees 4 38 CHF
+3860 Variation des réserves de garantie Changes in warranty provisions 4 38 CHF
+3861 Variation des réserves de franchise Changes in deductible provisions 4 38 CHF
+38 Déductions sur ventes Decrease in revenues 3
+3900 Variation des stocks de produits finis Changes in finished products inventories 4 39 CHF
+3901 Variation des stocks de produits semi-finis Changes in semi-finished products inventories 4 39 CHF
+3940 Variation de la valeur des prestations non facturées Changes in non-invoiced services value 4 39 CHF
+39 Variation des stocks de produits finis et semi-finis
+et variation des prestations de services non
+facturés
+Changes in inventories of semi-finished products,
+finished products and value of non-invoiced
+services
+3
+3 Chiffre d’affaires résultant des ventes et des
+prestations de services
+Net revenues from supplies and services 02
+CHARGES EXPENSES
+4000 Achats de matériel produit A Purchases of product A material 3 40 CHF
+4000(2) Achats d'appareils Purchases of equipment 3 40 CHF
+4001 Achats de composants Purchases of components 3 40 CHF
+4002 Achats d'accessoires Purchases of accessories 3 40 CHF
+4003 Achats d'autres matières Purchases of other materials 3 40 CHF
+4004 Achats de matières auxiliaires et de fournitures
+d'exploitation
+Purchases of auxiliary and consumable materials 3 40 CHF
+4005 Achats de matériel d'emballage Purchases of packing material 3 40 CHF
+4006 Travaux de tiers Third-party services 3 40 CHF
+4007 Charges directes d’achat Direct purchasing expenses 3 40 CHF
+4008 Variations de stocks Changes in inventories 3 40 CHF
+4009 Déductions obtenues sur achats Purchase price reductions 3 40 CHF
+4060 Travaux de tiers - secteur A Sector A third-party services 3 40 CHF
+4070 Frets à l'achat Incoming freight 3 40 CHF
+-22-
+
+-- 22 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+4071 Droits de douane à l'importation Import duties 3 40 CHF
+4072 Frais de transport à l'achat Incoming shipments 3 40 CHF
+4080 Variations de stocks - secteur A Changes in sector A inventories 3 40 CHF
+4086 Pertes de matières - secteur A Sector A material losses 3 40 CHF
+4090 Escomptes Discounts 3 40 CHF
+4091 Rabais et réductions de prix Rebates and price reductions 3 40 CHF
+4092 Ristournes Refunds 3 40 CHF
+4093 Commissions obtenues sur achats Commissions to third parties 3 40 CHF
+4096 Différences de change Exchange rate differences 3 40 CHF
+40 Charges de matériel Material costs 4
+4200 Achats de marchandises A Purchases of resale product A 3 42 CHF
+4205 Achats de matériel d'emballage Purchases of packing material 3 42 CHF
+4207 Charges directes d'achat Direct purchasing expenses 3 42 CHF
+4208 Variations de stocks Changes in inventories 3 42 CHF
+4209 Déductions obtenues sur achats Purchase price reductions 3 42 CHF
+4270 Frets à l'achat Incoming freight 3 42 CHF
+4271 Droits de douane à l'importation Import duties 3 42 CHF
+4272 Frais de transport à l'achat Incoming shipments 3 42 CHF
+4280 Variations de stocks - secteur A Changes in sector A inventories 3 42 CHF
+4286 Pertes de marchandises - secteur A Sector A loss of goods 3 42 CHF
+4290 Escomptes Discounts 3 42 CHF
+4291 Rabais et réductions de prix Rebates and price reductions 3 42 CHF
+4292 Ristournes Refunds 3 42 CHF
+4293 Commissions obtenues sur achats Purchasing commissions 3 42 CHF
+4296 Différences de change Exchange rate differences 3 42 CHF
+42 Charges de marchandises Costs of goods for resale 4
+4400 Charges pour prestations de services A Expenses for service A 3 44 CHF
+4407 Charges directes d'achat Direct purchasing expenses 3 44 CHF
+4409 Déductions obtenues sur achats Deductions obtained on purchases 3 44 CHF
+-23-
+
+-- 23 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+4470 Charges directes d'achat sur prestations de tiers Direct purchase expenses for purchased services 3 44 CHF
+4490 Escomptes Discounts 3 44 CHF
+4491 Rabais et réductions de prix Rebates and price reductions 3 44 CHF
+4492 Ristournes Refunds 3 44 CHF
+4493 Commissions obtenues sur achats Purchasing commissions 3 44 CHF
+4496 Différences de change Exchange rate differences 3 44 CHF
+44 Prestations et travaux de tiers Expenses for purchased services 4
+4500 Courant faible Heat electricity 3 45 CHF
+4501 Courant industriel Industrial electricity 3 45 CHF
+4510 Gaz naturel Natural gas 3 45 CHF
+4511 Gaz liquide en bonbonnes Liquid gas in cylinders 3 45 CHF
+4520 Mazout Heating oil 3 45 CHF
+4521 Charbon, briquettes, bois Coal, briquettes, wood 3 45 CHF
+4530 Essence Petrol 3 45 CHF
+4531 Diesel Diesel 3 45 CHF
+4532 Huile Oil 3 45 CHF
+4540 Eau Water 3 45 CHF
+45 Charges d'énergie pour l'exploitation Energy consumption for production 4
+4600 Autres charges de matières production Other material costs of production 3 46 CHF
+4620 Autres charges de marchandises Other costs of goods for resale 3 46 CHF
+4640 Autres charges pour prestations de tiers Other costs of services 3 46 CHF
+4650 Charges d'emballage Packaging costs 3 46 CHF
+4660 Variation des réserves de garantie Changes in warranty provisions 3 46 CHF
+4661 Variation des réserves de franchise Changes in deductible provisions 3 46 CHF
+46 Autres charges pour matériel, marchandised et
+prestations
+Other costs of materials, goods for resale and
+services
+4
+4700 Frets à l'achat Incoming freight 3 47 CHF
+4701 Droits de douane à l'importation Import duties 3 47 CHF
+-24-
+
+-- 24 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+4702 Frais de transport à l'achat Incoming shipments 3 47 CHF
+47 Charges directes d'achat Direct purchasing expenses 4
+4800 Escomptes Discounts 3 48 CHF
+4801 Rabais et réductions de prix Rebates and price reductions 3 48 CHF
+4802 Ristournes Refunds 3 48 CHF
+4803 Commissions obtenues sur achats Purchasing commissions 3 48 CHF
+4804 Différences de change Exchange rate differences 3 48 CHF
+48 Réduction des prix d'achat Purchase price reductions 4
+4900 Variation des stocks de marchandises Changes in goods for resale inventories 3 49 CHF
+4901 Variation des stocks de matières premières Changes in raw material inventories 3 49 CHF
+4902 Variation des stocks de matières Changes in production material inventories 3 49 CHF
+4903 Variation des stocks de fournitures d'exploitation Changes in auxiliary material and consumables
+inventories
+3 49 CHF
+4904 Variation des stocks obligatoires Changes in compulsory inventories 3 49 CHF
+4905 Variation des stocks de marchandises en consignation Changes in goods on delivery inventories 3 49 CHF
+4980 Pertes de matières Material losses 3 49 CHF
+4986 Pertes de marchandises Losses of goods for resale 3 49 CHF
+49 Variation des stocks, pertes de matières et de
+marchandises
+Changes in inventories, material and goods losses 4
+4 Charges de matériel, de marchandises et de
+prestations de tiers
+Costs for material, goods, services and energy 02
+5000 Salaires Salaries 3 50 CHF
+5001 Indemnités Allowances 3 50 CHF
+5002 Participations au bénéfice Profit-sharing 3 50 CHF
+5003 Commissions Commissions 3 50 CHF
+5005 Prestations des assurances sociales Social insurance benefits 3 50 CHF
+5006 Mise à disposition de personnel Provision of personnel 3 50 CHF
+5007 Charges sociales Social insurance expenses 3 50 CHF
+-25-
+
+-- 25 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+5008 Autres charges de personnel Other personnel expenses 3 50 CHF
+5009 Prestations de tiers Benefits from third parties 3 50 CHF
+5070 AVS, Al, APG, AC AHV, IV, EO, ALV 3 50 CHF
+5071 Caisse d'allocations familiales (CAF) Family allowance 3 50 CHF
+5072 Prévoyance professionnelle Pension funds 3 50 CHF
+5073 Assurance-accidents Accident insurance 3 50 CHF
+5074 Assurance maladie (indemnité journalière maladie) Daily sickness benefits insurance 3 50 CHF
+5079 Impôt à la source Tax at source 3 50 CHF
+5080 Recherche de personnel Staff recruitment 3 50 CHF
+5081 Formation et formation continue Education and training 3 50 CHF
+5082 Indemnités effectives Reimbursements of actual expenses 3 50 CHF
+5083 Indemnités forfaitaires Reimbursements of flat-rate expenses 3 50 CHF
+5089 Autres charges de personnel Other personnel expenses 3 50 CHF
+5090 Employés temporaires Temporary staff 3 50 CHF
+50 Charges de personnel Production Personnel expenses - production 5
+5200 Salaires Salaries 3 52 CHF
+5201 Indemnités Allowances 3 52 CHF
+5202 Participations au bénéfice Profit-sharing 3 52 CHF
+5203 Commissions Commissions 3 52 CHF
+5205 Prestations des assurances sociales Social insurance benefits 3 52 CHF
+5206 Mise à disposition de personnel Provision of personnel 3 52 CHF
+5207 Charges sociales Social insurance expenses 3 52 CHF
+5208 Autres charges de personnel Other personnel expenses 3 52 CHF
+5209 Prestations de tiers Benefits from third parties 3 52 CHF
+5270 AVS, Al, APG, AC AHV, IV, EO, ALV 3 52 CHF
+5271 Caisse d'allocations familiales (CAF) Family allowance 3 52 CHF
+5272 Prévoyance professionnelle Pension funds 3 52 CHF
+5273 Assurance-accidents Accident insurance 3 52 CHF
+5274 Assurance maladie (indemnité journalière maladie) Daily sickness benefits insurance 3 52 CHF
+-26-
+
+-- 26 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+5279 Impôts à la source Tax at source 3 52 CHF
+5280 Recherche de personnel Staff recruitment 3 52 CHF
+5281 Formation et formation continue Education and training 3 52 CHF
+5282 Indemnités effectives Reimbursements of actual expenses 3 52 CHF
+5283 Indemnités forfaitaires Reimbursements of flat-rate expenses 3 52 CHF
+5289 Autres charges de personnel Other personnel expenses 3 52 CHF
+5290 Employés temporaires Temporary staff 3 52 CHF
+52 Charges de personnel Commerce Personnel expenses - commerce 5
+5400 Salaires Salaries 3 54 CHF
+5401 Indemnités Allowances 3 54 CHF
+5402 Participations au bénéfice Profit-sharing 3 54 CHF
+5403 Commissions Commissions 3 54 CHF
+5405 Prestations des assurances sociales Social insurance benefits 3 54 CHF
+5406 Mise à disposition de personnel Provision of personnel 3 54 CHF
+5407 Charges sociales Social insurance expenses 3 54 CHF
+5408 Autres charges de personnel Other personnel expenses 3 54 CHF
+5409 Prestations de tiers Benefits from third parties 3 54 CHF
+5470 AVS, Al, APG, AC AHV, IV, EO, ALV 3 54 CHF
+5471 Caisse d'allocations familiales (CAF) Family allowance 3 54 CHF
+5472 Prévoyance professionnelle Pension funds 3 54 CHF
+5473 Assurance-accidents Accident insurance 3 54 CHF
+5474 Assurance maladie (indemnité journalière maladie) Daily sickness benefits insurance 3 54 CHF
+5479 Impôts à la source Tax at source 3 54 CHF
+5480 Recherche de personnel Staff recruitment 3 54 CHF
+5481 Formation et formation continue Education and training 3 54 CHF
+5482 Indemnités effectives Reimbursements of actual expenses 3 54 CHF
+5483 Indemnités forfaitaires Reimbursements of flat-rate expenses 3 54 CHF
+5489 Autres charges de personnel Other personnel expenses 3 54 CHF
+5490 Employés temporaires Temporary staff 3 54 CHF
+-27-
+
+-- 27 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+54 Charges de personnel Prestations de services Personnel expenses - supply of services 5
+5600 Salaires Salaries 3 56 CHF
+5601 Indemnités Allowances 3 56 CHF
+5602 Participations au bénéfice Profit-sharing 3 56 CHF
+5603 Salaires des membres de la direction de l'entreprise Salaries to participants and members of the Executive
+Board
+3 56 CHF
+5604 Salaires/indemnités des membres du conseil
+d'administration
+Board of Directors fees 3 56 CHF
+5605 Prestations des assurances sociales Social insurance benefits 3 56 CHF
+5606 Mise à disposition de personnel Provision of personnel 3 56 CHF
+5607 Charges sociales Social insurance expenses 3 56 CHF
+5608 Autres charges de personnel Other personnel expenses 3 56 CHF
+5609 Prestations de tiers Benefits from third parties 3 56 CHF
+5670 AVS, Al, APG, AC AHV, IV, EO, ALV 3 56 CHF
+5671 Caisse d'allocations familiales (CAF) Family allowance 3 56 CHF
+5672 Prévoyance professionnelle Pension funds 3 56 CHF
+5673 Assurance-accidents Accident insurance 3 56 CHF
+5674 Assurance maladie (indemnité journalière maladie) Daily sickness benefits insurance 3 56 CHF
+5679 Impôts à la source Tax at source 3 56 CHF
+5680 Recherche de personnel Staff recruitment 3 56 CHF
+5681 Formation et formation continue Education and training 3 56 CHF
+5682 Indemnités effectives Reimbursements of actual expenses 3 56 CHF
+5683 Indemnités forfaitaires Reimbursements of flat-rate expenses 3 56 CHF
+5689 Autres charges de personnel Other personnel expenses 3 56 CHF
+5690 Employés temporaires Temporary staff 3 56 CHF
+56 Charges de personnel Administration Personnel expenses - administration 5
+5700 AVS, Al, APG, AC AHV, IV, EO, ALV 3 57 CHF
+5701 AVS, Al, APG titulaire AHV, IV, EO holder 3 57 CHF
+-28-
+
+-- 28 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+5710 Caisse d'allocations familiales (CAF) Family allowance 3 57 CHF
+5720 Prévoyance professionnelle Pension funds 3 57 CHF
+5730 Assurance-accidents Accident insurance 3 57 CHF
+5740 Assurance maladie (indemnité journalière maladie) Daily sickness benefits insurance 3 57 CHF
+5790 Impôts à la source Tax at source 3 57 CHF
+57 Charges sociales Social insurance expenses 5
+5800 Annonces pour recherche de personnel Advertisements of job openings 3 58 CHF
+5801 Commissions pour recherche de personnel Recruitment commissions 3 58 CHF
+5810 Formation obligatoire Training necessary for business needs 3 58 CHF
+5811 Formation continue/perfectionnement Professional training 3 58 CHF
+5820 Frais de voyages Travel expenses 3 58 CHF
+5821 Frais de repas Food expenses 3 58 CHF
+5822 Frais de logement Accommodation expenses 3 58 CHF
+5830 Indemnités forfaitaires pour les cadres Management flat-rate expenses 3 58 CHF
+5831 Indemnités forfaitaires pour les membres de la direction
+de l'entreprise
+Executive Board flat-rate expenses 3 58 CHF
+5832 Indemnités forfaitaires pour les membres du conseil
+d'administration
+Board of Directors flat-rate expenses 3 58 CHF
+5840 Repas au restaurant d'entreprise Staff canteen meals 3 58 CHF
+5841 Boissons au restaurant d'entreprise Staff canteen beverages 3 58 CHF
+5845 Produits des repas (comme diminution de charges) Revenues for meals (as expense reduction) 3 58 CHF
+5846 Produits des boissons (comme diminution de charges) Revenues for beverages (as expense reduction) 3 58 CHF
+5880 Manifestations en faveur du personnel Staff events 3 58 CHF
+5881 Frais liés à des activités sportives Company sports group 3 58 CHF
+5890 Parts privées sur charges de personnel Private share of personnel expenses 3 58 CHF
+58 Autres charges de personnel Other personnel expenses 5
+5900 Prestations de tiers Benefits from third parties 3 59 CHF
+5901 Employés temporaires Temporary staff 3 59 CHF
+59 Prestations de tiers/temporaires Benefits from third parties 5
+-29-
+
+-- 29 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+5 Charges de personnel Personnel expenses 02
+6000 Loyer des usines Factory rent 3 60 CHF
+6001 Loyer des ateliers Workshop and atelier rent 3 60 CHF
+6002 Loyer des entrepôts Warehouse rent 3 60 CHF
+6003 Loyer des bâtiments d'exposition et de vente Showrooms and shop floors rent 3 60 CHF
+6004 Loyer des bâtiments de bureau et d'administration Office and administration rooms rent 3 60 CHF
+6005 Loyer des locaux du personnel Staff rooms rent 3 60 CHF
+6006 Loyer du garage, du parking Garage, parking rent 3 60 CHF
+6030 Charges accessoires des usines Factory additional costs 3 60 CHF
+6031 Charges accessoires des ateliers Workshop and atelier additional costs 3 60 CHF
+6032 Charges accessoires des entrepôts Warehouse additional costs 3 60 CHF
+6033 Charges accessoires des bâtiments d'exposition et de
+vente
+Showrooms and shop floors additional costs 3 60 CHF
+6034 Charges accessoires des bâtiments de bureau et
+d'administration
+Office and administration rooms additional costs 3 60 CHF
+6035 Charges accessoires des locaux du personnel Staff rooms additional costs 3 60 CHF
+6036 Charges accessoires du garage Garage additional costs 3 60 CHF
+6030(2) Charges accessoires de chauffage Heating additional costs 3 60 CHF
+6031(2) Charges accessoires d'électricité, de gaz, d'eau Electricity, gas, water additional costs 3 60 CHF
+6032(2) Charges accessoires de conciergerie Caretaker additional costs 3 60 CHF
+6040 Nettoyage des usines Factory cleaning 3 60 CHF
+6041 Nettoyage des ateliers Workshop and atelier cleaning 3 60 CHF
+6042 Nettoyage des entrepôts Warehouse cleaning 3 60 CHF
+6043 Nettoyage des bâtiments d'exposition et de vente Showrooms and shop floors cleaning 3 60 CHF
+6044 Nettoyage des bâtiments de bureau et d’administration Office and administration rooms cleaning 3 60 CHF
+6045 Nettoyage des locaux du personnel Staff rooms cleaning 3 60 CHF
+6040(2) Personnel de nettoyage Cleaning staff 3 60 CHF
+6041(2) Nettoyage effectué par des tiers Third-party cleaning services 3 60 CHF
+6042(2) Matériel de nettoyage Cleaning materials 3 60 CHF
+6050 Entretien des usines Factory maintenance 3 60 CHF
+-30-
+
+-- 30 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+6051 Entretien des ateliers Workshop and atelier maintenance 3 60 CHF
+6052 Entretien des entrepôts Warehouse maintenance 3 60 CHF
+6053 Entretien des bâtiments d'exposition et de vente Showrooms and shop floors maintenance 3 60 CHF
+6054 Entretien des bâtiments de bureau et d'administration Office and administration rooms maintenance 3 60 CHF
+6055 Entretien des locaux du personnel Staff rooms maintenance 3 60 CHF
+6056 Entretien du garage Garage maintenance 3 60 CHF
+6050(2) Réparation Repairs 3 60 CHF
+6051(2) Investissements de moindre importance Small investments 3 60 CHF
+6052(2) Abonnements d'entretien Subscription services 3 60 CHF
+6059 Prestations d'assurance Insurance services 3 60 CHF
+6060 Usine en leasing Factory leasing 3 60 CHF
+6061 Atelier en leasing Workshop and atelier leasing 3 60 CHF
+6062 Entrepôt en leasing Warehouse leasing 3 60 CHF
+6063 Bâtiments d'exposition et de vente en leasing Showrooms and shop floors leasing 3 60 CHF
+6064 Bâtiments de bureau et d'administration en leasing Office and administration rooms leasing 3 60 CHF
+6065 Locaux de personnel en leasing Staff rooms leasing 3 60 CHF
+6066 Garage en leasing Garage leasing 3 60 CHF
+6070 Rente du droit de superficie Ground rents 3 60 CHF
+6090 Parts privées sur charges de chauffage, d’éclairage, de
+nettoyage
+Private share of facility expenses 3 60 CHF
+60 Charges de locaux Facility expenses 6
+6100 ERR machines et appareils de production MRR machines and apparatuses 3 61 CHF
+6101 ERR mobilier et installations MRR furniture and equipment 3 61 CHF
+6102 ERR outils et matériel MRR tools and devices 3 61 CHF
+6105 Leasing équipement de production Leasing of manufacturing plants 3 61 CHF
+6110 ERR installations des magasins MRR shop equipment 3 61 CHF
+6111 ERR installations de locaux d'exposition MRR showroom equipment 3 61 CHF
+6115 Leasing du mobilier de vente Leasing of sales equipment 3 61 CHF
+6120 ERR dépôt central MRR central warehouse 3 61 CHF
+-31-
+
+-- 31 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+6121 ERR dépôt à A MRR warehouse A 3 61 CHF
+6125 Leasing d'équipements de dépôts Leasing of warehouse equipment 3 61 CHF
+6130 ERR mobilier de bureau MRR office furniture 3 61 CHF
+6131 ERR machines de bureau MRR office machines 3 61 CHF
+6132 ERR informatique MRR information technology 3 61 CHF
+6133 ERR technologies de communication MRR communication technology 3 61 CHF
+6135 Leasing d'installations de bureau Leasing of office equipment 3 61 CHF
+6140 ERR mobilier du restaurant du personnel MRR staff canteen furniture 3 61 CHF
+6141 ERR mobilier des chambres du personnel MRR staff rooms furniture 3 61 CHF
+6145 Leasing des installations du personnel Leasing of staff equipment 3 61 CHF
+6190 Prestations d'assurance Insurance services 3 61 CHF
+61 Entretien, réparations, remplacements (ERR);
+leasing immobilisations corporelles meubles
+Maintenance, repairs, replacements (MRR): leasing
+of movable tangible assets
+6
+6200 Réparation Repairs 3 62 CHF
+6201 Service Services 3 62 CHF
+6202 Nettoyage Cleaning 3 62 CHF
+6210 Essence Petrol 3 62 CHF
+6211 Diesel Diesel 3 62 CHF
+6212 Huile Oil 3 62 CHF
+6213 Électricité Electricity 3 62 CHF
+6220 Assurance responsabilité civile Liability insurance 3 62 CHF
+6221 Assurance casco Comprehensive insurance 3 62 CHF
+6222 Assurance protection juridique Legal protection insurance 3 62 CHF
+6230 Taxes de circulation Road taxes 3 62 CHF
+6231 Cotisations Contributions 3 62 CHF
+6232 Taxes Vehicle taxes 3 62 CHF
+6260 Véhicules en leasing Vehicle leasing 3 62 CHF
+6264 Location de véhicules Vehicle rentals 3 62 CHF
+6270 Parts privées sur charges de véhicules Private share of vehicle expenses 3 62 CHF
+-32-
+
+-- 32 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+6280 Frets Freights 3 62 CHF
+6281 Frais de transport Freight forwarder 3 62 CHF
+6282 Cargo domicile Cargo domicile 3 62 CHF
+62 Charges de véhicules et de transport Vehicle and transport expenses 6
+6300 Assurance pour dommages naturels Natural hazard insurance 3 63 CHF
+6301 Assurance pour bris de glace Glass breakage insurance 3 63 CHF
+6302 Assurance vols Theft insurance 3 63 CHF
+6310 Assurance responsabilité civile Business liability insurance 3 63 CHF
+6311 Assurance garantie Warranty insurance 3 63 CHF
+6312 Assurance protection juridique Legal protection insurance 3 63 CHF
+6320 Assurance pour pertes d'exploitation Business interruption insurance 3 63 CHF
+6330 Primes pour assurance-vie Death risk insurance 3 63 CHF
+6331 Prime de cautionnement Guarantee premiums 3 63 CHF
+6360 Droits Charges 3 63 CHF
+6361 Taxes Fees 3 63 CHF
+6370 Autorisations Permits 3 63 CHF
+6371 Patentes Operating licences 3 63 CHF
+63 Assurances-choses, droits, taxes et autorisations Property insurance, charges, fees, permits 6
+6400 Courant fort Industrial electricity 3 64 CHF
+6401 Courant faible Heat electricity 3 64 CHF
+6402 Eclairage Electricity for lighting 3 64 CHF
+6410 Gaz naturel Natural gas 3 64 CHF
+6411 Gaz liquide en bonbonnes Liquid gas in cylinders 3 64 CHF
+6420 Mazout Heating oil 3 64 CHF
+6421 Charbon, briquettes, bois Coal, briquettes, wood 3 64 CHF
+6430 Eau Water 3 64 CHF
+6460 Evacuation de déchets Garbage collection 3 64 CHF
+6461 Evacuation de déchets spéciaux Hazardous waste collection 3 64 CHF
+6462 Eaux usées Waste water 3 64 CHF
+-33-
+
+-- 33 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+64 Charges d'énergie et évacuation des déchets Energy and disposal costs 6
+6500 Matériel de bureau Office equipment 3 65 CHF
+6501 Imprimés Printers 3 65 CHF
+6502 Photocopies Photocopies 3 65 CHF
+6503 Littérature spécialisée, journaux, magazines Specialist publications, newspapers, periodicals 3 65 CHF
+6510 Téléphone Telephone 3 65 CHF
+6512 Internet Internet 3 65 CHF
+6513 Frais de port Postages 3 65 CHF
+6520 Cotisations Contributions 3 65 CHF
+6521 Dons et cadeaux Donations, grants 3 65 CHF
+6522 Pourboires Tips 3 65 CHF
+6530 Honoraires pour la tenue de la comptabilité Bookkeeping 3 65 CHF
+6531 Honoraires pour conseil en gestion d'entreprise Business consultancy 3 65 CHF
+6532 Honoraires pour conseil juridique Legal advice 3 65 CHF
+6540 Charges du conseil d'administration Board of Directors expenses 3 65 CHF
+6541 Charges de l'assemblée générale General meeting expenses 3 65 CHF
+6542 Charges de l'organe de révision Auditing expenses 3 65 CHF
+6550 Frais de fondation, d'augmentation de capital et
+d'organisation
+Formation, capital increase and organisational
+expenses
+3 65 CHF
+6551 Frais de recouvrement et exécution Collection and execution costs 3 65 CHF
+6555 Commissions de gestion Management fees 3 65 CHF
+6559 Autres frais d'administration Other administration costs 3 65 CHF
+6560 Parts privées sur charges d'administration Private share of administration costs 3 65 CHF
+6570 Leasing Hardware Hardware leasing 3 65 CHF
+6571 Leasing Software Software leasing 3 65 CHF
+6572 Location Hardware Hardware rent 3 65 CHF
+6573 Location Software Software rent 3 65 CHF
+6580 Charges de licences et de mises à jour Licenses and updates expenses 3 65 CHF
+6581 Maintenance/Hotline hardware Hardware maintenance/hotline 3 65 CHF
+-34-
+
+-- 34 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+6582 Maintenance/Hotline software Software maintenance/hotline 3 65 CHF
+6583 Consommables Consumables 3 65 CHF
+6585 Frais de réseau informatique Dedicated phone line expenses 3 65 CHF
+6590 Conseils en développement de stratégie Basic advice 3 65 CHF
+6591 Développement individualisé, adaptation individualisée Individual development, individual adjustments 3 65 CHF
+6592 Charges d'installation Implementation costs 3 65 CHF
+6590(2) Développement Projet informatique A IT development - project A 3 65 CHF
+65 Charges d'administration et d'informatique Administrative and IT expenses 6
+6600 Publicité dans les journaux Advertisements 3 66 CHF
+6601 Publicité à la radio Radio advertising 3 66 CHF
+6602 Publicité à la télévision TV advertising 3 66 CHF
+6604 Publicité sur Internet et médias sociaux Internet and social media 3 66 CHF
+6610 Imprimés publicitaires, matériel de publicité Printed advertisements, advertising material 3 66 CHF
+6611 Articles de publicité, échantillons, affiches et affichages
+électroniques
+Advertising items, samples, billboards and electronic
+adverts
+3 66 CHF
+6620 Vitrines, décoration Shop windows, decorations 3 66 CHF
+6621 Foires, expositions Trade fairs, exhibitions 3 66 CHF
+6640 Frais de déplacement Expenses 3 66 CHF
+6641 Service à la clientèle Customer care 3 66 CHF
+6642 Cadeaux à la clientèle Gifts to customers 3 66 CHF
+6660 Annonces publicitaires Advertising contributions 3 66 CHF
+6661 Sponsoring Sponsoring 3 66 CHF
+6670 Manifestations en faveur de la clientèle Customer events 3 66 CHF
+6671 Contacts avec les médias Media contacts 3 66 CHF
+6672 Anniversaires de l'entreprise Corporate anniversaries 3 66 CHF
+6680 Conseils en publicité Advertising consultancy 3 66 CHF
+6681 Etudes de marché Market analysis 3 66 CHF
+6690 Charges de publicité comme prélèvements à titre privé Private share of advertising expenses 3 66 CHF
+66 Charges de publicité Advertising expenses 6
+-35-
+
+-- 35 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+6700 Informations économiques Business information 3 67 CHF
+6701 Poursuites Debt collection 3 67 CHF
+6710 Sécurité Operational safety 3 67 CHF
+6711 Surveillance Surveillance 3 67 CHF
+6720 Recherche Projet A Project A research 3 67 CHF
+6721 Développement Projet A Project A development 3 67 CHF
+6740 Correction de l'impôt préalable (lors d’utilisation mixte) Input tax correction (in the case of mixed use) 3 67 CHF
+6790 Autres charges d'exploitation Other operating expenses 3 67 CHF
+6791 Prélèvements à titre privé Private shares 3 67 CHF
+67 Autres charges d'exploitation Other operating expenses 6
+6800 Ajustement de la valeur des titres des actifs
+immobilisés
+Fixed assets securities value adjustments 3 68 CHF
+6801 Ajustement de la valeur des autres immobilisations
+financières
+Other financial assets value adjustments 3 68 CHF
+6804 Ajustement de la valeur des dettes à long terme envers
+des tiers
+Long-term receivables towards third parties value
+adjustments
+3 68 CHF
+6805 Ajustement de la valeur des dettes à long terme envers
+des participations
+Long-term receivables towards participations value
+adjustments
+3 68 CHF
+6806 Ajustement de la valeur des dettes à long terme envers
+les actionnaires
+Long-term receivables towards shareholders value
+adjustments
+3 68 CHF
+6810 Ajustement de la valeur de la participation A Participation A value adjustments 3 68 CHF
+6820 Amortissement et ajustement de la valeur des
+machines et appareils
+Depreciation and value adjustments to machinery and
+equipment
+3 68 CHF
+6821 Amortissement et ajustement de la valeur du mobilier et
+des installations
+Depreciation and value adjustments to furniture and
+installations
+3 68 CHF
+6822 Amortissement et ajustement de la valeur des
+machines de bureau, informatique et système de
+communication
+Depreciation and value adjustments to office
+machines, information and communication technology
+3 68 CHF
+6823 Amortissement et ajustement de la valeur des véhicules Depreciation and value adjustments to vehicles 3 68 CHF
+6824 Amortissement et ajustement de la valeur des ateliers
+et équipements
+Depreciation and value adjustments to tools and
+equipment
+3 68 CHF
+-36-
+
+-- 36 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+6825 Amortissement et ajustement de la valeur des
+équipements d'entrepôts
+Depreciation and value adjustments to storage
+facilities
+3 68 CHF
+6827 Amortissement et ajustement de la valeur des
+installations fixes et équipements
+Depreciation and value adjustments to fixed facilities
+and installations
+3 68 CHF
+6829 Amortissement et ajustement de la valeur des autres
+équipements
+Depreciation and value adjustments to other movable
+tangible assets
+3 68 CHF
+6830 Amortissement et ajustement de la valeur des
+immeubles d'exploitation
+Depreciation and value adjustments to commercial
+properties
+3 68 CHF
+6831 Amortissement et ajustement de la valeur des usines Depreciation and value adjustments to factories 3 68 CHF
+6832 Amortissement et ajustement de la valeur des ateliers
+et équipements
+Depreciation and value adjustments to workshops and
+ateliers
+3 68 CHF
+6833 Amortissement et ajustement de la valeur des entrepôts Depreciation and value adjustments to warehouses 3 68 CHF
+6834 Amortissement et ajustement de la valeur des
+bâtiments d’exposition et de vente
+Depreciation and value adjustments to exhibition and
+sales buildings
+3 68 CHF
+6835 Amortissement et ajustement de la valeur des
+bâtiments administratifs
+Depreciation and value adjustments to office and
+administration buildings
+3 68 CHF
+6836 Amortissement et ajustement de la valeur des
+immeubles d'habitation
+Depreciation and value adjustments to residential
+buildings
+3 68 CHF
+6837 Correction de la valeur des biens-fonds non bâtis Depreciation and value adjustments to undeveloped
+land
+3 68 CHF
+6840 Amortissement et ajustement de la valeur des brevets,
+know-how, recettes de fabrication
+Depreciation and value adjustments to patents, know-
+how and recipes
+3 68 CHF
+6841 Amortissement et ajustement de la valeur des marques
+commerciales, échantillons, modèles, plans
+Depreciation and value adjustments to brands,
+samples, models and plans
+3 68 CHF
+6842 Amortissement et ajustement de la valeur des droits de
+licences, concessions, droits de jouissance, raisons de
+commerce
+Depreciation and value adjustments to licences,
+concessions, rights of use and company rights
+3 68 CHF
+6843 Amortissement et ajustement de la valeur des droits de
+propriété intellectuelle, droits d’édition, droits
+conventionnels
+Depreciation and value adjustments to copyrights,
+publishing rights and contractual rights
+3 68 CHF
+6845 Amortissement et ajustement de la valeur des
+développements spécifiques
+Depreciation and value adjustments to development 3 68 CHF
+6847 Amortissement et ajustement de la valeur du goodwill Depreciation and value adjustments to goodwill 3 68 CHF
+-37-
+
+-- 37 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+6849 Amortissement et ajustement de la valeur des autres
+immobilisations incorporelles
+Depreciation and value adjustments to other intangible
+assets
+3 68 CHF
+68 Amortissements et corrections de la valeur des
+immobilisations corporelles
+Depreciation and value adjustments to fixed
+assets positions
+6
+6900 Intérêts débiteurs sur crédit bancaire Bank interest fees 3 69 CHF
+6901 Intérêts débiteurs sur emprunts Loan interest fees 3 69 CHF
+6902 Intérêts hypothécaires Mortgage interest fees 3 69 CHF
+6903 Intérêts moratoires Default interest fees 3 69 CHF
+6904 Charge d'intérêts pour acomptes de clients Interest fees from advance payments received 3 69 CHF
+6905 Charge d'intérêts sur leasing financier Interest fees from financial leasing 3 69 CHF
+6920 Charge d'intérêts sur personne concernée A Person involved A interest fees 3 69 CHF
+6921 Charge d'intérêts sur conseil d'administration A Member of the Board of Directors A interest fees 3 69 CHF
+6922 Charge d'intérêts sur membre de la direction A Member of Executive Board A interest fees 3 69 CHF
+6923 Charge d'intérêts sur société du groupe A Group company A interest fees 3 69 CHF
+6924 Charge d'intérêts sur personne proche A Close person A interest fees 3 69 CHF
+6930 Charge d'intérêts sur emprunts auprès d'institutions de
+prévoyance professionnelle
+Pension funds loans interest fees 3 69 CHF
+6940 Frais bancaires Bank charges 3 69 CHF
+6941 Droits de garde Custody fees 3 69 CHF
+6942 Pertes sur trésorerie et titres avec cours boursier Exchange losses on short-term assets listed on the
+stock exchange
+3 69 CHF
+6943 Pertes de cours sur investissements financières Exchange losses on financial assets 3 69 CHF
+6944 Pertes de cours sur dettes rémunérées Exchange losses on interest-bearing debts 3 69 CHF
+6945 Comptes clients accordées Granted customer accounts 3 69 CHF
+6946 Perte de cours sur cryptomonnaies Exchange loss on cryptocurrencies 3 69 CHF
+6947 Commission d'affacturage Factoring fee 3 69 CHF
+6949 Pertes de change Currency losses 3 69 CHF
+6950 Produits financiers sur avoirs en banque Revenues from bank deposits 4 69 CHF
+6951 Produits financiers sur avoirs à court terme Revenues from short-term financial investments 4 69 CHF
+6952 Produits financiers sur titres réalisables à court terme Revenues from short-term securities 4 69 CHF
+-38-
+
+-- 38 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+6953 Produits financiers sur autres placements à court terme Revenues from other short-term assets 4 69 CHF
+6960 Produits financiers sur titres Revenues from fixed assets securities 4 69 CHF
+6961 Produits financiers sur autres immobilisations
+financières
+Revenues from other financial assets 4 69 CHF
+6962 Produits financiers sur participations Revenues from participations 4 69 CHF
+6963 Produits financiers sur créances à long terme envers
+des tiers
+Revenues from long-term receivables 4 69 CHF
+6980 Produits du personne concernée A Revenues from person involved A 4 69 CHF
+6981 Produits du conseil d'administration A Revenues from member of the Board of Directors A 4 69 CHF
+6982 Produits du membre de la direction A Revenues from member of Executive Board A 4 69 CHF
+6983 Produits du société du groupe A Revenues from group company A 4 69 CHF
+6984 Produits du personne proche A Revenues from close person A 4 69 CHF
+6990 Produits financiers résultant d'intérêts moratoires et
+d'escomptes
+Default interest income, remuneration interest 4 69 CHF
+6991 Produits financiers sur acomptes versés Revenue from advance payments to suppliers 4 69 CHF
+6992 Gains sur titres détenus à court terme cotés en bourse Exchange gains on short-term assets listed on the
+stock exchange
+4 69 CHF
+6993 Gains sur immobilisations financières Exchange gains on financial assets 4 69 CHF
+6995 Remises de fournisseurs Discounts received from suppliers 4 69 CHF
+6996 Gain de cours sur cryptomonnaies Exchange gain on cryptocurrencies 4 69 CHF
+6999 Gains de change Currency gains 4 69 CHF
+69 Charges et produits financiers Financial expenses and revenues 6
+6 Autres charges d'exploitation, A mortissements et
+ajustement de valeur, Résultat financier
+Other operating expenses, depreciation, value
+adjustments and financial results
+02
+7000 Produits bruts Gross profits 4 70 CHF
+7009 Diminutions de produits Decrease in revenues 3 70 CHF
+7010 Charges de matières Material costs 3 70 CHF
+7011 Charges de personnel Personnel expenses 3 70 CHF
+7012 Charges de locaux Facility expenses 3 70 CHF
+7013 Charges d'entretien, de réparations, de remplacements,
+leasing charges
+Maintenance, repairs, replacements, leasing expenses 3 70 CHF
+-39-
+
+-- 39 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+7014 Charges de véhicules et de transport Vehicle and transport expenses 3 70 CHF
+7015 Assurances-choses, droits, taxes, autorisations et
+patentes
+Property insurance, charges, fees, permits 3 70 CHF
+7016 Charges d'énergie et évacuation des déchets Energy and disposal costs 3 70 CHF
+7017 Charges d’administration et d'informatique Administrative and IT expenses 3 70 CHF
+7018 Charges de publicité Advertising expenses 3 70 CHF
+7019 Autres charges Other expenses 3 70 CHF
+70 Résultat d'activités accessoires Result from ancillary activities 7
+7502 Loyers de locaux d'exploitation Rental income from commercial premises 4 75 CHF
+7503 Loyers des appartements Rental income from flats 4 75 CHF
+7504 Loyers des garages Rental income from garages 4 75 CHF
+7505 Loyers (imposés par option) Opted rental income 4 75 CHF
+7508 Participation aux frais de chauffage et d'éclairage Share of heating, lighting 3 75 CHF
+7509 Autres revenus d'immeubles Other real estate income 4 75 CHF
+7510 Intérêts hypothécaires Mortgage interest fees 3 75 CHF
+7511 Entretien de l'immeuble Real estate maintenance 3 75 CHF
+7512 Droits, taxes, impôts fonciers Charges, fees, property taxes 3 75 CHF
+7513 Primes d'assurance Insurance premiums 3 75 CHF
+7514 Eau, eaux usées Water, waste water 3 75 CHF
+7515 Ordures, évacuation des déchets Waste, disposal 3 75 CHF
+7516 Charges d'administration Administrative expenses 3 75 CHF
+7517 Chauffage, éclairage et eau Heating, lighting, water 3 75 CHF
+7518 Amortissements et correction de valeur Depreciation and value adjustment 3 75 CHF
+7519 Autres charges d'immeubles Other real estate expenses 3 75 CHF
+75 Résultat d'immeubles Result from operational real estate 7
+7 Résultat des activités annexes d'exploitation Ancillary operating result 02
+8000 Charges hors exploitation Non-operating costs 3 80 CHF
+8100 Produits hors exploitation Non-operating revenues 4 80 CHF
+80 Résultats hors exploitation Non-operating costs and revenues 8
+-40-
+
+-- 40 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+8500 Provisions exceptionnelles Extraordinary provisions 3 85 CHF
+8501 Amortissements et corrections exceptionnelles de la
+valeur
+Extraordinary depreciation and value adjustment 3 85 CHF
+8503 Pertes de change exceptionnelles Extraordinary currency losses 3 85 CHF
+8504 Pertes exceptionnelles sur aliénations d’actifs
+immobilisés
+Extraordinary losses on disposal of fixed assets 3 85 CHF
+8505 Pertes exceptionnelles sur débiteurs Extraordinary losses on receivables 3 85 CHF
+8506 Indemnités pour préjudices Inconvenience compensation payments 3 85 CHF
+8510 Dissolutions de réserves Dissolution of reserves 3 85 CHF
+8511 Dissolutions exceptionnelles de provisions superflues Dissolution of provisions no longer required 3 85 CHF
+8513 Gains de change exceptionnels Extraordinary currency gains 4 85 CHF
+8514 Bénéfices exceptionnels sur aliénations d'actifs
+immobilisés
+Extraordinary gains on disposal of fixed assets 4 85 CHF
+8515 Subvention reçue (avec TVA) Subsidies and other non-payments received with input
+tax reduction
+4 85 CHF
+8516 Subvention reçue (sans TVA) Donations and other non-payments received without
+input tax reduction
+4 85 CHF
+8517 Indemnités reçues pour préjudices Inconvenience compensation received 4 85 CHF
+8600 Charges uniques Non-recurring expenses 3 85 CHF
+8610 Produits uniques Non-recurring revenues 4 85 CHF
+8704 Dotation à la réserve de contributions de l'employeur Creation of employer contribution reserve 3 85 CHF
+8705 Franchise Deductibles 3 85 CHF
+8709 Autres charges hors période Other expenses unrelated to the period 3 85 CHF
+8710 Produits de prestations d'assurance ou dommage-
+intérêts
+Revenues from insurance services or indemnity
+payments
+4 85 CHF
+8711 Produits de ristournes Revenues from refunds 4 85 CHF
+8712 Produits de remboursements Revenues from reimbursements 4 85 CHF
+8714 Dissolution de la réserve de contributions de
+l'employeur
+Dissolution of employer contribution reserve 3 85 CHF
+8719 Autres produits hors période Other revenues unrelated to the period 4 85 CHF
+-41-
+
+-- 41 of 42 --
+
+Basis
+Konten
+Gruppe Konto Beschreibung_fr Beschreibung_en BKlasse Summ. in Währung Code Bemerkungen
+85 Charges et produits exceptionnels, uniques ou hors
+période
+Extraordinary, non-recurring or unrelated to the
+period expenses and revenues
+8
+8900 Impôts sur le bénéfice Taxes on profits 3 89 CHF
+8901 Impôts sur le capital/lmpôts fédéraux Capital taxes 3 89 CHF
+8902 Impôts directs hors période Direct taxes unrelated to the period 3 89 CHF
+8900(2) lmpôts cantonaux et communaux Cantonal and municipal taxes 3 89 CHF
+8901(2) Impôts fédéraux directs Direct federal taxes 3 89 CHF
+89 Impôts directs Direct taxes 8
+8 Résultats extraordinaires et hors exploitation Non-operating, extraordinary, non-recurring or
+unrelated to the period result
+02
+9200 Bénéfice ou perte de l'exercice Profit or loss for the year 3 9 CHF
+9 Clôture Closure 02
+02 Perte(+)/Bénéfice(-) Compte de résultat Loss(+)/Profit(-) from income statement 297
+00 Différence doit être = 0 (cellule vide) Difference should be = 0 (empty cell)
+-42-
+
+-- 42 of 42 --
+

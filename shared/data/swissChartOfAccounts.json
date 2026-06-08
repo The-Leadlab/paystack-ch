@@ -1,0 +1,7794 @@
+[
+  {
+    "konto": "1000",
+    "group": "100",
+    "labelFr": "Caisse",
+    "labelEn": "Cash on hand",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1005",
+    "group": "100",
+    "labelFr": "Caisse en devise",
+    "labelEn": "Cash on hand in foreign currency",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1020",
+    "group": "100",
+    "labelFr": "Compte courant bancaire",
+    "labelEn": "Bank account",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1025",
+    "group": "100",
+    "labelFr": "Compte courant bancaire en devise",
+    "labelEn": "Bank account in foreign currency",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1040",
+    "group": "100",
+    "labelFr": "Chéques",
+    "labelEn": "Cheques",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1041",
+    "group": "100",
+    "labelFr": "Effetts à recevoir",
+    "labelEn": "Promissory notes to collect",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1045",
+    "group": "100",
+    "labelFr": "Cartes de crédit / Cartes de débit",
+    "labelEn": "Credit cards / Debit cards",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1050",
+    "group": "100",
+    "labelFr": "Placements fixes à court terme",
+    "labelEn": "Short-term deposit investments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1051",
+    "group": "100",
+    "labelFr": "Placements fiduciaires à court terme",
+    "labelEn": "Short-term fiduciary investments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1060",
+    "group": "106",
+    "labelFr": "Actions (cotées)",
+    "labelEn": "Stocks (listed)",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1061",
+    "group": "106",
+    "labelFr": "Bons de partecipation (cotés)",
+    "labelEn": "Participation certificates (listed)",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1062",
+    "group": "106",
+    "labelFr": "Bons de jouissance (coté)",
+    "labelEn": "Investment funds (listed)",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1063",
+    "group": "106",
+    "labelFr": "Obligations (cotés)",
+    "labelEn": "Bonds (listed)",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1064",
+    "group": "106",
+    "labelFr": "Cryptomonnaies",
+    "labelEn": "Cryptocurrencies",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1068",
+    "group": "106",
+    "labelFr": "Réserve de fluctuation de valeur sur titres à court terme",
+    "labelEn": "Short-term securities fluctuation reserve",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1069",
+    "group": "106",
+    "labelFr": "Corrections de valeur sur titre réalisables à court terme",
+    "labelEn": "Short-term securities value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1070",
+    "group": "106",
+    "labelFr": "Instruments financiers dérivés",
+    "labelEn": "Financial derivatives",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1078",
+    "group": "106",
+    "labelFr": "Réserve de fluctuation de valeur sur autres placements à court terme",
+    "labelEn": "Other short-term assets fluctuation reserve",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1079",
+    "group": "106",
+    "labelFr": "Corrections de valeur sur autres placements à court terme",
+    "labelEn": "Other short-term assets value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1090",
+    "group": "109",
+    "labelFr": "Comptes d'attente en monnaie",
+    "labelEn": "Internal transfers",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1091",
+    "group": "109",
+    "labelFr": "Compte pour l'elaboration des salaires",
+    "labelEn": "Transfer account for salaries",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1099",
+    "group": "109",
+    "labelFr": "Compte d'attente pour des montants à clarifier",
+    "labelEn": "Clarification account",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1100",
+    "group": "110",
+    "labelFr": "Créances envers des tiers suisses",
+    "labelEn": "Receivables Switzerland",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1101",
+    "group": "110",
+    "labelFr": "Créances envers des tiers étrangers",
+    "labelEn": "Receivables abroad",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1102",
+    "group": "110",
+    "labelFr": "Créances étrangères en monnaie étrangère",
+    "labelEn": "Receivables abroad in foreign currency",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1109",
+    "group": "110",
+    "labelFr": "Provisions pour pertes sur créances envers des tiers",
+    "labelEn": "Receivables towards third parties value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1110",
+    "group": "110",
+    "labelFr": "Créances envers la filiale",
+    "labelEn": "Receivables towards subsidiary",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1119",
+    "group": "110",
+    "labelFr": "Provisions pour pertes sur créances envers des sociétés du groupe",
+    "labelEn": "Receivables towards group companies value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1120",
+    "group": "110",
+    "labelFr": "Créances envers personne concernée",
+    "labelEn": "Receivables towards person involved",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1121",
+    "group": "110",
+    "labelFr": "Créances envers le conseil d'administration",
+    "labelEn": "Receivables towards member of the Board of Directors",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1122",
+    "group": "110",
+    "labelFr": "Créances envers le membre de la direction",
+    "labelEn": "Receivables towards member of Executive Board",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1123",
+    "group": "110",
+    "labelFr": "Créances envers la société du groupe",
+    "labelEn": "Receivables towards group company",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1124",
+    "group": "110",
+    "labelFr": "Créances envers personne proche",
+    "labelEn": "Receivables towards close person",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1125",
+    "group": "110",
+    "labelFr": "Créances envers l'organe de révision",
+    "labelEn": "Receivables towards auditor",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1129",
+    "group": "110",
+    "labelFr": "Provisions pour pertes sur créances envers des actionnaires",
+    "labelEn": "Receivables towards shareholders value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1140",
+    "group": "114",
+    "labelFr": "Avances à court terme",
+    "labelEn": "Advances and loans",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1149",
+    "group": "114",
+    "labelFr": "Provisions pour pertes sur autres créances envers des tiers",
+    "labelEn": "Other short-term receivables towards third parties value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1150",
+    "group": "114",
+    "labelFr": "Créances d'emprunt envers la filiale",
+    "labelEn": "Loans to subsidiary",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1159",
+    "group": "114",
+    "labelFr": "Provisions pour pertes sur autres créances envers des sociétés du groupe",
+    "labelEn": "Other short-term receivables towards group companies value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1160",
+    "group": "114",
+    "labelFr": "Prêts envers personne concernée",
+    "labelEn": "Loans to person involved",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1161",
+    "group": "114",
+    "labelFr": "Prêts envers le conseil d'administration",
+    "labelEn": "Loans to member of the Board of Directors",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1162",
+    "group": "114",
+    "labelFr": "Prêts envers le membre de la direction",
+    "labelEn": "Loans to member of Executive Board",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1163",
+    "group": "114",
+    "labelFr": "Prêts envers la société du groupe",
+    "labelEn": "Loans to group company",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1164",
+    "group": "114",
+    "labelFr": "Prêts envers personne proche",
+    "labelEn": "Loans to close person",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1169",
+    "group": "114",
+    "labelFr": "Provisions pour pertes sur autres créances envers des actionnaires",
+    "labelEn": "Other loans to shareholders value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1170",
+    "group": "114",
+    "labelFr": "TVA déductible sur achats de matières et prestations de services",
+    "labelEn": "Input tax on materials, goods, services and energy, cl. 4",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1171",
+    "group": "114",
+    "labelFr": "TVA déductible sur investissements et autres charges d'exploitation",
+    "labelEn": "Input tax on investments, remaining operating expenses, cl. 1/5-8",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1172",
+    "group": "114",
+    "labelFr": "Réconciliation de l'impot préalable lors de changement de méthode",
+    "labelEn": "Input tax compensation under the reporting method",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1173",
+    "group": "114",
+    "labelFr": "Réduction de l'impot préalable",
+    "labelEn": "Input tax reduction",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1174",
+    "group": "114",
+    "labelFr": "Corrections sur TVA déductible",
+    "labelEn": "Input tax correction",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1175",
+    "group": "114",
+    "labelFr": "Décompte",
+    "labelEn": "TVA Settlement account VAT",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1176",
+    "group": "114",
+    "labelFr": "Impôt anticipé à récupérer",
+    "labelEn": "Withholding tax",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1177",
+    "group": "114",
+    "labelFr": "Créances envers l'administration des douanes",
+    "labelEn": "Receivables towards Directorate General of Customs",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1178",
+    "group": "114",
+    "labelFr": "Impôts directs",
+    "labelEn": "Direct taxes",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1179",
+    "group": "114",
+    "labelFr": "Impôt à la source",
+    "labelEn": "Tax at source",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1180",
+    "group": "114",
+    "labelFr": "Compte courant",
+    "labelEn": "AVS, AI, APG, AC AHV, IV, EO, ALV current account",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1181",
+    "group": "114",
+    "labelFr": "Compte courant",
+    "labelEn": "Caisse d'allocations familiales (CAF) Current account family allowance fund",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1182",
+    "group": "114",
+    "labelFr": "Compte courant Institutions de prévoyance professionnelle",
+    "labelEn": "Current account pension funds",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1183",
+    "group": "114",
+    "labelFr": "Compte courant",
+    "labelEn": "Assurance-accidents Current account accident insurance",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1184",
+    "group": "114",
+    "labelFr": "Compte courant Assurance maladie (indemnité journalière maladie)",
+    "labelEn": "Daily sickness benefits insurance current account",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1190",
+    "group": "114",
+    "labelFr": "Créances",
+    "labelEn": "WIR WIR accounts",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1191",
+    "group": "114",
+    "labelFr": "Cautionnements en espèces",
+    "labelEn": "Deposits",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1192",
+    "group": "114",
+    "labelFr": "Acomptes aux fournisseurs",
+    "labelEn": "Advance payments to suppliers",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1193",
+    "group": "114",
+    "labelFr": "Dépot de garantie de loyer",
+    "labelEn": "Rent deposits",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1199",
+    "group": "114",
+    "labelFr": "Provisions pour pertes sur autres créances à court terme",
+    "labelEn": "Other short-term receivables value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1200",
+    "group": "120",
+    "labelFr": "Stocks de marchandises",
+    "labelEn": "Inventories of commercial products",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1207",
+    "group": "120",
+    "labelFr": "Variation de stocks de marchandises",
+    "labelEn": "Change in commercial product inventories",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1208",
+    "group": "120",
+    "labelFr": "Acomptes versés pour marchandises",
+    "labelEn": "Advance payments for commercial products",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1209",
+    "group": "120",
+    "labelFr": "Corrections de valeur sur stocks de marchandises",
+    "labelEn": "Commercial products inventories value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1210",
+    "group": "120",
+    "labelFr": "Stocks de matières premières",
+    "labelEn": "Inventories of raw materials",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1217",
+    "group": "120",
+    "labelFr": "Variations des matières premières",
+    "labelEn": "Change in raw materials",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1218",
+    "group": "120",
+    "labelFr": "Acomptes versés pour matiéres premières",
+    "labelEn": "Advance payments for raw materials",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1219",
+    "group": "120",
+    "labelFr": "Corrections de valeur sur stocks de matières premières",
+    "labelEn": "Raw material inventories value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1220",
+    "group": "120",
+    "labelFr": "Stocks de pièces terminées",
+    "labelEn": "Inventories of finished products",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1221",
+    "group": "120",
+    "labelFr": "Stocks de pièces semi-ouvrées",
+    "labelEn": "Inventories of semi-finished products",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1227",
+    "group": "120",
+    "labelFr": "Variation de matières de production",
+    "labelEn": "Change in production material",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1228",
+    "group": "120",
+    "labelFr": "Acomptes versés pour autres approvisionnements",
+    "labelEn": "Advance payments for production material",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1229",
+    "group": "120",
+    "labelFr": "Corrections de valeur sur stocks d'autres approvisionnements",
+    "labelEn": "Production material inventories value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1230",
+    "group": "120",
+    "labelFr": "Stocks de matières auxiliaires",
+    "labelEn": "Auxiliary material inventories",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1231",
+    "group": "120",
+    "labelFr": "Stocks de fournitures d'exploitation",
+    "labelEn": "Consumables inventories",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1232",
+    "group": "120",
+    "labelFr": "Stocks d'emballage",
+    "labelEn": "Packaging inventories",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1237",
+    "group": "120",
+    "labelFr": "Corrections de valeur sur stocks de matières auxiliaires et de fournitures d'exploitation",
+    "labelEn": "Change in auxiliary material and consumables",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1238",
+    "group": "120",
+    "labelFr": "Acomptes versés pour matières auxiliaires et de fournitures d'exploitation",
+    "labelEn": "Advance payments for auxiliary material and consumables",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1239",
+    "group": "120",
+    "labelFr": "Corrections de valeur sur stocks de matières auxiliaires et de fournitures d'exploitation",
+    "labelEn": "Auxiliary material and consumables value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1240",
+    "group": "120",
+    "labelFr": "Stocks obligatoires",
+    "labelEn": "Compulsory inventories",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1247",
+    "group": "120",
+    "labelFr": "Variations de stocks obligatoires",
+    "labelEn": "Changes in compulsory inventories",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1249",
+    "group": "120",
+    "labelFr": "Corrections de valeur sur stocks obligatoires",
+    "labelEn": "Compulsory inventories value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1250",
+    "group": "120",
+    "labelFr": "Marchandise en consignation",
+    "labelEn": "Goods on delivery",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1257",
+    "group": "120",
+    "labelFr": "Variations de marchandise en consignation",
+    "labelEn": "Changes in goods on delivery",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1259",
+    "group": "120",
+    "labelFr": "Corrections de valeur sur marchandise en consignation",
+    "labelEn": "Goods on delivery value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1260",
+    "group": "120",
+    "labelFr": "Stocks de produits finis",
+    "labelEn": "Finished products",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1267",
+    "group": "120",
+    "labelFr": "Variations de produits finis",
+    "labelEn": "Changes in finished products",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1269",
+    "group": "120",
+    "labelFr": "Corrections de valeur sur produit finis",
+    "labelEn": "Finished products value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1270",
+    "group": "120",
+    "labelFr": "Stocks de produits semi-ouvrés",
+    "labelEn": "Semi-finished products",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1277",
+    "group": "120",
+    "labelFr": "Variations de produits semi-ouvrés",
+    "labelEn": "Changes in semi-finished products",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1279",
+    "group": "120",
+    "labelFr": "Corrections de valeur de produits semi-ouvrés",
+    "labelEn": "Semi-finished products value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1280",
+    "group": "120",
+    "labelFr": "Stocks de produits en cours",
+    "labelEn": "Non-invoiced services",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1287",
+    "group": "120",
+    "labelFr": "Variations de produits en cours",
+    "labelEn": "Changes in non-invoiced services",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1289",
+    "group": "120",
+    "labelFr": "Corrections de valeur de produits en cours",
+    "labelEn": "Non-invoiced services value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1300",
+    "group": "130",
+    "labelFr": "Charges constatées d'avance",
+    "labelEn": "Prepaid expenses",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1301",
+    "group": "130",
+    "labelFr": "Produits à recevoir",
+    "labelEn": "Accrued income",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1303",
+    "group": "130",
+    "labelFr": "Remise de dettes",
+    "labelEn": "Discount on liabilities",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1400",
+    "group": "140",
+    "labelFr": "Actions",
+    "labelEn": "Stocks",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1401",
+    "group": "140",
+    "labelFr": "Bons de partecipation",
+    "labelEn": "Participation certificates",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1402",
+    "group": "140",
+    "labelFr": "Bons de jouissance",
+    "labelEn": "Investment funds",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1403",
+    "group": "140",
+    "labelFr": "Obligations",
+    "labelEn": "Bonds",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1404",
+    "group": "140",
+    "labelFr": "Cryptomonnaies (Investissements)",
+    "labelEn": "Cryptocurrencies (Investments)",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1408",
+    "group": "140",
+    "labelFr": "Réserve de fluctuation de valeur des immobilisations financières",
+    "labelEn": "Fixed assets securities fluctuation reserve",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1409",
+    "group": "140",
+    "labelFr": "Correction de valeur sur titres à long terme",
+    "labelEn": "Fixed assets securities value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1410",
+    "group": "140",
+    "labelFr": "Comptes de placemnet",
+    "labelEn": "Long-term financial investments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1411",
+    "group": "140",
+    "labelFr": "Dépot de garantie de loyer",
+    "labelEn": "Rent deposits",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1419",
+    "group": "140",
+    "labelFr": "Correction de valeur sur autres placements à long terme",
+    "labelEn": "Other financial investments value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1440",
+    "group": "140",
+    "labelFr": "Prêts à long terme à des tiers",
+    "labelEn": "Loans",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1441",
+    "group": "140",
+    "labelFr": "Prêts hypothécaires à des tiers",
+    "labelEn": "Mortgages",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1449",
+    "group": "140",
+    "labelFr": "Corrections de la valeur des créances à long terme envers des tiers",
+    "labelEn": "Long-term receivables towards third parties value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1450",
+    "group": "140",
+    "labelFr": "Prêts envers la participation",
+    "labelEn": "Loans to participation",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1451",
+    "group": "140",
+    "labelFr": "Prêts hypothécaires envers la participation",
+    "labelEn": "Mortgages to participation",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1459",
+    "group": "140",
+    "labelFr": "Correction de la valeur des créances à long terme envers des participations",
+    "labelEn": "Long-term receivables towards participations value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1460",
+    "group": "140",
+    "labelFr": "Prêt/Prêts hypothécaires envers personne concernée",
+    "labelEn": "Loans/Mortgages to person involved",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1461",
+    "group": "140",
+    "labelFr": "Prêt/Prêts hypothécaires envers le conseil d'administration",
+    "labelEn": "Loans/Mortgages to member of the Board of Directors",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1462",
+    "group": "140",
+    "labelFr": "Prêt/Prêts hypothécaires envers le membre de la direction",
+    "labelEn": "Loans/Mortgages to member of Executive Board",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1463",
+    "group": "140",
+    "labelFr": "Prêt/Prêts hypothécaires envers la société du groupe",
+    "labelEn": "Loans/Mortgages to group company",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1464",
+    "group": "140",
+    "labelFr": "Prêt/Prêts hypothécaires envers personne proche",
+    "labelEn": "Loans/Mortgages to close person",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1469",
+    "group": "140",
+    "labelFr": "Correction de la valeur des créances envers les actionnaires",
+    "labelEn": "Long-term receivables towards shareholders value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1470",
+    "group": "140",
+    "labelFr": "Réserve de contributions de l'employeur",
+    "labelEn": "Employer contribution reserve",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1480",
+    "group": "148",
+    "labelFr": "Participation",
+    "labelEn": "Participation",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1489",
+    "group": "148",
+    "labelFr": "Corrections de la valeur des participations",
+    "labelEn": "Participations value adjustments",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1500",
+    "group": "150",
+    "labelFr": "Machines et appareils",
+    "labelEn": "Machinery and equipment",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1501",
+    "group": "150",
+    "labelFr": "Chaînes de production",
+    "labelEn": "Production plants",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1507",
+    "group": "150",
+    "labelFr": "Machines et appareils en leasing",
+    "labelEn": "Leased machinery and equipment",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1508",
+    "group": "150",
+    "labelFr": "Acomptes versés sur machines et appareils",
+    "labelEn": "Advance payments for machinery and equipment",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1509",
+    "group": "150",
+    "labelFr": "Amortissements et corrections de la valeur des machines et appareils",
+    "labelEn": "Depreciation and value adjustments to machinery and equipment",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1510",
+    "group": "150",
+    "labelFr": "Mobilier et installations",
+    "labelEn": "Furniture and installations",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1511",
+    "group": "150",
+    "labelFr": "Installations/équipements d'ateliers",
+    "labelEn": "Workshop installations",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1512",
+    "group": "150",
+    "labelFr": "Installations/équipements de magasins",
+    "labelEn": "Shop installations",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1513",
+    "group": "150",
+    "labelFr": "Mobilier de bureau",
+    "labelEn": "Office furniture",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1517",
+    "group": "150",
+    "labelFr": "Mobilier et installations en leasing",
+    "labelEn": "Leased furniture and installations",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1518",
+    "group": "150",
+    "labelFr": "Acomptes sur mobilier et installations",
+    "labelEn": "Advance payments for furniture and installations",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1519",
+    "group": "150",
+    "labelFr": "Amortissements et corrections de la valeur du mobilier et installations",
+    "labelEn": "Depreciation and value adjustments to furniture and installations",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1520",
+    "group": "150",
+    "labelFr": "Machines de bureau, informatique, systèmes de communication",
+    "labelEn": "Office machines",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1521",
+    "group": "150",
+    "labelFr": "Informatique",
+    "labelEn": "Information technology",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1522",
+    "group": "150",
+    "labelFr": "Systèmes de communication",
+    "labelEn": "Communication technology",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1527",
+    "group": "150",
+    "labelFr": "Machines de bureau, informatique, systèmes de communication en leasing",
+    "labelEn": "Leased office machines, information and communication technology",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1528",
+    "group": "150",
+    "labelFr": "Acomptes sur machines de bureau, informatique, systèmes de communication",
+    "labelEn": "Advance payments for office machines, information and communication technology",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1529",
+    "group": "150",
+    "labelFr": "Amortissements et corrections de la valeur des machines de bureau,informatique, systèmes de communication",
+    "labelEn": "Depreciation and value adjustments to office machines, information and communication technology",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1530",
+    "group": "150",
+    "labelFr": "Véhicules",
+    "labelEn": "Vehicle",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1537",
+    "group": "150",
+    "labelFr": "Véhicules en leasing",
+    "labelEn": "Leased vehicles",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1538",
+    "group": "150",
+    "labelFr": "Acomptes sur véhicules",
+    "labelEn": "Advance payments for vehicles",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1539",
+    "group": "150",
+    "labelFr": "Amortissements et corrections de la valeur des véhicules",
+    "labelEn": "Depreciation and value adjustments to vehicles",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1540",
+    "group": "150",
+    "labelFr": "Outillages et appareils",
+    "labelEn": "Tools and equipment",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1547",
+    "group": "150",
+    "labelFr": "Outillage et appareils en leasing",
+    "labelEn": "Leased tools and equipment",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1548",
+    "group": "150",
+    "labelFr": "Acomptes sur outillage et appareils",
+    "labelEn": "Advance payments for tools and equipment",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1549",
+    "group": "150",
+    "labelFr": "Amortissements et corrections de la valeur de l'outillage et appareils",
+    "labelEn": "Depreciation and value adjustments to tools and equipment",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1550",
+    "group": "150",
+    "labelFr": "Installations de stockage",
+    "labelEn": "Storage facilities",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1557",
+    "group": "150",
+    "labelFr": "Installations de stockage en leasing",
+    "labelEn": "Leased storage facilities",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1558",
+    "group": "150",
+    "labelFr": "Acomptes sur installations de stockage",
+    "labelEn": "Advance payments for storage facilities",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1559",
+    "group": "150",
+    "labelFr": "Amortissements et corrections de la valeur des installations de stockage",
+    "labelEn": "Depreciation and value adjustments to storage facilities",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1570",
+    "group": "150",
+    "labelFr": "Equipements",
+    "labelEn": "Fixed facilities",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1571",
+    "group": "150",
+    "labelFr": "Installations",
+    "labelEn": "Installations",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1572",
+    "group": "150",
+    "labelFr": "Structures mobiles",
+    "labelEn": "Movable structures",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1577",
+    "group": "150",
+    "labelFr": "Equipements et installations en leasing",
+    "labelEn": "Leased fixed facilities and installations",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1578",
+    "group": "150",
+    "labelFr": "Acomptes sur équipements et installations",
+    "labelEn": "Advance payments for fixed facilities and installations",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1579",
+    "group": "150",
+    "labelFr": "Amortissements et corrections de la valeur des équipements et installations",
+    "labelEn": "Depreciation and value adjustments to fixed facilities and installations",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1590",
+    "group": "150",
+    "labelFr": "Lingerie et habits de travail",
+    "labelEn": "Linen and work clothing",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1591",
+    "group": "150",
+    "labelFr": "Modèles, empreintes, gabarits, moulages",
+    "labelEn": "Moulds and models",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1597",
+    "group": "150",
+    "labelFr": "Autres immobilisations corporelles meubles en leasing",
+    "labelEn": "Other leased movable tangible assets",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1598",
+    "group": "150",
+    "labelFr": "Acomptes sur autres immobilisations corporelles meubles",
+    "labelEn": "Advance payments for other movable tangible assets",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1599",
+    "group": "150",
+    "labelFr": "Amortissements et corrections de la valeur des autres immobilisations corporelles meubles",
+    "labelEn": "Depreciation and value adjustments to other movable tangible assets",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1600",
+    "group": "160",
+    "labelFr": "Immeubles d’exploitation",
+    "labelEn": "Commercial properties",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1601",
+    "group": "160",
+    "labelFr": "Terrains",
+    "labelEn": "Commercial properties land",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1606",
+    "group": "160",
+    "labelFr": "Transformation d'immeubles d'exploitation",
+    "labelEn": "Commercial properties renovation",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1607",
+    "group": "160",
+    "labelFr": "Immeubles d'exploitation en leasing",
+    "labelEn": "Leased commercial properties",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1608",
+    "group": "160",
+    "labelFr": "Acomptes sur immeubles d'exploitation",
+    "labelEn": "Advance payments for commercial properties",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1609",
+    "group": "160",
+    "labelFr": "Amortissements et corrections de la valeur des immeubles d'exploitation",
+    "labelEn": "Depreciation and value adjustments to commercial properties",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1610",
+    "group": "160",
+    "labelFr": "Usines",
+    "labelEn": "Factories",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1611",
+    "group": "160",
+    "labelFr": "Terrains",
+    "labelEn": "Factories land",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1617",
+    "group": "160",
+    "labelFr": "Usines en leasing",
+    "labelEn": "Leased factories",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1618",
+    "group": "160",
+    "labelFr": "Acomptes sur usines",
+    "labelEn": "Advance payments for factories",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1619",
+    "group": "160",
+    "labelFr": "Amortissements et corrections de la valeur des usines",
+    "labelEn": "Depreciation and value adjustments to factories",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1620",
+    "group": "160",
+    "labelFr": "Ateliers",
+    "labelEn": "Workshops and ateliers",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1621",
+    "group": "160",
+    "labelFr": "Terrains",
+    "labelEn": "Workshops and ateliers land",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1627",
+    "group": "160",
+    "labelFr": "Ateliers en leasing",
+    "labelEn": "Leased workshops and ateliers",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1628",
+    "group": "160",
+    "labelFr": "Acomptes sur ateliers",
+    "labelEn": "Advance payments for workshops and ateliers",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1629",
+    "group": "160",
+    "labelFr": "Amortissements et corrections de la valeur des ateliers",
+    "labelEn": "Depreciation and value adjustments to workshops and ateliers",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1630",
+    "group": "160",
+    "labelFr": "Entrepôts",
+    "labelEn": "Warehouses",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1631",
+    "group": "160",
+    "labelFr": "Terrains",
+    "labelEn": "Warehouses land",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1637",
+    "group": "160",
+    "labelFr": "Entrepôts en leasing",
+    "labelEn": "Leased warehouses",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1638",
+    "group": "160",
+    "labelFr": "Acomptes sur entrepôts",
+    "labelEn": "Advance payments for warehouses",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1639",
+    "group": "160",
+    "labelFr": "Amortissements et corrections de la valeur des entrepôts",
+    "labelEn": "Depreciation and value adjustments to warehouses",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1640",
+    "group": "160",
+    "labelFr": "Halles d'exposition",
+    "labelEn": "Exhibition buildings",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1641",
+    "group": "160",
+    "labelFr": "Halles de vente",
+    "labelEn": "Sales buildings",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1642",
+    "group": "160",
+    "labelFr": "Terrains",
+    "labelEn": "Sales buildings land",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1647",
+    "group": "160",
+    "labelFr": "Halles d'exposition et de vente en leasing",
+    "labelEn": "Leased exhibition and sales buildings",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1648",
+    "group": "160",
+    "labelFr": "Acomptes sur immeubles d’exposition et de vente",
+    "labelEn": "Advance payments for exhibition and sales buildings",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1649",
+    "group": "160",
+    "labelFr": "Amortissements et corrections de la valeur des immeubles d'exposition et de vente",
+    "labelEn": "Depreciation and value adjustments to exhibition and sales buildings",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1650",
+    "group": "160",
+    "labelFr": "Immeubles administratifs",
+    "labelEn": "Office and administration buildings",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1652",
+    "group": "160",
+    "labelFr": "Terrains",
+    "labelEn": "Office and administration buildings land",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1657",
+    "group": "160",
+    "labelFr": "Immeubles administratifs en leasing",
+    "labelEn": "Leased office and administration buildings",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1658",
+    "group": "160",
+    "labelFr": "Acomptes sur immeubles administratifs",
+    "labelEn": "Advance payments for office and administration buildings",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1659",
+    "group": "160",
+    "labelFr": "Amortissements et corrections de la valeur des immeubles administratifs",
+    "labelEn": "Depreciation and value adjustments to office and administration buildings",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1660",
+    "group": "160",
+    "labelFr": "Maisons d'habitation du personnel",
+    "labelEn": "Staff housing",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1661",
+    "group": "160",
+    "labelFr": "Autres maisons d'habitation",
+    "labelEn": "Other residential buildings",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1662",
+    "group": "160",
+    "labelFr": "Terrains",
+    "labelEn": "Other residential buildings land",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1667",
+    "group": "160",
+    "labelFr": "Immeubles d'habitation en leasing",
+    "labelEn": "Leased residential buildings",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1668",
+    "group": "160",
+    "labelFr": "Acomptes sur immeubles d'habitation",
+    "labelEn": "Advance payments for residential buildings",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1669",
+    "group": "160",
+    "labelFr": "Amortissements et corrections de la valeur des immeubles d’habitation",
+    "labelEn": "Depreciation and value adjustments to residential buildings",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1680",
+    "group": "160",
+    "labelFr": "Biens-fonds non bâtis",
+    "labelEn": "Undeveloped land",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1687",
+    "group": "160",
+    "labelFr": "Biens-fonds non bâtis en leasing",
+    "labelEn": "Leased undeveloped land",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1688",
+    "group": "160",
+    "labelFr": "Acomptes sur biens-fonds non bâtis",
+    "labelEn": "Advance payments for undeveloped land",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1689",
+    "group": "160",
+    "labelFr": "Corrections de la valeur des biens-fonds non bâtis",
+    "labelEn": "Depreciation and value adjustments to undeveloped land",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1700",
+    "group": "170",
+    "labelFr": "Brevets",
+    "labelEn": "Patents",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1701",
+    "group": "170",
+    "labelFr": "Know-how",
+    "labelEn": "Know-how",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1702",
+    "group": "170",
+    "labelFr": "Processus de fabrication",
+    "labelEn": "Recipes",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1709",
+    "group": "170",
+    "labelFr": "Amortissements et corrections de la valeur des brevets, know-how, processus de fabrication",
+    "labelEn": "Depreciation and value adjustments to patents, know- how and recipes",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1710",
+    "group": "170",
+    "labelFr": "Marques commerciales",
+    "labelEn": "Brands",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1711",
+    "group": "170",
+    "labelFr": "Echantillons",
+    "labelEn": "Samples",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1712",
+    "group": "170",
+    "labelFr": "Modèles",
+    "labelEn": "Models",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1713",
+    "group": "170",
+    "labelFr": "Plans",
+    "labelEn": "Plans",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1719",
+    "group": "170",
+    "labelFr": "Amortissements et corrections de la valeur des marques commerciales, échantillons, modèles, plans",
+    "labelEn": "Depreciation and value adjustments to brands, samples, models and plans",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1720",
+    "group": "170",
+    "labelFr": "Droits de licences",
+    "labelEn": "Licences",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1721",
+    "group": "170",
+    "labelFr": "Concessions",
+    "labelEn": "Concessions",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1722",
+    "group": "170",
+    "labelFr": "Droits de jouissance",
+    "labelEn": "Rights of use",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1723",
+    "group": "170",
+    "labelFr": "Droits des sociétés",
+    "labelEn": "Company rights",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1729",
+    "group": "170",
+    "labelFr": "Amortissements et corrections de la valeur sur droits de licences, concessions, droits de jouissance, raisons de commerce",
+    "labelEn": "Depreciation and value adjustments to licences, concessions, rights of use and company rights",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1730",
+    "group": "170",
+    "labelFr": "Droits de propriété intellectuelle",
+    "labelEn": "Copyrights",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1731",
+    "group": "170",
+    "labelFr": "Droits d'édition",
+    "labelEn": "Publishing rights",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1732",
+    "group": "170",
+    "labelFr": "Droits conventionnels",
+    "labelEn": "Contractual rights",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1739",
+    "group": "170",
+    "labelFr": "Amortissements et corrections de la valeur des droits de propriété intellectuelle, droits d'édition, droits conventionnels",
+    "labelEn": "Depreciation and value adjustments to copyrights, publishing rights and contractual rights",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1740",
+    "group": "170",
+    "labelFr": "Logiciels développés en interne",
+    "labelEn": "In-house developed software",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1741",
+    "group": "170",
+    "labelFr": "Logiciels et licences achetés",
+    "labelEn": "Purchased software and licences",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1749",
+    "group": "170",
+    "labelFr": "Amortissements et corrections de la valeur des logiciels",
+    "labelEn": "Depreciation and value adjustments to software",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1750",
+    "group": "170",
+    "labelFr": "Développements spécifiques internes",
+    "labelEn": "Own development",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1751",
+    "group": "170",
+    "labelFr": "Développements spécifiques acquis",
+    "labelEn": "Purchased development",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1759",
+    "group": "170",
+    "labelFr": "Amortissements et corrections de la valeur sur développements spécifiques",
+    "labelEn": "Depreciation and value adjustments to development",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1770",
+    "group": "170",
+    "labelFr": "Goodwill",
+    "labelEn": "Goodwill",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1779",
+    "group": "170",
+    "labelFr": "Amortissements et corrections de la valeur du goodwill",
+    "labelEn": "Depreciation and value adjustments to goodwill",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1790",
+    "group": "170",
+    "labelFr": "Autres immobilisations incorporelles",
+    "labelEn": "Other intangible assets",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1799",
+    "group": "170",
+    "labelFr": "Amortissements et corrections de valeur des autres immobilisations incorporelles",
+    "labelEn": "Depreciation and value adjustments to other intangible assets",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1850",
+    "group": "180",
+    "labelFr": "Capital-actions non libéré",
+    "labelEn": "Unpaid share capital",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1850(2)",
+    "group": "180",
+    "labelFr": "Capital social non libéré",
+    "labelEn": "Unpaid nominal capital",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1850(3)",
+    "group": "180",
+    "labelFr": "Parts sociales non libérées",
+    "labelEn": "Unpaid participation certificate capital",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1850(4)",
+    "group": "180",
+    "labelFr": "Capital de fondation non libéré",
+    "labelEn": "Unpaid foundation capital",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "1851",
+    "group": "180",
+    "labelFr": "Capital participation non libéré",
+    "labelEn": "Unpaid participation capital",
+    "section": "ACTIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2000",
+    "group": "200",
+    "labelFr": "Dettes résultant d’achats et de prestation de services (créanciers)",
+    "labelEn": "Costs of materials and goods payables",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2001",
+    "group": "200",
+    "labelFr": "Dettes résultant de prestations de services de tiers",
+    "labelEn": "Third-party/subcontracted services payables",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2002",
+    "group": "200",
+    "labelFr": "Dettes résultant de charges de personnel",
+    "labelEn": "Personnel expenses payables",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2004",
+    "group": "200",
+    "labelFr": "Dettes résultant d'autres charges d'exploitation",
+    "labelEn": "Other operating expenses payables",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2030",
+    "group": "200",
+    "labelFr": "Acomptes de clients",
+    "labelEn": "Advance payments from third parties",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2050",
+    "group": "200",
+    "labelFr": "Dettes envers la participation",
+    "labelEn": "Payables due to participation",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2060",
+    "group": "200",
+    "labelFr": "Dettes envers personne concernée",
+    "labelEn": "Payables due to person involved",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2061",
+    "group": "200",
+    "labelFr": "Dettes envers le conseil d'administration",
+    "labelEn": "Payables due to member of the Board of Directors",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2062",
+    "group": "200",
+    "labelFr": "Dettes envers le membre de la direction",
+    "labelEn": "Payables due to member of Executive Board",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2063",
+    "group": "200",
+    "labelFr": "Dettes envers la société du groupe",
+    "labelEn": "Payables due to group company",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2064",
+    "group": "200",
+    "labelFr": "Dettes envers personne proche",
+    "labelEn": "Payables due to close person",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2065",
+    "group": "200",
+    "labelFr": "Dettes envers l'organe de révision",
+    "labelEn": "Payables due to auditor",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2100",
+    "group": "210",
+    "labelFr": "Compte courant",
+    "labelEn": "Current account",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2107",
+    "group": "210",
+    "labelFr": "Emprunts",
+    "labelEn": "Loan",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2109",
+    "group": "210",
+    "labelFr": "Hypothèque",
+    "labelEn": "Mortgage",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2111",
+    "group": "210",
+    "labelFr": "Dettes envers les sociétés de virement (WIR)",
+    "labelEn": "WIR commitments",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2120",
+    "group": "210",
+    "labelFr": "Engagements de financement par leasing",
+    "labelEn": "Financial leasing commitments",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2130",
+    "group": "210",
+    "labelFr": "Emprunts obligataires",
+    "labelEn": "Bond loans",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2140",
+    "group": "210",
+    "labelFr": "Dettes envers des tiers",
+    "labelEn": "Other onerous debts due to third parties",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2150",
+    "group": "210",
+    "labelFr": "Dettes envers la participation",
+    "labelEn": "Debts due to participation",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2160",
+    "group": "210",
+    "labelFr": "Dettes envers personne concernée",
+    "labelEn": "Debts due to person involved",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2161",
+    "group": "210",
+    "labelFr": "Dettes envers le conseil d'administration",
+    "labelEn": "Debts due to member of the Board of Directors",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2162",
+    "group": "210",
+    "labelFr": "Dettes envers le membre de la direction",
+    "labelEn": "Debts due to member of Executive Board",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2163",
+    "group": "210",
+    "labelFr": "Dettes envers la société du groupe",
+    "labelEn": "Debts due to group company",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2164",
+    "group": "210",
+    "labelFr": "Dettes envers personne proche",
+    "labelEn": "Debts due to close person",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2170",
+    "group": "210",
+    "labelFr": "Dettes envers des institutions de prévoyance",
+    "labelEn": "Debts due to pension funds",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2200",
+    "group": "220",
+    "labelFr": "TVA due",
+    "labelEn": "VAT due",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2200A",
+    "group": "220",
+    "labelFr": "TVA automatique",
+    "labelEn": "Automatic VAT",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2201",
+    "group": "220",
+    "labelFr": "Décompte",
+    "labelEn": "TVA VAT settlement account",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2202",
+    "group": "220",
+    "labelFr": "Réconciliation du chiffre d'affaires suite à un changement de méthode",
+    "labelEn": "VAT due compensation according to the reporting method",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2203",
+    "group": "220",
+    "labelFr": "Impôt sur les acquisitions",
+    "labelEn": "Acquisition tax",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2206",
+    "group": "220",
+    "labelFr": "Impôt anticipé à payer",
+    "labelEn": "Withholding tax",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2207",
+    "group": "220",
+    "labelFr": "Droits de timbre",
+    "labelEn": "Stamp duty",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2208",
+    "group": "220",
+    "labelFr": "Impôts directs",
+    "labelEn": "Direct taxes",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2209",
+    "group": "220",
+    "labelFr": "Impôt à la source",
+    "labelEn": "Tax at source",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2210",
+    "group": "220",
+    "labelFr": "Autres dettes envers les tiers",
+    "labelEn": "Debts due to third parties",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2250",
+    "group": "220",
+    "labelFr": "Autres dettes envers la participation",
+    "labelEn": "Debts due to participation",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2260",
+    "group": "220",
+    "labelFr": "Autres dettes envers personne concernée",
+    "labelEn": "Debts due to person involved",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2261",
+    "group": "220",
+    "labelFr": "Autres dettes envers le conseil d'administration",
+    "labelEn": "Debts due to member of the Board of Directors",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2262",
+    "group": "220",
+    "labelFr": "Autres dettes envers le membre de la direction",
+    "labelEn": "Debts due to member of Executive Board",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2263",
+    "group": "220",
+    "labelFr": "Autres dettes envers la société du groupe",
+    "labelEn": "Debts due to group company",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2264",
+    "group": "220",
+    "labelFr": "Autres dettes envers personne proche",
+    "labelEn": "Debts due to close person",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2265",
+    "group": "220",
+    "labelFr": "Autres dettes envers l'organe de révision",
+    "labelEn": "Debts due to auditor",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2269",
+    "group": "220",
+    "labelFr": "Distributions délibéré (dividendes)",
+    "labelEn": "Adopted distributions (dividends)",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2270",
+    "group": "220",
+    "labelFr": "Compte courant",
+    "labelEn": "AVS, AI, APG, AC AHV, IV, EO, ALV current account",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2271",
+    "group": "220",
+    "labelFr": "Compte courant caisse d'allocations familiales (CAF)",
+    "labelEn": "Family allowance fund current account",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2272",
+    "group": "220",
+    "labelFr": "Compte courant institutions de prévoyance",
+    "labelEn": "Pension funds current account",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2273",
+    "group": "220",
+    "labelFr": "Compte courant",
+    "labelEn": "Assurance-accidents Accident insurance current account",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2274",
+    "group": "220",
+    "labelFr": "Compte courant Assurance maladie (indemnité journalière maladie)",
+    "labelEn": "Daily sickness benefits insurance current account",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2300",
+    "group": "230",
+    "labelFr": "Charges à payer",
+    "labelEn": "Accrued expenses",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2301",
+    "group": "230",
+    "labelFr": "Produits encaissés d’avance",
+    "labelEn": "Revenues received in advance",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2303",
+    "group": "230",
+    "labelFr": "Abandon de créances",
+    "labelEn": "Receivables discount",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2330",
+    "group": "230",
+    "labelFr": "Provisions à court terme",
+    "labelEn": "Provisions for warranty commitments",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2331",
+    "group": "230",
+    "labelFr": "Provisions pour risques liés aux engagements découlant d'obligations de prendre livraison",
+    "labelEn": "Provisions for purchase commitments",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2340",
+    "group": "230",
+    "labelFr": "Provisions pour impôts directs",
+    "labelEn": "Provisions for direct taxes",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2341",
+    "group": "230",
+    "labelFr": "Provisions pour impôts indirects",
+    "labelEn": "Provisions for indirect taxes",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2350",
+    "group": "230",
+    "labelFr": "Provisions pour réparation et entretien",
+    "labelEn": "Provisions for repairs and maintenance",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2351",
+    "group": "230",
+    "labelFr": "Provisions pour rénovation des immobilisations",
+    "labelEn": "Provisions for renovation of tangible assets",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2352",
+    "group": "230",
+    "labelFr": "Provisions pour recherche",
+    "labelEn": "Provisions for research",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2353",
+    "group": "230",
+    "labelFr": "Provisions pour développement",
+    "labelEn": "Provisions for development",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2354",
+    "group": "230",
+    "labelFr": "Provisions pour restructuration",
+    "labelEn": "Provisions for restructuring",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2355",
+    "group": "230",
+    "labelFr": "Provisions pour protection de l'environnement",
+    "labelEn": "Provisions for environmental protection measures",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2360",
+    "group": "230",
+    "labelFr": "Provisions pour pertes futures",
+    "labelEn": "Provisions for threatening losses from ongoing business",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2370",
+    "group": "230",
+    "labelFr": "Provisions pour engagements envers l'institution de prévoyance professionnelle",
+    "labelEn": "Provisions for pension funds commitments",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2371",
+    "group": "230",
+    "labelFr": "Provisions pour charges salariales",
+    "labelEn": "Provisions for salary commitments",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2380",
+    "group": "230",
+    "labelFr": "Provisions pour engagements envers participations",
+    "labelEn": "Provisions for participations commitments",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2381",
+    "group": "230",
+    "labelFr": "Provisions pour engagements envers actionnaires",
+    "labelEn": "Provisions for commitments to shareholders",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2390",
+    "group": "230",
+    "labelFr": "Provisions pour assurer la prospérité durable de l'entreprise",
+    "labelEn": "Provisions to ensure the lastingly prosperity of the company",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2391",
+    "group": "230",
+    "labelFr": "Autres provisions à court terme",
+    "labelEn": "Other short-term provisions",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2400",
+    "group": "240",
+    "labelFr": "Emprunts",
+    "labelEn": "Loan",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2401",
+    "group": "240",
+    "labelFr": "Hypothèque",
+    "labelEn": "Mortgage",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2420",
+    "group": "240",
+    "labelFr": "Engagements de financement par leasing",
+    "labelEn": "Financial leasing commitments",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2430",
+    "group": "240",
+    "labelFr": "Emprunts obligataires",
+    "labelEn": "Debenture loans",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2450",
+    "group": "240",
+    "labelFr": "Emprunts",
+    "labelEn": "Loans",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2451",
+    "group": "240",
+    "labelFr": "Hypothèques",
+    "labelEn": "Mortgages",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2470",
+    "group": "240",
+    "labelFr": "Emprunts auprès de la participation",
+    "labelEn": "Loans to participation",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2471",
+    "group": "240",
+    "labelFr": "Emprunts hypothécaires auprès de participation",
+    "labelEn": "Mortgage to participation",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2480",
+    "group": "240",
+    "labelFr": "Emprunts/Emprunts hypothécaires auprès de la personne concernée",
+    "labelEn": "Loans/Mortgages to person involved",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2481",
+    "group": "240",
+    "labelFr": "Emprunts/Emprunts hypothécaires auprès de le conseil d'administration",
+    "labelEn": "Loans/Mortgages to the Board of Directors",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2482",
+    "group": "240",
+    "labelFr": "Emprunts/Emprunts hypothécaires auprès de le membre de la direction",
+    "labelEn": "Loans/Mortgages to member of Executive Board",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2483",
+    "group": "240",
+    "labelFr": "Emprunts/Emprunts hypothécaires auprès de la société du groupe",
+    "labelEn": "Loans/Mortgages to group company",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2484",
+    "group": "240",
+    "labelFr": "Emprunts/Emprunts hypothécaires auprès de la personne proche",
+    "labelEn": "Loans/Mortgages to close person",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2490",
+    "group": "240",
+    "labelFr": "Emprunts auprès des institutions de prévoyance professionnelle",
+    "labelEn": "Pension funds loans",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2491",
+    "group": "240",
+    "labelFr": "Dettes hypothécaires auprès des institutions de prévoyance professionnelle",
+    "labelEn": "Mortgages to pension funds",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2500",
+    "group": "250",
+    "labelFr": "Autres dettes envers des tiers",
+    "labelEn": "Debts due to third parties",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2550",
+    "group": "250",
+    "labelFr": "Autres dettes envers la participation",
+    "labelEn": "Debts due to participation",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2560",
+    "group": "250",
+    "labelFr": "Autres dettes envers la personne concernée",
+    "labelEn": "Debts due to person involved",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2561",
+    "group": "250",
+    "labelFr": "Autres dettes envers le conseil d'administration",
+    "labelEn": "Debts due to member of the Board of Directors",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2562",
+    "group": "250",
+    "labelFr": "Autres dettes envers le membre de la direction",
+    "labelEn": "Debts due to member of Executive Board",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2563",
+    "group": "250",
+    "labelFr": "Autres dettes envers la société du groupe",
+    "labelEn": "Debts due to group company",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2564",
+    "group": "250",
+    "labelFr": "Autres dettes envers la personne proche",
+    "labelEn": "Debts due to close person",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2570",
+    "group": "250",
+    "labelFr": "Dettes envers des institutions de prévoyance",
+    "labelEn": "Debts due to pension funds",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2630",
+    "group": "260",
+    "labelFr": "Provisions pour travaux de garantie",
+    "labelEn": "Provisions for warranty commitments",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2631",
+    "group": "260",
+    "labelFr": "Provisions pour risques liés aux engagements découlant d'obligations de prendre livraison",
+    "labelEn": "Provisions for purchase commitments",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2640",
+    "group": "260",
+    "labelFr": "Provisions pour impôts directs",
+    "labelEn": "Provisions for direct taxes",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2641",
+    "group": "260",
+    "labelFr": "Provisions pour impôts indirects",
+    "labelEn": "Provisions for indirect taxes",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2650",
+    "group": "260",
+    "labelFr": "Provisions pour réparation et entretien",
+    "labelEn": "Provisions for repairs and maintenance",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2651",
+    "group": "260",
+    "labelFr": "Provisions pour rénovation des immobilisations",
+    "labelEn": "Provisions for renovation of tangible assets",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2652",
+    "group": "260",
+    "labelFr": "Provisions pour recherche",
+    "labelEn": "Provisions for research",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2653",
+    "group": "260",
+    "labelFr": "Provisions pour développement",
+    "labelEn": "Provisions for development",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2654",
+    "group": "260",
+    "labelFr": "Provisions pour restructuration",
+    "labelEn": "Provisions for restructuring",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2655",
+    "group": "260",
+    "labelFr": "Provisions pour protection de l'environnement",
+    "labelEn": "Provisions for environmental protection measures",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2660",
+    "group": "260",
+    "labelFr": "Provisions pour affaires en cours",
+    "labelEn": "Provisions for threatening losses from ongoing business",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2670",
+    "group": "260",
+    "labelFr": "Provisions pour engagements envers l'institution de prévoyance professionnelle",
+    "labelEn": "Provisions for pension funds commitments",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2671",
+    "group": "260",
+    "labelFr": "Provisions pour charges salariales",
+    "labelEn": "Provisions for salary commitments",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2680",
+    "group": "260",
+    "labelFr": "Provisions pour engagements envers participations",
+    "labelEn": "Provisions for participations commitments",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2681",
+    "group": "260",
+    "labelFr": "Provisions pour engagements envers les actionnaires",
+    "labelEn": "Provisions for commitments to shareholders",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2690",
+    "group": "260",
+    "labelFr": "Provisions pour assurer la prospérité durable de l'entreprise",
+    "labelEn": "Provisions to ensure the lastingly prosperity of the company",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2691",
+    "group": "260",
+    "labelFr": "Autres provisions à long terme",
+    "labelEn": "Other long-term provisions",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2800",
+    "group": "280",
+    "labelFr": "Capital-actions catégorie",
+    "labelEn": "Share capital category",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2800(2)",
+    "group": "280",
+    "labelFr": "Capital social catégorie",
+    "labelEn": "Nominal capital category",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2800(3)",
+    "group": "280",
+    "labelFr": "Parts sociales catégorie",
+    "labelEn": "Participation certificate capital category",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2800(4)",
+    "group": "280",
+    "labelFr": "Capital de fondation",
+    "labelEn": "Foundation capital",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2810",
+    "group": "280",
+    "labelFr": "Capital-participation",
+    "labelEn": "Participation capital",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2900",
+    "group": "290",
+    "labelFr": "Agio à la fondation ou lors d'augmentations de capital",
+    "labelEn": "Premium at foundation or in the event of a capital increase",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2901",
+    "group": "290",
+    "labelFr": "Autres apports et contributions",
+    "labelEn": "Other contributions or allocations",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2902",
+    "group": "290",
+    "labelFr": "Agio lors de fusion, de scission ou de cession d'actifs",
+    "labelEn": "Premium from merger, demerger or asset transfer",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2903",
+    "group": "290",
+    "labelFr": "Réserves de contributions en capital (reconnues fiscalement)",
+    "labelEn": "Reserves from capital contributions (fiscally recognised)",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2904",
+    "group": "290",
+    "labelFr": "Gain lors de réduction du capital",
+    "labelEn": "Profit from capital reduction",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2905",
+    "group": "290",
+    "labelFr": "Profit/Perte de l'achat du propres parts du capital",
+    "labelEn": "Profit/loss from own capital share acquisition",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2950",
+    "group": "290",
+    "labelFr": "Réserve légale issue du bénéfice",
+    "labelEn": "Legal retained earnings",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2955",
+    "group": "290",
+    "labelFr": "Réserve d'évaluation",
+    "labelEn": "Revaluation reserve",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2959",
+    "group": "290",
+    "labelFr": "Réserve pour actions propres (acquisition indirecte)",
+    "labelEn": "Reserves for own shares (indirect acquisition)",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2960",
+    "group": "290",
+    "labelFr": "Réserve libre",
+    "labelEn": "Statutory retained earnings",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2961",
+    "group": "290",
+    "labelFr": "Réserves facultatives issues du bénéfice",
+    "labelEn": "Decided retained earnings",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2962",
+    "group": "290",
+    "labelFr": "Profit/Perte de l'achat du propres parts du capital",
+    "labelEn": "Profit/loss from own capital share acquisition",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2965",
+    "group": "290",
+    "labelFr": "Propres actions",
+    "labelEn": "Own shares",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2965(2)",
+    "group": "290",
+    "labelFr": "Propres parts sociales",
+    "labelEn": "Own nominal shares",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2965(3)",
+    "group": "290",
+    "labelFr": "Propres parts en commandite",
+    "labelEn": "Own share certificates",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2966",
+    "group": "290",
+    "labelFr": "Commandite propre",
+    "labelEn": "Own participation certificates",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2970",
+    "group": "290",
+    "labelFr": "Bénéfice ou perte reporté",
+    "labelEn": "Profit or loss carried forward",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2971",
+    "group": "290",
+    "labelFr": "Acompte sur distribution des dividendes",
+    "labelEn": "Interim dividend distribution",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2972",
+    "group": "290",
+    "labelFr": "Apport de le bénéfice intermédiaire dans la réserve légale de bénéfice",
+    "labelEn": "Contribution of interim profit to the legal retained earnings",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2973",
+    "group": "290",
+    "labelFr": "Apport de le bénéfice intermédiaire dans la réserve volontaire de bénéfice",
+    "labelEn": "Contribution of interim profit to the voluntary retained earnings",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2979",
+    "group": "290",
+    "labelFr": "Bénéfice ou perte de l'exercice",
+    "labelEn": "Annual profit or loss",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2800.E",
+    "group": "28",
+    "labelFr": "Capital propre",
+    "labelEn": "Own capital",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2801.E",
+    "group": "28",
+    "labelFr": "Capital propre du conjoint",
+    "labelEn": "Spouse individual property",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2820.E",
+    "group": "28",
+    "labelFr": "Apports en capital et retraits",
+    "labelEn": "Capital contributions and capital withdrawals",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2821.E",
+    "group": "28",
+    "labelFr": "Apports en capital et retraits du conjoint",
+    "labelEn": "Individual property contributions and individual property withdrawals of the spouse",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2850.E",
+    "group": "28",
+    "labelFr": "Prélèvements privés en espèces",
+    "labelEn": "Private cash withdrawals",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2851.E",
+    "group": "28",
+    "labelFr": "Prélèvements en nature",
+    "labelEn": "In kind withdrawals",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2852.E",
+    "group": "28",
+    "labelFr": "Participations privées aux charges d'exploitation",
+    "labelEn": "Private share of operating expenses",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2853.E",
+    "group": "28",
+    "labelFr": "Valeur locative de l'appartement privé",
+    "labelEn": "Private flat rental value",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2854.E",
+    "group": "28",
+    "labelFr": "Primes d'assurance privées",
+    "labelEn": "Private insurance premiums",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2855.E",
+    "group": "28",
+    "labelFr": "Cotisations privées à titre de prévoyance professionnelle",
+    "labelEn": "Private pension contributions",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2856.E",
+    "group": "28",
+    "labelFr": "Impôts privés",
+    "labelEn": "Private taxes",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2891.E",
+    "group": "28",
+    "labelFr": "Bénéfice ou perte de l'exercice",
+    "labelEn": "Annual profit or loss",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2800.P",
+    "group": "28",
+    "labelFr": "Capital propre associé A au début de l'exercice",
+    "labelEn": "Partner A equity at the beginning of the financial year",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2810.P",
+    "group": "28",
+    "labelFr": "Apports en capital et retraits de l'associé",
+    "labelEn": "Partner A capital contributions and capital withdrawals",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2820.P",
+    "group": "28",
+    "labelFr": "Prélèvements en espèces de l’associé",
+    "labelEn": "Partner A cash withdrawals",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2821.P",
+    "group": "28",
+    "labelFr": "Prélèvements en nature de l'associé",
+    "labelEn": "Partner A in kind withdrawals",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2822.P",
+    "group": "28",
+    "labelFr": "Participations privées aux charges d'exploitation de l'associé",
+    "labelEn": "Partner A private share of operating expenses",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2823.P",
+    "group": "28",
+    "labelFr": "Valeur locative de l'appartement privé de l'associé",
+    "labelEn": "Partner A private flat rental value",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2824.P",
+    "group": "28",
+    "labelFr": "Primes d'assurance privées de l'associé",
+    "labelEn": "Partner A private insurance premiums",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2825.P",
+    "group": "28",
+    "labelFr": "Cotisations privées à titre de prévoyance professionnelle de l'associé",
+    "labelEn": "Partner A private pension contributions",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2826.P",
+    "group": "28",
+    "labelFr": "Impôts privés de l'associé",
+    "labelEn": "Partner A private taxes",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2830.P",
+    "group": "28",
+    "labelFr": "Bénéfice ou perte de l'exercice de l'associé",
+    "labelEn": "Partner A annual profit or loss",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2850.P",
+    "group": "28",
+    "labelFr": "Apports du commanditaire A au début de l'exercice",
+    "labelEn": "Limited partner A equity at the beginning of the financial year",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2860.P",
+    "group": "28",
+    "labelFr": "Apports complémentaires et retraits de la commandite du commanditaire",
+    "labelEn": "Limited partner A capital contributions and capital withdrawals",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2870.P",
+    "group": "28",
+    "labelFr": "Prélèvements en espèces du commanditaire",
+    "labelEn": "Limited partner A cash withdrawals",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2871.P",
+    "group": "28",
+    "labelFr": "Prélèvements en nature du commanditaire",
+    "labelEn": "Limited partner A in kind withdrawals",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2872.P",
+    "group": "28",
+    "labelFr": "Participations privées aux charges d’exploitation du commanditaire",
+    "labelEn": "Limited partner A private share of operating expenses",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2873.P",
+    "group": "28",
+    "labelFr": "Valeur locative de l'appartement privé du commanditaire",
+    "labelEn": "Limited partner A private flat rental value",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2874.P",
+    "group": "28",
+    "labelFr": "Primes d'assurance privées du commanditaire",
+    "labelEn": "Limited partner A private insurance premiums",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2875.P",
+    "group": "28",
+    "labelFr": "Cotisations privées à titre de prévoyance professionnelle du commanditaire",
+    "labelEn": "Limited partner A private pension contributions",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2876.P",
+    "group": "28",
+    "labelFr": "Impôts privés du commanditaire",
+    "labelEn": "Limited partner A private taxes",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "2880.P",
+    "group": "28",
+    "labelFr": "Bénéfice ou perte de l'exercice du commanditaire",
+    "labelEn": "Limited partner A annual profit or loss",
+    "section": "PASSIFS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3000",
+    "group": "30",
+    "labelFr": "Ventes brutes de produits",
+    "labelEn": "Gross revenues from product",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3000(2)",
+    "group": "30",
+    "labelFr": "Ventes de produits fabriqués au comptant",
+    "labelEn": "Gross revenues from cash sales",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3001",
+    "group": "30",
+    "labelFr": "Ventes de produits fabriqués au détail à crédit",
+    "labelEn": "Gross revenues from retail credit sales",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3002",
+    "group": "30",
+    "labelFr": "Ventes de produits fabriqués en gros à crédit",
+    "labelEn": "Gross revenues from wholesale credit sales",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3007",
+    "group": "30",
+    "labelFr": "Ventes de produits fabriqués résultant de prestations annexes (port et emballage)",
+    "labelEn": "Gross revenues from ancillary services (postage and packing)",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3008",
+    "group": "30",
+    "labelFr": "Variation des créances/débiteurs",
+    "labelEn": "Changes in receivables",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3090",
+    "group": "30",
+    "labelFr": "Escomptes",
+    "labelEn": "Discounts",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3091",
+    "group": "30",
+    "labelFr": "Rabais et réductions de prix",
+    "labelEn": "Rebates and price reductions",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3092",
+    "group": "30",
+    "labelFr": "Ristournes",
+    "labelEn": "Refunds",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3093",
+    "group": "30",
+    "labelFr": "Commissions de tiers",
+    "labelEn": "Commissions to third parties",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3094",
+    "group": "30",
+    "labelFr": "Frais d'encaissement",
+    "labelEn": "Collection charges",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3095",
+    "group": "30",
+    "labelFr": "Pertes sur clients, variation de prix",
+    "labelEn": "Losses on receivables, changes in value adjustments",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3096",
+    "group": "30",
+    "labelFr": "Différences de change",
+    "labelEn": "Exchange rate differences",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3097",
+    "group": "30",
+    "labelFr": "Frets et ports",
+    "labelEn": "Freights, postages",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3200",
+    "group": "32",
+    "labelFr": "Ventes de marchandises article",
+    "labelEn": "Gross revenues from item",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3200(2)",
+    "group": "32",
+    "labelFr": "Ventes de marchandises au comptant",
+    "labelEn": "Gross revenues from cash sales",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3201",
+    "group": "32",
+    "labelFr": "Ventes de marchandises au détail à crédit",
+    "labelEn": "Gross revenues from retail credit sales",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3202",
+    "group": "32",
+    "labelFr": "Ventes de marchandises en gros à crédit",
+    "labelEn": "Gross revenues from wholesale credit sales",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3203",
+    "group": "32",
+    "labelFr": "Ventes brutes des prix d'achat",
+    "labelEn": "Gross revenues from purchase prices",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3207",
+    "group": "32",
+    "labelFr": "Ventes de marchandises de prestations annexes (port et emballage)",
+    "labelEn": "Gross revenues from ancillary services (postage and packing)",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3208",
+    "group": "32",
+    "labelFr": "Variation des créances/débiteurs",
+    "labelEn": "Changes in receivables",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3290",
+    "group": "32",
+    "labelFr": "Escomptes",
+    "labelEn": "Discounts",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3291",
+    "group": "32",
+    "labelFr": "Rabais et réductions de prix",
+    "labelEn": "Rebates and price reductions",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3292",
+    "group": "32",
+    "labelFr": "Ristournes",
+    "labelEn": "Refunds",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3293",
+    "group": "32",
+    "labelFr": "Commissions de tiers",
+    "labelEn": "Commissions to third parties",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3294",
+    "group": "32",
+    "labelFr": "Frais d'encaissement",
+    "labelEn": "Collection charges",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3295",
+    "group": "32",
+    "labelFr": "Pertes sur clients, variation de prix",
+    "labelEn": "Losses on receivables, changes in value adjustments",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3296",
+    "group": "32",
+    "labelFr": "Différences de change",
+    "labelEn": "Exchange rate differences",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3297",
+    "group": "32",
+    "labelFr": "Frets et ports",
+    "labelEn": "Freights, postages",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3400",
+    "group": "34",
+    "labelFr": "Ventes de prestations",
+    "labelEn": "Gross revenues from provided service",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3400(2)",
+    "group": "34",
+    "labelFr": "Ventes de prestations au comptant",
+    "labelEn": "Gross revenues in cash",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3401",
+    "group": "34",
+    "labelFr": "Ventes de prestations à crédit",
+    "labelEn": "Gross revenues on credit",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3407",
+    "group": "34",
+    "labelFr": "Ventes de prestations annexes d'exploitation",
+    "labelEn": "Gross revenues from ancillary services",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3408",
+    "group": "34",
+    "labelFr": "Variation des créances/débiteurs",
+    "labelEn": "Changes in receivables",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3490",
+    "group": "34",
+    "labelFr": "Escomptes",
+    "labelEn": "Discounts",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3491",
+    "group": "34",
+    "labelFr": "Rabais et réductions de prix",
+    "labelEn": "Rebates and price reductions",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3492",
+    "group": "34",
+    "labelFr": "Ristournes",
+    "labelEn": "Refunds",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3493",
+    "group": "34",
+    "labelFr": "Commissions de tiers",
+    "labelEn": "Commissions to third parties",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3494",
+    "group": "34",
+    "labelFr": "Frais d'encaissement",
+    "labelEn": "Collection charges",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3495",
+    "group": "34",
+    "labelFr": "Pertes sur clients, variation de prix",
+    "labelEn": "Losses on receivables, changes in value adjustments",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3496",
+    "group": "34",
+    "labelFr": "Différences de change",
+    "labelEn": "Exchange rate differences",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3497",
+    "group": "34",
+    "labelFr": "Ports",
+    "labelEn": "Postages",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3600",
+    "group": "36",
+    "labelFr": "Ventes de matières premières",
+    "labelEn": "Revenues from raw materials",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3601",
+    "group": "36",
+    "labelFr": "Ventes de matières auxiliaires",
+    "labelEn": "Revenues from auxiliary materials",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3602",
+    "group": "36",
+    "labelFr": "Ventes de déchets",
+    "labelEn": "Revenues from garbages",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3607",
+    "group": "36",
+    "labelFr": "Ventes de prestations annexes",
+    "labelEn": "Revenues from ancillary services",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3608",
+    "group": "36",
+    "labelFr": "Variation des créances/débiteurs",
+    "labelEn": "Changes in receivables",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3609",
+    "group": "36",
+    "labelFr": "Déductions sur les produits accessoires",
+    "labelEn": "Decrease in ancillary revenues",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3610",
+    "group": "36",
+    "labelFr": "Produits de licences pour produit",
+    "labelEn": "Revenues from product A licence",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3619",
+    "group": "36",
+    "labelFr": "Déductions sur les produits des licences, des brevets, etc.",
+    "labelEn": "Decrease in revenues from licences, patents, etc.",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3670",
+    "group": "36",
+    "labelFr": "Produits résultant de la mise à disposition du personnel",
+    "labelEn": "Revenues from staff provision",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3680",
+    "group": "36",
+    "labelFr": "Autres produits",
+    "labelEn": "Other revenues",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3690",
+    "group": "36",
+    "labelFr": "Escomptes",
+    "labelEn": "Discounts",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3691",
+    "group": "36",
+    "labelFr": "Rabais et réductions de prix",
+    "labelEn": "Rebates and price reductions",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3700",
+    "group": "37",
+    "labelFr": "Propre production d'immobilisations corporelles meubles",
+    "labelEn": "Own production of movable tangible assets",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3701",
+    "group": "37",
+    "labelFr": "Propre production d'immobilisations corporelles immeubles",
+    "labelEn": "Own production of fixed tangible assets",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3702",
+    "group": "37",
+    "labelFr": "Propres réparations d'immobilisations corporelles meubles",
+    "labelEn": "Own repair of movable tangible assets",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3703",
+    "group": "37",
+    "labelFr": "Propres réparations d'immobilisations corporelles immeubles",
+    "labelEn": "Own repair of fixed tangible assets",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3710",
+    "group": "37",
+    "labelFr": "Propres consommations produit",
+    "labelEn": "Own consumption of product",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3720",
+    "group": "37",
+    "labelFr": "Propres consommations de marchandises",
+    "labelEn": "Own consumption of product",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3740",
+    "group": "37",
+    "labelFr": "Propres consommations de service",
+    "labelEn": "Own consumption of provided service",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3790",
+    "group": "37",
+    "labelFr": "Prélèvements en nature",
+    "labelEn": "In kind withdrawals",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3800",
+    "group": "38",
+    "labelFr": "Escomptes",
+    "labelEn": "Discounts",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3801",
+    "group": "38",
+    "labelFr": "Rabais et réductions de prix",
+    "labelEn": "Rebates and price reductions",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3802",
+    "group": "38",
+    "labelFr": "Ristournes",
+    "labelEn": "Refunds",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3803",
+    "group": "38",
+    "labelFr": "Commissions de tiers",
+    "labelEn": "Commissions to third parties",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3804",
+    "group": "38",
+    "labelFr": "Frais d'encaissement",
+    "labelEn": "Collection charges",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3805",
+    "group": "38",
+    "labelFr": "Pertes sur clients, variation du ducroire",
+    "labelEn": "Losses on receivables, changes in value adjustments",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3806",
+    "group": "38",
+    "labelFr": "Différences de change",
+    "labelEn": "Exchange rate differences",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3807",
+    "group": "38",
+    "labelFr": "Frais d'expédition",
+    "labelEn": "Shipping costs",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3809",
+    "group": "38",
+    "labelFr": "TVA -",
+    "labelEn": "Taux de la dette fiscale nette VAT net tax rate",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3810",
+    "group": "38",
+    "labelFr": "Commissions cartes de crédit/débit",
+    "labelEn": "Credit/debit card fees",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3860",
+    "group": "38",
+    "labelFr": "Variation des réserves de garantie",
+    "labelEn": "Changes in warranty provisions",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3861",
+    "group": "38",
+    "labelFr": "Variation des réserves de franchise",
+    "labelEn": "Changes in deductible provisions",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3900",
+    "group": "39",
+    "labelFr": "Variation des stocks de produits finis",
+    "labelEn": "Changes in finished products inventories",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3901",
+    "group": "39",
+    "labelFr": "Variation des stocks de produits semi-finis",
+    "labelEn": "Changes in semi-finished products inventories",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "3940",
+    "group": "39",
+    "labelFr": "Variation de la valeur des prestations non facturées",
+    "labelEn": "Changes in non-invoiced services value",
+    "section": "PRODUITS",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4000",
+    "group": "40",
+    "labelFr": "Achats de matériel produit",
+    "labelEn": "Purchases of product A material",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4000(2)",
+    "group": "40",
+    "labelFr": "Achats d'appareils",
+    "labelEn": "Purchases of equipment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4001",
+    "group": "40",
+    "labelFr": "Achats de composants",
+    "labelEn": "Purchases of components",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4002",
+    "group": "40",
+    "labelFr": "Achats d'accessoires",
+    "labelEn": "Purchases of accessories",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4003",
+    "group": "40",
+    "labelFr": "Achats d'autres matières",
+    "labelEn": "Purchases of other materials",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4004",
+    "group": "40",
+    "labelFr": "Achats de matières auxiliaires et de fournitures d'exploitation",
+    "labelEn": "Purchases of auxiliary and consumable materials",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4005",
+    "group": "40",
+    "labelFr": "Achats de matériel d'emballage",
+    "labelEn": "Purchases of packing material",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4006",
+    "group": "40",
+    "labelFr": "Travaux de tiers",
+    "labelEn": "Third-party services",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4007",
+    "group": "40",
+    "labelFr": "Charges directes d’achat",
+    "labelEn": "Direct purchasing expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4008",
+    "group": "40",
+    "labelFr": "Variations de stocks",
+    "labelEn": "Changes in inventories",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4009",
+    "group": "40",
+    "labelFr": "Déductions obtenues sur achats",
+    "labelEn": "Purchase price reductions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4060",
+    "group": "40",
+    "labelFr": "Travaux de tiers - secteur",
+    "labelEn": "Sector A third-party services",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4070",
+    "group": "40",
+    "labelFr": "Frets à l'achat",
+    "labelEn": "Incoming freight",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4071",
+    "group": "40",
+    "labelFr": "Droits de douane à l'importation",
+    "labelEn": "Import duties",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4072",
+    "group": "40",
+    "labelFr": "Frais de transport à l'achat",
+    "labelEn": "Incoming shipments",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4080",
+    "group": "40",
+    "labelFr": "Variations de stocks - secteur",
+    "labelEn": "Changes in sector A inventories",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4086",
+    "group": "40",
+    "labelFr": "Pertes de matières - secteur",
+    "labelEn": "Sector A material losses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4090",
+    "group": "40",
+    "labelFr": "Escomptes",
+    "labelEn": "Discounts",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4091",
+    "group": "40",
+    "labelFr": "Rabais et réductions de prix",
+    "labelEn": "Rebates and price reductions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4092",
+    "group": "40",
+    "labelFr": "Ristournes",
+    "labelEn": "Refunds",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4093",
+    "group": "40",
+    "labelFr": "Commissions obtenues sur achats",
+    "labelEn": "Commissions to third parties",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4096",
+    "group": "40",
+    "labelFr": "Différences de change",
+    "labelEn": "Exchange rate differences",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4200",
+    "group": "42",
+    "labelFr": "Achats de marchandises",
+    "labelEn": "Purchases of resale product",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4205",
+    "group": "42",
+    "labelFr": "Achats de matériel d'emballage",
+    "labelEn": "Purchases of packing material",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4207",
+    "group": "42",
+    "labelFr": "Charges directes d'achat",
+    "labelEn": "Direct purchasing expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4208",
+    "group": "42",
+    "labelFr": "Variations de stocks",
+    "labelEn": "Changes in inventories",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4209",
+    "group": "42",
+    "labelFr": "Déductions obtenues sur achats",
+    "labelEn": "Purchase price reductions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4270",
+    "group": "42",
+    "labelFr": "Frets à l'achat",
+    "labelEn": "Incoming freight",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4271",
+    "group": "42",
+    "labelFr": "Droits de douane à l'importation",
+    "labelEn": "Import duties",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4272",
+    "group": "42",
+    "labelFr": "Frais de transport à l'achat",
+    "labelEn": "Incoming shipments",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4280",
+    "group": "42",
+    "labelFr": "Variations de stocks - secteur",
+    "labelEn": "Changes in sector A inventories",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4286",
+    "group": "42",
+    "labelFr": "Pertes de marchandises - secteur",
+    "labelEn": "Sector A loss of goods",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4290",
+    "group": "42",
+    "labelFr": "Escomptes",
+    "labelEn": "Discounts",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4291",
+    "group": "42",
+    "labelFr": "Rabais et réductions de prix",
+    "labelEn": "Rebates and price reductions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4292",
+    "group": "42",
+    "labelFr": "Ristournes",
+    "labelEn": "Refunds",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4293",
+    "group": "42",
+    "labelFr": "Commissions obtenues sur achats",
+    "labelEn": "Purchasing commissions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4296",
+    "group": "42",
+    "labelFr": "Différences de change",
+    "labelEn": "Exchange rate differences",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4400",
+    "group": "44",
+    "labelFr": "Charges pour prestations de services",
+    "labelEn": "Expenses for service",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4407",
+    "group": "44",
+    "labelFr": "Charges directes d'achat",
+    "labelEn": "Direct purchasing expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4409",
+    "group": "44",
+    "labelFr": "Déductions obtenues sur achats",
+    "labelEn": "Deductions obtained on purchases",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4470",
+    "group": "44",
+    "labelFr": "Charges directes d'achat sur prestations de tiers",
+    "labelEn": "Direct purchase expenses for purchased services",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4490",
+    "group": "44",
+    "labelFr": "Escomptes",
+    "labelEn": "Discounts",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4491",
+    "group": "44",
+    "labelFr": "Rabais et réductions de prix",
+    "labelEn": "Rebates and price reductions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4492",
+    "group": "44",
+    "labelFr": "Ristournes",
+    "labelEn": "Refunds",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4493",
+    "group": "44",
+    "labelFr": "Commissions obtenues sur achats",
+    "labelEn": "Purchasing commissions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4496",
+    "group": "44",
+    "labelFr": "Différences de change",
+    "labelEn": "Exchange rate differences",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4500",
+    "group": "45",
+    "labelFr": "Courant faible",
+    "labelEn": "Heat electricity",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4501",
+    "group": "45",
+    "labelFr": "Courant industriel",
+    "labelEn": "Industrial electricity",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4510",
+    "group": "45",
+    "labelFr": "Gaz naturel",
+    "labelEn": "Natural gas",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4511",
+    "group": "45",
+    "labelFr": "Gaz liquide en bonbonnes",
+    "labelEn": "Liquid gas in cylinders",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4520",
+    "group": "45",
+    "labelFr": "Mazout",
+    "labelEn": "Heating oil",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4521",
+    "group": "45",
+    "labelFr": "Charbon, briquettes, bois",
+    "labelEn": "Coal, briquettes, wood",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4530",
+    "group": "45",
+    "labelFr": "Essence",
+    "labelEn": "Petrol",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4531",
+    "group": "45",
+    "labelFr": "Diesel",
+    "labelEn": "Diesel",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4532",
+    "group": "45",
+    "labelFr": "Huile",
+    "labelEn": "Oil",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4540",
+    "group": "45",
+    "labelFr": "Eau",
+    "labelEn": "Water",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4600",
+    "group": "46",
+    "labelFr": "Autres charges de matières production",
+    "labelEn": "Other material costs of production",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4620",
+    "group": "46",
+    "labelFr": "Autres charges de marchandises",
+    "labelEn": "Other costs of goods for resale",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4640",
+    "group": "46",
+    "labelFr": "Autres charges pour prestations de tiers",
+    "labelEn": "Other costs of services",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4650",
+    "group": "46",
+    "labelFr": "Charges d'emballage",
+    "labelEn": "Packaging costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4660",
+    "group": "46",
+    "labelFr": "Variation des réserves de garantie",
+    "labelEn": "Changes in warranty provisions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4661",
+    "group": "46",
+    "labelFr": "Variation des réserves de franchise",
+    "labelEn": "Changes in deductible provisions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4700",
+    "group": "47",
+    "labelFr": "Frets à l'achat",
+    "labelEn": "Incoming freight",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4701",
+    "group": "47",
+    "labelFr": "Droits de douane à l'importation",
+    "labelEn": "Import duties",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4702",
+    "group": "47",
+    "labelFr": "Frais de transport à l'achat",
+    "labelEn": "Incoming shipments",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4800",
+    "group": "48",
+    "labelFr": "Escomptes",
+    "labelEn": "Discounts",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4801",
+    "group": "48",
+    "labelFr": "Rabais et réductions de prix",
+    "labelEn": "Rebates and price reductions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4802",
+    "group": "48",
+    "labelFr": "Ristournes",
+    "labelEn": "Refunds",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4803",
+    "group": "48",
+    "labelFr": "Commissions obtenues sur achats",
+    "labelEn": "Purchasing commissions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4804",
+    "group": "48",
+    "labelFr": "Différences de change",
+    "labelEn": "Exchange rate differences",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4900",
+    "group": "49",
+    "labelFr": "Variation des stocks de marchandises",
+    "labelEn": "Changes in goods for resale inventories",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4901",
+    "group": "49",
+    "labelFr": "Variation des stocks de matières premières",
+    "labelEn": "Changes in raw material inventories",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4902",
+    "group": "49",
+    "labelFr": "Variation des stocks de matières",
+    "labelEn": "Changes in production material inventories",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4903",
+    "group": "49",
+    "labelFr": "Variation des stocks de fournitures d'exploitation",
+    "labelEn": "Changes in auxiliary material and consumables inventories",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4904",
+    "group": "49",
+    "labelFr": "Variation des stocks obligatoires",
+    "labelEn": "Changes in compulsory inventories",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4905",
+    "group": "49",
+    "labelFr": "Variation des stocks de marchandises en consignation",
+    "labelEn": "Changes in goods on delivery inventories",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4980",
+    "group": "49",
+    "labelFr": "Pertes de matières",
+    "labelEn": "Material losses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "4986",
+    "group": "49",
+    "labelFr": "Pertes de marchandises",
+    "labelEn": "Losses of goods for resale",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5000",
+    "group": "50",
+    "labelFr": "Salaires",
+    "labelEn": "Salaries",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5001",
+    "group": "50",
+    "labelFr": "Indemnités",
+    "labelEn": "Allowances",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5002",
+    "group": "50",
+    "labelFr": "Participations au bénéfice",
+    "labelEn": "Profit-sharing",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5003",
+    "group": "50",
+    "labelFr": "Commissions",
+    "labelEn": "Commissions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5005",
+    "group": "50",
+    "labelFr": "Prestations des assurances sociales",
+    "labelEn": "Social insurance benefits",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5006",
+    "group": "50",
+    "labelFr": "Mise à disposition de personnel",
+    "labelEn": "Provision of personnel",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5007",
+    "group": "50",
+    "labelFr": "Charges sociales",
+    "labelEn": "Social insurance expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5008",
+    "group": "50",
+    "labelFr": "Autres charges de personnel",
+    "labelEn": "Other personnel expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5009",
+    "group": "50",
+    "labelFr": "Prestations de tiers",
+    "labelEn": "Benefits from third parties",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5070",
+    "group": "50",
+    "labelFr": "AVS,",
+    "labelEn": "Al, APG, AC AHV, IV, EO, ALV",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5071",
+    "group": "50",
+    "labelFr": "Caisse d'allocations familiales (CAF)",
+    "labelEn": "Family allowance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5072",
+    "group": "50",
+    "labelFr": "Prévoyance professionnelle",
+    "labelEn": "Pension funds",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5073",
+    "group": "50",
+    "labelFr": "Assurance-accidents",
+    "labelEn": "Accident insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5074",
+    "group": "50",
+    "labelFr": "Assurance maladie (indemnité journalière maladie)",
+    "labelEn": "Daily sickness benefits insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5079",
+    "group": "50",
+    "labelFr": "Impôt à la source",
+    "labelEn": "Tax at source",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5080",
+    "group": "50",
+    "labelFr": "Recherche de personnel",
+    "labelEn": "Staff recruitment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5081",
+    "group": "50",
+    "labelFr": "Formation et formation continue",
+    "labelEn": "Education and training",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5082",
+    "group": "50",
+    "labelFr": "Indemnités effectives",
+    "labelEn": "Reimbursements of actual expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5083",
+    "group": "50",
+    "labelFr": "Indemnités forfaitaires",
+    "labelEn": "Reimbursements of flat-rate expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5089",
+    "group": "50",
+    "labelFr": "Autres charges de personnel",
+    "labelEn": "Other personnel expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5090",
+    "group": "50",
+    "labelFr": "Employés temporaires",
+    "labelEn": "Temporary staff",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5200",
+    "group": "52",
+    "labelFr": "Salaires",
+    "labelEn": "Salaries",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5201",
+    "group": "52",
+    "labelFr": "Indemnités",
+    "labelEn": "Allowances",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5202",
+    "group": "52",
+    "labelFr": "Participations au bénéfice",
+    "labelEn": "Profit-sharing",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5203",
+    "group": "52",
+    "labelFr": "Commissions",
+    "labelEn": "Commissions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5205",
+    "group": "52",
+    "labelFr": "Prestations des assurances sociales",
+    "labelEn": "Social insurance benefits",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5206",
+    "group": "52",
+    "labelFr": "Mise à disposition de personnel",
+    "labelEn": "Provision of personnel",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5207",
+    "group": "52",
+    "labelFr": "Charges sociales",
+    "labelEn": "Social insurance expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5208",
+    "group": "52",
+    "labelFr": "Autres charges de personnel",
+    "labelEn": "Other personnel expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5209",
+    "group": "52",
+    "labelFr": "Prestations de tiers",
+    "labelEn": "Benefits from third parties",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5270",
+    "group": "52",
+    "labelFr": "AVS,",
+    "labelEn": "Al, APG, AC AHV, IV, EO, ALV",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5271",
+    "group": "52",
+    "labelFr": "Caisse d'allocations familiales (CAF)",
+    "labelEn": "Family allowance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5272",
+    "group": "52",
+    "labelFr": "Prévoyance professionnelle",
+    "labelEn": "Pension funds",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5273",
+    "group": "52",
+    "labelFr": "Assurance-accidents",
+    "labelEn": "Accident insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5274",
+    "group": "52",
+    "labelFr": "Assurance maladie (indemnité journalière maladie)",
+    "labelEn": "Daily sickness benefits insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5279",
+    "group": "52",
+    "labelFr": "Impôts à la source",
+    "labelEn": "Tax at source",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5280",
+    "group": "52",
+    "labelFr": "Recherche de personnel",
+    "labelEn": "Staff recruitment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5281",
+    "group": "52",
+    "labelFr": "Formation et formation continue",
+    "labelEn": "Education and training",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5282",
+    "group": "52",
+    "labelFr": "Indemnités effectives",
+    "labelEn": "Reimbursements of actual expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5283",
+    "group": "52",
+    "labelFr": "Indemnités forfaitaires",
+    "labelEn": "Reimbursements of flat-rate expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5289",
+    "group": "52",
+    "labelFr": "Autres charges de personnel",
+    "labelEn": "Other personnel expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5290",
+    "group": "52",
+    "labelFr": "Employés temporaires",
+    "labelEn": "Temporary staff",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5400",
+    "group": "54",
+    "labelFr": "Salaires",
+    "labelEn": "Salaries",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5401",
+    "group": "54",
+    "labelFr": "Indemnités",
+    "labelEn": "Allowances",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5402",
+    "group": "54",
+    "labelFr": "Participations au bénéfice",
+    "labelEn": "Profit-sharing",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5403",
+    "group": "54",
+    "labelFr": "Commissions",
+    "labelEn": "Commissions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5405",
+    "group": "54",
+    "labelFr": "Prestations des assurances sociales",
+    "labelEn": "Social insurance benefits",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5406",
+    "group": "54",
+    "labelFr": "Mise à disposition de personnel",
+    "labelEn": "Provision of personnel",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5407",
+    "group": "54",
+    "labelFr": "Charges sociales",
+    "labelEn": "Social insurance expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5408",
+    "group": "54",
+    "labelFr": "Autres charges de personnel",
+    "labelEn": "Other personnel expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5409",
+    "group": "54",
+    "labelFr": "Prestations de tiers",
+    "labelEn": "Benefits from third parties",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5470",
+    "group": "54",
+    "labelFr": "AVS,",
+    "labelEn": "Al, APG, AC AHV, IV, EO, ALV",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5471",
+    "group": "54",
+    "labelFr": "Caisse d'allocations familiales (CAF)",
+    "labelEn": "Family allowance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5472",
+    "group": "54",
+    "labelFr": "Prévoyance professionnelle",
+    "labelEn": "Pension funds",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5473",
+    "group": "54",
+    "labelFr": "Assurance-accidents",
+    "labelEn": "Accident insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5474",
+    "group": "54",
+    "labelFr": "Assurance maladie (indemnité journalière maladie)",
+    "labelEn": "Daily sickness benefits insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5479",
+    "group": "54",
+    "labelFr": "Impôts à la source",
+    "labelEn": "Tax at source",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5480",
+    "group": "54",
+    "labelFr": "Recherche de personnel",
+    "labelEn": "Staff recruitment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5481",
+    "group": "54",
+    "labelFr": "Formation et formation continue",
+    "labelEn": "Education and training",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5482",
+    "group": "54",
+    "labelFr": "Indemnités effectives",
+    "labelEn": "Reimbursements of actual expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5483",
+    "group": "54",
+    "labelFr": "Indemnités forfaitaires",
+    "labelEn": "Reimbursements of flat-rate expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5489",
+    "group": "54",
+    "labelFr": "Autres charges de personnel",
+    "labelEn": "Other personnel expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5490",
+    "group": "54",
+    "labelFr": "Employés temporaires",
+    "labelEn": "Temporary staff",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5600",
+    "group": "56",
+    "labelFr": "Salaires",
+    "labelEn": "Salaries",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5601",
+    "group": "56",
+    "labelFr": "Indemnités",
+    "labelEn": "Allowances",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5602",
+    "group": "56",
+    "labelFr": "Participations au bénéfice",
+    "labelEn": "Profit-sharing",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5603",
+    "group": "56",
+    "labelFr": "Salaires des membres de la direction de l'entreprise",
+    "labelEn": "Salaries to participants and members of the Executive Board",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5604",
+    "group": "56",
+    "labelFr": "Salaires/indemnités des membres du conseil d'administration",
+    "labelEn": "Board of Directors fees",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5605",
+    "group": "56",
+    "labelFr": "Prestations des assurances sociales",
+    "labelEn": "Social insurance benefits",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5606",
+    "group": "56",
+    "labelFr": "Mise à disposition de personnel",
+    "labelEn": "Provision of personnel",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5607",
+    "group": "56",
+    "labelFr": "Charges sociales",
+    "labelEn": "Social insurance expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5608",
+    "group": "56",
+    "labelFr": "Autres charges de personnel",
+    "labelEn": "Other personnel expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5609",
+    "group": "56",
+    "labelFr": "Prestations de tiers",
+    "labelEn": "Benefits from third parties",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5670",
+    "group": "56",
+    "labelFr": "AVS,",
+    "labelEn": "Al, APG, AC AHV, IV, EO, ALV",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5671",
+    "group": "56",
+    "labelFr": "Caisse d'allocations familiales (CAF)",
+    "labelEn": "Family allowance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5672",
+    "group": "56",
+    "labelFr": "Prévoyance professionnelle",
+    "labelEn": "Pension funds",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5673",
+    "group": "56",
+    "labelFr": "Assurance-accidents",
+    "labelEn": "Accident insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5674",
+    "group": "56",
+    "labelFr": "Assurance maladie (indemnité journalière maladie)",
+    "labelEn": "Daily sickness benefits insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5679",
+    "group": "56",
+    "labelFr": "Impôts à la source",
+    "labelEn": "Tax at source",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5680",
+    "group": "56",
+    "labelFr": "Recherche de personnel",
+    "labelEn": "Staff recruitment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5681",
+    "group": "56",
+    "labelFr": "Formation et formation continue",
+    "labelEn": "Education and training",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5682",
+    "group": "56",
+    "labelFr": "Indemnités effectives",
+    "labelEn": "Reimbursements of actual expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5683",
+    "group": "56",
+    "labelFr": "Indemnités forfaitaires",
+    "labelEn": "Reimbursements of flat-rate expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5689",
+    "group": "56",
+    "labelFr": "Autres charges de personnel",
+    "labelEn": "Other personnel expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5690",
+    "group": "56",
+    "labelFr": "Employés temporaires",
+    "labelEn": "Temporary staff",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5700",
+    "group": "57",
+    "labelFr": "AVS,",
+    "labelEn": "Al, APG, AC AHV, IV, EO, ALV",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5701",
+    "group": "57",
+    "labelFr": "AVS,",
+    "labelEn": "Al, APG titulaire AHV, IV, EO holder",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5710",
+    "group": "57",
+    "labelFr": "Caisse d'allocations familiales (CAF)",
+    "labelEn": "Family allowance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5720",
+    "group": "57",
+    "labelFr": "Prévoyance professionnelle",
+    "labelEn": "Pension funds",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5730",
+    "group": "57",
+    "labelFr": "Assurance-accidents",
+    "labelEn": "Accident insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5740",
+    "group": "57",
+    "labelFr": "Assurance maladie (indemnité journalière maladie)",
+    "labelEn": "Daily sickness benefits insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5790",
+    "group": "57",
+    "labelFr": "Impôts à la source",
+    "labelEn": "Tax at source",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5800",
+    "group": "58",
+    "labelFr": "Annonces pour recherche de personnel",
+    "labelEn": "Advertisements of job openings",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5801",
+    "group": "58",
+    "labelFr": "Commissions pour recherche de personnel",
+    "labelEn": "Recruitment commissions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5810",
+    "group": "58",
+    "labelFr": "Formation obligatoire",
+    "labelEn": "Training necessary for business needs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5811",
+    "group": "58",
+    "labelFr": "Formation continue/perfectionnement",
+    "labelEn": "Professional training",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5820",
+    "group": "58",
+    "labelFr": "Frais de voyages",
+    "labelEn": "Travel expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5821",
+    "group": "58",
+    "labelFr": "Frais de repas",
+    "labelEn": "Food expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5822",
+    "group": "58",
+    "labelFr": "Frais de logement",
+    "labelEn": "Accommodation expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5830",
+    "group": "58",
+    "labelFr": "Indemnités forfaitaires pour les cadres",
+    "labelEn": "Management flat-rate expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5831",
+    "group": "58",
+    "labelFr": "Indemnités forfaitaires pour les membres de la direction de l'entreprise",
+    "labelEn": "Executive Board flat-rate expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5832",
+    "group": "58",
+    "labelFr": "Indemnités forfaitaires pour les membres du conseil d'administration",
+    "labelEn": "Board of Directors flat-rate expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5840",
+    "group": "58",
+    "labelFr": "Repas au restaurant d'entreprise",
+    "labelEn": "Staff canteen meals",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5841",
+    "group": "58",
+    "labelFr": "Boissons au restaurant d'entreprise",
+    "labelEn": "Staff canteen beverages",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5845",
+    "group": "58",
+    "labelFr": "Produits des repas (comme diminution de charges)",
+    "labelEn": "Revenues for meals (as expense reduction)",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5846",
+    "group": "58",
+    "labelFr": "Produits des boissons (comme diminution de charges)",
+    "labelEn": "Revenues for beverages (as expense reduction)",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5880",
+    "group": "58",
+    "labelFr": "Manifestations en faveur du personnel",
+    "labelEn": "Staff events",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5881",
+    "group": "58",
+    "labelFr": "Frais liés à des activités sportives",
+    "labelEn": "Company sports group",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5890",
+    "group": "58",
+    "labelFr": "Parts privées sur charges de personnel",
+    "labelEn": "Private share of personnel expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5900",
+    "group": "59",
+    "labelFr": "Prestations de tiers",
+    "labelEn": "Benefits from third parties",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "5901",
+    "group": "59",
+    "labelFr": "Employés temporaires",
+    "labelEn": "Temporary staff",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6000",
+    "group": "60",
+    "labelFr": "Loyer des usines",
+    "labelEn": "Factory rent",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6001",
+    "group": "60",
+    "labelFr": "Loyer des ateliers",
+    "labelEn": "Workshop and atelier rent",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6002",
+    "group": "60",
+    "labelFr": "Loyer des entrepôts",
+    "labelEn": "Warehouse rent",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6003",
+    "group": "60",
+    "labelFr": "Loyer des bâtiments d'exposition et de vente",
+    "labelEn": "Showrooms and shop floors rent",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6004",
+    "group": "60",
+    "labelFr": "Loyer des bâtiments de bureau et d'administration",
+    "labelEn": "Office and administration rooms rent",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6005",
+    "group": "60",
+    "labelFr": "Loyer des locaux du personnel",
+    "labelEn": "Staff rooms rent",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6006",
+    "group": "60",
+    "labelFr": "Loyer du garage, du parking",
+    "labelEn": "Garage, parking rent",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6030",
+    "group": "60",
+    "labelFr": "Charges accessoires des usines",
+    "labelEn": "Factory additional costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6031",
+    "group": "60",
+    "labelFr": "Charges accessoires des ateliers",
+    "labelEn": "Workshop and atelier additional costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6032",
+    "group": "60",
+    "labelFr": "Charges accessoires des entrepôts",
+    "labelEn": "Warehouse additional costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6033",
+    "group": "60",
+    "labelFr": "Charges accessoires des bâtiments d'exposition et de vente",
+    "labelEn": "Showrooms and shop floors additional costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6034",
+    "group": "60",
+    "labelFr": "Charges accessoires des bâtiments de bureau et d'administration",
+    "labelEn": "Office and administration rooms additional costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6035",
+    "group": "60",
+    "labelFr": "Charges accessoires des locaux du personnel",
+    "labelEn": "Staff rooms additional costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6036",
+    "group": "60",
+    "labelFr": "Charges accessoires du garage",
+    "labelEn": "Garage additional costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6030(2)",
+    "group": "60",
+    "labelFr": "Charges accessoires de chauffage",
+    "labelEn": "Heating additional costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6031(2)",
+    "group": "60",
+    "labelFr": "Charges accessoires d'électricité, de gaz, d'eau",
+    "labelEn": "Electricity, gas, water additional costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6032(2)",
+    "group": "60",
+    "labelFr": "Charges accessoires de conciergerie",
+    "labelEn": "Caretaker additional costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6040",
+    "group": "60",
+    "labelFr": "Nettoyage des usines",
+    "labelEn": "Factory cleaning",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6041",
+    "group": "60",
+    "labelFr": "Nettoyage des ateliers",
+    "labelEn": "Workshop and atelier cleaning",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6042",
+    "group": "60",
+    "labelFr": "Nettoyage des entrepôts",
+    "labelEn": "Warehouse cleaning",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6043",
+    "group": "60",
+    "labelFr": "Nettoyage des bâtiments d'exposition et de vente",
+    "labelEn": "Showrooms and shop floors cleaning",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6044",
+    "group": "60",
+    "labelFr": "Nettoyage des bâtiments de bureau et d’administration",
+    "labelEn": "Office and administration rooms cleaning",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6045",
+    "group": "60",
+    "labelFr": "Nettoyage des locaux du personnel",
+    "labelEn": "Staff rooms cleaning",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6040(2)",
+    "group": "60",
+    "labelFr": "Personnel de nettoyage",
+    "labelEn": "Cleaning staff",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6041(2)",
+    "group": "60",
+    "labelFr": "Nettoyage effectué par des tiers",
+    "labelEn": "Third-party cleaning services",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6042(2)",
+    "group": "60",
+    "labelFr": "Matériel de nettoyage",
+    "labelEn": "Cleaning materials",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6050",
+    "group": "60",
+    "labelFr": "Entretien des usines",
+    "labelEn": "Factory maintenance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6051",
+    "group": "60",
+    "labelFr": "Entretien des ateliers",
+    "labelEn": "Workshop and atelier maintenance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6052",
+    "group": "60",
+    "labelFr": "Entretien des entrepôts",
+    "labelEn": "Warehouse maintenance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6053",
+    "group": "60",
+    "labelFr": "Entretien des bâtiments d'exposition et de vente",
+    "labelEn": "Showrooms and shop floors maintenance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6054",
+    "group": "60",
+    "labelFr": "Entretien des bâtiments de bureau et d'administration",
+    "labelEn": "Office and administration rooms maintenance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6055",
+    "group": "60",
+    "labelFr": "Entretien des locaux du personnel",
+    "labelEn": "Staff rooms maintenance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6056",
+    "group": "60",
+    "labelFr": "Entretien du garage",
+    "labelEn": "Garage maintenance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6050(2)",
+    "group": "60",
+    "labelFr": "Réparation",
+    "labelEn": "Repairs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6051(2)",
+    "group": "60",
+    "labelFr": "Investissements de moindre importance",
+    "labelEn": "Small investments",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6052(2)",
+    "group": "60",
+    "labelFr": "Abonnements d'entretien",
+    "labelEn": "Subscription services",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6059",
+    "group": "60",
+    "labelFr": "Prestations d'assurance",
+    "labelEn": "Insurance services",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6060",
+    "group": "60",
+    "labelFr": "Usine en leasing",
+    "labelEn": "Factory leasing",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6061",
+    "group": "60",
+    "labelFr": "Atelier en leasing",
+    "labelEn": "Workshop and atelier leasing",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6062",
+    "group": "60",
+    "labelFr": "Entrepôt en leasing",
+    "labelEn": "Warehouse leasing",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6063",
+    "group": "60",
+    "labelFr": "Bâtiments d'exposition et de vente en leasing",
+    "labelEn": "Showrooms and shop floors leasing",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6064",
+    "group": "60",
+    "labelFr": "Bâtiments de bureau et d'administration en leasing",
+    "labelEn": "Office and administration rooms leasing",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6065",
+    "group": "60",
+    "labelFr": "Locaux de personnel en leasing",
+    "labelEn": "Staff rooms leasing",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6066",
+    "group": "60",
+    "labelFr": "Garage en leasing",
+    "labelEn": "Garage leasing",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6070",
+    "group": "60",
+    "labelFr": "Rente du droit de superficie",
+    "labelEn": "Ground rents",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6090",
+    "group": "60",
+    "labelFr": "Parts privées sur charges de chauffage, d’éclairage, de nettoyage",
+    "labelEn": "Private share of facility expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6100",
+    "group": "61",
+    "labelFr": "ERR machines et appareils de production",
+    "labelEn": "MRR machines and apparatuses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6101",
+    "group": "61",
+    "labelFr": "ERR mobilier et installations",
+    "labelEn": "MRR furniture and equipment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6102",
+    "group": "61",
+    "labelFr": "ERR outils et matériel",
+    "labelEn": "MRR tools and devices",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6105",
+    "group": "61",
+    "labelFr": "Leasing équipement de production",
+    "labelEn": "Leasing of manufacturing plants",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6110",
+    "group": "61",
+    "labelFr": "ERR installations des magasins",
+    "labelEn": "MRR shop equipment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6111",
+    "group": "61",
+    "labelFr": "ERR installations de locaux d'exposition",
+    "labelEn": "MRR showroom equipment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6115",
+    "group": "61",
+    "labelFr": "Leasing du mobilier de vente",
+    "labelEn": "Leasing of sales equipment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6120",
+    "group": "61",
+    "labelFr": "ERR dépôt central",
+    "labelEn": "MRR central warehouse",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6121",
+    "group": "61",
+    "labelFr": "ERR dépôt à",
+    "labelEn": "MRR warehouse",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6125",
+    "group": "61",
+    "labelFr": "Leasing d'équipements de dépôts",
+    "labelEn": "Leasing of warehouse equipment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6130",
+    "group": "61",
+    "labelFr": "ERR mobilier de bureau",
+    "labelEn": "MRR office furniture",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6131",
+    "group": "61",
+    "labelFr": "ERR machines de bureau",
+    "labelEn": "MRR office machines",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6132",
+    "group": "61",
+    "labelFr": "ERR informatique",
+    "labelEn": "MRR information technology",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6133",
+    "group": "61",
+    "labelFr": "ERR technologies de communication",
+    "labelEn": "MRR communication technology",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6135",
+    "group": "61",
+    "labelFr": "Leasing d'installations de bureau",
+    "labelEn": "Leasing of office equipment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6140",
+    "group": "61",
+    "labelFr": "ERR mobilier du restaurant du personnel",
+    "labelEn": "MRR staff canteen furniture",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6141",
+    "group": "61",
+    "labelFr": "ERR mobilier des chambres du personnel",
+    "labelEn": "MRR staff rooms furniture",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6145",
+    "group": "61",
+    "labelFr": "Leasing des installations du personnel",
+    "labelEn": "Leasing of staff equipment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6190",
+    "group": "61",
+    "labelFr": "Prestations d'assurance",
+    "labelEn": "Insurance services",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6200",
+    "group": "62",
+    "labelFr": "Réparation",
+    "labelEn": "Repairs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6201",
+    "group": "62",
+    "labelFr": "Service",
+    "labelEn": "Services",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6202",
+    "group": "62",
+    "labelFr": "Nettoyage",
+    "labelEn": "Cleaning",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6210",
+    "group": "62",
+    "labelFr": "Essence",
+    "labelEn": "Petrol",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6211",
+    "group": "62",
+    "labelFr": "Diesel",
+    "labelEn": "Diesel",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6212",
+    "group": "62",
+    "labelFr": "Huile",
+    "labelEn": "Oil",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6213",
+    "group": "62",
+    "labelFr": "Électricité",
+    "labelEn": "Electricity",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6220",
+    "group": "62",
+    "labelFr": "Assurance responsabilité civile",
+    "labelEn": "Liability insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6221",
+    "group": "62",
+    "labelFr": "Assurance casco",
+    "labelEn": "Comprehensive insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6222",
+    "group": "62",
+    "labelFr": "Assurance protection juridique",
+    "labelEn": "Legal protection insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6230",
+    "group": "62",
+    "labelFr": "Taxes de circulation",
+    "labelEn": "Road taxes",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6231",
+    "group": "62",
+    "labelFr": "Cotisations",
+    "labelEn": "Contributions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6232",
+    "group": "62",
+    "labelFr": "Taxes",
+    "labelEn": "Vehicle taxes",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6260",
+    "group": "62",
+    "labelFr": "Véhicules en leasing",
+    "labelEn": "Vehicle leasing",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6264",
+    "group": "62",
+    "labelFr": "Location de véhicules",
+    "labelEn": "Vehicle rentals",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6270",
+    "group": "62",
+    "labelFr": "Parts privées sur charges de véhicules",
+    "labelEn": "Private share of vehicle expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6280",
+    "group": "62",
+    "labelFr": "Frets",
+    "labelEn": "Freights",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6281",
+    "group": "62",
+    "labelFr": "Frais de transport",
+    "labelEn": "Freight forwarder",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6282",
+    "group": "62",
+    "labelFr": "Cargo domicile",
+    "labelEn": "Cargo domicile",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6300",
+    "group": "63",
+    "labelFr": "Assurance pour dommages naturels",
+    "labelEn": "Natural hazard insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6301",
+    "group": "63",
+    "labelFr": "Assurance pour bris de glace",
+    "labelEn": "Glass breakage insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6302",
+    "group": "63",
+    "labelFr": "Assurance vols",
+    "labelEn": "Theft insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6310",
+    "group": "63",
+    "labelFr": "Assurance responsabilité civile",
+    "labelEn": "Business liability insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6311",
+    "group": "63",
+    "labelFr": "Assurance garantie",
+    "labelEn": "Warranty insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6312",
+    "group": "63",
+    "labelFr": "Assurance protection juridique",
+    "labelEn": "Legal protection insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6320",
+    "group": "63",
+    "labelFr": "Assurance pour pertes d'exploitation",
+    "labelEn": "Business interruption insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6330",
+    "group": "63",
+    "labelFr": "Primes pour assurance-vie",
+    "labelEn": "Death risk insurance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6331",
+    "group": "63",
+    "labelFr": "Prime de cautionnement",
+    "labelEn": "Guarantee premiums",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6360",
+    "group": "63",
+    "labelFr": "Droits",
+    "labelEn": "Charges",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6361",
+    "group": "63",
+    "labelFr": "Taxes",
+    "labelEn": "Fees",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6370",
+    "group": "63",
+    "labelFr": "Autorisations",
+    "labelEn": "Permits",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6371",
+    "group": "63",
+    "labelFr": "Patentes",
+    "labelEn": "Operating licences",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6400",
+    "group": "64",
+    "labelFr": "Courant fort",
+    "labelEn": "Industrial electricity",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6401",
+    "group": "64",
+    "labelFr": "Courant faible",
+    "labelEn": "Heat electricity",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6402",
+    "group": "64",
+    "labelFr": "Eclairage",
+    "labelEn": "Electricity for lighting",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6410",
+    "group": "64",
+    "labelFr": "Gaz naturel",
+    "labelEn": "Natural gas",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6411",
+    "group": "64",
+    "labelFr": "Gaz liquide en bonbonnes",
+    "labelEn": "Liquid gas in cylinders",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6420",
+    "group": "64",
+    "labelFr": "Mazout",
+    "labelEn": "Heating oil",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6421",
+    "group": "64",
+    "labelFr": "Charbon, briquettes, bois",
+    "labelEn": "Coal, briquettes, wood",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6430",
+    "group": "64",
+    "labelFr": "Eau",
+    "labelEn": "Water",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6460",
+    "group": "64",
+    "labelFr": "Evacuation de déchets",
+    "labelEn": "Garbage collection",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6461",
+    "group": "64",
+    "labelFr": "Evacuation de déchets spéciaux",
+    "labelEn": "Hazardous waste collection",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6462",
+    "group": "64",
+    "labelFr": "Eaux usées",
+    "labelEn": "Waste water",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6500",
+    "group": "65",
+    "labelFr": "Matériel de bureau",
+    "labelEn": "Office equipment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6501",
+    "group": "65",
+    "labelFr": "Imprimés",
+    "labelEn": "Printers",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6502",
+    "group": "65",
+    "labelFr": "Photocopies",
+    "labelEn": "Photocopies",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6503",
+    "group": "65",
+    "labelFr": "Littérature spécialisée, journaux, magazines",
+    "labelEn": "Specialist publications, newspapers, periodicals",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6510",
+    "group": "65",
+    "labelFr": "Téléphone",
+    "labelEn": "Telephone",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6512",
+    "group": "65",
+    "labelFr": "Internet",
+    "labelEn": "Internet",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6513",
+    "group": "65",
+    "labelFr": "Frais de port",
+    "labelEn": "Postages",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6520",
+    "group": "65",
+    "labelFr": "Cotisations",
+    "labelEn": "Contributions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6521",
+    "group": "65",
+    "labelFr": "Dons et cadeaux",
+    "labelEn": "Donations, grants",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6522",
+    "group": "65",
+    "labelFr": "Pourboires",
+    "labelEn": "Tips",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6530",
+    "group": "65",
+    "labelFr": "Honoraires pour la tenue de la comptabilité",
+    "labelEn": "Bookkeeping",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6531",
+    "group": "65",
+    "labelFr": "Honoraires pour conseil en gestion d'entreprise",
+    "labelEn": "Business consultancy",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6532",
+    "group": "65",
+    "labelFr": "Honoraires pour conseil juridique",
+    "labelEn": "Legal advice",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6540",
+    "group": "65",
+    "labelFr": "Charges du conseil d'administration",
+    "labelEn": "Board of Directors expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6541",
+    "group": "65",
+    "labelFr": "Charges de l'assemblée générale",
+    "labelEn": "General meeting expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6542",
+    "group": "65",
+    "labelFr": "Charges de l'organe de révision",
+    "labelEn": "Auditing expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6550",
+    "group": "65",
+    "labelFr": "Frais de fondation, d'augmentation de capital et d'organisation",
+    "labelEn": "Formation, capital increase and organisational expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6551",
+    "group": "65",
+    "labelFr": "Frais de recouvrement et exécution",
+    "labelEn": "Collection and execution costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6555",
+    "group": "65",
+    "labelFr": "Commissions de gestion",
+    "labelEn": "Management fees",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6559",
+    "group": "65",
+    "labelFr": "Autres frais d'administration",
+    "labelEn": "Other administration costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6560",
+    "group": "65",
+    "labelFr": "Parts privées sur charges d'administration",
+    "labelEn": "Private share of administration costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6570",
+    "group": "65",
+    "labelFr": "Leasing",
+    "labelEn": "Hardware Hardware leasing",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6571",
+    "group": "65",
+    "labelFr": "Leasing",
+    "labelEn": "Software Software leasing",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6572",
+    "group": "65",
+    "labelFr": "Location",
+    "labelEn": "Hardware Hardware rent",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6573",
+    "group": "65",
+    "labelFr": "Location",
+    "labelEn": "Software Software rent",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6580",
+    "group": "65",
+    "labelFr": "Charges de licences et de mises à jour",
+    "labelEn": "Licenses and updates expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6581",
+    "group": "65",
+    "labelFr": "Maintenance/Hotline hardware",
+    "labelEn": "Hardware maintenance/hotline",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6582",
+    "group": "65",
+    "labelFr": "Maintenance/Hotline software",
+    "labelEn": "Software maintenance/hotline",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6583",
+    "group": "65",
+    "labelFr": "Consommables",
+    "labelEn": "Consumables",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6585",
+    "group": "65",
+    "labelFr": "Frais de réseau informatique",
+    "labelEn": "Dedicated phone line expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6590",
+    "group": "65",
+    "labelFr": "Conseils en développement de stratégie",
+    "labelEn": "Basic advice",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6591",
+    "group": "65",
+    "labelFr": "Développement individualisé, adaptation individualisée",
+    "labelEn": "Individual development, individual adjustments",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6592",
+    "group": "65",
+    "labelFr": "Charges d'installation",
+    "labelEn": "Implementation costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6590(2)",
+    "group": "65",
+    "labelFr": "Développement",
+    "labelEn": "Projet informatique A IT development - project",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6600",
+    "group": "66",
+    "labelFr": "Publicité dans les journaux",
+    "labelEn": "Advertisements",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6601",
+    "group": "66",
+    "labelFr": "Publicité à la radio",
+    "labelEn": "Radio advertising",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6602",
+    "group": "66",
+    "labelFr": "Publicité à la télévision",
+    "labelEn": "TV advertising",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6604",
+    "group": "66",
+    "labelFr": "Publicité sur Internet et médias sociaux",
+    "labelEn": "Internet and social media",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6610",
+    "group": "66",
+    "labelFr": "Imprimés publicitaires, matériel de publicité",
+    "labelEn": "Printed advertisements, advertising material",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6611",
+    "group": "66",
+    "labelFr": "Articles de publicité, échantillons, affiches et affichages électroniques",
+    "labelEn": "Advertising items, samples, billboards and electronic adverts",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6620",
+    "group": "66",
+    "labelFr": "Vitrines, décoration",
+    "labelEn": "Shop windows, decorations",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6621",
+    "group": "66",
+    "labelFr": "Foires, expositions",
+    "labelEn": "Trade fairs, exhibitions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6640",
+    "group": "66",
+    "labelFr": "Frais de déplacement",
+    "labelEn": "Expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6641",
+    "group": "66",
+    "labelFr": "Service à la clientèle",
+    "labelEn": "Customer care",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6642",
+    "group": "66",
+    "labelFr": "Cadeaux à la clientèle",
+    "labelEn": "Gifts to customers",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6660",
+    "group": "66",
+    "labelFr": "Annonces publicitaires",
+    "labelEn": "Advertising contributions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6661",
+    "group": "66",
+    "labelFr": "Sponsoring",
+    "labelEn": "Sponsoring",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6670",
+    "group": "66",
+    "labelFr": "Manifestations en faveur de la clientèle",
+    "labelEn": "Customer events",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6671",
+    "group": "66",
+    "labelFr": "Contacts avec les médias",
+    "labelEn": "Media contacts",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6672",
+    "group": "66",
+    "labelFr": "Anniversaires de l'entreprise",
+    "labelEn": "Corporate anniversaries",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6680",
+    "group": "66",
+    "labelFr": "Conseils en publicité",
+    "labelEn": "Advertising consultancy",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6681",
+    "group": "66",
+    "labelFr": "Etudes de marché",
+    "labelEn": "Market analysis",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6690",
+    "group": "66",
+    "labelFr": "Charges de publicité comme prélèvements à titre privé",
+    "labelEn": "Private share of advertising expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6700",
+    "group": "67",
+    "labelFr": "Informations économiques",
+    "labelEn": "Business information",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6701",
+    "group": "67",
+    "labelFr": "Poursuites",
+    "labelEn": "Debt collection",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6710",
+    "group": "67",
+    "labelFr": "Sécurité",
+    "labelEn": "Operational safety",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6711",
+    "group": "67",
+    "labelFr": "Surveillance",
+    "labelEn": "Surveillance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6720",
+    "group": "67",
+    "labelFr": "Recherche",
+    "labelEn": "Projet A Project A research",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6721",
+    "group": "67",
+    "labelFr": "Développement",
+    "labelEn": "Projet A Project A development",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6740",
+    "group": "67",
+    "labelFr": "Correction de l'impôt préalable (lors d’utilisation mixte)",
+    "labelEn": "Input tax correction (in the case of mixed use)",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6790",
+    "group": "67",
+    "labelFr": "Autres charges d'exploitation",
+    "labelEn": "Other operating expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6791",
+    "group": "67",
+    "labelFr": "Prélèvements à titre privé",
+    "labelEn": "Private shares",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6800",
+    "group": "68",
+    "labelFr": "Ajustement de la valeur des titres des actifs immobilisés",
+    "labelEn": "Fixed assets securities value adjustments",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6801",
+    "group": "68",
+    "labelFr": "Ajustement de la valeur des autres immobilisations financières",
+    "labelEn": "Other financial assets value adjustments",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6804",
+    "group": "68",
+    "labelFr": "Ajustement de la valeur des dettes à long terme envers des tiers",
+    "labelEn": "Long-term receivables towards third parties value adjustments",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6805",
+    "group": "68",
+    "labelFr": "Ajustement de la valeur des dettes à long terme envers des participations",
+    "labelEn": "Long-term receivables towards participations value adjustments",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6806",
+    "group": "68",
+    "labelFr": "Ajustement de la valeur des dettes à long terme envers les actionnaires",
+    "labelEn": "Long-term receivables towards shareholders value adjustments",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6810",
+    "group": "68",
+    "labelFr": "Ajustement de la valeur de la participation",
+    "labelEn": "Participation A value adjustments",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6820",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des machines et appareils",
+    "labelEn": "Depreciation and value adjustments to machinery and equipment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6821",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur du mobilier et des installations",
+    "labelEn": "Depreciation and value adjustments to furniture and installations",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6822",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des machines de bureau, informatique et système de communication",
+    "labelEn": "Depreciation and value adjustments to office machines, information and communication technology",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6823",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des véhicules",
+    "labelEn": "Depreciation and value adjustments to vehicles",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6824",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des ateliers et équipements",
+    "labelEn": "Depreciation and value adjustments to tools and equipment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6825",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des équipements d'entrepôts",
+    "labelEn": "Depreciation and value adjustments to storage facilities",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6827",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des installations fixes et équipements",
+    "labelEn": "Depreciation and value adjustments to fixed facilities and installations",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6829",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des autres équipements",
+    "labelEn": "Depreciation and value adjustments to other movable tangible assets",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6830",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des immeubles d'exploitation",
+    "labelEn": "Depreciation and value adjustments to commercial properties",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6831",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des usines",
+    "labelEn": "Depreciation and value adjustments to factories",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6832",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des ateliers et équipements",
+    "labelEn": "Depreciation and value adjustments to workshops and ateliers",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6833",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des entrepôts",
+    "labelEn": "Depreciation and value adjustments to warehouses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6834",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des bâtiments d’exposition et de vente",
+    "labelEn": "Depreciation and value adjustments to exhibition and sales buildings",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6835",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des bâtiments administratifs",
+    "labelEn": "Depreciation and value adjustments to office and administration buildings",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6836",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des immeubles d'habitation",
+    "labelEn": "Depreciation and value adjustments to residential buildings",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6837",
+    "group": "68",
+    "labelFr": "Correction de la valeur des biens-fonds non bâtis",
+    "labelEn": "Depreciation and value adjustments to undeveloped land",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6840",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des brevets, know-how, recettes de fabrication",
+    "labelEn": "Depreciation and value adjustments to patents, know- how and recipes",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6841",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des marques commerciales, échantillons, modèles, plans",
+    "labelEn": "Depreciation and value adjustments to brands, samples, models and plans",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6842",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des droits de licences, concessions, droits de jouissance, raisons de commerce",
+    "labelEn": "Depreciation and value adjustments to licences, concessions, rights of use and company rights",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6843",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des droits de propriété intellectuelle, droits d’édition, droits conventionnels",
+    "labelEn": "Depreciation and value adjustments to copyrights, publishing rights and contractual rights",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6845",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des développements spécifiques",
+    "labelEn": "Depreciation and value adjustments to development",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6847",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur du goodwill",
+    "labelEn": "Depreciation and value adjustments to goodwill",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6849",
+    "group": "68",
+    "labelFr": "Amortissement et ajustement de la valeur des autres immobilisations incorporelles",
+    "labelEn": "Depreciation and value adjustments to other intangible assets",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6900",
+    "group": "69",
+    "labelFr": "Intérêts débiteurs sur crédit bancaire",
+    "labelEn": "Bank interest fees",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6901",
+    "group": "69",
+    "labelFr": "Intérêts débiteurs sur emprunts",
+    "labelEn": "Loan interest fees",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6902",
+    "group": "69",
+    "labelFr": "Intérêts hypothécaires",
+    "labelEn": "Mortgage interest fees",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6903",
+    "group": "69",
+    "labelFr": "Intérêts moratoires",
+    "labelEn": "Default interest fees",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6904",
+    "group": "69",
+    "labelFr": "Charge d'intérêts pour acomptes de clients",
+    "labelEn": "Interest fees from advance payments received",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6905",
+    "group": "69",
+    "labelFr": "Charge d'intérêts sur leasing financier",
+    "labelEn": "Interest fees from financial leasing",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6920",
+    "group": "69",
+    "labelFr": "Charge d'intérêts sur personne concernée",
+    "labelEn": "Person involved A interest fees",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6921",
+    "group": "69",
+    "labelFr": "Charge d'intérêts sur conseil d'administration",
+    "labelEn": "Member of the Board of Directors A interest fees",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6922",
+    "group": "69",
+    "labelFr": "Charge d'intérêts sur membre de la direction",
+    "labelEn": "Member of Executive Board A interest fees",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6923",
+    "group": "69",
+    "labelFr": "Charge d'intérêts sur société du groupe",
+    "labelEn": "Group company A interest fees",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6924",
+    "group": "69",
+    "labelFr": "Charge d'intérêts sur personne proche",
+    "labelEn": "Close person A interest fees",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6930",
+    "group": "69",
+    "labelFr": "Charge d'intérêts sur emprunts auprès d'institutions de prévoyance professionnelle",
+    "labelEn": "Pension funds loans interest fees",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6940",
+    "group": "69",
+    "labelFr": "Frais bancaires",
+    "labelEn": "Bank charges",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6941",
+    "group": "69",
+    "labelFr": "Droits de garde",
+    "labelEn": "Custody fees",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6942",
+    "group": "69",
+    "labelFr": "Pertes sur trésorerie et titres avec cours boursier",
+    "labelEn": "Exchange losses on short-term assets listed on the stock exchange",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6943",
+    "group": "69",
+    "labelFr": "Pertes de cours sur investissements financières",
+    "labelEn": "Exchange losses on financial assets",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6944",
+    "group": "69",
+    "labelFr": "Pertes de cours sur dettes rémunérées",
+    "labelEn": "Exchange losses on interest-bearing debts",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6945",
+    "group": "69",
+    "labelFr": "Comptes clients accordées",
+    "labelEn": "Granted customer accounts",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6946",
+    "group": "69",
+    "labelFr": "Perte de cours sur cryptomonnaies",
+    "labelEn": "Exchange loss on cryptocurrencies",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6947",
+    "group": "69",
+    "labelFr": "Commission d'affacturage",
+    "labelEn": "Factoring fee",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6949",
+    "group": "69",
+    "labelFr": "Pertes de change",
+    "labelEn": "Currency losses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6950",
+    "group": "69",
+    "labelFr": "Produits financiers sur avoirs en banque",
+    "labelEn": "Revenues from bank deposits",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6951",
+    "group": "69",
+    "labelFr": "Produits financiers sur avoirs à court terme",
+    "labelEn": "Revenues from short-term financial investments",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6952",
+    "group": "69",
+    "labelFr": "Produits financiers sur titres réalisables à court terme",
+    "labelEn": "Revenues from short-term securities",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6953",
+    "group": "69",
+    "labelFr": "Produits financiers sur autres placements à court terme",
+    "labelEn": "Revenues from other short-term assets",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6960",
+    "group": "69",
+    "labelFr": "Produits financiers sur titres",
+    "labelEn": "Revenues from fixed assets securities",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6961",
+    "group": "69",
+    "labelFr": "Produits financiers sur autres immobilisations financières",
+    "labelEn": "Revenues from other financial assets",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6962",
+    "group": "69",
+    "labelFr": "Produits financiers sur participations",
+    "labelEn": "Revenues from participations",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6963",
+    "group": "69",
+    "labelFr": "Produits financiers sur créances à long terme envers des tiers",
+    "labelEn": "Revenues from long-term receivables",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6980",
+    "group": "69",
+    "labelFr": "Produits du personne concernée",
+    "labelEn": "Revenues from person involved",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6981",
+    "group": "69",
+    "labelFr": "Produits du conseil d'administration",
+    "labelEn": "Revenues from member of the Board of Directors",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6982",
+    "group": "69",
+    "labelFr": "Produits du membre de la direction",
+    "labelEn": "Revenues from member of Executive Board",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6983",
+    "group": "69",
+    "labelFr": "Produits du société du groupe",
+    "labelEn": "Revenues from group company",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6984",
+    "group": "69",
+    "labelFr": "Produits du personne proche",
+    "labelEn": "Revenues from close person",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6990",
+    "group": "69",
+    "labelFr": "Produits financiers résultant d'intérêts moratoires et d'escomptes",
+    "labelEn": "Default interest income, remuneration interest",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6991",
+    "group": "69",
+    "labelFr": "Produits financiers sur acomptes versés",
+    "labelEn": "Revenue from advance payments to suppliers",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6992",
+    "group": "69",
+    "labelFr": "Gains sur titres détenus à court terme cotés en bourse",
+    "labelEn": "Exchange gains on short-term assets listed on the stock exchange",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6993",
+    "group": "69",
+    "labelFr": "Gains sur immobilisations financières",
+    "labelEn": "Exchange gains on financial assets",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6995",
+    "group": "69",
+    "labelFr": "Remises de fournisseurs",
+    "labelEn": "Discounts received from suppliers",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6996",
+    "group": "69",
+    "labelFr": "Gain de cours sur cryptomonnaies",
+    "labelEn": "Exchange gain on cryptocurrencies",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "6999",
+    "group": "69",
+    "labelFr": "Gains de change",
+    "labelEn": "Currency gains",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7000",
+    "group": "70",
+    "labelFr": "Produits bruts",
+    "labelEn": "Gross profits",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7009",
+    "group": "70",
+    "labelFr": "Diminutions de produits",
+    "labelEn": "Decrease in revenues",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7010",
+    "group": "70",
+    "labelFr": "Charges de matières",
+    "labelEn": "Material costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7011",
+    "group": "70",
+    "labelFr": "Charges de personnel",
+    "labelEn": "Personnel expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7012",
+    "group": "70",
+    "labelFr": "Charges de locaux",
+    "labelEn": "Facility expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7013",
+    "group": "70",
+    "labelFr": "Charges d'entretien, de réparations, de remplacements, leasing charges",
+    "labelEn": "Maintenance, repairs, replacements, leasing expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7014",
+    "group": "70",
+    "labelFr": "Charges de véhicules et de transport",
+    "labelEn": "Vehicle and transport expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7015",
+    "group": "70",
+    "labelFr": "Assurances-choses, droits, taxes, autorisations et patentes",
+    "labelEn": "Property insurance, charges, fees, permits",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7016",
+    "group": "70",
+    "labelFr": "Charges d'énergie et évacuation des déchets",
+    "labelEn": "Energy and disposal costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7017",
+    "group": "70",
+    "labelFr": "Charges d’administration et d'informatique",
+    "labelEn": "Administrative and IT expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7018",
+    "group": "70",
+    "labelFr": "Charges de publicité",
+    "labelEn": "Advertising expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7019",
+    "group": "70",
+    "labelFr": "Autres charges",
+    "labelEn": "Other expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7502",
+    "group": "75",
+    "labelFr": "Loyers de locaux d'exploitation",
+    "labelEn": "Rental income from commercial premises",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7503",
+    "group": "75",
+    "labelFr": "Loyers des appartements",
+    "labelEn": "Rental income from flats",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7504",
+    "group": "75",
+    "labelFr": "Loyers des garages",
+    "labelEn": "Rental income from garages",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7505",
+    "group": "75",
+    "labelFr": "Loyers (imposés par option)",
+    "labelEn": "Opted rental income",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7508",
+    "group": "75",
+    "labelFr": "Participation aux frais de chauffage et d'éclairage",
+    "labelEn": "Share of heating, lighting",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7509",
+    "group": "75",
+    "labelFr": "Autres revenus d'immeubles",
+    "labelEn": "Other real estate income",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7510",
+    "group": "75",
+    "labelFr": "Intérêts hypothécaires",
+    "labelEn": "Mortgage interest fees",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7511",
+    "group": "75",
+    "labelFr": "Entretien de l'immeuble",
+    "labelEn": "Real estate maintenance",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7512",
+    "group": "75",
+    "labelFr": "Droits, taxes, impôts fonciers",
+    "labelEn": "Charges, fees, property taxes",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7513",
+    "group": "75",
+    "labelFr": "Primes d'assurance",
+    "labelEn": "Insurance premiums",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7514",
+    "group": "75",
+    "labelFr": "Eau, eaux usées",
+    "labelEn": "Water, waste water",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7515",
+    "group": "75",
+    "labelFr": "Ordures, évacuation des déchets",
+    "labelEn": "Waste, disposal",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7516",
+    "group": "75",
+    "labelFr": "Charges d'administration",
+    "labelEn": "Administrative expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7517",
+    "group": "75",
+    "labelFr": "Chauffage, éclairage et eau",
+    "labelEn": "Heating, lighting, water",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7518",
+    "group": "75",
+    "labelFr": "Amortissements et correction de valeur",
+    "labelEn": "Depreciation and value adjustment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "7519",
+    "group": "75",
+    "labelFr": "Autres charges d'immeubles",
+    "labelEn": "Other real estate expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8000",
+    "group": "80",
+    "labelFr": "Charges hors exploitation",
+    "labelEn": "Non-operating costs",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8100",
+    "group": "80",
+    "labelFr": "Produits hors exploitation",
+    "labelEn": "Non-operating revenues",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8500",
+    "group": "85",
+    "labelFr": "Provisions exceptionnelles",
+    "labelEn": "Extraordinary provisions",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8501",
+    "group": "85",
+    "labelFr": "Amortissements et corrections exceptionnelles de la valeur",
+    "labelEn": "Extraordinary depreciation and value adjustment",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8503",
+    "group": "85",
+    "labelFr": "Pertes de change exceptionnelles",
+    "labelEn": "Extraordinary currency losses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8504",
+    "group": "85",
+    "labelFr": "Pertes exceptionnelles sur aliénations d’actifs immobilisés",
+    "labelEn": "Extraordinary losses on disposal of fixed assets",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8505",
+    "group": "85",
+    "labelFr": "Pertes exceptionnelles sur débiteurs",
+    "labelEn": "Extraordinary losses on receivables",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8506",
+    "group": "85",
+    "labelFr": "Indemnités pour préjudices",
+    "labelEn": "Inconvenience compensation payments",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8510",
+    "group": "85",
+    "labelFr": "Dissolutions de réserves",
+    "labelEn": "Dissolution of reserves",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8511",
+    "group": "85",
+    "labelFr": "Dissolutions exceptionnelles de provisions superflues",
+    "labelEn": "Dissolution of provisions no longer required",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8513",
+    "group": "85",
+    "labelFr": "Gains de change exceptionnels",
+    "labelEn": "Extraordinary currency gains",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8514",
+    "group": "85",
+    "labelFr": "Bénéfices exceptionnels sur aliénations d'actifs immobilisés",
+    "labelEn": "Extraordinary gains on disposal of fixed assets",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8515",
+    "group": "85",
+    "labelFr": "Subvention reçue (avec",
+    "labelEn": "TVA) Subsidies and other non-payments received with input tax reduction",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8516",
+    "group": "85",
+    "labelFr": "Subvention reçue (sans",
+    "labelEn": "TVA) Donations and other non-payments received without input tax reduction",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8517",
+    "group": "85",
+    "labelFr": "Indemnités reçues pour préjudices",
+    "labelEn": "Inconvenience compensation received",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8600",
+    "group": "85",
+    "labelFr": "Charges uniques",
+    "labelEn": "Non-recurring expenses",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8610",
+    "group": "85",
+    "labelFr": "Produits uniques",
+    "labelEn": "Non-recurring revenues",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8704",
+    "group": "85",
+    "labelFr": "Dotation à la réserve de contributions de l'employeur",
+    "labelEn": "Creation of employer contribution reserve",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8705",
+    "group": "85",
+    "labelFr": "Franchise",
+    "labelEn": "Deductibles",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8709",
+    "group": "85",
+    "labelFr": "Autres charges hors période",
+    "labelEn": "Other expenses unrelated to the period",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8710",
+    "group": "85",
+    "labelFr": "Produits de prestations d'assurance ou dommage- intérêts",
+    "labelEn": "Revenues from insurance services or indemnity payments",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8711",
+    "group": "85",
+    "labelFr": "Produits de ristournes",
+    "labelEn": "Revenues from refunds",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8712",
+    "group": "85",
+    "labelFr": "Produits de remboursements",
+    "labelEn": "Revenues from reimbursements",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8714",
+    "group": "85",
+    "labelFr": "Dissolution de la réserve de contributions de l'employeur",
+    "labelEn": "Dissolution of employer contribution reserve",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8719",
+    "group": "85",
+    "labelFr": "Autres produits hors période",
+    "labelEn": "Other revenues unrelated to the period",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8900",
+    "group": "89",
+    "labelFr": "Impôts sur le bénéfice",
+    "labelEn": "Taxes on profits",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8901",
+    "group": "89",
+    "labelFr": "Impôts sur le capital/lmpôts fédéraux",
+    "labelEn": "Capital taxes",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8902",
+    "group": "89",
+    "labelFr": "Impôts directs hors période",
+    "labelEn": "Direct taxes unrelated to the period",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8900(2)",
+    "group": "89",
+    "labelFr": "lmpôts cantonaux et communaux",
+    "labelEn": "Cantonal and municipal taxes",
+    "section": "CHARGES",
+    "currency": "CHF"
+  },
+  {
+    "konto": "8901(2)",
+    "group": "89",
+    "labelFr": "Impôts fédéraux directs",
+    "labelEn": "Direct federal taxes",
+    "section": "CHARGES",
+    "currency": "CHF"
+  }
+]

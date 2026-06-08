@@ -22,6 +22,8 @@ import {
   isNetPayrollCategory,
   resolvePayrollSettlementMode,
 } from '../services/swissPayrollService';
+import { SwissAccountCodeBadge, SwissAccountCodeField } from './SwissAccountCodeField';
+import { suggestSwissAccountCode } from '@shared/suggestSwissAccountCode';
 
 type Tab = 'dashboard' | 'revenue' | 'reports' | 'documents' | 'billing';
 
@@ -1174,6 +1176,7 @@ function IncomeExpenseSection({
   t: (key: string) => string;
 }) {
   const formatChf = useFormatChf();
+  const { language } = useLanguage();
   const [draggedOver, setDraggedOver] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editForm, setEditForm] = React.useState<any>(null);
@@ -1258,8 +1261,10 @@ function IncomeExpenseSection({
       
       if (type === 'income') {
         updates.type = editForm.type;
+        updates.account_code = editForm.account_code || undefined;
       } else {
         updates.category = editForm.category;
+        updates.account_code = editForm.account_code || undefined;
       }
       
       await onUpdate(editForm.id, updates);
@@ -1354,7 +1359,20 @@ function IncomeExpenseSection({
                   ) : (
                     <select
                       value={editForm.category}
-                      onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                      onChange={(e) => {
+                        const category = e.target.value;
+                        setEditForm({
+                          ...editForm,
+                          category,
+                          account_code:
+                            editForm.account_code ||
+                            suggestSwissAccountCode({
+                              kind: 'expense',
+                              category,
+                              description: editForm.description || '',
+                            }),
+                        });
+                      }}
                       className="w-full px-2 py-1 bg-cdlp-dark border border-cdlp-border rounded text-xs text-white"
                     >
                       <option value="BILLS">{t('BILLS')}</option>
@@ -1364,6 +1382,19 @@ function IncomeExpenseSection({
                       <option value="OTHER">{t('OTHER')}</option>
                     </select>
                   )}
+                  <label className="block text-[9px] uppercase font-bold text-cdlp-muted tracking-wider">
+                    {t('swissAccountCode')}
+                  </label>
+                  <SwissAccountCodeField
+                    value={editForm.account_code || ''}
+                    onChange={(account_code) => setEditForm({ ...editForm, account_code })}
+                    lang={language}
+                    kind={isIncome ? 'income' : 'expense'}
+                    category={editForm.category}
+                    incomeType={editForm.type}
+                    description={editForm.description || ''}
+                    placeholder={t('swissAccountCodePlaceholder')}
+                  />
                   <div className="flex gap-2">
                     <button
                       onClick={saveEdit}
@@ -1387,10 +1418,11 @@ function IncomeExpenseSection({
                     className={`flex-1 min-w-0 text-left ${item.document_id ? 'cursor-pointer hover:bg-cdlp-gold/5 -m-1 p-1 rounded transition-colors' : ''}`}
                     disabled={!item.document_id}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-bold text-xs md:text-sm text-white truncate">
                         {isIncome ? item.type : item.category}
                       </p>
+                      <SwissAccountCodeBadge konto={item.account_code} lang={language} />
                       {item.document_id && (
                         <FileText className="w-3 h-3 text-cdlp-gold flex-shrink-0" title={t('linkedToDocument')} />
                       )}

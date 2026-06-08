@@ -221,7 +221,13 @@ When promoting to /app:
 
 | Feature | Status in `/ali` | Notes |
 |---------|------------------|--------|
+| Feature | Status in `/ali` | Notes |
+|---------|------------------|--------|
 | budgeting | **ready** | Household categories; income expected; budgets in `ali_lab_budgets`; live ledger shows savings (not payroll/VAT) |
+
+## Swiss Plan comptable CH (`/app`)
+
+See **`docs/SWISS_PLAN_COMPTABLE.md`**. Income/expense rows store optional `accountCode` (konto) from `shared/data/swissChartOfAccounts.json` (974 accounts from Plan comptable CH PME PDF).
 | bill-reminders | **ready** | CRUD + overdue/due-soon styling |
 | goals | **ready** | Savings/debt progress |
 | bank-sync | **excluded** | Do not build — document/AI flow only |

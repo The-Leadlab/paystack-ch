@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { Income, Expense } from '../types';
+import { suggestSwissAccountCode } from '@shared/suggestSwissAccountCode';
 import { useAuth } from './AuthContext';
 
 const INCOME_COLLECTION = 'income';
@@ -26,6 +27,7 @@ function docToIncome(id: string, data: any): Income {
     amount: data.amount,
     vat_amount: data.vatAmount || 0,
     description: data.description,
+    account_code: data.accountCode || undefined,
     document_id: data.documentId,
     created_at: data.createdAt?.toDate?.()?.toISOString?.() ?? new Date().toISOString(),
   };
@@ -41,6 +43,7 @@ function docToExpense(id: string, data: any): Expense {
     amount: data.amount,
     vat_amount: data.vatAmount || 0,
     description: data.description,
+    account_code: data.accountCode || undefined,
     employee_id: data.employeeId,
     document_id: data.documentId,
     created_at: data.createdAt?.toDate?.()?.toISOString?.() ?? new Date().toISOString(),
@@ -52,8 +55,8 @@ type FinanceContextValue = {
   expenses: Expense[];
   loading: boolean;
   error: string | null;
-  addIncome: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number) => Promise<Income | null>;
-  addExpense: (date: string, category: Expense['category'], amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number) => Promise<Expense | null>;
+  addIncome: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number, accountCode?: string) => Promise<Income | null>;
+  addExpense: (date: string, category: Expense['category'], amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number, accountCode?: string) => Promise<Expense | null>;
   updateIncome: (id: string, updates: Partial<Omit<Income, 'id' | 'restaurant_id' | 'created_at'>>) => Promise<void>;
   updateExpense: (id: string, updates: Partial<Omit<Expense, 'id' | 'restaurant_id' | 'created_at'>>) => Promise<void>;
   deleteIncome: (id: string) => Promise<void>;
@@ -115,7 +118,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   }, [fetchFinances]);
 
   const addIncome = useCallback(
-    async (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number): Promise<Income | null> => {
+    async (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number, accountCode?: string): Promise<Income | null> => {
       const uid = user?.uid;
       if (!uid || !db) {
         console.error('addIncome failed: No user or database');
@@ -126,6 +129,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Session ID is required');
       }
       try {
+        const resolvedAccountCode =
+          accountCode ||
+          suggestSwissAccountCode({
+            kind: 'income',
+            incomeType: type,
+            description: description || '',
+          });
         console.log('addIncome: Creating document with sessionId:', sessionId, 'documentId:', documentId, 'VAT:', vatAmount);
         const ref = await addDoc(collection(db, INCOME_COLLECTION), {
           restaurantId: uid,
@@ -135,6 +145,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           amount,
           vatAmount: vatAmount || 0,
           description: description || '',
+          accountCode: resolvedAccountCode || null,
           documentId: documentId || null,
           createdAt: serverTimestamp(),
         });
@@ -147,6 +158,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           amount,
           vat_amount: vatAmount || 0,
           description,
+          account_code: resolvedAccountCode,
           document_id: documentId,
           created_at: new Date().toISOString(),
         };
@@ -164,7 +176,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addExpense = useCallback(
-    async (date: string, category: Expense['category'], amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number): Promise<Expense | null> => {
+    async (date: string, category: Expense['category'], amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number, accountCode?: string): Promise<Expense | null> => {
       const uid = user?.uid;
       if (!uid || !db) {
         console.error('addExpense failed: No user or database');
@@ -175,6 +187,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Session ID is required');
       }
       try {
+        const resolvedAccountCode =
+          accountCode ||
+          suggestSwissAccountCode({
+            kind: 'expense',
+            category,
+            description,
+          });
         console.log('addExpense: Creating document with sessionId:', sessionId, 'documentId:', documentId, 'VAT:', vatAmount);
         const ref = await addDoc(collection(db, EXPENSE_COLLECTION), {
           restaurantId: uid,
@@ -184,6 +203,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           amount,
           vatAmount: vatAmount || 0,
           description,
+          accountCode: resolvedAccountCode || null,
           employeeId: employeeId || null,
           documentId: documentId || null,
           createdAt: serverTimestamp(),
@@ -197,6 +217,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           amount,
           vat_amount: vatAmount || 0,
           description,
+          account_code: resolvedAccountCode,
           employee_id: employeeId,
           document_id: documentId,
           created_at: new Date().toISOString(),
@@ -301,10 +322,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       if (updates.description !== undefined) updateData.description = updates.description;
       if (updates.session_id !== undefined) updateData.sessionId = updates.session_id;
       if (updates.document_id !== undefined) updateData.documentId = updates.document_id;
+      if (updates.account_code !== undefined) updateData.accountCode = updates.account_code || null;
       
       await updateDoc(docRef(db, INCOME_COLLECTION, id), updateData);
       
-      setIncome((prev) => prev.map((item) => 
+      setIncome((prev) => prev.map((item) =>
         item.id === id ? { ...item, ...updates } : item
       ));
     } catch (err) {
@@ -326,6 +348,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       if (updates.session_id !== undefined) updateData.sessionId = updates.session_id;
       if (updates.employee_id !== undefined) updateData.employeeId = updates.employee_id;
       if (updates.document_id !== undefined) updateData.documentId = updates.document_id;
+      if (updates.account_code !== undefined) updateData.accountCode = updates.account_code || null;
       
       await updateDoc(docRef(db, EXPENSE_COLLECTION, id), updateData);
       
