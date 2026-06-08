@@ -59,6 +59,33 @@ export function computeLedgerTotals(income: Income[], expenses: Expense[]): Ledg
   };
 }
 
+export type HouseholdLedgerTotals = {
+  totalIncome: number;
+  totalExpenses: number;
+  savings: number;
+  balance: number;
+  savingsRatePct: number;
+  incomeCount: number;
+  expenseCount: number;
+};
+
+/** Household view: all expenses count (no payroll/VAT split). */
+export function computeHouseholdLedgerTotals(income: Income[], expenses: Expense[]): HouseholdLedgerTotals {
+  const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const savings = totalIncome - totalExpenses;
+  const savingsRatePct = totalIncome > 0 ? Math.round((savings / totalIncome) * 100) : 0;
+  return {
+    totalIncome,
+    totalExpenses,
+    savings,
+    balance: savings,
+    savingsRatePct,
+    incomeCount: income.length,
+    expenseCount: expenses.length,
+  };
+}
+
 export function formatChf(n: number): string {
   /** Swiss German number format — locale `de-CH`, not Dutch (`nl-NL`). */
   return n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

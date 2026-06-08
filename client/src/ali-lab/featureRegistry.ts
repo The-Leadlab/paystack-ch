@@ -21,8 +21,9 @@ export const ALI_LAB_FEATURES: AliLabFeature[] = [
     competitors: "YNAB, BudgetCH, BlueBudget",
     priority: "high",
     status: "ready",
-    promoteTo: "New Budget tab in RestaurantDashboard",
-    summary: "Monthly category budgets vs Firestore expenses; traditional & zero-based modes",
+    promoteTo: "New Budget tab in personal dashboard (/app)",
+    summary:
+      "Household budgets vs live expenses — bills, rent, groceries, going out, shopping, savings/invest; income expected (salary, assets, contributions)",
   },
   {
     id: "bill-reminders",

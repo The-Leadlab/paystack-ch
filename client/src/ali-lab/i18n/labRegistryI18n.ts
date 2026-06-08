@@ -13,23 +13,27 @@ const REGISTRY: Record<string, RegistryEntry> = {
   budgeting: {
     en: {
       title: "Budgeting (budget vs actual)",
-      summary: "Monthly category budgets vs Firestore expenses; traditional & zero-based modes",
-      promoteTo: "New Budget tab in RestaurantDashboard",
+      summary:
+        "Household budgets vs live expenses — bills, rent, groceries, going out, shopping, savings/invest; income expected (salary, assets, contributions)",
+      promoteTo: "New Budget tab in personal dashboard (/app)",
     },
     fr: {
       title: "Budgets (prévu vs réel)",
-      summary: "Budgets mensuels par catégorie vs dépenses Firestore ; modes traditionnel et base zéro",
-      promoteTo: "Nouvel onglet Budget dans RestaurantDashboard",
+      summary:
+        "Budgets ménage vs dépenses live — factures, loyer, courses, sorties, shopping, épargne/invest ; revenus attendus (salaire, actifs, apports)",
+      promoteTo: "Nouvel onglet Budget dans le tableau de bord personnel (/app)",
     },
     de: {
       title: "Budgetierung (Soll vs. Ist)",
-      summary: "Monatliche Kategoriebudgets vs. Firestore-Ausgaben; traditionell & nullbasiert",
-      promoteTo: "Neuer Budget-Tab in RestaurantDashboard",
+      summary:
+        "Haushaltsbudgets vs. Live-Ausgaben — Rechnungen, Miete, Lebensmittel, Ausgang, Shopping, Sparen/Invest; erwartete Einnahmen (Gehalt, Vermögen, Beiträge)",
+      promoteTo: "Neuer Budget-Tab im persönlichen Dashboard (/app)",
     },
     it: {
       title: "Budget (previsto vs effettivo)",
-      summary: "Budget mensili per categoria vs spese Firestore; tradizionale e a base zero",
-      promoteTo: "Nuova scheda Budget in RestaurantDashboard",
+      summary:
+        "Budget domestici vs spese live — bollette, affitto, spesa, uscite, shopping, risparmio/invest; entrate attese (stipendio, asset, contributi)",
+      promoteTo: "Nuova scheda Budget nella dashboard personale (/app)",
     },
   },
   "bill-reminders": {

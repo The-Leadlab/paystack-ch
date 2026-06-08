@@ -51,18 +51,22 @@ export function LabLedgerSnapshot() {
         {!ledger.hasFirebaseData && !ledger.loading && ` — ${t("noLedgerYet")}`}
       </p>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border">
-        <Kpi label={t("income")} value={formatChf(ledger.totalIncome)} tone="positive" />
-        <Kpi label={t("expenses")} value={formatChf(ledger.totalExpenses)} tone="negative" />
-        <Kpi label={t("payroll")} value={formatChf(ledger.totalPayroll)} tone="muted" />
+        <Kpi label={t("income")} value={formatChf(ledger.household.totalIncome)} tone="positive" />
+        <Kpi label={t("expenses")} value={formatChf(ledger.household.totalExpenses)} tone="negative" />
         <Kpi
-          label={t("balance")}
-          value={formatChf(ledger.balance)}
-          tone={ledger.balance >= 0 ? "positive" : "negative"}
+          label={t("savings")}
+          value={formatChf(ledger.household.savings)}
+          tone={ledger.household.savings >= 0 ? "positive" : "negative"}
         />
         <Kpi
-          label={t("vatNet")}
-          value={formatChf(ledger.vatBalance)}
-          tone={ledger.vatBalance >= 0 ? "muted" : "negative"}
+          label={t("balance")}
+          value={formatChf(ledger.household.balance)}
+          tone={ledger.household.balance >= 0 ? "positive" : "negative"}
+        />
+        <Kpi
+          label={t("savingsRate")}
+          value={`${ledger.household.savingsRatePct}%`}
+          tone={ledger.household.savingsRatePct >= 0 ? "muted" : "negative"}
         />
       </div>
       <p className="px-3 py-2 text-[10px] text-muted-foreground">

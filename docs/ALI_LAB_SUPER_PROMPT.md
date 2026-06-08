@@ -59,16 +59,20 @@ When promoting to /app:
 
 **Competitors:** YNAB (zero-based), BudgetCH, BlueBudget (auto from history).
 
-**Goal:** Budget vs actual per category per month.
+**Goal:** Budget vs actual per **household** category per month (individual / family — not company payroll).
+
+**Household expense categories:** Bills · Rent · Groceries · Going out & activities · Shopping & other · Savings & invest.
+
+**Income expected:** Salary · Asset revenue · Contributions & gifts.
 
 **Implementation plan:**
 
-1. Firestore: `sessions/{sessionId}/budgets/{month}` → `{ categoryId, amountChf }`
-2. UI: table category | budget | actual | variance % (actual from existing expenses)
-3. Optional mode toggle: **traditional** vs **zero-based** (allocate all income to categories)
-4. Lab prototype already in `BudgetingPanel` — replace mock with Firestore
+1. Firestore: `ali_lab_budgets/{id}` → `{ month, category, budgetChf, mode }` (category uses household ids or `income:SALARY` etc.)
+2. UI: `BudgetingPanel` classifies `/app` ledger rows into household buckets via keywords + legacy fallback
+3. Live ledger snapshot in `/ali` shows **Savings** and **Savings rate** (not Payroll / VAT)
+4. Optional mode toggle: **traditional** vs **zero-based** (allocate all income to categories)
 
-**Promote to:** New **Budget** tab in `RestaurantDashboard.tsx`
+**Promote to:** New **Budget** tab in personal dashboard (`/app`)
 
 ---
 
@@ -217,7 +221,7 @@ When promoting to /app:
 
 | Feature | Status in `/ali` | Notes |
 |---------|------------------|--------|
-| budgeting | **ready** | Real spent from FinanceContext; budgets in `ali_lab_budgets` |
+| budgeting | **ready** | Household categories; income expected; budgets in `ali_lab_budgets`; live ledger shows savings (not payroll/VAT) |
 | bill-reminders | **ready** | CRUD + overdue/due-soon styling |
 | goals | **ready** | Savings/debt progress |
 | bank-sync | **excluded** | Do not build — document/AI flow only |

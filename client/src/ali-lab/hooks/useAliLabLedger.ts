@@ -1,7 +1,11 @@
 import { useMemo } from "react";
 import { useFinance } from "@/cafe/context/FinanceContext";
 import { useSession } from "@/cafe/context/SessionContext";
-import { computeLedgerTotals, filterLedgerBySession } from "../utils/ledgerTotals";
+import {
+  computeHouseholdLedgerTotals,
+  computeLedgerTotals,
+  filterLedgerBySession,
+} from "../utils/ledgerTotals";
 
 export function useAliLabLedger() {
   const { income, expenses, loading, error, refreshFinances } = useFinance();
@@ -25,12 +29,18 @@ export function useAliLabLedger() {
     [filtered.income, filtered.expenses]
   );
 
+  const household = useMemo(
+    () => computeHouseholdLedgerTotals(filtered.income, filtered.expenses),
+    [filtered.income, filtered.expenses]
+  );
+
   const sessionLabel = isAllSessionsView
     ? "All sessions"
     : currentSession?.name || "No session selected";
 
   return {
     ...totals,
+    household,
     filteredIncome: filtered.income,
     filteredExpenses: filtered.expenses,
     loading,
