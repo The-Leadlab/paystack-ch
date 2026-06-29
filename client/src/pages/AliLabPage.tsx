@@ -42,7 +42,7 @@ function AliLabPageContent() {
 
   if (excluded && featureId) {
     return (
-      <PersonalPlanShell featureId={featureId} title="Excluded feature">
+      <PersonalPlanShell surface="lab" featureId={featureId} title="Excluded feature">
         <ExcludedFeaturePanel featureId={featureId} />
       </PersonalPlanShell>
     );
@@ -52,6 +52,7 @@ function AliLabPageContent() {
 
   return (
     <PersonalPlanShell
+      surface="lab"
       featureId={feature.id}
       title={activeCopy?.title ?? feature.title}
       showKpi={showKpi}

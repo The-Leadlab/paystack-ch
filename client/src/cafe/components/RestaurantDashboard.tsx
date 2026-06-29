@@ -1,5 +1,6 @@
 ﻿import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings } from 'lucide-react';
+import { Link } from 'wouter';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings, Wallet } from 'lucide-react';
 import { BillingPlanPanel } from './BillingPlanPanel';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
@@ -804,6 +805,13 @@ export function RestaurantDashboard() {
 
         {/* Pinned bottom: billing + logout (sessions scroll above) */}
         <div className="shrink-0 p-4 border-t border-cdlp-border bg-cdlp-black space-y-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <Link
+            href="/app/personal/budgeting"
+            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase rounded border border-cdlp-gold/40 text-cdlp-gold hover:bg-cdlp-gold/10 transition-colors"
+          >
+            <Wallet className="w-4 h-4" />
+            Personal finances
+          </Link>
           <button
             type="button"
             onClick={openBillingTab}

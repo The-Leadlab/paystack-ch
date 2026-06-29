@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
-import { Redirect, useSearch } from "wouter";
+import { Redirect, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/cafe/context/AuthContext";
 import { SessionProvider } from "@/cafe/context/SessionContext";
 import { EmployeeProvider } from "@/cafe/context/EmployeeContext";
@@ -19,8 +19,14 @@ const RestaurantDashboard = lazy(() =>
   import("@/cafe/components/RestaurantDashboard").then((m) => ({ default: m.RestaurantDashboard }))
 );
 
+const PersonalAppPage = lazy(() => import("./PersonalAppPage"));
+
+function isPersonalAppPath(path: string): boolean {
+  return path === "/app/personal" || path.startsWith("/app/personal/");
+}
+
 /**
- * Firebase-authenticated dashboard (formerly mounted only from the orphan CafeApp entry).
+ * Firebase-authenticated dashboard — Business (`/app`) and Personal (`/app/personal/*`).
  */
 export default function PlatformPage() {
   if (!firebaseReady) {
@@ -33,7 +39,8 @@ export default function PlatformPage() {
 function PlatformContent() {
   const { user, loading } = useAuth();
   const search = useSearch();
-  const appReturnPath = "/app";
+  const [location] = useLocation();
+  const personal = isPersonalAppPath(location);
 
   useEffect(() => {
     const qs = search.startsWith("?") ? search.slice(1) : search;
@@ -48,7 +55,7 @@ function PlatformContent() {
   }
 
   if (!user) {
-    const qs = encodeURIComponent(appReturnPath);
+    const qs = encodeURIComponent(location.startsWith("/app") ? location : "/app");
     return <Redirect to={`/sign-in?redirect=${qs}`} />;
   }
 
@@ -56,6 +63,10 @@ function PlatformContent() {
   const isPasswordUser = user.providerData?.some((p) => p.providerId === "password");
   if (isPasswordUser && !user.emailVerified && !bypassOps) {
     return <EmailVerificationGate />;
+  }
+
+  if (location === "/app/personal") {
+    return <Redirect to="/app/personal/budgeting" />;
   }
 
   return (
@@ -67,7 +78,7 @@ function PlatformContent() {
               <DocumentProvider>
                 <SubscriptionGate>
                   <Suspense fallback={<DashboardLoadingShell />}>
-                    <RestaurantDashboard />
+                    {personal ? <PersonalAppPage /> : <RestaurantDashboard />}
                   </Suspense>
                 </SubscriptionGate>
               </DocumentProvider>

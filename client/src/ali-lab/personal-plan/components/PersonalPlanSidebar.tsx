@@ -1,7 +1,14 @@
+import type { ReactNode } from "react";
 import { Link } from "wouter";
-import { Lock, LogOut, Plus, Settings, HelpCircle } from "lucide-react";
+import { Lock, LogOut, Plus, Briefcase, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PERSONAL_PLAN_NAV, isNavActive } from "../personalPlanNav";
+import {
+  PERSONAL_PLAN_NAV,
+  businessAppPath,
+  isNavActive,
+  personalPlanNavHref,
+  type PersonalPlanSurface,
+} from "../personalPlanNav";
 import { ALI_LAB_FEATURES } from "../../featureRegistry";
 import { logoutAliLab } from "@/lib/aliLabGateClient";
 
@@ -12,7 +19,13 @@ const SECONDARY_FEATURE_IDS = new Set([
   "de-it-i18n",
 ]);
 
-export function PersonalPlanSidebar({ featureId }: { featureId: string | undefined }) {
+export function PersonalPlanSidebar({
+  featureId,
+  surface = "lab",
+}: {
+  featureId: string | undefined;
+  surface?: PersonalPlanSurface;
+}) {
   const lockLab = async () => {
     await logoutAliLab();
     window.location.href = "/ali-gate";
@@ -33,7 +46,9 @@ export function PersonalPlanSidebar({ featureId }: { featureId: string | undefin
         </div>
         <div className="min-w-0">
           <h1 className="text-base font-bold text-[var(--pp-primary)] tracking-tight truncate">Paystack</h1>
-          <p className="text-[11px] text-[var(--pp-on-surface-variant)] opacity-70">Private Wealth</p>
+          <p className="text-[11px] text-[var(--pp-on-surface-variant)] opacity-70">
+            {surface === "app" ? "Personal finances" : "Private Wealth"}
+          </p>
         </div>
       </div>
 
@@ -44,7 +59,7 @@ export function PersonalPlanSidebar({ featureId }: { featureId: string | undefin
           return (
             <Link
               key={item.id}
-              href={item.href}
+              href={personalPlanNavHref(item, surface)}
               className={cn(
                 "flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-semibold tracking-wide transition-all duration-200",
                 active
@@ -57,63 +72,85 @@ export function PersonalPlanSidebar({ featureId }: { featureId: string | undefin
             </Link>
           );
         })}
-        <p className="px-4 pt-4 pb-1 text-[10px] uppercase tracking-widest text-[var(--pp-on-surface-variant)] opacity-60">
-          Lab prototypes
-        </p>
-        {ALI_LAB_FEATURES.filter((f) => SECONDARY_FEATURE_IDS.has(f.id)).map((f) => (
-          <Link
-            key={f.id}
-            href={`/ali/${f.id}`}
-            className={cn(
-              "flex items-center gap-3 px-4 py-2 rounded-lg text-xs transition-colors",
-              featureId === f.id
-                ? "text-[var(--pp-primary)] bg-[var(--pp-surface-highest)]"
-                : "text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)]"
-            )}
-          >
-            <span className="truncate">{f.title}</span>
-          </Link>
-        ))}
+        {surface === "lab" ? (
+          <>
+            <p className="px-4 pt-4 pb-1 text-[10px] uppercase tracking-widest text-[var(--pp-on-surface-variant)] opacity-60">
+              Lab prototypes
+            </p>
+            {ALI_LAB_FEATURES.filter((f) => SECONDARY_FEATURE_IDS.has(f.id)).map((f) => (
+              <Link
+                key={f.id}
+                href={`/ali/${f.id}`}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-2 rounded-lg text-xs transition-colors",
+                  featureId === f.id
+                    ? "text-[var(--pp-primary)] bg-[var(--pp-surface-highest)]"
+                    : "text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)]"
+                )}
+              >
+                <span className="truncate">{f.title}</span>
+              </Link>
+            ))}
+          </>
+        ) : null}
       </nav>
 
       <div className="mt-auto space-y-1 pt-4 border-t border-[var(--pp-outline-variant)]">
-        <button
-          type="button"
-          className="w-full mb-3 flex items-center justify-center gap-2 py-2.5 bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] rounded-lg text-xs font-bold hover:opacity-90 transition-opacity"
-        >
-          <Plus className="size-4" />
-          Add transaction
-        </button>
-        <Link
-          href="/app"
-          className="flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
-        >
-          <Settings className="size-4" />
-          Production /app
-        </Link>
-        <button
-          type="button"
-          onClick={() => void lockLab()}
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
-        >
-          <Lock className="size-4" />
-          Lock lab
-        </button>
-        <a
-          href="/docs/PERSONAL_PLAN_STITCH_SUPER_PROMPT.md"
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
-        >
-          <HelpCircle className="size-4" />
-          Design prompt
-        </a>
+        {surface === "app" ? (
+          <Link
+            href={businessAppPath()}
+            className="w-full mb-3 flex items-center justify-center gap-2 py-2.5 bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] rounded-lg text-xs font-bold hover:opacity-90 transition-opacity"
+          >
+            <Briefcase className="size-4" />
+            Business dashboard
+          </Link>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="w-full mb-3 flex items-center justify-center gap-2 py-2.5 bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] rounded-lg text-xs font-bold hover:opacity-90 transition-opacity"
+            >
+              <Plus className="size-4" />
+              Add transaction
+            </button>
+            <Link
+              href={businessAppPath()}
+              className="flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
+            >
+              <Briefcase className="size-4" />
+              Production /app
+            </Link>
+            <button
+              type="button"
+              onClick={() => void lockLab()}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
+            >
+              <Lock className="size-4" />
+              Lock lab
+            </button>
+            <a
+              href="/docs/PERSONAL_BUSINESS_LINK_SUPER_PROMPT.md"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
+            >
+              <HelpCircle className="size-4" />
+              Link super prompt
+            </a>
+          </>
+        )}
       </div>
     </aside>
   );
 }
 
-export function PersonalPlanMobileNav({ featureId }: { featureId: string | undefined }) {
+export function PersonalPlanMobileNav({
+  featureId,
+  surface = "lab",
+}: {
+  featureId: string | undefined;
+  surface?: PersonalPlanSurface;
+}) {
   const items = PERSONAL_PLAN_NAV.filter(
     (item, i, arr) => arr.findIndex((x) => x.featureId === item.featureId) === i
   ).slice(0, 4);
@@ -126,7 +163,7 @@ export function PersonalPlanMobileNav({ featureId }: { featureId: string | undef
         return (
           <Link
             key={item.id}
-            href={item.href}
+            href={personalPlanNavHref(item, surface)}
             className={cn(
               "p-2 rounded-full transition-colors",
               active ? "text-[var(--pp-primary)]" : "text-[var(--pp-on-surface-variant)]"
@@ -136,14 +173,20 @@ export function PersonalPlanMobileNav({ featureId }: { featureId: string | undef
           </Link>
         );
       })}
-      <button
-        type="button"
-        onClick={() => void logoutAliLab().then(() => { window.location.href = "/ali-gate"; })}
-        className="p-2 text-[var(--pp-on-surface-variant)]"
-        aria-label="Lock lab"
-      >
-        <LogOut className="size-5" />
-      </button>
+      {surface === "app" ? (
+        <Link href={businessAppPath()} className="p-2 text-[var(--pp-on-surface-variant)]" aria-label="Business">
+          <Briefcase className="size-5" />
+        </Link>
+      ) : (
+        <button
+          type="button"
+          onClick={() => void logoutAliLab().then(() => { window.location.href = "/ali-gate"; })}
+          className="p-2 text-[var(--pp-on-surface-variant)]"
+          aria-label="Lock lab"
+        >
+          <LogOut className="size-5" />
+        </button>
+      )}
     </nav>
   );
 }

@@ -46,6 +46,8 @@ function Router() {
       <Route path={"/start-trial"} component={StartTrialPage} />
       <Route path={"/login"} component={SignInPage} />
       <Route path={"/signup"} component={SignUpPage} />
+      <Route path={"/app/personal/:featureId"} component={CafeShellRoute} />
+      <Route path={"/app/personal"} component={CafeShellRoute} />
       <Route path={"/app"} component={CafeShellRoute} />
       <Route path={"/ali-gate"} component={AliGatePage} />
       <Route path={"/ali/:featureId"} component={AliLabPage} />
