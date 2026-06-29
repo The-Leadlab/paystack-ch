@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
+import { Calendar, Receipt, AlertTriangle } from "lucide-react";
 import type { AliLabFeature } from "../featureRegistry";
 import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import type { LabBill } from "../types";
 import { labCollections } from "../aliLabFirestore";
 import { useAliLabPersist } from "../hooks/useAliLabPersist";
 import { useAliLabLedger } from "../hooks/useAliLabLedger";
+import { GlassCard } from "../personal-plan/components/GlassCard";
+import { formatChfDisplay } from "../personal-plan/formatChfDisplay";
 
 function annualizedChf(b: LabBill): number {
   if (b.recurrence === "monthly") return b.amountChf * 12;
@@ -46,89 +49,123 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
   const totalAnnual = upcoming.reduce((s, b) => s + b.annualChf, 0);
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{summary}</p>
-      <p className="text-xs text-muted-foreground">
-        {t("annualCost")}: <strong>{totalAnnual.toLocaleString("de-CH")} CHF</strong> {t("committedRecurringSuffix")}
-      </p>
-      <div className="flex flex-wrap gap-2 text-sm">
-        <input
-          className="border border-border rounded px-2 py-1 flex-1 min-w-[120px]"
-          placeholder={t("billPlaceholder")}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          type="date"
-          className="border border-border rounded px-2 py-1"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-        />
-        <input
-          type="number"
-          className="border border-border rounded px-2 py-1 w-24"
-          placeholder="CHF"
-          value={amountChf || ""}
-          onChange={(e) => setAmountChf(Number(e.target.value))}
-        />
-        <button
-          type="button"
-          className="bg-brand-red text-white text-xs font-bold uppercase px-3 py-1 rounded"
-          onClick={() => {
-            if (!name.trim() || !dueDate) return;
-            void add({
-              name: name.trim(),
-              dueDate,
-              amountChf,
-              recurrence: "yearly",
-              remindDaysBefore: 14,
-            });
-            setName("");
-            setDueDate("");
-            setAmountChf(0);
-          }}
-        >
-          {t("addBill")}
-        </button>
-      </div>
-      <ul className="space-y-2">
-        {upcoming.length === 0 && <li className="text-sm text-muted-foreground">{t("noData")}</li>}
+    <div className="space-y-6">
+      <section>
+        <h2 className="text-2xl font-bold">Bill reminders</h2>
+        <p className="text-sm text-[var(--pp-on-surface-variant)] mt-2">{summary}</p>
+      </section>
+
+      <GlassCard className="p-4 flex flex-wrap items-center gap-4">
+        <Receipt className="size-5 text-[var(--pp-primary)] shrink-0" />
+        <p className="text-sm text-[var(--pp-on-surface-variant)]">
+          {t("annualCost")}: <strong className="text-[var(--pp-on-surface)]">{formatChfDisplay(totalAnnual)}</strong>{" "}
+          {t("committedRecurringSuffix")}
+        </p>
+      </GlassCard>
+
+      <GlassCard className="p-4">
+        <div className="flex flex-wrap gap-2">
+          <input
+            className="pp-input px-3 py-2 flex-1 min-w-[120px] text-sm"
+            placeholder={t("billPlaceholder")}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <input
+            type="date"
+            className="pp-input px-3 py-2 text-sm"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+          />
+          <input
+            type="number"
+            className="pp-input px-3 py-2 w-24 text-sm"
+            placeholder="CHF"
+            value={amountChf || ""}
+            onChange={(e) => setAmountChf(Number(e.target.value))}
+          />
+          <button
+            type="button"
+            className="bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] px-4 py-2 rounded-lg text-xs font-bold"
+            onClick={() => {
+              if (!name.trim() || !dueDate) return;
+              void add({
+                name: name.trim(),
+                dueDate,
+                amountChf,
+                recurrence: "yearly",
+                remindDaysBefore: 14,
+              });
+              setName("");
+              setDueDate("");
+              setAmountChf(0);
+            }}
+          >
+            {t("addBill")}
+          </button>
+        </div>
+      </GlassCard>
+
+      <div className="space-y-3">
+        {upcoming.length === 0 && (
+          <p className="text-sm text-[var(--pp-on-surface-variant)]">{t("noData")}</p>
+        )}
         {upcoming.map((b) => (
-          <li
+          <GlassCard
             key={b.id}
-            className={`flex justify-between items-center border rounded px-3 py-2 text-sm ${
-              b.overdue ? "border-red-500/50 bg-red-500/5" : b.days <= b.remindDaysBefore ? "border-amber-500/50" : "border-border"
+            className={`p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 ${
+              b.overdue
+                ? "border-[var(--pp-error)]/50"
+                : b.days <= b.remindDaysBefore
+                  ? "border-[var(--pp-primary)]/40"
+                  : ""
             }`}
           >
-            <span>
-              <strong>{b.name}</strong> — {t("due")} {b.dueDate}
-              {b.paidInLedger && (
-                <span className="text-emerald-600 ml-2 uppercase text-[10px] font-bold">{t("paidInLedger")}</span>
-              )}
+            <div className="flex items-start gap-3 min-w-0">
               {b.overdue ? (
-                <span className="text-red-500 ml-2 uppercase text-[10px] font-bold">{t("overdue")}</span>
+                <AlertTriangle className="size-5 text-[var(--pp-error)] shrink-0 mt-0.5" />
               ) : (
-                <span className="text-muted-foreground ml-2">
-                  ({b.days} {t("daysUntil")})
-                </span>
+                <Calendar className="size-5 text-[var(--pp-tertiary)] shrink-0 mt-0.5" />
               )}
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="font-medium text-right">
-                {b.amountChf.toLocaleString("de-CH")} CHF
-                <span className="block text-[10px] text-muted-foreground">
-                  {b.annualChf.toLocaleString("de-CH")}
+              <div>
+                <p className="font-semibold">{b.name}</p>
+                <p className="text-xs text-[var(--pp-on-surface-variant)]">
+                  {t("due")} {b.dueDate}
+                  {b.paidInLedger && (
+                    <span className="text-[var(--pp-secondary)] ml-2 font-semibold uppercase text-[10px]">
+                      {t("paidInLedger")}
+                    </span>
+                  )}
+                </p>
+                {b.overdue ? (
+                  <span className="text-[11px] text-[var(--pp-error)] font-bold uppercase">{t("overdue")}</span>
+                ) : (
+                  <span className="text-[11px] text-[var(--pp-on-surface-variant)]">
+                    {b.days} {t("daysUntil")}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-4 shrink-0">
+              <div className="text-right pp-tabular">
+                <p className="font-semibold">{formatChfDisplay(b.amountChf)}</p>
+                <p className="text-[10px] text-[var(--pp-on-surface-variant)]">
+                  {formatChfDisplay(b.annualChf, { prefix: false })}
                   {t("perYear")}
-                </span>
-              </span>
-              <button type="button" className="text-[10px] text-muted-foreground underline" onClick={() => void remove(b.id)}>
+                </p>
+              </div>
+              <button
+                type="button"
+                className="text-[11px] text-[var(--pp-on-surface-variant)] underline"
+                onClick={() => void remove(b.id)}
+              >
                 {t("delete")}
               </button>
-            </span>
-          </li>
+            </div>
+          </GlassCard>
         ))}
-      </ul>
-      {!uid && <p className="text-xs text-muted-foreground">{t("swissPresetsLocal")}</p>}
+      </div>
+      {!uid && <p className="text-xs text-[var(--pp-on-surface-variant)]">{t("swissPresetsLocal")}</p>}
     </div>
   );
 }

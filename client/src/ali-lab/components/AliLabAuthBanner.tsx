@@ -6,9 +6,24 @@ import { LAB_LANG_DISPLAY } from "../i18n/labLangDisplay";
 
 const LAB_LANGS: LabLang[] = ["en", "fr", "de", "it"];
 
-export function AliLabAuthBanner() {
+export function AliLabAuthBanner({ variant = "lab" }: { variant?: "lab" | "personal" }) {
   const { user, loading } = useAuth();
   const { lang, setLang, t } = useLabLanguage();
+
+  if (variant === "personal") {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--pp-outline-variant)] bg-[var(--pp-surface-low)] px-4 md:px-16 py-2 text-[11px] text-[var(--pp-on-surface-variant)]">
+        <span>
+          {loading ? "…" : user ? `✓ ${t("firebaseOk")} (${user.email})` : `${t("localOnly")} — ${t("signInHint")}`}
+        </span>
+        {!user && (
+          <Link href="/sign-in?redirect=/ali/budgeting" className="text-[var(--pp-primary)] font-semibold">
+            {t("signIn")}
+          </Link>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">

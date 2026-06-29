@@ -4,8 +4,6 @@ import { SessionProvider } from "@/cafe/context/SessionContext";
 import { FinanceProvider } from "@/cafe/context/FinanceContext";
 import { DocumentProvider } from "@/cafe/context/DocumentContext";
 import { LabLanguageProvider, useLabLanguage } from "./context/LabLanguageContext";
-import { AliLabAuthBanner } from "./components/AliLabAuthBanner";
-import { LabLedgerSnapshot } from "./components/LabLedgerSnapshot";
 import { firebaseReady } from "@/cafe/lib/firebase";
 
 function FirebaseLabBanner() {
@@ -17,21 +15,16 @@ function FirebaseLabBanner() {
   );
 }
 
+/** Providers for /ali personal plan — layout is PersonalPlanShell on each page. */
 export function AliLabShell({ children }: { children: ReactNode }) {
   return (
     <LabLanguageProvider>
-      <div className="min-h-[100dvh] bg-background text-foreground">
+      <div className="min-h-[100dvh] dark">
         {!firebaseReady && <FirebaseLabBanner />}
         <SubscriptionProvider>
           <SessionProvider>
             <FinanceProvider>
-              <DocumentProvider>
-                <div className="p-4 md:p-6 max-w-5xl mx-auto">
-                  <AliLabAuthBanner />
-                  <LabLedgerSnapshot />
-                  {children}
-                </div>
-              </DocumentProvider>
+              <DocumentProvider>{children}</DocumentProvider>
             </FinanceProvider>
           </SessionProvider>
         </SubscriptionProvider>

@@ -16,7 +16,7 @@ export default function AliGatePage() {
   const next = (() => {
     const qs = search.startsWith("?") ? search.slice(1) : search;
     const n = new URLSearchParams(qs).get("next");
-    return n && n.startsWith("/ali") && !n.startsWith("//") ? n : "/ali";
+    return n && n.startsWith("/ali") && !n.startsWith("//") ? n : "/ali/budgeting";
   })();
 
   const [password, setPassword] = useState("");
@@ -41,8 +41,8 @@ export default function AliGatePage() {
     <>
       <SeoNoIndex />
       <AuthLayout
-        heading="Ali feature lab"
-        description="Password-protected sandbox for the 10 competitor-gap features. Test here before promoting to /app."
+        heading="Paystack Personal Plan"
+        description="Password-protected private wealth lab. Budget, goals, forecasting, and investments — test here before promoting to /app."
       >
         <Card className="border-border shadow-sm max-w-lg mx-auto">
           <CardContent className="pt-6">
