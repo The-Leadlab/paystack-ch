@@ -123,9 +123,9 @@ const INCOME_KEYWORDS: Record<PersonalIncomeCategory, string[]> = {
 
 const LEGACY_EXPENSE_MAP: Record<Expense["category"], PersonalExpenseCategory> = {
   BILLS: "BILLS",
-  SUPPLIERS: "RENT",
-  PAYROLL: "GROCERIES",
-  PAYROLL_TAXES: "GOING_OUT",
+  SUPPLIERS: "SHOPPING_OTHER",
+  PAYROLL: "BILLS",
+  PAYROLL_TAXES: "BILLS",
   OTHER: "SHOPPING_OTHER",
 };
 
@@ -147,6 +147,7 @@ export function classifyPersonalIncome(income: Income): PersonalIncomeCategory {
   for (const cat of PERSONAL_INCOME_CATEGORIES) {
     if (matchesKeywords(text, INCOME_KEYWORDS[cat])) return cat;
   }
+  if (income.type === "SALES") return "ASSET_REVENUE";
   return "SALARY";
 }
 

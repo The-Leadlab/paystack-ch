@@ -18,6 +18,20 @@ export function useAliLabPersist<T extends { id: string }>(
   const [items, setItems] = useState<T[]>(seed);
   const [loading, setLoading] = useState(true);
 
+  const localKey = `ali-lab-${localSuffix}-${uid || "anon"}`;
+
+  const persistLocal = useCallback(
+    (next: T[]) => {
+      setItems(next);
+      try {
+        localStorage.setItem(localKey, JSON.stringify(next));
+      } catch {
+        /* ignore quota errors */
+      }
+    },
+    [localKey]
+  );
+
   const refresh = useCallback(async () => {
     setLoading(true);
     const list = await loadLabDocs<T>(uid, collectionName, localSuffix);
@@ -25,55 +39,68 @@ export function useAliLabPersist<T extends { id: string }>(
       setItems(list);
     } else {
       try {
-        const key = `ali-lab-${localSuffix}-${uid || "anon"}`;
-        const local = JSON.parse(localStorage.getItem(key) || "[]") as T[];
+        const local = JSON.parse(localStorage.getItem(localKey) || "[]") as T[];
         setItems(local.length > 0 ? local : seed);
       } catch {
         setItems(seed);
       }
     }
     setLoading(false);
-  }, [uid, collectionName, localSuffix, seed]);
+  }, [uid, collectionName, localSuffix, localKey, seed]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  const persistLocal = useCallback(
-    (next: T[]) => {
-      setItems(next);
-      const key = `ali-lab-${localSuffix}-${uid || "anon"}`;
-      localStorage.setItem(key, JSON.stringify(next));
-    },
-    [localSuffix, uid]
-  );
-
   const add = useCallback(
     async (data: Omit<T, "id">) => {
       const id = await addLabDoc(uid, collectionName, data as Record<string, unknown>);
       const row = { id, ...data } as T;
-      const next = [...items, row];
-      persistLocal(next);
+      setItems((prev) => {
+        const next = [...prev, row];
+        try {
+          localStorage.setItem(localKey, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
       if (uid && db) void refresh();
       return row;
     },
-    [uid, collectionName, items, persistLocal, refresh]
+    [uid, collectionName, localKey, refresh]
   );
 
   const update = useCallback(
     async (id: string, patch: Partial<T>) => {
-      if (uid) await updateLabDoc(uid, collectionName, id, patch as Record<string, unknown>);
-      persistLocal(items.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+      if (uid && db) await updateLabDoc(uid, collectionName, id, patch as Record<string, unknown>);
+      setItems((prev) => {
+        const next = prev.map((x) => (x.id === id ? { ...x, ...patch } : x));
+        try {
+          localStorage.setItem(localKey, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
     },
-    [uid, collectionName, items, persistLocal]
+    [uid, collectionName, localKey, db]
   );
 
   const remove = useCallback(
     async (id: string) => {
-      if (uid) await removeLabDoc(uid, collectionName, id);
-      persistLocal(items.filter((x) => x.id !== id));
+      if (uid && db) await removeLabDoc(uid, collectionName, id);
+      setItems((prev) => {
+        const next = prev.filter((x) => x.id !== id);
+        try {
+          localStorage.setItem(localKey, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
     },
-    [uid, collectionName, items, persistLocal]
+    [uid, collectionName, localKey, db]
   );
 
   return { items, loading, refresh, add, update, remove, setItems: persistLocal, uid };

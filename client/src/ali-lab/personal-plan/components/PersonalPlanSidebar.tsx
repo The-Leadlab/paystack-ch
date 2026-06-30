@@ -11,6 +11,7 @@ import {
 } from "../personalPlanNav";
 import { ALI_LAB_FEATURES } from "../../featureRegistry";
 import { logoutAliLab } from "@/lib/aliLabGateClient";
+import { usePersonalPlan } from "../context/PersonalPlanContext";
 
 const SECONDARY_FEATURE_IDS = new Set([
   "automation-rules",
@@ -26,6 +27,7 @@ export function PersonalPlanSidebar({
   featureId: string | undefined;
   surface?: PersonalPlanSurface;
 }) {
+  const { openTransaction } = usePersonalPlan();
   const lockLab = async () => {
     await logoutAliLab();
     window.location.href = "/ali-gate";
@@ -97,17 +99,19 @@ export function PersonalPlanSidebar({
 
       <div className="mt-auto space-y-1 pt-4 border-t border-[var(--pp-outline-variant)]">
         {surface === "app" ? (
-          <Link
-            href={businessAppPath()}
+          <button
+            type="button"
+            onClick={openTransaction}
             className="w-full mb-3 flex items-center justify-center gap-2 py-2.5 bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] rounded-lg text-xs font-bold hover:opacity-90 transition-opacity"
           >
-            <Briefcase className="size-4" />
-            Business dashboard
-          </Link>
+            <Plus className="size-4" />
+            Add transaction
+          </button>
         ) : (
           <>
             <button
               type="button"
+              onClick={openTransaction}
               className="w-full mb-3 flex items-center justify-center gap-2 py-2.5 bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] rounded-lg text-xs font-bold hover:opacity-90 transition-opacity"
             >
               <Plus className="size-4" />
@@ -139,6 +143,15 @@ export function PersonalPlanSidebar({
             </a>
           </>
         )}
+        {surface === "app" ? (
+          <Link
+            href={businessAppPath()}
+            className="flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
+          >
+            <Briefcase className="size-4" />
+            Business dashboard
+          </Link>
+        ) : null}
       </div>
     </aside>
   );

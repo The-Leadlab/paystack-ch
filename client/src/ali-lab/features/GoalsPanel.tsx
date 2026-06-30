@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Shield, Car, Mountain, Home, CheckCircle2, MoreVertical, Sparkles } from "lucide-react";
 import type { AliLabFeature } from "../featureRegistry";
 import { useLabFeatureText } from "../hooks/useLabFeatureText";
@@ -6,14 +6,22 @@ import type { LabGoal } from "../types";
 import { labCollections } from "../aliLabFirestore";
 import { useAliLabPersist } from "../hooks/useAliLabPersist";
 import { useAliLabLedger } from "../hooks/useAliLabLedger";
+import { usePersonalPlan } from "../personal-plan/context/PersonalPlanContext";
 import { GlassCard } from "../personal-plan/components/GlassCard";
 import { formatChfDisplay } from "../personal-plan/formatChfDisplay";
 
 export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
   const { t } = useLabFeatureText(feature);
+  const { month } = usePersonalPlan();
   const { items, add, update, remove } = useAliLabPersist<LabGoal>(labCollections.goals, "goals", []);
-  const ledger = useAliLabLedger();
-  const surplus = Math.max(0, ledger.household.savings);
+  const ledger = useAliLabLedger(month);
+  const monthSurplus = Math.max(0, ledger.householdMonth.savings);
+  const [allocatedFromSurplus, setAllocatedFromSurplus] = useState(0);
+  const surplus = Math.max(0, monthSurplus - allocatedFromSurplus);
+
+  useEffect(() => {
+    setAllocatedFromSurplus(0);
+  }, [month]);
 
   const [name, setName] = useState("");
   const [targetChf, setTargetChf] = useState(5000);
@@ -24,7 +32,10 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
     if (surplus <= 0) return;
     const room = Math.max(0, goal.targetChf - goal.currentChf);
     const addAmount = Math.min(surplus, room);
-    if (addAmount > 0) void update(goal.id, { currentChf: goal.currentChf + addAmount });
+    if (addAmount > 0) {
+      void update(goal.id, { currentChf: goal.currentChf + addAmount });
+      setAllocatedFromSurplus((prev) => prev + addAmount);
+    }
   };
 
   return (
@@ -40,7 +51,8 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
           </p>
         </div>
         <GlassCard className="px-4 py-2 text-xs text-[var(--pp-on-surface-variant)]">
-          Available surplus: <strong className="text-[var(--pp-secondary)]">{formatChfDisplay(surplus)}</strong>
+          Available surplus ({month}):{" "}
+          <strong className="text-[var(--pp-secondary)]">{formatChfDisplay(surplus)}</strong>
         </GlassCard>
       </section>
 

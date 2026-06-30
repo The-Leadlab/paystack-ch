@@ -1,19 +1,16 @@
-import { useMemo, useState } from "react";
-import { Bell, ChevronDown, RefreshCw, Search } from "lucide-react";
+import { useMemo } from "react";
+import { RefreshCw } from "lucide-react";
 import { useLabLanguage } from "../../context/LabLanguageContext";
-import { useAliLabLedger } from "../../hooks/useAliLabLedger";
+import { useLinkedLedger } from "@/cafe/hooks/useLinkedLedger";
+import { usePersonalPlan } from "../context/PersonalPlanContext";
 import type { LabLang } from "../../i18n/labStrings";
 
 const LANGS: LabLang[] = ["en", "fr", "de", "it"];
 
-function monthKey(d = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
 export function PersonalPlanHeader({ title }: { title?: string }) {
   const { lang, setLang } = useLabLanguage();
-  const ledger = useAliLabLedger();
-  const [month, setMonth] = useState(monthKey());
+  const { month, setMonth } = usePersonalPlan();
+  const ledger = useLinkedLedger(month);
 
   const monthLabel = useMemo(() => {
     const [y, m] = month.split("-").map(Number);
@@ -28,26 +25,17 @@ export function PersonalPlanHeader({ title }: { title?: string }) {
       <div className="flex items-center gap-4 md:gap-6 min-w-0">
         {title ? (
           <h2 className="text-base md:text-lg font-semibold text-[var(--pp-primary)] truncate">{title}</h2>
-        ) : (
-          <div className="relative hidden sm:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[var(--pp-on-surface-variant)]" />
-            <input
-              type="search"
-              className="pp-input rounded-full pl-10 pr-4 py-1.5 text-sm w-48 md:w-64"
-              placeholder="Search…"
-              disabled
-              aria-label="Search"
-            />
-          </div>
-        )}
+        ) : null}
         <div className="flex items-center gap-3">
-          <input
-            type="month"
-            className="pp-input px-2 py-1 text-xs font-bold text-[var(--pp-primary)] border-b-2 border-[var(--pp-primary)] bg-transparent rounded-none"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            aria-label="Month"
-          />
+          <label className="text-[11px] text-[var(--pp-on-surface-variant)]">
+            Month{" "}
+            <input
+              type="month"
+              className="pp-input px-2 py-1 text-xs font-bold text-[var(--pp-primary)] border-b-2 border-[var(--pp-primary)] bg-transparent rounded-none ml-1"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+            />
+          </label>
           <span className="hidden md:inline text-sm text-[var(--pp-on-surface-variant)]">{monthLabel}</span>
           <div className="flex gap-1">
             {LANGS.map((l) => (
@@ -78,19 +66,6 @@ export function PersonalPlanHeader({ title }: { title?: string }) {
         >
           <RefreshCw className={`size-4 ${ledger.loading ? "animate-spin" : ""}`} />
         </button>
-        <button
-          type="button"
-          className="p-2 rounded-full hover:bg-[var(--pp-surface-high)] transition-colors text-[var(--pp-on-surface-variant)]"
-          aria-label="Notifications"
-        >
-          <Bell className="size-4" />
-        </button>
-        <div className="flex items-center gap-1 cursor-pointer group">
-          <div className="w-8 h-8 rounded-full border border-[var(--pp-outline-variant)] bg-[var(--pp-surface-highest)] flex items-center justify-center text-xs font-bold text-[var(--pp-primary)]">
-            PS
-          </div>
-          <ChevronDown className="size-4 text-[var(--pp-on-surface-variant)] group-hover:text-[var(--pp-primary)] transition-colors hidden sm:block" />
-        </div>
       </div>
     </header>
   );

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeftRight,
   Home,
@@ -26,6 +26,8 @@ import {
   type PersonalIncomeCategory,
 } from "../personalCategories";
 import { GlassCard } from "../personal-plan/components/GlassCard";
+import { PersonalRecentLedger } from "../personal-plan/components/PersonalRecentLedger";
+import { usePersonalPlan } from "../personal-plan/context/PersonalPlanContext";
 import { formatChfDisplay } from "../personal-plan/formatChfDisplay";
 
 type BudgetRow = {
@@ -50,10 +52,6 @@ const INCOME_ICONS: Record<PersonalIncomeCategory, typeof Banknote> = {
   ASSET_REVENUE: TrendingUp,
   CONTRIBUTIONS: Gift,
 };
-
-function monthKey(d = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
 
 function ExpenseRow({
   label,
@@ -113,10 +111,9 @@ function ExpenseRow({
 
 export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   const { t } = useLabFeatureText(feature);
-  const ledger = useAliLabLedger();
-  const { filteredExpenses: expenses, filteredIncome: income, loading: finLoading, currentSession } =
-    ledger;
-  const [month, setMonth] = useState(monthKey());
+  const { month } = usePersonalPlan();
+  const ledger = useAliLabLedger(month);
+  const { loading: finLoading, currentSession } = ledger;
   const [mode, setMode] = useState<LabBudgetMode>("traditional");
 
   const { items: saved, update, add, uid } = useAliLabPersist<BudgetRow>(
@@ -125,7 +122,11 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
     []
   );
 
-  const inMonth = (date: string) => date.startsWith(month);
+  useEffect(() => {
+    const row = saved.find((b) => b.month === month);
+    if (row?.mode) setMode(row.mode);
+  }, [saved, month]);
+
   const inSession = (sessionId: string) =>
     ledger.isAllSessionsView || !currentSession?.id || sessionId === currentSession.id;
 
@@ -133,24 +134,24 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
     return PERSONAL_EXPENSE_CATEGORIES.map((cat) => {
       const savedRow = saved.find((b) => b.month === month && b.category === cat);
       const budgetChf = savedRow?.budgetChf ?? 0;
-      const spent = expenses
-        .filter((e) => inMonth(e.date) && inSession(e.session_id) && classifyPersonalExpense(e) === cat)
+      const spent = ledger.monthExpenses
+        .filter((e) => inSession(e.session_id) && classifyPersonalExpense(e) === cat)
         .reduce((s, e) => s + e.amount, 0);
       return { cat, budgetChf, spent, id: savedRow?.id };
     });
-  }, [saved, month, expenses, currentSession?.id, ledger.isAllSessionsView]);
+  }, [saved, month, ledger.monthExpenses, currentSession?.id, ledger.isAllSessionsView]);
 
   const incomeRows = useMemo(() => {
     return PERSONAL_INCOME_CATEGORIES.map((cat) => {
       const key = `income:${cat}`;
       const savedRow = saved.find((b) => b.month === month && b.category === key);
       const budgetChf = savedRow?.budgetChf ?? 0;
-      const received = income
-        .filter((i) => inMonth(i.date) && inSession(i.session_id) && classifyPersonalIncome(i) === cat)
+      const received = ledger.monthIncome
+        .filter((i) => inSession(i.session_id) && classifyPersonalIncome(i) === cat)
         .reduce((s, i) => s + i.amount, 0);
       return { cat, key, budgetChf, received, id: savedRow?.id };
     });
-  }, [saved, month, income, currentSession?.id, ledger.isAllSessionsView]);
+  }, [saved, month, ledger.monthIncome, currentSession?.id, ledger.isAllSessionsView]);
 
   const totalExpenseBudget = expenseRows.reduce((s, r) => s + r.budgetChf, 0);
   const totalSpent = expenseRows.reduce((s, r) => s + r.spent, 0);
@@ -173,15 +174,6 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-3 items-center text-xs">
-        <label className="font-semibold text-[var(--pp-on-surface-variant)] uppercase tracking-wider">
-          {t("month")}{" "}
-          <input
-            type="month"
-            className="pp-input rounded px-2 py-1 ml-1 font-normal normal-case"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-          />
-        </label>
         <select
           className="pp-input rounded px-2 py-1"
           value={mode}
@@ -352,15 +344,17 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
               <div>
                 <h3 className="text-sm font-bold text-[var(--pp-primary)]">Wealth booster</h3>
                 <p className="text-[11px] text-[var(--pp-on-surface-variant)] mt-1">
-                  {ledger.household.savingsRatePct >= 0
-                    ? `Savings rate ${ledger.household.savingsRatePct}% this month from live ledger.`
-                    : "Review expenses to improve your savings rate."}
+                  {ledger.householdMonth.savingsRatePct >= 0
+                    ? `Savings rate ${ledger.householdMonth.savingsRatePct}% for ${month}.`
+                    : "Review expenses to improve your savings rate this month."}
                 </p>
               </div>
             </div>
           </GlassCard>
         </div>
       </div>
+
+      <PersonalRecentLedger month={month} />
     </div>
   );
 }

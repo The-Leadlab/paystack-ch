@@ -1,5 +1,5 @@
 import { GlassCard } from "./GlassCard";
-import { useAliLabLedger } from "../../hooks/useAliLabLedger";
+import { useLinkedLedger } from "@/cafe/hooks/useLinkedLedger";
 import { formatChfDisplay, formatPct } from "../formatChfDisplay";
 
 function KpiCell({
@@ -28,9 +28,9 @@ function KpiCell({
   );
 }
 
-export function PersonalPlanKpiStrip() {
-  const ledger = useAliLabLedger();
-  const h = ledger.household;
+export function PersonalPlanKpiStrip({ month }: { month: string }) {
+  const ledger = useLinkedLedger(month);
+  const h = ledger.householdMonth;
 
   return (
     <section className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">

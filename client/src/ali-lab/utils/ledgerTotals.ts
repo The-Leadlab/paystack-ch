@@ -29,9 +29,19 @@ export function filterLedgerBySession(
       expenses: expenses.filter((e) => existingSessionIds.includes(e.session_id)),
     };
   }
+  if (!sessionId) {
+    return { income: [], expenses: [] };
+  }
   return {
     income: income.filter((i) => i.session_id === sessionId),
     expenses: expenses.filter((e) => e.session_id === sessionId),
+  };
+}
+
+export function filterLedgerByMonth(income: Income[], expenses: Expense[], month: string) {
+  return {
+    income: income.filter((i) => i.date.startsWith(month)),
+    expenses: expenses.filter((e) => e.date.startsWith(month)),
   };
 }
 

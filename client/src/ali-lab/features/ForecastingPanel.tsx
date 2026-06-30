@@ -5,7 +5,6 @@ import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import { useLabLanguage } from "../context/LabLanguageContext";
 import { useAliLabLedger } from "../hooks/useAliLabLedger";
 import { buildCashForecast } from "../utils/forecastFromLedger";
-import { computeLedgerTotals } from "../utils/ledgerTotals";
 import { GlassCard } from "../personal-plan/components/GlassCard";
 import { formatChfDisplay } from "../personal-plan/formatChfDisplay";
 
@@ -17,10 +16,7 @@ export function ForecastingPanel({ feature }: { feature: AliLabFeature }) {
   const [useLedgerStart, setUseLedgerStart] = useState(true);
   const [horizon, setHorizon] = useState<"90d" | "12m">("90d");
 
-  const ledgerBalance = useMemo(
-    () => computeLedgerTotals(ledger.filteredIncome, ledger.filteredExpenses).balance,
-    [ledger.filteredIncome, ledger.filteredExpenses]
-  );
+  const ledgerBalance = ledger.household.balance;
 
   useEffect(() => {
     if (useLedgerStart) setStartBalance(ledgerBalance);

@@ -25,9 +25,10 @@ export function InvestmentsPanel({ feature }: { feature: AliLabFeature }) {
   const plPct = cost > 0 ? (pl / cost) * 100 : 0;
 
   const vsOperating = useMemo(() => {
-    if (ledger.balance === 0) return null;
-    return (total / Math.abs(ledger.balance)) * 100;
-  }, [total, ledger.balance]);
+    const operatingBalance = ledger.household.balance;
+    if (operatingBalance === 0) return null;
+    return (total / Math.abs(operatingBalance)) * 100;
+  }, [total, ledger.household.balance]);
 
   const filtered = items.filter(
     (h) =>
@@ -78,8 +79,8 @@ export function InvestmentsPanel({ feature }: { feature: AliLabFeature }) {
 
       {vsOperating != null && Number.isFinite(vsOperating) && (
         <p className="text-xs text-[var(--pp-on-surface-variant)]">
-          Portfolio vs operating balance: <strong>{vsOperating.toFixed(1)}%</strong> of session net (
-          {formatChfDisplay(ledger.balance)})
+          Portfolio vs household balance: <strong>{vsOperating.toFixed(1)}%</strong> of session net (
+          {formatChfDisplay(ledger.household.balance)})
         </p>
       )}
 
