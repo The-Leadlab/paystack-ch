@@ -5,6 +5,7 @@ const BUILT_IN_BYPASS_EMAILS = [
   "ali@the-leadlab.com",
   "kara@the-leadlab.com",
   "joshua@the-leadlab.com",
+  "kldavies2016@gmail.com",
 ];
 
 export function subscriptionBypassEmails(): string[] {

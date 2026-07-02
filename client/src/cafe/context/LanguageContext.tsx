@@ -744,6 +744,7 @@ const translations = {
     alertMasterResetError: 'Error during master reset: {msg}',
     alertDeleteSessionConfirm:
       'Delete this session and all its data (income, expenses, documents, POS readings)?',
+    alertDeleteSessionError: 'Could not delete this session: {msg}',
     alertSelectSessionFirst: 'Please select a session first',
     alertDuplicateDocument:
       'This document has already been processed: "{name}"\n\nSkipping to avoid duplicate entries.',
@@ -1513,6 +1514,7 @@ const translations = {
     alertMasterResetError: 'Erreur lors de la réinitialisation : {msg}',
     alertDeleteSessionConfirm:
       'Supprimer cette session et toutes ses données (revenus, dépenses, documents, lectures POS) ?',
+    alertDeleteSessionError: 'Impossible de supprimer cette session : {msg}',
     alertSelectSessionFirst: "Veuillez d'abord sélectionner une session",
     alertDuplicateDocument:
       'Ce document a déjà été traité : « {name} »\n\nIgnoré pour éviter les doublons.',

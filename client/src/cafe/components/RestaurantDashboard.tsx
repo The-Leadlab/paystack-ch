@@ -263,8 +263,10 @@ export function RestaurantDashboard() {
   };
 
   const handleDeleteSession = async (id: string) => {
-    if (confirm(t('alertDeleteSessionConfirm'))) {
-      await deleteSession(id);
+    if (!confirm(t('alertDeleteSessionConfirm'))) return;
+    const result = await deleteSession(id);
+    if (!result.ok) {
+      alert(t('alertDeleteSessionError').replace('{msg}', result.message || t('errorUnknown')));
     }
   };
 
@@ -789,6 +791,7 @@ export function RestaurantDashboard() {
                           <Edit2 className="w-3 h-3" />
                         </button>
                         <button
+                          type="button"
                           onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id); }}
                           className="text-cdlp-muted hover:text-red-400"
                         >

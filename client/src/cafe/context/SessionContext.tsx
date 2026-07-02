@@ -19,6 +19,17 @@ import { defaultSessionName } from '../lib/formatLocalDateTime';
 
 const SESSIONS_COLLECTION = 'sessions';
 const LAST_SESSION_KEY = 'cdlp_last_session_id';
+const OWNER_FIELDS = ['restaurantId', 'restaurant_id'] as const;
+const SESSION_FIELDS = ['sessionId', 'session_id'] as const;
+const SESSION_CHILD_COLLECTIONS = ['income', 'expenses', 'pos_readings', 'documents'] as const;
+
+function docBelongsToUser(data: Record<string, unknown>, uid: string): boolean {
+  return OWNER_FIELDS.some((field) => data[field] === uid);
+}
+
+function docBelongsToSession(data: Record<string, unknown>, sessionId: string): boolean {
+  return SESSION_FIELDS.some((field) => data[field] === sessionId);
+}
 
 function docToSession(id: string, data: any): Session {
   return {
@@ -37,7 +48,7 @@ type SessionContextValue = {
   loading: boolean;
   error: string | null;
   addSession: (name?: string) => Promise<Session | null>;
-  deleteSession: (id: string) => Promise<void>;
+  deleteSession: (id: string) => Promise<{ ok: boolean; message?: string }>;
   renameSession: (id: string, newName: string) => Promise<void>;
   setCurrentSession: (session: Session | null) => void;
   refreshSessions: () => Promise<void>;
@@ -57,6 +68,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isAllSessionsView, setAllSessionsView] = useState(false);
   const currentSessionRef = useRef<Session | null>(null);
+  const initialBootstrapDoneRef = useRef(false);
   currentSessionRef.current = currentSession;
 
   const addSession = useCallback(
@@ -165,70 +177,99 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [fetchSessions]);
 
   useEffect(() => {
-    if (!user?.uid || loading || sessions.length > 0) return;
-    const ensureFirstSession = async () => {
-      await addSession();
-    };
-    ensureFirstSession();
+    initialBootstrapDoneRef.current = false;
+  }, [user?.uid]);
+
+  /** Create the first session only for brand-new accounts — not after the user deletes the last one. */
+  useEffect(() => {
+    if (!user?.uid || loading) return;
+    if (sessions.length > 0) {
+      initialBootstrapDoneRef.current = true;
+      return;
+    }
+    if (initialBootstrapDoneRef.current) return;
+    initialBootstrapDoneRef.current = true;
+    void addSession();
   }, [user?.uid, loading, sessions.length, addSession]);
 
   const deleteSession = useCallback(
-    async (id: string) => {
+    async (id: string): Promise<{ ok: boolean; message?: string }> => {
       const uid = user?.uid;
-      if (!db || !uid) return;
+      if (!db || !uid) {
+        const message = 'Firebase Firestore is not configured.';
+        setError(message);
+        return { ok: false, message };
+      }
       try {
-        const { collection, getDocs, query, where, deleteDoc: fsDeleteDoc } = await import('firebase/firestore');
-        const incomeIds = new Set<string>();
-        const expenseIds = new Set<string>();
-        const posIds = new Set<string>();
-        const documentIds = new Set<string>();
-        const collect = async (q: any, target: Set<string>) => {
-          const snap = await getDocs(q);
-          snap.forEach((d) => target.add(d.id));
+        setError(null);
+        const { collection, getDocs, query, where, deleteDoc: fsDeleteDoc, doc } =
+          await import('firebase/firestore');
+        type DocumentReference = import('firebase/firestore').DocumentReference;
+
+        const childRefs: DocumentReference[] = [];
+        const seenPaths = new Set<string>();
+
+        const pushRef = (ref: DocumentReference) => {
+          if (seenPaths.has(ref.path)) return;
+          seenPaths.add(ref.path);
+          childRefs.push(ref);
         };
 
-        // Income (new + legacy fields)
-        await collect(query(collection(db, 'income'), where('restaurantId', '==', uid), where('sessionId', '==', id)), incomeIds);
-        await collect(query(collection(db, 'income'), where('restaurantId', '==', uid), where('session_id', '==', id)), incomeIds);
-        // Expenses
-        await collect(query(collection(db, 'expenses'), where('restaurantId', '==', uid), where('sessionId', '==', id)), expenseIds);
-        await collect(query(collection(db, 'expenses'), where('restaurantId', '==', uid), where('session_id', '==', id)), expenseIds);
-        // POS
-        await collect(query(collection(db, 'pos_readings'), where('restaurant_id', '==', uid), where('session_id', '==', id)), posIds);
-        await collect(query(collection(db, 'pos_readings'), where('restaurantId', '==', uid), where('sessionId', '==', id)), posIds);
-        // Documents
-        await collect(query(collection(db, 'documents'), where('restaurantId', '==', uid), where('session_id', '==', id)), documentIds);
-        await collect(query(collection(db, 'documents'), where('restaurantId', '==', uid), where('sessionId', '==', id)), documentIds);
+        for (const collectionName of SESSION_CHILD_COLLECTIONS) {
+          for (const ownerField of OWNER_FIELDS) {
+            try {
+              const snap = await getDocs(
+                query(collection(db, collectionName), where(ownerField, '==', uid))
+              );
+              snap.forEach((d) => {
+                const data = d.data() as Record<string, unknown>;
+                if (!docBelongsToUser(data, uid) || !docBelongsToSession(data, id)) return;
+                pushRef(d.ref);
+              });
+            } catch (queryErr) {
+              console.warn(`Session delete: query ${collectionName}.${ownerField} failed`, queryErr);
+            }
+          }
+        }
 
-        // Delete children first to satisfy strict rules.
-        for (const incomeId of incomeIds) {
-          await fsDeleteDoc(doc(db, 'income', incomeId)).catch(() => {});
-        }
-        for (const expenseId of expenseIds) {
-          await fsDeleteDoc(doc(db, 'expenses', expenseId)).catch(() => {});
-        }
-        for (const posId of posIds) {
-          await fsDeleteDoc(doc(db, 'pos_readings', posId)).catch(() => {});
-        }
-        for (const documentId of documentIds) {
-          await fsDeleteDoc(doc(db, 'documents', documentId)).catch(() => {});
+        const deleteFailures: string[] = [];
+        for (const ref of childRefs) {
+          try {
+            await fsDeleteDoc(ref);
+          } catch (deleteErr) {
+            console.error(`Session delete: failed to remove ${ref.path}`, deleteErr);
+            deleteFailures.push(ref.path);
+          }
         }
 
         await fsDeleteDoc(doc(db, SESSIONS_COLLECTION, id));
-        
-        setSessions((prev) => prev.filter((s) => s.id !== id));
-        if (currentSession?.id === id) {
-          const remaining = sessions.filter(s => s.id !== id);
-          setCurrentSessionState(remaining[0] || null);
+
+        setSessions((prev) => {
+          const next = prev.filter((s) => s.id !== id);
+          if (currentSessionRef.current?.id === id) {
+            const newCurrent = next[0] ?? null;
+            setCurrentSessionState(newCurrent);
+            if (newCurrent) localStorage.setItem(LAST_SESSION_KEY, newCurrent.id);
+            else localStorage.removeItem(LAST_SESSION_KEY);
+          }
+          return next;
+        });
+
+        if (deleteFailures.length > 0) {
+          const message = `Session removed, but ${deleteFailures.length} linked record(s) could not be deleted. Refresh and try again if needed.`;
+          setError(message);
         }
-        
-        console.log(`✅ Session ${id} and all associated data deleted`);
+
+        console.log(`✅ Session ${id} deleted (${childRefs.length} linked records processed)`);
+        return { ok: true, message: deleteFailures.length > 0 ? deleteFailures.join(', ') : undefined };
       } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
         console.error('Delete session error:', err);
-        setError(err instanceof Error ? err.message : String(err));
+        setError(message);
+        return { ok: false, message };
       }
     },
-    [currentSession, sessions, user?.uid]
+    [user?.uid]
   );
 
   const renameSession = useCallback(
