@@ -170,16 +170,3 @@ export function stripePriceIdForPlan(planId: PaystackPlanId, useTestPrices = fal
 export function currentMonthKey(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
-
-/** Count completed documents whose created_at falls in the current calendar month (YYYY-MM prefix). */
-export function countCompletedDocumentsThisMonth(
-  documents: { status?: string; created_at?: string }[],
-  monthKey = currentMonthKey()
-): number {
-  return documents.filter(
-    (doc) =>
-      doc.status === "completed" &&
-      typeof doc.created_at === "string" &&
-      doc.created_at.slice(0, 7) === monthKey
-  ).length;
-}

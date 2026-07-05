@@ -79,7 +79,7 @@ export function RestaurantDashboard() {
   const { sessions, currentSession, addSession, deleteSession, renameSession, setCurrentSession, isAllSessionsView, setAllSessionsView } = useSession();
   const { documents, addDocument, updateDocumentData, deleteDocument: deleteDocumentFromContext } = useDocuments();
   const { signOut, user } = useAuth();
-  const { enforcementEnabled, entitlements } = useSubscription();
+  const { enforcementEnabled, entitlements, incrementDocumentUsage } = useSubscription();
   const { language, setLanguage, t } = useLanguage();
   const chfLocale = useChfLocale();
   const errMsg = (error: unknown) => (error instanceof Error ? error.message : t('errorUnknown'));
@@ -380,6 +380,12 @@ export function RestaurantDashboard() {
       throw new Error('No session selected');
     }
 
+    // Capture before the update below — tells us whether this is a genuinely new completion
+    // (count it toward the monthly plan cap) or a re-processing of an already-completed
+    // document (don't double-count it).
+    const wasAlreadyCompleted =
+      !!persistedDocumentId && documents.find((d) => d.id === persistedDocumentId)?.status === 'completed';
+
     let documentId: string;
     try {
       if (persistedDocumentId) {
@@ -406,6 +412,14 @@ export function RestaurantDashboard() {
       console.error('âŒ Error saving document:', error);
       alert(t('alertSaveDocumentFailed').replace('{msg}', errMsg(error)));
       throw error;
+    }
+
+    if (!wasAlreadyCompleted) {
+      try {
+        await incrementDocumentUsage();
+      } catch (usageError) {
+        console.error('Failed to record monthly document usage:', usageError);
+      }
     }
 
     const date = data.date || new Date().toISOString().split('T')[0];

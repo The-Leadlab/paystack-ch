@@ -38,7 +38,6 @@ import { useSubscription } from '../context/SubscriptionContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useExpenseCategoryMeta } from '../i18n/expenseCategoryI18n';
 import { formatIssuerForDisplay, invoicesDetectedIssuer } from '../i18n/documentDisplayI18n';
-import { countCompletedDocumentsThisMonth } from '@shared/planCatalog';
 import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
 
 // Neural Log Component (from Ypsom)
@@ -2085,7 +2084,7 @@ export const DocumentProcessor: React.FC<{
   onDataExtracted: (data: any, fileName: string, fileHash?: string, fileRaw?: File, persistedDocumentId?: string) => void,
   onDocumentUpdated?: (documentId: string, newData: FinancialData) => Promise<void>
 }> = ({ documents, updateDocument, onDeleteDocument, onDocumentQueued, onDataExtracted, onDocumentUpdated }) => {
-  const { enforcementEnabled, entitlements } = useSubscription();
+  const { enforcementEnabled, entitlements, documentsUsedThisMonth } = useSubscription();
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
   const docStatusLabel = (status: string) => {
@@ -2171,13 +2170,9 @@ export const DocumentProcessor: React.FC<{
     const progress = total > 0 ? (completed / total) * 100 : 0;
     return { total, completed, progress };
   }, [allDocs]);
-  const monthlyCompleted = useMemo(
-    () =>
-      countCompletedDocumentsThisMonth(
-        [...documents, ...localDocs].map((d) => ({ status: d.status, created_at: d.created_at }))
-      ),
-    [documents, localDocs]
-  );
+  // Account-wide, durable count from Firestore (survives new sessions and document deletion) —
+  // not derived from `documents`/`localDocs`, which are scoped to the current session.
+  const monthlyCompleted = documentsUsedThisMonth;
   const documentCap = entitlements.maxDocumentsPerMonth;
   const documentLimitReached = enforcementEnabled && documentCap != null && monthlyCompleted >= documentCap;
   const monthlyRemaining =
@@ -2311,10 +2306,7 @@ export const DocumentProcessor: React.FC<{
 
       const cap = entitlements.maxDocumentsPerMonth;
       if (enforcementEnabled && cap != null) {
-        const used = countCompletedDocumentsThisMonth(
-          [...documents, ...localDocs].map((d) => ({ status: d.status, created_at: d.created_at }))
-        );
-        if (used >= cap) {
+        if (monthlyCompleted >= cap) {
           const msg = t('planLimitDocuments').replace('{n}', String(cap));
           setLocalDocs((prev) => prev.map((d) => (d.id === doc.id ? { ...d, status: 'error', error: msg } : d)));
           if (isFirestoreDoc && firestoreId) {
