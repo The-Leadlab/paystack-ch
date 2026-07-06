@@ -306,6 +306,8 @@ const translations = {
     planLimitDocuments: 'Monthly document processing limit reached ({n} completed this month). Upgrade your plan to process more.',
     planLimitSessions: 'Your plan allows up to {n} accounting periods (sessions). Upgrade to add more.',
     planLimitEmployees: 'Your plan allows up to {n} employee slot(s). Upgrade to add more.',
+    upgradePromptTitle: 'Document limit reached',
+    upgradePromptDismiss: 'Maybe later',
     reportsAdvancedLocked: 'Advanced PDF exports and Swiss TVA statements require Business or higher.',
 
     planSummaryTitle: 'Your subscription',
@@ -1076,6 +1078,8 @@ const translations = {
     planLimitDocuments: 'Plafond mensuel de traitement de documents atteint ({n} termines ce mois-ci). Passez a une offre superieure pour continuer.',
     planLimitSessions: 'Votre offre autorise au plus {n} periodes comptables (sessions). Passez a une offre superieure pour en ajouter.',
     planLimitEmployees: 'Votre offre autorise au plus {n} employe(s). Passez a une offre superieure pour en ajouter.',
+    upgradePromptTitle: 'Plafond de documents atteint',
+    upgradePromptDismiss: 'Plus tard',
     reportsAdvancedLocked: 'Les exports PDF avances et les declarations TVA suisses necessitent l\'offre Business ou superieure.',
 
     planSummaryTitle: 'Votre abonnement',

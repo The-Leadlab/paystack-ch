@@ -3,13 +3,14 @@
  * Same origin on Vercel, or set VITE_API_BASE_URL when the SPA is hosted separately.
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, increment } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { isSubscriptionOrVerificationBypassUser } from '../lib/subscriptionBypass';
 import { useAuth } from './AuthContext';
 import {
   SELECTED_PLAN_STORAGE_KEY,
   UNRESTRICTED_ENTITLEMENTS,
+  currentMonthKey,
   entitlementsForPlan,
   parsePaystackPlanId,
   type PaystackPlanId,
@@ -34,6 +35,10 @@ type SubscriptionContextValue = {
   inGoodStanding: boolean;
   /** Effective limits and feature flags for the current plan (unrestricted when enforcement is off). */
   entitlements: PlanEntitlements;
+  /** Documents completed this calendar month, account-wide — survives new sessions and document deletion. */
+  documentsUsedThisMonth: number;
+  /** Records one completed document against the current calendar month's durable usage count. */
+  incrementDocumentUsage: () => Promise<void>;
   startCheckout: (planId?: PaystackPlanId | null) => Promise<void>;
   openCustomerPortal: () => Promise<void>;
 };
@@ -50,10 +55,12 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const bypass = useMemo(() => isSubscriptionOrVerificationBypassUser(user), [user]);
   const [loading, setLoading] = useState(true);
   const [billing, setBilling] = useState<UserBillingSnapshot | null>(null);
+  const [documentsUsedThisMonth, setDocumentsUsedThisMonth] = useState(0);
 
   useEffect(() => {
     if (!user || !db) {
       setBilling(null);
+      setDocumentsUsedThisMonth(0);
       setLoading(false);
       return;
     }
@@ -64,6 +71,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       (snap) => {
         if (!snap.exists()) {
           setBilling({ subscriptionStatus: 'none', trialEndsAt: null, planId: null, stripeCustomerId: null });
+          setDocumentsUsedThisMonth(0);
         } else {
           const d = snap.data() as Record<string, unknown>;
           const ts = d.trialEndsAt as { toDate?: () => Date } | undefined;
@@ -76,16 +84,26 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
                 ? d.stripeCustomerId.trim()
                 : null,
           });
+          const usage = d.usage as Record<string, unknown> | undefined;
+          const usedRaw = usage?.[currentMonthKey()];
+          setDocumentsUsedThisMonth(typeof usedRaw === 'number' && Number.isFinite(usedRaw) ? usedRaw : 0);
         }
         setLoading(false);
       },
       (err) => {
         console.error('Subscription snapshot error:', err);
         setBilling({ subscriptionStatus: 'none', trialEndsAt: null, planId: null, stripeCustomerId: null });
+        setDocumentsUsedThisMonth(0);
         setLoading(false);
       }
     );
     return () => unsub();
+  }, [user]);
+
+  const incrementDocumentUsage = useCallback(async () => {
+    if (!user || !db) return;
+    const ref = doc(db, 'users', user.uid);
+    await setDoc(ref, { usage: { [currentMonthKey()]: increment(1) } }, { merge: true });
   }, [user]);
 
   const inGoodStanding = useMemo(() => {
@@ -160,6 +178,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     billing,
     inGoodStanding,
     entitlements,
+    documentsUsedThisMonth,
+    incrementDocumentUsage,
     startCheckout,
     openCustomerPortal,
   };

@@ -12,6 +12,7 @@ import { formatIssuerForDisplay, formatMonthYearLabel, parseMonthKey } from '../
 import { useDocuments } from '../context/DocumentContext';
 import { usePOS } from '../context/POSContext';
 import { DocumentProcessor } from './DocumentProcessor';
+import { UpgradePromptModal } from './UpgradePromptModal';
 import { getSessionDisplayName } from '../lib/formatLocalDateTime';
 import { POSManager } from './POSManager';
 import type { ProcessedDocument, POSReading } from '../types';
@@ -79,7 +80,7 @@ export function RestaurantDashboard() {
   const { sessions, currentSession, addSession, deleteSession, renameSession, setCurrentSession, isAllSessionsView, setAllSessionsView } = useSession();
   const { documents, addDocument, updateDocumentData, deleteDocument: deleteDocumentFromContext } = useDocuments();
   const { signOut, user } = useAuth();
-  const { enforcementEnabled, entitlements } = useSubscription();
+  const { enforcementEnabled, entitlements, incrementDocumentUsage, documentsUsedThisMonth, loading: subscriptionLoading } = useSubscription();
   const { language, setLanguage, t } = useLanguage();
   const chfLocale = useChfLocale();
   const errMsg = (error: unknown) => (error instanceof Error ? error.message : t('errorUnknown'));
@@ -119,6 +120,19 @@ export function RestaurantDashboard() {
       setCurrentSession(sessions[0] || null);
     }
   }, [showAllSessionsView, isAllSessionsView, sessions, setAllSessionsView, setCurrentSession]);
+
+  // Show the upgrade prompt once per dashboard load if the account already sits at its monthly cap.
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const upgradePromptShownRef = useRef(false);
+  useEffect(() => {
+    if (subscriptionLoading || upgradePromptShownRef.current) return;
+    const cap = entitlements.maxDocumentsPerMonth;
+    if (enforcementEnabled && cap != null && documentsUsedThisMonth >= cap) {
+      setShowUpgradePrompt(true);
+    }
+    upgradePromptShownRef.current = true;
+  }, [subscriptionLoading, enforcementEnabled, entitlements.maxDocumentsPerMonth, documentsUsedThisMonth]);
+
   const [showSidebar, setShowSidebar] = useState(false);
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [showAddIncome, setShowAddIncome] = useState(false);
@@ -380,6 +394,12 @@ export function RestaurantDashboard() {
       throw new Error('No session selected');
     }
 
+    // Capture before the update below — tells us whether this is a genuinely new completion
+    // (count it toward the monthly plan cap) or a re-processing of an already-completed
+    // document (don't double-count it).
+    const wasAlreadyCompleted =
+      !!persistedDocumentId && documents.find((d) => d.id === persistedDocumentId)?.status === 'completed';
+
     let documentId: string;
     try {
       if (persistedDocumentId) {
@@ -406,6 +426,14 @@ export function RestaurantDashboard() {
       console.error('âŒ Error saving document:', error);
       alert(t('alertSaveDocumentFailed').replace('{msg}', errMsg(error)));
       throw error;
+    }
+
+    if (!wasAlreadyCompleted) {
+      try {
+        await incrementDocumentUsage();
+      } catch (usageError) {
+        console.error('Failed to record monthly document usage:', usageError);
+      }
     }
 
     const date = data.date || new Date().toISOString().split('T')[0];
@@ -612,6 +640,13 @@ export function RestaurantDashboard() {
 
   return (
     <div className="min-h-[100dvh] min-h-screen bg-cdlp-dark flex flex-col md:flex-row touch-manipulation overscroll-y-contain">
+      {showUpgradePrompt && entitlements.maxDocumentsPerMonth != null && (
+        <UpgradePromptModal
+          documentCap={entitlements.maxDocumentsPerMonth}
+          onClose={() => setShowUpgradePrompt(false)}
+          onOpenBilling={openBillingTab}
+        />
+      )}
       {/* Mobile Header */}
       <div className="md:hidden bg-cdlp-black border-b border-cdlp-border px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
