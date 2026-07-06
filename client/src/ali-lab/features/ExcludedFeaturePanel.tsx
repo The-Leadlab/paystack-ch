@@ -9,7 +9,7 @@ export function ExcludedFeaturePanel({ featureId }: { featureId: string }) {
         <strong>{featureId}</strong> (bank connections, CSV import, Open Banking / bLink) is explicitly
         excluded from Paystack.ch. Document upload + AI extraction remains the supported flow.
       </p>
-      <Link href="/ali/budgeting" className="text-brand-red font-bold uppercase text-xs">
+      <Link href="/ali/overview" className="text-brand-red font-bold uppercase text-xs">
         Back to lab features
       </Link>
     </div>

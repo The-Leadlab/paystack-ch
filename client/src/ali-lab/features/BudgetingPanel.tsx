@@ -123,9 +123,21 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   );
 
   useEffect(() => {
-    const row = saved.find((b) => b.month === month);
-    if (row?.mode) setMode(row.mode);
+    const modeRow = saved.find((b) => b.month === month && b.category === "__mode__");
+    if (modeRow?.mode) setMode(modeRow.mode);
+    else {
+      const row = saved.find((b) => b.month === month && b.mode);
+      if (row?.mode) setMode(row.mode);
+    }
   }, [saved, month]);
+
+  const persistMode = async (next: LabBudgetMode) => {
+    setMode(next);
+    const marker = saved.find((b) => b.month === month && b.category === "__mode__");
+    const payload = { month, category: "__mode__", budgetChf: 0, mode: next };
+    if (marker) await update(marker.id, payload);
+    else await add(payload);
+  };
 
   const inSession = (sessionId: string) =>
     ledger.isAllSessionsView || !currentSession?.id || sessionId === currentSession.id;
@@ -177,7 +189,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
         <select
           className="pp-input rounded px-2 py-1"
           value={mode}
-          onChange={(e) => setMode(e.target.value as LabBudgetMode)}
+          onChange={(e) => void persistMode(e.target.value as LabBudgetMode)}
         >
           <option value="traditional">{t("traditional")}</option>
           <option value="zero-based">{t("zeroBased")}</option>
@@ -275,7 +287,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
               <h2 className="text-lg font-semibold">Budget mode</h2>
               <button
                 type="button"
-                onClick={() => setMode(mode === "zero-based" ? "traditional" : "zero-based")}
+                onClick={() => void persistMode(mode === "zero-based" ? "traditional" : "zero-based")}
                 className="w-12 h-6 bg-[var(--pp-surface-highest)] rounded-full relative p-0.5"
                 aria-pressed={mode === "zero-based"}
               >

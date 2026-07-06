@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { Calendar, Receipt, AlertTriangle } from "lucide-react";
+import { Calendar, Receipt, AlertTriangle, Banknote } from "lucide-react";
 import type { AliLabFeature } from "../featureRegistry";
 import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import type { LabBill } from "../types";
 import { labCollections } from "../aliLabFirestore";
 import { useAliLabPersist } from "../hooks/useAliLabPersist";
 import { useAliLabLedger } from "../hooks/useAliLabLedger";
+import { usePersonalPlan } from "../personal-plan/context/PersonalPlanContext";
 import { GlassCard } from "../personal-plan/components/GlassCard";
 import { formatChfDisplay } from "../personal-plan/formatChfDisplay";
 
@@ -17,8 +18,9 @@ function annualizedChf(b: LabBill): number {
 
 export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
   const { t, summary } = useLabFeatureText(feature);
-  const ledger = useAliLabLedger();
-  const { items, add, remove, uid } = useAliLabPersist<LabBill>(labCollections.bills, "bills", [
+  const { month, openTransaction } = usePersonalPlan();
+  const ledger = useAliLabLedger(month);
+  const { items, add, remove, update, uid } = useAliLabPersist<LabBill>(labCollections.bills, "bills", [
     { id: "seed-1", name: "Serafe", dueDate: "2026-06-01", amountChf: 335, recurrence: "yearly", remindDaysBefore: 14 },
     { id: "seed-2", name: "RC insurance", dueDate: "2026-07-15", amountChf: 1200, recurrence: "yearly", remindDaysBefore: 30 },
   ]);
@@ -28,7 +30,7 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
   const [amountChf, setAmountChf] = useState(0);
 
   const today = new Date().toISOString().slice(0, 10);
-  const monthPrefix = today.slice(0, 7);
+  const monthPrefix = month;
 
   const upcoming = useMemo(() => {
     return [...items]
@@ -45,6 +47,28 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
         return { ...b, days, overdue: days < 0, paidInLedger, annualChf: annualizedChf(b) };
       });
   }, [items, today, monthPrefix, ledger.filteredExpenses]);
+
+  const logPayment = (bill: LabBill) => {
+    openTransaction({
+      kind: "expense",
+      amount: bill.amountChf,
+      description: bill.name,
+      expenseCat: "BILLS",
+      date: today,
+    });
+  };
+
+  const editBill = (bill: LabBill) => {
+    const nextName = prompt("Bill name", bill.name);
+    if (nextName == null || !nextName.trim()) return;
+    const nextAmount = prompt("Amount (CHF)", String(bill.amountChf));
+    if (nextAmount == null) return;
+    const parsed = Number(nextAmount);
+    if (!Number.isFinite(parsed) || parsed < 0) return;
+    const nextDue = prompt("Due date (YYYY-MM-DD)", bill.dueDate);
+    if (nextDue == null || !nextDue.trim()) return;
+    void update(bill.id, { name: nextName.trim(), amountChf: parsed, dueDate: nextDue.trim() });
+  };
 
   const totalAnnual = upcoming.reduce((s, b) => s + b.annualChf, 0);
 
@@ -146,7 +170,7 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-4 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
               <div className="text-right pp-tabular">
                 <p className="font-semibold">{formatChfDisplay(b.amountChf)}</p>
                 <p className="text-[10px] text-[var(--pp-on-surface-variant)]">
@@ -154,10 +178,29 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
                   {t("perYear")}
                 </p>
               </div>
+              {!b.paidInLedger ? (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--pp-secondary)] px-2 py-1 rounded bg-[var(--pp-secondary)]/10"
+                  onClick={() => logPayment(b)}
+                >
+                  <Banknote className="size-3" />
+                  Log payment
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="text-[11px] text-[var(--pp-on-surface-variant)] underline"
-                onClick={() => void remove(b.id)}
+                onClick={() => editBill(b)}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                className="text-[11px] text-[var(--pp-error)] underline"
+                onClick={() => {
+                  if (confirm(`Delete bill "${b.name}"?`)) void remove(b.id);
+                }}
               >
                 {t("delete")}
               </button>

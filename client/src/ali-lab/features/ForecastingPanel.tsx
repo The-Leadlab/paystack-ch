@@ -118,7 +118,8 @@ export function ForecastingPanel({ feature }: { feature: AliLabFeature }) {
                 <button
                   type="button"
                   disabled
-                  className="px-4 py-2 rounded text-xs font-semibold text-[var(--pp-on-surface-variant)] opacity-50"
+                  title="12-month forecast coming soon"
+                  className="px-4 py-2 rounded text-xs font-semibold text-[var(--pp-on-surface-variant)] opacity-50 cursor-not-allowed"
                 >
                   12 months
                 </button>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +28,7 @@ import { formatChfDisplay } from "../formatChfDisplay";
 type TxKind = "expense" | "income";
 
 export function PersonalTransactionModal() {
-  const { transactionOpen, closeTransaction, month } = usePersonalPlan();
+  const { transactionOpen, closeTransaction, month, transactionPrefill } = usePersonalPlan();
   const { t } = useLabLanguage();
   const ledger = useLinkedLedger(month);
   const { addExpense, addIncome } = useFinance();
@@ -42,11 +42,29 @@ export function PersonalTransactionModal() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!transactionOpen) return;
+    const p = transactionPrefill;
+    if (!p) {
+      setDate(new Date().toISOString().slice(0, 10));
+      return;
+    }
+    if (p.kind) setKind(p.kind);
+    if (p.date) setDate(p.date);
+    if (p.amount != null) setAmount(String(p.amount));
+    if (p.description != null) setDescription(p.description);
+    if (p.expenseCat) setExpenseCat(p.expenseCat);
+    if (p.incomeCat) setIncomeCat(p.incomeCat);
+  }, [transactionOpen, transactionPrefill]);
+
   const reset = () => {
     setAmount("");
     setDescription("");
     setErr(null);
     setKind("expense");
+    setDate(new Date().toISOString().slice(0, 10));
+    setExpenseCat("GROCERIES");
+    setIncomeCat("SALARY");
   };
 
   const onClose = () => {

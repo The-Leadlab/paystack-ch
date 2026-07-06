@@ -66,7 +66,7 @@ function PlatformContent() {
   }
 
   if (location === "/app/personal") {
-    return <Redirect to="/app/personal/budgeting" />;
+    return <Redirect to="/app/personal/overview" />;
   }
 
   return (

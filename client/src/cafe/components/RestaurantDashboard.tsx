@@ -809,7 +809,7 @@ export function RestaurantDashboard() {
         {/* Pinned bottom: billing + logout (sessions scroll above) */}
         <div className="shrink-0 p-4 border-t border-cdlp-border bg-cdlp-black space-y-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <Link
-            href="/app/personal/budgeting"
+            href="/app/personal/overview"
             className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase rounded border border-cdlp-gold/40 text-cdlp-gold hover:bg-cdlp-gold/10 transition-colors"
           >
             <Wallet className="w-4 h-4" />

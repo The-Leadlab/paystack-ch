@@ -16,17 +16,21 @@ export type PersonalPlanNavItem = {
   label: string;
   icon: LucideIcon;
   featureId: string;
+  /** Shown in the compact mobile bar (max 4 + more). */
+  mobilePrimary?: boolean;
 };
 
 /** Primary nav — same features in lab (`/ali`) and production personal (`/app/personal`). */
 export const PERSONAL_PLAN_NAV: PersonalPlanNavItem[] = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, featureId: "budgeting" },
-  { id: "budget", label: "Budget", icon: Wallet, featureId: "budgeting" },
+  { id: "overview", label: "Overview", icon: LayoutDashboard, featureId: "overview", mobilePrimary: true },
+  { id: "budget", label: "Budget", icon: Wallet, featureId: "budgeting", mobilePrimary: true },
   { id: "reports", label: "Reports", icon: BarChart3, featureId: "forecasting" },
-  { id: "savings", label: "Savings", icon: PiggyBank, featureId: "goals" },
+  { id: "savings", label: "Savings", icon: PiggyBank, featureId: "goals", mobilePrimary: true },
   { id: "investments", label: "Investments", icon: TrendingUp, featureId: "investments" },
-  { id: "bills", label: "Bills", icon: Receipt, featureId: "bill-reminders" },
+  { id: "bills", label: "Bills", icon: Receipt, featureId: "bill-reminders", mobilePrimary: true },
 ];
+
+export const PERSONAL_PLAN_DEFAULT_FEATURE = "overview";
 
 export function personalFeaturePath(featureId: string, surface: PersonalPlanSurface): string {
   const base = surface === "app" ? "/app/personal" : "/ali";
@@ -50,4 +54,8 @@ export function isNavActive(item: PersonalPlanNavItem, featureId: string | undef
 
 export function businessAppPath(): string {
   return "/app";
+}
+
+export function personalHomePath(surface: PersonalPlanSurface): string {
+  return personalFeaturePath(PERSONAL_PLAN_DEFAULT_FEATURE, surface);
 }

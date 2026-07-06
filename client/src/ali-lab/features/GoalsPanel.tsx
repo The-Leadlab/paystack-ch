@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Plus, Shield, Car, Mountain, Home, CheckCircle2, MoreVertical, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Shield, Car, Mountain, Home, CheckCircle2, MoreVertical, Sparkles, Pencil, Trash2 } from "lucide-react";
 import type { AliLabFeature } from "../featureRegistry";
 import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import type { LabGoal } from "../types";
@@ -18,6 +18,8 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
   const monthSurplus = Math.max(0, ledger.householdMonth.savings);
   const [allocatedFromSurplus, setAllocatedFromSurplus] = useState(0);
   const surplus = Math.max(0, monthSurplus - allocatedFromSurplus);
+  const formRef = useRef<HTMLDivElement>(null);
+  const [menuGoalId, setMenuGoalId] = useState<string | null>(null);
 
   useEffect(() => {
     setAllocatedFromSurplus(0);
@@ -38,6 +40,27 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
     }
   };
 
+  const editGoal = (goal: LabGoal) => {
+    setMenuGoalId(null);
+    const nextName = prompt("Goal name", goal.name);
+    if (nextName == null || !nextName.trim()) return;
+    const nextTarget = prompt("Target (CHF)", String(goal.targetChf));
+    if (nextTarget == null) return;
+    const parsed = Number(nextTarget);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    void update(goal.id, { name: nextName.trim(), targetChf: parsed });
+  };
+
+  const deleteGoal = (goal: LabGoal) => {
+    setMenuGoalId(null);
+    if (!confirm(`Delete goal "${goal.name}"?`)) return;
+    void remove(goal.id);
+  };
+
+  const scrollToForm = () => {
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <div className="space-y-6">
       <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
@@ -56,7 +79,8 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
         </GlassCard>
       </section>
 
-      <GlassCard className="p-4">
+      <GlassCard className="p-4" id="goal-form">
+        <div ref={formRef}>
         <div className="flex flex-wrap gap-2">
           <input
             className="pp-input px-3 py-2 flex-1 min-w-[140px] text-sm"
@@ -104,6 +128,7 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
             {t("addGoal")}
           </button>
         </div>
+        </div>
       </GlassCard>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -115,6 +140,7 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
             : null;
           const icons = [Car, Mountain, Shield, Home];
           const Icon = icons[idx % icons.length];
+          const menuOpen = menuGoalId === g.id;
 
           return (
             <GlassCard key={g.id} className="p-5 flex flex-col gap-4 relative overflow-hidden group">
@@ -122,9 +148,36 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
                 <div className="p-2 bg-[var(--pp-surface-highest)] rounded-lg">
                   <Icon className="size-5 text-[var(--pp-primary)]" />
                 </div>
-                <button type="button" className="text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)]">
-                  <MoreVertical className="size-4" />
-                </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] p-1"
+                    onClick={() => setMenuGoalId(menuOpen ? null : g.id)}
+                    aria-label="Goal options"
+                  >
+                    <MoreVertical className="size-4" />
+                  </button>
+                  {menuOpen ? (
+                    <div className="absolute right-0 top-7 z-10 min-w-[140px] pp-glass-panel rounded-lg py-1 text-xs shadow-lg">
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[var(--pp-surface-highest)] text-left"
+                        onClick={() => editGoal(g)}
+                      >
+                        <Pencil className="size-3.5" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[var(--pp-surface-highest)] text-left text-[var(--pp-error)]"
+                        onClick={() => deleteGoal(g)}
+                      >
+                        <Trash2 className="size-3.5" />
+                        Delete
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
               <div>
                 <h3 className="text-lg font-semibold">{g.name}</h3>
@@ -195,24 +248,23 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
                 >
                   {t("fundFromSurplus")}
                 </button>
-                <button
-                  type="button"
-                  className="text-[11px] underline text-[var(--pp-error)]"
-                  onClick={() => void remove(g.id)}
-                >
-                  {t("delete")}
-                </button>
               </div>
             </GlassCard>
           );
         })}
 
-        <GlassCard className="p-5 border-dashed border-2 border-[var(--pp-outline-variant)] bg-transparent flex flex-col items-center justify-center gap-3 min-h-[280px] opacity-80 hover:opacity-100 transition-opacity">
-          <div className="w-14 h-14 rounded-full border border-[var(--pp-outline-variant)] flex items-center justify-center">
-            <Plus className="size-6 text-[var(--pp-on-surface-variant)]" />
-          </div>
-          <p className="text-sm font-semibold">New goal</p>
-        </GlassCard>
+        <button
+          type="button"
+          onClick={scrollToForm}
+          className="text-left w-full"
+        >
+          <GlassCard className="p-5 border-dashed border-2 border-[var(--pp-outline-variant)] bg-transparent flex flex-col items-center justify-center gap-3 min-h-[280px] opacity-80 hover:opacity-100 hover:border-[var(--pp-primary)]/40 transition-all cursor-pointer">
+            <div className="w-14 h-14 rounded-full border border-[var(--pp-outline-variant)] flex items-center justify-center">
+              <Plus className="size-6 text-[var(--pp-on-surface-variant)]" />
+            </div>
+            <p className="text-sm font-semibold">New goal</p>
+          </GlassCard>
+        </button>
 
         <GlassCard className="p-5 bg-gradient-to-br from-[var(--pp-surface-low)] to-[var(--pp-surface)] border-[var(--pp-primary)]/20 flex flex-col justify-between">
           <div>

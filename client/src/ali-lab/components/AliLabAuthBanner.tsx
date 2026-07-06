@@ -6,9 +6,16 @@ import { LAB_LANG_DISPLAY } from "../i18n/labLangDisplay";
 
 const LAB_LANGS: LabLang[] = ["en", "fr", "de", "it"];
 
-export function AliLabAuthBanner({ variant = "lab" }: { variant?: "lab" | "personal" }) {
+export function AliLabAuthBanner({
+  variant = "lab",
+  signInRedirect = "/ali/overview",
+}: {
+  variant?: "lab" | "personal";
+  signInRedirect?: string;
+}) {
   const { user, loading } = useAuth();
   const { lang, setLang, t } = useLabLanguage();
+  const signInHref = `/sign-in?redirect=${encodeURIComponent(signInRedirect)}`;
 
   if (variant === "personal") {
     return (
@@ -17,7 +24,7 @@ export function AliLabAuthBanner({ variant = "lab" }: { variant?: "lab" | "perso
           {loading ? "…" : user ? `✓ ${t("firebaseOk")} (${user.email})` : `${t("localOnly")} — ${t("signInHint")}`}
         </span>
         {!user && (
-          <Link href="/sign-in?redirect=/ali/budgeting" className="text-[var(--pp-primary)] font-semibold">
+          <Link href={signInHref} className="text-[var(--pp-primary)] font-semibold">
             {t("signIn")}
           </Link>
         )}
@@ -48,7 +55,7 @@ export function AliLabAuthBanner({ variant = "lab" }: { variant?: "lab" | "perso
           );
         })}
         {!user && (
-          <Link href="/sign-in?redirect=/ali/budgeting" className="text-brand-red font-bold uppercase">
+          <Link href={signInHref} className="text-brand-red font-bold uppercase">
             {t("signIn")}
           </Link>
         )}

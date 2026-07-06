@@ -1,5 +1,6 @@
 import { useRoute } from "wouter";
-import { ALI_LAB_FEATURES, getAliLabFeature } from "@/ali-lab/featureRegistry";
+import { getAliLabFeature } from "@/ali-lab/featureRegistry";
+import { PERSONAL_PLAN_DEFAULT_FEATURE } from "@/ali-lab/personal-plan/personalPlanNav";
 import { AliLabFeaturePanel } from "@/ali-lab/AliLabFeaturePanels";
 import { labFeatureCopy } from "@/ali-lab/i18n/labRegistryI18n";
 import { LabLanguageProvider, useLabLanguage } from "@/ali-lab/context/LabLanguageContext";
@@ -11,7 +12,7 @@ function PersonalAppContent() {
   const [, params] = useRoute("/app/personal/:featureId");
   const { lang } = useLabLanguage();
   const featureId = params?.featureId;
-  const feature = getAliLabFeature(featureId) ?? ALI_LAB_FEATURES.find((f) => f.id === "budgeting")!;
+  const feature = getAliLabFeature(featureId) ?? getAliLabFeature(PERSONAL_PLAN_DEFAULT_FEATURE)!;
   const activeCopy = labFeatureCopy(feature.id, lang);
   const showKpi = !featureId || !KPI_HIDDEN_FEATURES.has(featureId);
 

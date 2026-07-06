@@ -1,5 +1,6 @@
 import type { AliLabFeature } from "./featureRegistry";
 import { BudgetingPanel } from "./features/BudgetingPanel";
+import { PersonalDashboardPanel } from "./features/PersonalDashboardPanel";
 import { BillRemindersPanel } from "./features/BillRemindersPanel";
 import { GoalsPanel } from "./features/GoalsPanel";
 import { ForecastingPanel } from "./features/ForecastingPanel";
@@ -11,6 +12,8 @@ import { InvestmentsPanel } from "./features/InvestmentsPanel";
 
 export function AliLabFeaturePanel({ feature }: { feature: AliLabFeature }) {
   switch (feature.id) {
+    case "overview":
+      return <PersonalDashboardPanel feature={feature} />;
     case "budgeting":
       return <BudgetingPanel feature={feature} />;
     case "bill-reminders":

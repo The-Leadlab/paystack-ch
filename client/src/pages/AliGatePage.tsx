@@ -16,7 +16,7 @@ export default function AliGatePage() {
   const next = (() => {
     const qs = search.startsWith("?") ? search.slice(1) : search;
     const n = new URLSearchParams(qs).get("next");
-    return n && n.startsWith("/ali") && !n.startsWith("//") ? n : "/ali/budgeting";
+    return n && n.startsWith("/ali") && !n.startsWith("//") ? n : "/ali/overview";
   })();
 
   const [password, setPassword] = useState("");

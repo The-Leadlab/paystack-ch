@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
 import { SeoNoIndex } from "@/components/SeoNoIndex";
 import { checkAliLabSession } from "@/lib/aliLabGateClient";
-import { ALI_LAB_FEATURES, getAliLabFeature, isExcludedAliLabFeature } from "@/ali-lab/featureRegistry";
+import { getAliLabFeature, isExcludedAliLabFeature } from "@/ali-lab/featureRegistry";
 import { AliLabFeaturePanel } from "@/ali-lab/AliLabFeaturePanels";
 import { ExcludedFeaturePanel } from "@/ali-lab/features/ExcludedFeaturePanel";
 import { AliLabShell } from "@/ali-lab/AliLabShell";
@@ -34,10 +34,11 @@ function useAliLabGate(): { allowed: boolean; checking: boolean } {
 
 function AliLabPageContent() {
   const [, params] = useRoute("/ali/:featureId");
+  const { lang } = useLabLanguage();
   const featureId = params?.featureId;
   const excluded = featureId ? isExcludedAliLabFeature(featureId) : false;
-  const feature = excluded ? undefined : (getAliLabFeature(featureId) ?? ALI_LAB_FEATURES[0]);
-  const activeCopy = feature ? labFeatureCopy(feature.id, "en") : undefined;
+  const feature = excluded ? undefined : (getAliLabFeature(featureId) ?? getAliLabFeature("overview"));
+  const activeCopy = feature ? labFeatureCopy(feature.id, lang) : undefined;
   const showKpi = !featureId || !KPI_HIDDEN_FEATURES.has(featureId);
 
   if (excluded && featureId) {
@@ -70,7 +71,7 @@ export default function AliLabPage() {
 
   useEffect(() => {
     if (!checking && !allowed) {
-      const next = featureId && !excluded ? `/ali/${featureId}` : "/ali/budgeting";
+      const next = featureId && !excluded ? `/ali/${featureId}` : "/ali/overview";
       window.location.href = `/ali-gate?next=${encodeURIComponent(next)}`;
     }
   }, [checking, allowed, featureId, excluded]);

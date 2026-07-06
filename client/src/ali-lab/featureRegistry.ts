@@ -16,6 +16,15 @@ export type AliLabFeature = {
 /** Priority order: build & test here before promoting to `/app`. */
 export const ALI_LAB_FEATURES: AliLabFeature[] = [
   {
+    id: "overview",
+    title: "Personal overview",
+    competitors: "YNAB, BudgetCH",
+    priority: "high",
+    status: "ready",
+    promoteTo: "Personal dashboard home at /app/personal",
+    summary: "Month at a glance — quick actions, recent transactions, links to every personal module",
+  },
+  {
     id: "budgeting",
     title: "Budgeting (budget vs actual)",
     competitors: "YNAB, BudgetCH, BlueBudget",
