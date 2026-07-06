@@ -24,12 +24,13 @@ const UPGRADE_PLANS: PaystackPlanId[] = ['starter', 'business', 'unlimited', 'en
 export function BillingPlanPanel() {
   const { t } = useLanguage();
   const { user, changePassword } = useAuth();
-  const { enforcementEnabled, loading, billing, entitlements, startCheckout, openCustomerPortal } = useSubscription();
+  const { enforcementEnabled, loading, billing, entitlements, startCheckout, openCustomerPortal, isPlanTestUser, setPlanTestPlan } = useSubscription();
 
   const [portalBusy, setPortalBusy] = useState(false);
   const [upgradePlan, setUpgradePlan] = useState<PaystackPlanId | null>(billing?.planId ?? 'starter');
   const [upgradeBusy, setUpgradeBusy] = useState(false);
   const [upgradeErr, setUpgradeErr] = useState<string | null>(null);
+  const [planTestBusy, setPlanTestBusy] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -142,6 +143,39 @@ export function BillingPlanPanel() {
         <h2 className="text-xl font-black uppercase tracking-wider text-white mb-1">{t('subscriptionManageBilling')}</h2>
         <p className="text-xs text-cdlp-muted leading-relaxed max-w-prose">{t('billingPageIntro')}</p>
       </header>
+
+      {isPlanTestUser ? (
+        <section className="rounded-xl border border-cdlp-gold/40 bg-cdlp-gold/5 p-5 sm:p-6 space-y-4">
+          <h2 className="text-sm font-black uppercase tracking-wider text-cdlp-gold">{t('planTestTitle')}</h2>
+          <p className="text-xs text-cdlp-muted leading-relaxed">{t('planTestBody')}</p>
+          <div className="grid grid-cols-3 gap-2">
+            {(['starter', 'business', 'unlimited'] as const).map((id) => (
+              <button
+                key={id}
+                type="button"
+                disabled={planTestBusy}
+                onClick={async () => {
+                  setPlanTestBusy(true);
+                  try {
+                    await setPlanTestPlan(id);
+                  } catch (e) {
+                    alert(e instanceof Error ? e.message : String(e));
+                  } finally {
+                    setPlanTestBusy(false);
+                  }
+                }}
+                className={`rounded-md border px-2 py-3 text-[10px] font-black uppercase tracking-tight transition-colors disabled:opacity-50 ${
+                  effectivePlan === id
+                    ? 'border-cdlp-gold/70 bg-cdlp-cream/50 text-white'
+                    : 'border-cdlp-border bg-cdlp-dark/30 text-cdlp-muted hover:border-cdlp-gold/35 hover:text-white'
+                }`}
+              >
+                {planLabel(id)}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {enforcementEnabled ? (
         <section className="rounded-xl border border-cdlp-border bg-cdlp-card shadow-[0_1px_0_0_color-mix(in_srgb,var(--color-cdlp-border)_40%,transparent)] ring-1 ring-white/[0.04] p-5 sm:p-6 space-y-5">

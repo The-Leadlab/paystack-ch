@@ -5,7 +5,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { doc, onSnapshot, setDoc, increment } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { isSubscriptionOrVerificationBypassUser } from '../lib/subscriptionBypass';
+import { isPlanTestUser, isSubscriptionOrVerificationBypassUser } from '../lib/subscriptionBypass';
+import { applyPlanTestSelection } from '../lib/planTestSelection';
 import { useAuth } from './AuthContext';
 import {
   SELECTED_PLAN_STORAGE_KEY,
@@ -39,6 +40,9 @@ type SubscriptionContextValue = {
   documentsUsedThisMonth: number;
   /** Records one completed document against the current calendar month's durable usage count. */
   incrementDocumentUsage: () => Promise<void>;
+  /** Ops sandbox: simulate starter / business / unlimited without Stripe. */
+  isPlanTestUser: boolean;
+  setPlanTestPlan: (planId: PaystackPlanId) => Promise<void>;
   startCheckout: (planId?: PaystackPlanId | null) => Promise<void>;
   openCustomerPortal: () => Promise<void>;
 };
@@ -53,6 +57,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const { user } = useAuth();
   const enforcementEnabled = parseBoolEnv(import.meta.env.VITE_SUBSCRIPTION_ENABLED);
   const bypass = useMemo(() => isSubscriptionOrVerificationBypassUser(user), [user]);
+  const planTest = useMemo(() => isPlanTestUser(user), [user]);
   const [loading, setLoading] = useState(true);
   const [billing, setBilling] = useState<UserBillingSnapshot | null>(null);
   const [documentsUsedThisMonth, setDocumentsUsedThisMonth] = useState(0);
@@ -115,9 +120,19 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
   const entitlements = useMemo(() => {
     if (!enforcementEnabled) return UNRESTRICTED_ENTITLEMENTS;
+    if (planTest) return entitlementsForPlan(billing?.planId ?? 'starter');
     if (bypass) return UNRESTRICTED_ENTITLEMENTS;
     return entitlementsForPlan(billing?.planId ?? undefined);
-  }, [enforcementEnabled, bypass, billing?.planId]);
+  }, [enforcementEnabled, planTest, bypass, billing?.planId]);
+
+  const setPlanTestPlan = useCallback(
+    async (planId: PaystackPlanId) => {
+      if (!user) throw new Error('Not signed in');
+      if (!planTest) throw new Error('Plan test mode is not enabled for this account');
+      await applyPlanTestSelection(user.uid, planId);
+    },
+    [user, planTest]
+  );
 
   const startCheckout = useCallback(
     async (planIdArg?: PaystackPlanId | null) => {
@@ -180,6 +195,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     entitlements,
     documentsUsedThisMonth,
     incrementDocumentUsage,
+    isPlanTestUser: planTest,
+    setPlanTestPlan,
     startCheckout,
     openCustomerPortal,
   };

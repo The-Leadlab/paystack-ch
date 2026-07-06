@@ -13,6 +13,7 @@ import { useDocuments } from '../context/DocumentContext';
 import { usePOS } from '../context/POSContext';
 import { DocumentProcessor } from './DocumentProcessor';
 import { UpgradePromptModal } from './UpgradePromptModal';
+import { PlanTestBanner, PlanTestPickerModal } from './PlanTestPickerModal';
 import { getSessionDisplayName } from '../lib/formatLocalDateTime';
 import { POSManager } from './POSManager';
 import type { ProcessedDocument, POSReading } from '../types';
@@ -80,7 +81,7 @@ export function RestaurantDashboard() {
   const { sessions, currentSession, addSession, deleteSession, renameSession, setCurrentSession, isAllSessionsView, setAllSessionsView } = useSession();
   const { documents, addDocument, updateDocumentData, deleteDocument: deleteDocumentFromContext } = useDocuments();
   const { signOut, user } = useAuth();
-  const { enforcementEnabled, entitlements, incrementDocumentUsage, documentsUsedThisMonth, loading: subscriptionLoading } = useSubscription();
+  const { enforcementEnabled, entitlements, incrementDocumentUsage, documentsUsedThisMonth, loading: subscriptionLoading, isPlanTestUser, billing } = useSubscription();
   const { language, setLanguage, t } = useLanguage();
   const chfLocale = useChfLocale();
   const errMsg = (error: unknown) => (error instanceof Error ? error.message : t('errorUnknown'));
@@ -132,6 +133,12 @@ export function RestaurantDashboard() {
     }
     upgradePromptShownRef.current = true;
   }, [subscriptionLoading, enforcementEnabled, entitlements.maxDocumentsPerMonth, documentsUsedThisMonth]);
+
+  const [planTestPickerOpen, setPlanTestPickerOpen] = useState(false);
+  useEffect(() => {
+    if (!isPlanTestUser || subscriptionLoading) return;
+    if (!billing?.planId) setPlanTestPickerOpen(true);
+  }, [isPlanTestUser, subscriptionLoading, billing?.planId]);
 
   const [showSidebar, setShowSidebar] = useState(false);
   const [showAddEmployee, setShowAddEmployee] = useState(false);
@@ -647,6 +654,16 @@ export function RestaurantDashboard() {
           onOpenBilling={openBillingTab}
         />
       )}
+      {isPlanTestUser ? (
+        <>
+          {billing?.planId ? <PlanTestBanner onSwitch={() => setPlanTestPickerOpen(true)} /> : null}
+          <PlanTestPickerModal
+            open={planTestPickerOpen}
+            required={!billing?.planId}
+            onClose={() => setPlanTestPickerOpen(false)}
+          />
+        </>
+      ) : null}
       {/* Mobile Header */}
       <div className="md:hidden bg-cdlp-black border-b border-cdlp-border px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
