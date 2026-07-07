@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paystack.ch — Features vs Swiss Budgeting Apps</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap');
+    :root {
+      --brand: #E8423F;
+      --charcoal: #2B2B2B;
+      --muted: #6F6669;
+      --cream: #FCFAF4;
+      --green: #059669;
+      --amber: #D97706;
+      --gray: #9CA3AF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Sora', system-ui, sans-serif;
+      color: var(--charcoal);
+      background: #fff;
+      font-size: 10pt;
+      line-height: 1.45;
+    }
+    @page { size: A4; margin: 18mm 16mm; }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .page-break { page-break-before: always; }
+      .no-print { display: none !important; }
+    }
+    .cover {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 48px;
+      background: linear-gradient(145deg, #160F12 0%, #2B2B2B 100%);
+      color: #F7F3F4;
+    }
+    .cover .logo { font-size: 14pt; font-weight: 700; color: var(--brand); letter-spacing: 0.08em; }
+    .cover h1 { font-size: 28pt; font-weight: 700; margin: 24px 0 12px; line-height: 1.15; max-width: 520px; }
+    .cover .subtitle { font-size: 12pt; color: #C4B8BA; max-width: 480px; margin-bottom: 32px; }
+    .cover .meta { font-size: 9pt; color: #8A7E80; }
+    .content { padding: 32px 40px 48px; max-width: 900px; margin: 0 auto; }
+    h2 { font-size: 14pt; color: var(--brand); margin: 28px 0 12px; border-bottom: 2px solid var(--brand); padding-bottom: 6px; }
+    h3 { font-size: 11pt; margin: 18px 0 8px; color: var(--charcoal); }
+    p { margin-bottom: 10px; color: var(--muted); font-size: 9.5pt; }
+    .legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0 24px; }
+    .legend span { font-size: 8.5pt; font-weight: 600; padding: 4px 10px; border-radius: 4px; }
+    .s-impl { background: #D1FAE5; color: #065F46; }
+    .s-prog { background: #FEF3C7; color: #92400E; }
+    .s-pend { background: #F3F4F6; color: #4B5563; }
+    .s-scope { background: #FEE2E2; color: #991B1B; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 8.5pt; }
+    th { background: var(--charcoal); color: #fff; text-align: left; padding: 8px 6px; font-weight: 600; }
+    td { border: 1px solid #E5E7EB; padding: 7px 6px; vertical-align: top; }
+    tr:nth-child(even) td { background: var(--cream); }
+    .badge { display: inline-block; font-size: 7.5pt; font-weight: 700; padding: 2px 6px; border-radius: 3px; white-space: nowrap; }
+    .badge.impl { background: #D1FAE5; color: #065F46; }
+    .badge.prog { background: #FEF3C7; color: #92400E; }
+    .badge.pend { background: #E5E7EB; color: #374151; }
+    .badge.scope { background: #FEE2E2; color: #991B1B; }
+    .highlight-box {
+      border-left: 4px solid var(--brand);
+      background: #FFF5F4;
+      padding: 14px 16px;
+      margin: 16px 0;
+      font-size: 9pt;
+    }
+    .highlight-box strong { color: var(--brand); }
+    ul { margin: 8px 0 16px 20px; font-size: 9pt; color: var(--muted); }
+    ul li { margin-bottom: 4px; }
+    .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #E5E7EB; font-size: 8pt; color: var(--gray); text-align: center; }
+    .no-print {
+      position: fixed; bottom: 16px; right: 16px;
+      background: var(--brand); color: #fff; border: none;
+      padding: 12px 20px; font-family: inherit; font-weight: 700;
+      border-radius: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    }
+  </style>
+</head>
+<body>
+  <button class="no-print" onclick="window.print()">Save as PDF (Print)</button>
+
+  <section class="cover">
+    <div class="logo">PAYSTACK.CH</div>
+    <h1>Features vs Swiss Budgeting Apps</h1>
+    <p class="subtitle">
+      Comparison with BudgetCH, YNAB, Buxfer &amp; BlueBudget — plus Paystack implementation status
+      (Implemented · In progress · Pending)
+    </p>
+    <p class="meta">July 2026 · Internal product document · www.paystack.ch</p>
+  </section>
+
+  <div class="content page-break">
+    <h2>Introduction</h2>
+    <p>
+      This report extends the Swiss budgeting competitor analysis by mapping each feature category to
+      <strong>Paystack.ch</strong> — a Swiss hospitality &amp; finance SaaS with AI document processing,
+      business ledger, Swiss TVA, and personal household budgeting at <code>/app/personal</code>.
+    </p>
+    <div class="highlight-box">
+      <strong>Key difference:</strong> Paystack does <em>not</em> use bank sync (bLink / Open Banking).
+      Transactions enter via <strong>AI document upload</strong> or <strong>manual entry</strong> — aligned with
+      restaurant and SME workflows, not multibanking aggregation.
+    </div>
+
+    <div class="legend">
+      <span class="s-impl">✓ Implemented</span>
+      <span class="s-prog">◐ In progress</span>
+      <span class="s-pend">○ Pending</span>
+      <span class="s-scope">✕ Out of scope</span>
+    </div>
+
+    <h2>Feature comparison matrix</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>BudgetCH</th>
+          <th>YNAB</th>
+          <th>Buxfer</th>
+          <th>BlueBudget</th>
+          <th>Paystack.ch</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Pricing model</strong></td>
+          <td>Free (+ export)</td>
+          <td>Subscription</td>
+          <td>Free / paid</td>
+          <td>Free / premium</td>
+          <td>Starter · Business · Unlimited</td>
+          <td><span class="badge impl">Implemented</span></td>
+        </tr>
+        <tr>
+          <td><strong>Bank synchronization</strong></td>
+          <td>No (manual)</td>
+          <td>Limited CH</td>
+          <td>Major CH banks</td>
+          <td>bLink / multibank</td>
+          <td>Not offered — AI docs + manual</td>
+          <td><span class="badge scope">Out of scope</span></td>
+        </tr>
+        <tr>
+          <td><strong>Manual income &amp; expenses</strong></td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>Business + personal modals</td>
+          <td><span class="badge impl">Implemented</span></td>
+        </tr>
+        <tr>
+          <td><strong>AI document import</strong></td>
+          <td>No</td>
+          <td>No</td>
+          <td>No</td>
+          <td>No</td>
+          <td>Invoices, receipts, payslips (Gemini)</td>
+          <td><span class="badge impl">Implemented</span></td>
+        </tr>
+        <tr>
+          <td><strong>Budget vs actual</strong></td>
+          <td>Traditional</td>
+          <td>Zero-based</td>
+          <td>Flexible</td>
+          <td>Auto + traditional</td>
+          <td>Household categories + bars</td>
+          <td><span class="badge impl">Implemented</span></td>
+        </tr>
+        <tr>
+          <td><strong>Zero-based budgeting</strong></td>
+          <td>No</td>
+          <td>Core</td>
+          <td>—</td>
+          <td>Partial</td>
+          <td>Mode toggle + allocation %</td>
+          <td><span class="badge impl">Implemented</span></td>
+        </tr>
+        <tr>
+          <td><strong>Monthly / annual views</strong></td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>Daily summary</td>
+          <td>Month picker, sessions, reports</td>
+          <td><span class="badge impl">Implemented</span></td>
+        </tr>
+        <tr>
+          <td><strong>Goal tracking</strong></td>
+          <td>Basic</td>
+          <td>Advanced</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>Savings/debt + fund from surplus</td>
+          <td><span class="badge impl">Implemented</span></td>
+        </tr>
+        <tr>
+          <td><strong>Bill reminders</strong></td>
+          <td>No</td>
+          <td>No</td>
+          <td>Yes</td>
+          <td>Yes (Serafe, etc.)</td>
+          <td>Due dates, log payment → ledger</td>
+          <td><span class="badge impl">Implemented</span></td>
+        </tr>
+        <tr>
+          <td><strong>Forecasting / cash flow</strong></td>
+          <td>No</td>
+          <td>Loan calculator</td>
+          <td>Yes</td>
+          <td>No</td>
+          <td>90-day balance chart</td>
+          <td><span class="badge impl">Implemented</span></td>
+        </tr>
+        <tr>
+          <td><strong>Investment tracking</strong></td>
+          <td>No</td>
+          <td>No</td>
+          <td>Yes</td>
+          <td>No</td>
+          <td>Holdings, P/L, allocation</td>
+          <td><span class="badge impl">Implemented</span></td>
+        </tr>
+        <tr>
+          <td><strong>Shared budgets / family</strong></td>
+          <td>Family</td>
+          <td>YNAB Together</td>
+          <td>Access control</td>
+          <td>FairSplit</td>
+          <td>Members + FairSplit (lab)</td>
+          <td><span class="badge prog">In progress</span></td>
+        </tr>
+        <tr>
+          <td><strong>Automation rules</strong></td>
+          <td>No</td>
+          <td>Templates</td>
+          <td>Yes</td>
+          <td>Auto categories</td>
+          <td>Keyword → category (lab)</td>
+          <td><span class="badge prog">In progress</span></td>
+        </tr>
+        <tr>
+          <td><strong>Offline capture</strong></td>
+          <td>No</td>
+          <td>Yes</td>
+          <td>No</td>
+          <td>No</td>
+          <td>Queue prototype (lab)</td>
+          <td><span class="badge prog">In progress</span></td>
+        </tr>
+        <tr>
+          <td><strong>DE / FR / IT languages</strong></td>
+          <td>Yes</td>
+          <td>EN</td>
+          <td>EN</td>
+          <td>DE</td>
+          <td>EN+FR app; DE/IT personal lab</td>
+          <td><span class="badge prog">In progress</span></td>
+        </tr>
+        <tr>
+          <td><strong>Excel export</strong></td>
+          <td>Paid add-on</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>—</td>
+          <td>Documents + reports</td>
+          <td><span class="badge impl">Implemented</span></td>
+        </tr>
+        <tr>
+          <td><strong>PDF reports &amp; Swiss TVA</strong></td>
+          <td>—</td>
+          <td>Reports</td>
+          <td>—</td>
+          <td>—</td>
+          <td>CSV/PDF, TVA forms (Business+)</td>
+          <td><span class="badge impl">Implemented</span></td>
+        </tr>
+        <tr>
+          <td><strong>Swiss payroll (payslips)</strong></td>
+          <td>—</td>
+          <td>—</td>
+          <td>—</td>
+          <td>—</td>
+          <td>Net/gross, AVS, LPP, impôt</td>
+          <td><span class="badge impl">Implemented</span></td>
+        </tr>
+        <tr>
+          <td><strong>Create your own invoice</strong></td>
+          <td>No</td>
+          <td>No</td>
+          <td>No</td>
+          <td>No</td>
+          <td>Templates, numbering, recurring</td>
+          <td><span class="badge prog">In progress — next</span></td>
+        </tr>
+        <tr>
+          <td><strong>Multi-currency ledger</strong></td>
+          <td>No</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>—</td>
+          <td>CHF-first only</td>
+          <td><span class="badge pend">Pending</span></td>
+        </tr>
+        <tr>
+          <td><strong>Swiss cost-of-living guidelines</strong></td>
+          <td>Yes</td>
+          <td>No</td>
+          <td>No</td>
+          <td>Local bills</td>
+          <td>—</td>
+          <td><span class="badge pend">Pending</span></td>
+        </tr>
+        <tr>
+          <td><strong>Retirement planner</strong></td>
+          <td>No</td>
+          <td>No</td>
+          <td>Yes</td>
+          <td>No</td>
+          <td>—</td>
+          <td><span class="badge pend">Pending</span></td>
+        </tr>
+        <tr>
+          <td><strong>Push notifications (bills)</strong></td>
+          <td>No</td>
+          <td>No</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>—</td>
+          <td><span class="badge pend">Pending</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="content page-break">
+    <h2>Paystack modules — implementation detail</h2>
+
+    <h3>Business platform (<code>/app</code>) — Implemented</h3>
+    <ul>
+      <li>Firebase authentication, Stripe subscriptions, plan limits (docs/month, sessions, employees)</li>
+      <li>Session-based ledger: income, expenses, drag-and-drop convert</li>
+      <li>AI document processor (batch upload, Swiss plan comptable account codes)</li>
+      <li>Swiss TVA tracking and export (Business plan)</li>
+      <li>Swiss payroll extraction and split on payslips</li>
+      <li>Reports: CSV/PDF; upgrade prompt at document cap</li>
+      <li>POS / Z-reading module (partial)</li>
+    </ul>
+
+    <h3>Personal finances (<code>/app/personal</code>) — Implemented</h3>
+    <ul>
+      <li>Overview dashboard, budget vs actual, zero-based mode</li>
+      <li>Goals, bill reminders, 90-day forecast, investment portfolio</li>
+      <li>Shared Firebase ledger with Business — add/edit/delete transactions</li>
+      <li>EN / FR / DE / IT in personal UI (lab i18n merging to app)</li>
+    </ul>
+
+    <h3>In progress — shipping next</h3>
+    <ul>
+      <li><strong>Create your own invoice</strong> — templates, auto-numbering, recurring invoices (Phase 3 roadmap)</li>
+      <li><strong>Shared budgets / FairSplit</strong> — lab ready at <code>/ali/shared-access</code></li>
+      <li><strong>Automation rules</strong> — lab ready at <code>/ali/automation-rules</code></li>
+      <li><strong>Offline queue</strong> — lab ready at <code>/ali/offline</code></li>
+      <li><strong>Full DE/IT</strong> in main <code>/app</code> LanguageContext</li>
+      <li><strong>POS module</strong> — full integration beyond Z-reading</li>
+    </ul>
+
+    <h3>Pending — roadmap</h3>
+    <ul>
+      <li>Inventory (FIFO/LIFO), supplier management, employee HR module</li>
+      <li>Client &amp; project management</li>
+      <li>Multi-currency accounts, retirement planner, auto-budget from history</li>
+      <li>Mobile native apps, multi-entity enterprise, API marketplace</li>
+    </ul>
+
+    <h3>Out of scope (by design)</h3>
+    <ul>
+      <li>Bank synchronization (bLink, PostFinance/UBS API, CSV bank import)</li>
+      <li>See <code>ALI_LAB_EXCLUDED_FEATURE_IDS</code> in codebase</li>
+    </ul>
+
+    <h2>Conclusion</h2>
+    <p>
+      For Swiss users who want <strong>privacy-first manual budgeting</strong>, BudgetCH remains the free benchmark.
+      Paystack competes on <strong>AI-powered document workflows</strong>, <strong>business + personal in one ledger</strong>,
+      and <strong>Swiss compliance</strong> (TVA, payroll, CHF) — not on bank aggregation.
+    </p>
+    <p>
+      Personal finance features (YNAB-style zero-based budgeting, Buxfer-style forecast &amp; investments,
+      BlueBudget-style bill reminders) are <strong>implemented</strong> at <code>/app/personal</code>.
+      <strong>Invoice creation</strong> is the next major gap being closed for SMEs.
+    </p>
+
+    <div class="footer">
+      Paystack.ch · Features comparison · Generated July 2026 · Confidential internal use<br />
+      Source competitor report: Budgeting App Features Comparison in Switzerland
+    </div>
+  </div>
+</body>
+</html>
