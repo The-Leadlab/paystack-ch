@@ -421,7 +421,41 @@ describe("saveDocumentToDrive (upload hook)", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  // TODO: app upload/scan still succeeds when a connected user's Drive upload fails
+  it("app upload/scan still succeeds when a connected user's Drive upload fails", async () => {
+    firestoreGetMock.mockResolvedValue({
+      data: () => ({ googleDrive: { refreshToken: "refresh-456", folderId: "folder-abc" } }),
+    });
+    fetchMock.mockImplementation((url: string) => {
+      if (url === "https://oauth2.googleapis.com/token") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ access_token: "access-789", expires_in: 3600 }),
+        });
+      }
+      if (url === "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart") {
+        return Promise.resolve({
+          ok: false,
+          json: async () => ({ error: { message: "Drive quota exceeded" } }),
+        });
+      }
+      throw new Error(`Unexpected fetch call: ${url}`);
+    });
+
+    // Awaiting without a try/catch is itself part of the assertion: if saveDocumentToDrive
+    // threw/rejected here instead of returning an error result, this test would fail with an
+    // unhandled rejection rather than reaching the expectations below.
+    const result = await saveDocumentToDrive("test-uid", {
+      bytes: Buffer.from("fake-pdf-bytes"),
+      filename: "report.pdf",
+      mimeType: "application/pdf",
+    });
+
+    expect(result.status).not.toBe(200);
+    if (!("json" in result)) {
+      throw new Error("Expected a json result");
+    }
+    expect(result.json).toHaveProperty("error");
+  });
   // TODO: refreshes an expired access token and retries the upload once
   // TODO: an `invalid_grant` response marks the integration as needing reconnection and stops further retries
   // TODO: each document in a batch is saved to Drive independently, so one failure doesn't block the others
