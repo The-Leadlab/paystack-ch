@@ -838,7 +838,7 @@ export function RestaurantDashboard() {
               className={`w-full p-3 mb-2 rounded border transition-colors ${
                 isAllSessionsView
                   ? 'bg-cdlp-gold/10 border-cdlp-gold text-cdlp-gold'
-                  : 'bg-cdlp-card border-cdlp-border text-white hover:border-cdlp-gold/50'
+                  : 'bg-cdlp-card border-cdlp-border hover:border-cdlp-gold/50'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -881,7 +881,7 @@ export function RestaurantDashboard() {
                     />
                   ) : (
                     <div className="flex items-start justify-between">
-                      <p className="font-bold text-sm text-white flex-1">{getSessionDisplayName(session)}</p>
+                      <p className="font-bold text-sm flex-1">{getSessionDisplayName(session)}</p>
                       <div className="flex gap-1">
                         <button
                           onClick={(e) => { e.stopPropagation(); startRename(session.id, session.name); }}
@@ -1521,7 +1521,7 @@ function IncomeExpenseSection({
                     disabled={!item.document_id}
                   >
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-bold text-xs md:text-sm text-white truncate">
+                      <p className="font-bold text-xs md:text-sm truncate">
                         {isIncome ? item.type : item.category}
                       </p>
                       <SwissAccountCodeBadge konto={item.account_code} lang={language} />

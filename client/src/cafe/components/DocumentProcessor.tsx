@@ -2600,14 +2600,14 @@ export const DocumentProcessor: React.FC<{
                     <React.Fragment key={doc.id}>
                       <tr 
                         onClick={() => doc.status === 'completed' && toggleRow(doc.id)} 
-                        className={`hover:bg-cdlp-card transition-colors ${doc.status === 'completed' ? 'cursor-pointer' : ''} ${isExpanded ? 'bg-cdlp-card' : ''}`}
+                        className={`transition-colors ${doc.status === 'completed' ? 'cursor-pointer' : ''} ${isExpanded ? 'ba-doc-row--expanded' : ''}`}
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             {doc.status === 'completed' && (
                               isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-cdlp-gold" /> : <ChevronRight className="w-3.5 h-3.5 text-cdlp-muted" />
                             )}
-                            <span className="font-bold text-white text-[11px] truncate max-w-[200px]">{doc.fileName}</span>
+                            <span className="font-bold text-[11px] truncate max-w-[200px]">{doc.fileName}</span>
                           </div>
                           {doc.data?.issuer && (
                             <div className="ml-5 mt-1">
@@ -2620,8 +2620,8 @@ export const DocumentProcessor: React.FC<{
                             </p>
                           )}
                         </td>
-                        <td className="px-4 py-3 font-mono text-[10px] text-cdlp-muted hidden md:table-cell">{doc.data?.date || '---'}</td>
-                        <td className="px-4 py-3 text-right font-bold font-mono text-[11px] text-white hidden md:table-cell">
+                        <td className="px-4 py-3 font-mono text-[10px] ba-table-muted hidden md:table-cell">{doc.data?.date || '---'}</td>
+                        <td className="px-4 py-3 text-right font-bold font-mono text-[11px] hidden md:table-cell">
                           {doc.data
                             ? documentTableDisplayAmount(doc.data).toLocaleString(chfLocale, {
                                 minimumFractionDigits: 2,
@@ -2641,7 +2641,7 @@ export const DocumentProcessor: React.FC<{
                                   e.target.value as 'INCOME' | 'EXPENSE' | 'SALARY'
                                 );
                               }}
-                              className="h-8 min-w-[120px] bg-cdlp-black border border-cdlp-border rounded px-2 text-[10px] font-bold uppercase text-white"
+                              className="ba-table-select"
                               title={t('dpSelectFlowType')}
                             >
                               <option value="INCOME">{t('dpFlowIncome')}</option>
@@ -2894,7 +2894,7 @@ export const DocumentProcessor: React.FC<{
                       )}
                       {isExpanded && doc.data && (
                         <tr onClick={(e) => e.stopPropagation()}>
-                          <td colSpan={7} className="p-0 bg-cdlp-card border-t border-cdlp-border">
+                          <td colSpan={7} className="p-0 border-t border-cdlp-border">
                             <VerificationHub
                               doc={doc}
                               onUpdate={(newData) => {

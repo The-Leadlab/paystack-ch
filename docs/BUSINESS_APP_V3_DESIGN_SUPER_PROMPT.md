@@ -81,7 +81,7 @@ The V3 system is **theme-aware** via `cafe-shell.cafe-theme-light` / `cafe-theme
 |-------|------------|-----------|
 | Canvas (main bg) | `#fcfaf4` | `#121418` |
 | Sidebar | White (`cdlp-black` token) | Dark charcoal |
-| Content cards (`ba-panel`, `ba-kpi-card`) | Dark `#1e1e26` on light canvas | Dark surfaces |
+| Content cards (`ba-panel`, `ba-kpi-card`) | White/light gray with dark text | Dark surfaces |
 | Page titles (`ba-page-header`) | Dark text on canvas | Light text |
 
 **Do not** force dark `bg-cdlp-*` overrides inside `.ba-v3` — use `ba-panel`, `ba-kpi-card`, `ba-verify-field`, `ba-filter-chip` instead.
