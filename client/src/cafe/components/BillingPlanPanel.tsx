@@ -147,7 +147,7 @@ export function BillingPlanPanel() {
       </header>
 
       {isPlanTestUser ? (
-        <section className="rounded-xl border border-cdlp-gold/40 bg-cdlp-gold/5 p-5 sm:p-6 space-y-4">
+        <section className="ba-panel space-y-4">
           <h2 className="text-sm font-black uppercase tracking-wider text-cdlp-gold">{t('planTestTitle')}</h2>
           <p className="text-xs text-cdlp-muted leading-relaxed">{t('planTestBody')}</p>
           <div className="grid grid-cols-3 gap-2">
@@ -180,7 +180,7 @@ export function BillingPlanPanel() {
       ) : null}
 
       {enforcementEnabled ? (
-        <section className="rounded-xl border border-cdlp-border bg-cdlp-card shadow-[0_1px_0_0_color-mix(in_srgb,var(--color-cdlp-border)_40%,transparent)] ring-1 ring-white/[0.04] p-5 sm:p-6 space-y-5">
+        <section className="ba-panel space-y-5">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted">{t('planSummaryTitle')}</p>
             {statusLabel ? (
@@ -193,7 +193,7 @@ export function BillingPlanPanel() {
               </span>
             ) : null}
           </div>
-          <p className="text-lg font-black text-white tracking-tight">{planDisplayName(planId, t)}</p>
+          <p className="text-lg font-black ba-field-value tracking-tight">{planDisplayName(planId, t)}</p>
           {trialHint ? (
             <p className="text-[10px] text-cdlp-gold/75 font-bold uppercase tracking-tight">{trialHint}</p>
           ) : null}
@@ -204,7 +204,7 @@ export function BillingPlanPanel() {
                 className="rounded-lg border border-cdlp-border/90 bg-cdlp-cream/40 px-3 py-2.5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]"
               >
                 <dt className="font-bold text-cdlp-muted">{r.label}</dt>
-                <dd className="text-white font-semibold tabular-nums mt-1">{r.value}</dd>
+                <dd className="ba-field-value font-semibold tabular-nums mt-1">{r.value}</dd>
               </div>
             ))}
           </dl>
@@ -227,14 +227,14 @@ export function BillingPlanPanel() {
           </button>
         </section>
       ) : (
-        <section className="rounded-xl border border-cdlp-border bg-cdlp-card p-5 text-xs text-cdlp-muted">
+        <section className="ba-panel p-5 text-xs text-cdlp-muted">
           {t('billingEnforcementOff')}
         </section>
       )}
 
       {enforcementEnabled ? (
-        <section className="rounded-xl border border-cdlp-border border-l-[3px] border-l-cdlp-gold/45 bg-cdlp-card p-5 sm:p-6 space-y-4">
-          <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+        <section className="ba-panel space-y-4">
+          <h2 className="text-sm font-black uppercase tracking-wider ba-field-value flex items-center gap-2">
             <ArrowUpCircle className="w-4 h-4 shrink-0 text-cdlp-gold/85" aria-hidden />
             {t('billingUpgradeTitle')}
           </h2>
@@ -299,14 +299,14 @@ export function BillingPlanPanel() {
         </section>
       ) : null}
 
-      <section className="rounded-xl border border-cdlp-border bg-cdlp-card p-5 sm:p-6 space-y-4">
-        <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+      <section className="ba-panel space-y-4">
+        <h2 className="text-sm font-black uppercase tracking-wider ba-field-value flex items-center gap-2">
           <KeyRound className="w-4 h-4 shrink-0 text-cdlp-muted" aria-hidden />
           {t('billingAccountTitle')}
         </h2>
         <p className="text-xs text-cdlp-muted">
           {t('billingAccountEmail')}{' '}
-          <span className="font-bold text-white">{user?.email ?? '—'}</span>
+          <span className="font-bold ba-field-value">{user?.email ?? '—'}</span>
         </p>
         {isPasswordUser ? (
           <form onSubmit={handlePasswordChange} className="space-y-3 max-w-md">
@@ -318,7 +318,7 @@ export function BillingPlanPanel() {
               onChange={(e) => setCurrentPassword(e.target.value)}
               placeholder={t('billingCurrentPassword')}
               required
-              className="w-full rounded border border-cdlp-border bg-cdlp-dark px-3 py-2 text-sm text-white"
+              className="ba-verify-field"
             />
             <input
               type="password"
@@ -328,7 +328,7 @@ export function BillingPlanPanel() {
               placeholder={t('billingNewPassword')}
               required
               minLength={6}
-              className="w-full rounded border border-cdlp-border bg-cdlp-dark px-3 py-2 text-sm text-white"
+              className="ba-verify-field"
             />
             <input
               type="password"
@@ -338,7 +338,7 @@ export function BillingPlanPanel() {
               placeholder={t('billingConfirmPassword')}
               required
               minLength={6}
-              className="w-full rounded border border-cdlp-border bg-cdlp-dark px-3 py-2 text-sm text-white"
+              className="ba-verify-field"
             />
             {passwordErr ? <p className="text-xs text-red-400 font-medium">{passwordErr}</p> : null}
             {passwordMsg ? <p className="text-xs text-emerald-400 font-medium">{passwordMsg}</p> : null}

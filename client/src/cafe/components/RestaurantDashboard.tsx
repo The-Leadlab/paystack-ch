@@ -1384,7 +1384,7 @@ function IncomeExpenseSection({
 
   return (
     <div 
-      className={`bg-cdlp-black border-2 p-4 md:p-6 rounded-lg shadow-card transition-all ${
+      className={`ba-panel border-2 transition-all ${
         draggedOver 
           ? `border-${colorClass}-500 bg-${colorClass}-500/10` 
           : 'border-cdlp-border'
@@ -1605,18 +1605,18 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
 
   return (
     <>
-      <div className="flex items-start justify-between mb-6 gap-3">
+      <div className="ba-page-header">
         <div className="min-w-0">
-          <h1 className="text-xl md:text-2xl font-black text-white uppercase tracking-wide">{t('dashboard')}</h1>
+          <h1>{t('dashboard')}</h1>
           {sessionTimestamp ? (
-            <p className="text-xs text-cdlp-muted tabular-nums mt-1">{sessionTimestamp}</p>
+            <p className="text-xs text-cdlp-muted tabular-nums mt-1 font-normal normal-case tracking-normal">{sessionTimestamp}</p>
           ) : null}
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
           <p className="text-[11px] md:text-xs text-cdlp-muted tabular-nums font-mono">{liveClock}</p>
           <button
             onClick={onShowEmployeePanel}
-            className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded-lg hover:border-cdlp-gold/40 transition-colors"
+            className="ba-filter-chip flex items-center gap-2 !h-auto py-2"
           >
             <Users className="w-4 h-4" /> {t('employees')}
           </button>
@@ -2025,13 +2025,13 @@ function ReportsPlaceholder() {
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="flex-1 px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
+                className="ba-verify-field flex-1 !w-auto"
               />
               <input
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="flex-1 px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
+                className="ba-verify-field flex-1 !w-auto"
               />
             </div>
           </div>
@@ -2040,7 +2040,7 @@ function ReportsPlaceholder() {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
+              className="ba-verify-field"
             >
               <option value="all">{t('repAllCategories')}</option>
               {uniqueCategories.map(cat => (
@@ -2053,7 +2053,7 @@ function ReportsPlaceholder() {
             <select
               value={supplierFilter}
               onChange={(e) => setSupplierFilter(e.target.value)}
-              className="w-full px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
+              className="ba-verify-field"
               disabled={uniqueSuppliers.length === 0}
             >
               <option value="all">{t('repAllSuppliers')}</option>
@@ -2064,19 +2064,19 @@ function ReportsPlaceholder() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 mb-3">
-          <button onClick={() => setQuickFilter('thisMonth')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
+          <button type="button" onClick={() => setQuickFilter('thisMonth')} className="ba-filter-chip">
             {t('repThisMonth')}
           </button>
-          <button onClick={() => setQuickFilter('lastMonth')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
+          <button type="button" onClick={() => setQuickFilter('lastMonth')} className="ba-filter-chip">
             {t('repLastMonth')}
           </button>
-          <button onClick={() => setQuickFilter('last3Months')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
+          <button type="button" onClick={() => setQuickFilter('last3Months')} className="ba-filter-chip">
             {t('repLast3Months')}
           </button>
-          <button onClick={() => setQuickFilter('thisYear')} className="px-3 py-1.5 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded hover:border-cdlp-gold">
+          <button type="button" onClick={() => setQuickFilter('thisYear')} className="ba-filter-chip">
             {t('repThisYear')}
           </button>
-          <button onClick={clearFilter} className="px-3 py-1.5 bg-red-600/10 border border-red-600 text-red-400 text-xs font-bold uppercase rounded hover:bg-red-600/20">
+          <button type="button" onClick={clearFilter} className="ba-filter-chip ba-filter-chip--danger">
             {t('repClearAll')}
           </button>
         </div>
@@ -2096,7 +2096,7 @@ function ReportsPlaceholder() {
       </div>
 
       {/* Download Section */}
-      <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-4">
+      <div className="ba-panel">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="space-y-3 w-full lg:w-auto">
             <div>
@@ -2133,7 +2133,7 @@ function ReportsPlaceholder() {
                 <select
                   value={vatPeriodMode}
                   onChange={(e) => setVatPeriodMode(e.target.value as 'month' | 'semester' | 'year' | 'allYears')}
-                  className="px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-xs font-bold uppercase text-white"
+                  className="ba-verify-field !w-auto uppercase"
                 >
                   <option value="month">{t('repTvaByMonth')}</option>
                   <option value="semester">{t('repTvaBy6Months')}</option>
@@ -2163,10 +2163,10 @@ function ReportsPlaceholder() {
       </div>
 
       {/* Monthly Revenue Analysis */}
-      <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-4 md:p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <BarChart3 className="w-5 h-5 text-cdlp-gold" />
-          <h2 className="text-sm md:text-base font-black text-cdlp-gold uppercase">{t('repMonthlyAnalysis')}</h2>
+      <div className="ba-panel">
+        <div className="ba-section-head">
+          <BarChart3 className="w-5 h-5" />
+          <h2>{t('repMonthlyAnalysis')}</h2>
         </div>
         {monthlyData.length === 0 ? (
           <div className="text-center py-8">
@@ -2178,7 +2178,7 @@ function ReportsPlaceholder() {
             {monthlyData.map(([month, data]) => {
               const monthName = formatMonthYearLabel(month, chfLocale, t('repInvalidMonth'));
               return (
-                <div key={month} className="bg-cdlp-card border border-cdlp-border rounded p-4">
+                <div key={month} className="ba-stat-row">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-sm font-bold text-cdlp-gold uppercase">{monthName}</h3>
                     <span className={`text-lg font-black ${data.balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
@@ -2209,10 +2209,10 @@ function ReportsPlaceholder() {
       </div>
 
       {/* Supplier Analysis */}
-      <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-4 md:p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-cdlp-gold" />
-          <h2 className="text-sm md:text-base font-black text-cdlp-gold uppercase">{t('repTopSuppliers')}</h2>
+      <div className="ba-panel">
+        <div className="ba-section-head">
+          <Users className="w-5 h-5" />
+          <h2>{t('repTopSuppliers')}</h2>
         </div>
         {supplierData.length === 0 ? (
           <div className="text-center py-8">
@@ -2222,8 +2222,8 @@ function ReportsPlaceholder() {
         ) : (
           <div className="space-y-2">
             {supplierData.map(([supplier, amount]) => (
-              <div key={supplier} className="flex justify-between items-center p-3 bg-cdlp-card border border-cdlp-border rounded">
-                <span className="text-sm font-bold text-white truncate flex-1">{supplier}</span>
+              <div key={supplier} className="ba-stat-row flex justify-between items-center !py-3">
+                <span className="text-sm font-bold ba-field-value truncate flex-1">{supplier}</span>
                 <span className="text-sm font-black text-cdlp-gold ml-4">{amount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
               </div>
             ))}
@@ -2316,69 +2316,65 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
   if (selectedDocument) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
+        <div className="ba-page-header flex-col items-start !mb-4">
           <button
+            type="button"
             onClick={() => {
               setSelectedDocument(null);
               if (onClearSelection) onClearSelection();
             }}
-            className="flex items-center gap-2 text-cdlp-gold hover:text-cdlp-gold-light text-sm font-bold uppercase"
+            className="flex items-center gap-2 text-cdlp-gold hover:text-cdlp-gold-light text-sm font-bold uppercase mb-2"
           >
             <ChevronRight className="w-4 h-4 rotate-180" /> {t('docBackToDocuments')}
           </button>
-          <h2 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase truncate">{selectedDocument.fileName}</h2>
+          <h1 className="truncate max-w-full">{selectedDocument.fileName}</h1>
         </div>
 
-        {/* Document Analysis View - Similar to Ypsom */}
-        <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-12">
-            {/* Document Preview Panel */}
-            <div className="lg:col-span-4 bg-slate-900 border-r border-cdlp-border">
-              <div className="p-4 border-b border-white/10">
+        <div className="ba-verify-shell">
+          <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[480px]">
+            <div className="lg:col-span-4 ba-verify-preview flex flex-col">
+              <div className="p-4 border-b border-cdlp-border">
                 <h3 className="text-xs font-black uppercase text-emerald-400 tracking-widest">{t('docPreview')}</h3>
               </div>
-              <div className="aspect-[3/4] bg-slate-950 overflow-hidden flex items-center justify-center">
+              <div className="flex-1 min-h-[280px] overflow-hidden flex items-center justify-center">
                 {(selectedDocument.fileUrl || selectedDocument.fileDataUrl || selectedDocument.fileRaw) ? (
                   selectedDocument.fileName.toLowerCase().endsWith('.pdf') ? (
-                    <iframe 
-                      src={selectedDocument.fileUrl || selectedDocument.fileDataUrl || (selectedDocument.fileRaw ? URL.createObjectURL(selectedDocument.fileRaw) : '')} 
-                      className="w-full h-full"
+                    <iframe
+                      src={selectedDocument.fileUrl || selectedDocument.fileDataUrl || (selectedDocument.fileRaw ? URL.createObjectURL(selectedDocument.fileRaw) : '')}
+                      className="w-full h-full min-h-[280px]"
                       title="Document Preview"
                     />
                   ) : (
-                    <img 
-                      src={selectedDocument.fileUrl || selectedDocument.fileDataUrl || (selectedDocument.fileRaw ? URL.createObjectURL(selectedDocument.fileRaw) : '')} 
-                      alt="Document Preview" 
+                    <img
+                      src={selectedDocument.fileUrl || selectedDocument.fileDataUrl || (selectedDocument.fileRaw ? URL.createObjectURL(selectedDocument.fileRaw) : '')}
+                      alt="Document Preview"
                       className="w-full h-full object-contain"
                     />
                   )
                 ) : (
                   <div className="text-center p-8">
-                    <FileText className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                    <p className="text-sm text-slate-400 mb-2">{t('docFileNotAvailable')}</p>
-                    <p className="text-xs text-slate-500">{t('docFileNotStored')}</p>
+                    <FileText className="w-16 h-16 text-cdlp-muted mx-auto mb-4 opacity-40" />
+                    <p className="text-sm text-cdlp-muted mb-2">{t('docFileNotAvailable')}</p>
+                    <p className="text-xs text-cdlp-muted opacity-70">{t('docFileNotStored')}</p>
                   </div>
                 )}
               </div>
-              <div className="p-4">
+              <div className="p-4 border-t border-cdlp-border">
                 {(selectedDocument.fileUrl || selectedDocument.fileDataUrl || selectedDocument.fileRaw) ? (
                   <button
                     type="button"
                     onClick={() => openDocumentInNewTab(selectedDocument)}
-                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-sm text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-lg transition-all"
+                    className="ba-btn-approve w-full h-10 flex items-center justify-center gap-2"
                   >
                     <ExternalLink className="w-4 h-4" /> {t('docOpenRawTrace')}
                   </button>
                 ) : (
-                  <div className="text-center text-xs text-slate-500 italic">
-                    {t('docOriginalUnavailable')}
-                  </div>
+                  <div className="text-center text-xs text-cdlp-muted italic">{t('docOriginalUnavailable')}</div>
                 )}
               </div>
             </div>
 
-            {/* Analysis Panel */}
-            <div className="lg:col-span-8 p-6">
+            <div className="lg:col-span-8 ba-verify-form p-4 md:p-6 overflow-y-auto">
               <div className="space-y-6">
                 {/* Document Info */}
                 <div>
@@ -2386,11 +2382,11 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docIssuerEntity')}</label>
-                      <p className="text-sm font-bold text-white">{selectedDocument.data?.issuer || t('na')}</p>
+                      <p className="ba-field-value">{selectedDocument.data?.issuer || t('na')}</p>
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docDate')}</label>
-                      <p className="text-sm font-bold text-white">{selectedDocument.data?.date || t('na')}</p>
+                      <p className="ba-field-value">{selectedDocument.data?.date || t('na')}</p>
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docTotalAmount')}</label>
@@ -2398,7 +2394,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docDocumentType')}</label>
-                      <p className="text-sm font-bold text-white">{selectedDocument.data?.documentType || t('repUnknown')}</p>
+                      <p className="ba-field-value">{selectedDocument.data?.documentType || t('repUnknown')}</p>
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docVatAmount')}</label>
@@ -2410,12 +2406,12 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     </div>
                     <div className="col-span-2">
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docCategory')}</label>
-                      <p className="text-sm font-bold text-white">{selectedDocument.data?.expenseCategory || t('docUncategorized')}</p>
+                      <p className="ba-field-value">{selectedDocument.data?.expenseCategory || t('docUncategorized')}</p>
                     </div>
                     {selectedDocument.data?.notes && (
                       <div className="col-span-2">
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docNotes')}</label>
-                        <p className="text-sm text-white">{selectedDocument.data.notes}</p>
+                        <p className="ba-field-value font-normal">{selectedDocument.data.notes}</p>
                       </div>
                     )}
                   </div>
@@ -2425,7 +2421,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 {selectedDocument.data?.aiInterpretation && (
                   <div>
                     <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">{t('docAiAnalysis')}</h3>
-                    <div className="bg-cdlp-card border border-cdlp-border rounded p-4">
+                    <div className="ba-subpanel">
                       <p className="text-sm text-cdlp-muted italic">{selectedDocument.data.aiInterpretation}</p>
                     </div>
                   </div>
@@ -2446,9 +2442,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                             key={`doc-inv-tab-${idx}`}
                             type="button"
                             onClick={() => setInvoiceBreakdownTab(idx)}
-                            className={`px-3 py-2 rounded border text-left text-xs max-w-[200px] transition-colors ${
-                              active ? 'border-cdlp-gold bg-cdlp-gold/15 text-white' : 'border-cdlp-border bg-cdlp-card text-cdlp-muted hover:border-cdlp-gold/40'
-                            }`}
+                            className={`ba-filter-chip max-w-[200px] truncate ${active ? 'ba-filter-chip--active' : ''}`}
                           >
                             <span className="font-bold block truncate">{subDoc.issuer || t('docInvoiceN').replace('{n}', String(idx + 1))}</span>
                             <span className="font-mono text-[10px] text-cdlp-gold">
@@ -2463,7 +2457,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                       const idx = Math.min(invoiceBreakdownTab, Math.max(0, subs.length - 1));
                       const subDoc = subs[idx];
                       return (
-                        <div className="bg-cdlp-card border border-cdlp-border rounded p-4 grid grid-cols-2 gap-3 text-xs">
+                        <div className="ba-subpanel grid grid-cols-2 gap-3 text-xs">
                           <div>
                             <p className="text-cdlp-muted uppercase">{t('docDate')}</p>
                             <p className="font-bold text-foreground">{subDoc.date || t('na')}</p>
@@ -2515,20 +2509,20 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                   <div>
                     <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">{t('docLineItems')}</h3>
                     <div className="border border-cdlp-border rounded overflow-hidden">
-                      <table className="min-w-full text-xs">
-                        <thead className="bg-cdlp-gold text-cdlp-black">
-                          <tr className="font-bold uppercase">
-                            <th className="px-3 py-2 text-left">{t('docDate')}</th>
-                            <th className="px-3 py-2 text-left">{t('docDescription')}</th>
-                            <th className="px-3 py-2 text-right">{t('docAmount')}</th>
-                            <th className="px-3 py-2 text-center">{t('docType')}</th>
+                      <table className="ba-data-table min-w-full text-xs">
+                        <thead>
+                          <tr>
+                            <th>{t('docDate')}</th>
+                            <th>{t('docDescription')}</th>
+                            <th className="text-right">{t('docAmount')}</th>
+                            <th className="text-center">{t('docType')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-cdlp-border">
                           {selectedDocument.data.lineItems.map((item, idx) => (
-                            <tr key={idx} className="hover:bg-cdlp-card">
+                            <tr key={idx}>
                               <td className="px-3 py-2 text-cdlp-muted">{item.date}</td>
-                              <td className="px-3 py-2 text-white font-bold">{item.description}</td>
+                              <td className="px-3 py-2 ba-field-value">{item.description}</td>
                               <td className={`px-3 py-2 text-right font-bold ${item.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {item.amount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
@@ -2554,11 +2548,11 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docEmployee')}</label>
-                        <p className="text-sm font-bold text-white">{selectedDocument.data.paySlip.employee?.name || t('na')}</p>
+                        <p className="ba-field-value">{selectedDocument.data.paySlip.employee?.name || t('na')}</p>
                       </div>
                       <div>
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docEmployer')}</label>
-                        <p className="text-sm font-bold text-white">{selectedDocument.data.paySlip.employer?.name || t('na')}</p>
+                        <p className="ba-field-value">{selectedDocument.data.paySlip.employer?.name || t('na')}</p>
                       </div>
                       <div>
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docGrossPay')}</label>
@@ -2571,18 +2565,18 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     </div>
                     {selectedDocument.data.paySlip.components && selectedDocument.data.paySlip.components.length > 0 && (
                       <div className="border border-cdlp-border rounded overflow-hidden">
-                        <table className="min-w-full text-xs">
-                          <thead className="bg-cdlp-gold text-cdlp-black">
-                            <tr className="font-bold uppercase">
-                              <th className="px-3 py-2 text-left">{t('docComponent')}</th>
-                              <th className="px-3 py-2 text-right">{t('docAmount')}</th>
-                              <th className="px-3 py-2 text-center">{t('docType')}</th>
+                        <table className="ba-data-table min-w-full text-xs">
+                          <thead>
+                            <tr>
+                              <th>{t('docComponent')}</th>
+                              <th className="text-right">{t('docAmount')}</th>
+                              <th className="text-center">{t('docType')}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-cdlp-border">
                             {selectedDocument.data.paySlip.components.map((comp, idx) => (
-                              <tr key={idx} className="hover:bg-cdlp-card">
-                                <td className="px-3 py-2 text-white font-bold">{comp.description}</td>
+                              <tr key={idx}>
+                                <td className="px-3 py-2 ba-field-value">{comp.description}</td>
                                 <td className={`px-3 py-2 text-right font-bold ${comp.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}>
                                   {comp.amount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
@@ -2634,7 +2628,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
         </div>
 
         {monthlyGroups.length === 0 ? (
-          <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-12 text-center">
+          <div className="ba-panel p-12 text-center">
             <FileText className="w-16 h-16 text-cdlp-gold/30 mx-auto mb-4" />
             <h3 className="text-lg font-black text-cdlp-gold uppercase mb-2">{t('docNoDocuments')}</h3>
             <p className="text-cdlp-muted text-sm">{t('docNoDocumentsEntity')}</p>
@@ -2645,23 +2639,24 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
           const monthName = formatMonthYearLabel(month, chfLocale, t('repInvalidMonth'));
 
           return (
-            <div key={month} className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card overflow-hidden">
-              <div className="bg-cdlp-card border-b border-cdlp-border p-4 flex justify-between items-center">
+            <div key={month} className="ba-panel ba-panel--flat overflow-hidden">
+              <div className="ba-subpanel !rounded-none border-x-0 border-t-0 flex justify-between items-center">
                 <h3 className="text-sm font-bold text-cdlp-gold uppercase">{monthName}</h3>
                 <div className="text-right">
                   <p className="text-xs text-cdlp-muted uppercase">{t('docTotalChf')}</p>
-                  <p className="text-lg font-black text-white">{totalAmount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</p>
+                  <p className="text-lg font-black ba-field-value">{totalAmount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</p>
                 </div>
               </div>
               <div className="divide-y divide-cdlp-border">
                 {docs.map(doc => (
-                  <div key={doc.id} className="p-4 hover:bg-cdlp-card transition-colors group">
+                  <div key={doc.id} className="p-4 hover:bg-[rgba(255,255,255,0.03)] transition-colors group">
                     <div className="flex justify-between items-start">
                       <button
+                        type="button"
                         onClick={() => setSelectedDocument(doc)}
                         className="flex-1 text-left"
                       >
-                        <p className="font-bold text-white text-sm group-hover:text-cdlp-gold transition-colors">{doc.fileName}</p>
+                        <p className="font-bold ba-field-value text-sm group-hover:text-cdlp-gold transition-colors">{doc.fileName}</p>
                         <p className="text-xs text-cdlp-muted mt-1">{doc.data?.date}</p>
                         {doc.data?.notes && (
                           <p className="text-xs text-cdlp-muted mt-1">{doc.data.notes}</p>
@@ -2669,7 +2664,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                       </button>
                       <div className="text-right ml-4 flex items-center gap-3">
                         <div>
-                          <p className="font-black text-white text-base">{(doc.data?.totalAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          <p className="font-black ba-field-value text-base">{(doc.data?.totalAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                           <p className="text-xs text-cdlp-muted">{doc.data?.originalCurrency || 'CHF'}</p>
                         </div>
                         <button
@@ -2701,44 +2696,16 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
       {/* Filter Options */}
       <div className="ba-panel">
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-3 py-1.5 text-xs font-bold uppercase rounded ${
-              filter === 'all'
-                ? 'bg-cdlp-gold text-cdlp-black'
-                : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
-            }`}
-          >
+          <button type="button" onClick={() => setFilter('all')} className={`ba-filter-chip ${filter === 'all' ? 'ba-filter-chip--active' : ''}`}>
             {t('docAllDocuments')}
           </button>
-          <button
-            onClick={() => setFilter('suppliers')}
-            className={`px-3 py-1.5 text-xs font-bold uppercase rounded ${
-              filter === 'suppliers'
-                ? 'bg-cdlp-gold text-cdlp-black'
-                : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
-            }`}
-          >
+          <button type="button" onClick={() => setFilter('suppliers')} className={`ba-filter-chip ${filter === 'suppliers' ? 'ba-filter-chip--active' : ''}`}>
             {t('docSuppliersCount').replace('{n}', String(Object.keys(groupedDocs.suppliers).length))}
           </button>
-          <button
-            onClick={() => setFilter('employees')}
-            className={`px-3 py-1.5 text-xs font-bold uppercase rounded ${
-              filter === 'employees'
-                ? 'bg-cdlp-gold text-cdlp-black'
-                : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
-            }`}
-          >
+          <button type="button" onClick={() => setFilter('employees')} className={`ba-filter-chip ${filter === 'employees' ? 'ba-filter-chip--active' : ''}`}>
             {t('docEmployeesCount').replace('{n}', String(Object.keys(groupedDocs.employees).length))}
           </button>
-          <button
-            onClick={() => setFilter('pos')}
-            className={`px-3 py-1.5 text-xs font-bold uppercase rounded ${
-              filter === 'pos'
-                ? 'bg-cdlp-gold text-cdlp-black'
-                : 'bg-cdlp-card border border-cdlp-border text-white hover:border-cdlp-gold'
-            }`}
-          >
+          <button type="button" onClick={() => setFilter('pos')} className={`ba-filter-chip ${filter === 'pos' ? 'ba-filter-chip--active' : ''}`}>
             {t('docPosCount').replace('{n}', String(groupedDocs.posReports.length))}
           </button>
         </div>
@@ -2746,20 +2713,20 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
 
       {/* Entity Cards */}
       {filteredEntities.length === 0 ? (
-        <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-12 text-center">
+        <div className="ba-panel p-12 text-center">
           <FileText className="w-16 h-16 text-cdlp-gold/30 mx-auto mb-4" />
           <h3 className="text-lg font-black text-cdlp-gold uppercase mb-2">{t('docNoDocumentsYet')}</h3>
           <p className="text-cdlp-muted text-sm mb-4">{t('docNoDocumentsYetHint')}</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 text-left">
-            <div className="bg-cdlp-card border border-cdlp-border rounded p-4">
+            <div className="ba-subpanel">
               <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-2">{t('docSupplierDocsTitle')}</h4>
               <p className="text-[10px] text-cdlp-muted">{t('docSupplierDocsDesc')}</p>
             </div>
-            <div className="bg-cdlp-card border border-cdlp-border rounded p-4">
+            <div className="ba-subpanel">
               <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-2">{t('docEmployeeDocsTitle')}</h4>
               <p className="text-[10px] text-cdlp-muted">{t('docEmployeeDocsDesc')}</p>
             </div>
-            <div className="bg-cdlp-card border border-cdlp-border rounded p-4">
+            <div className="ba-subpanel">
               <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-2">{t('docPosReports')}</h4>
               <p className="text-[10px] text-cdlp-muted">{t('docPosDocsDesc')}</p>
             </div>
@@ -2774,13 +2741,14 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
 
             return (
               <button
+                type="button"
                 key={entityName}
                 onClick={() => setSelectedEntity(entityName)}
-                className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-6 hover:border-cdlp-gold transition-all text-left group"
+                className="ba-entity-card group"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="font-bold text-white text-base mb-1 group-hover:text-cdlp-gold transition-colors">
+                    <h3 className="text-base mb-1">
                       {formatIssuerForDisplay(entityName, t)}
                     </h3>
                     <p className="text-xs text-cdlp-muted uppercase">
@@ -2792,7 +2760,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-cdlp-muted uppercase">{t('documents')}</span>
-                    <span className="text-sm font-bold text-white">{docCount}</span>
+                    <span className="text-sm font-bold ba-field-value">{docCount}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-cdlp-muted uppercase">{t('docTotalAmount')}</span>

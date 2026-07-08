@@ -1139,7 +1139,7 @@ const VerificationHub: React.FC<{
         <div className="ba-verify-form flex-1 min-w-0 p-4 sm:p-6 md:p-8 flex flex-col overflow-x-auto overflow-y-visible">
            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 border-b border-cdlp-border pb-4 gap-4">
               <div>
-                 <h4 className="text-xs sm:text-sm font-black uppercase tracking-widest text-white">
+                 <h4 className="text-xs sm:text-sm font-black uppercase tracking-widest ba-field-value">
                    {t('dpVerificationCenter')}
                  </h4>
                  <p className="text-[10px] text-cdlp-muted mt-1 truncate max-w-md">{doc.fileName}</p>
@@ -2513,7 +2513,7 @@ export const DocumentProcessor: React.FC<{
           data-drag={isDragging && !documentLimitReached}
         >
           {documentLimitReached ? <Ban className="w-8 h-8 text-red-400" /> : <Upload className="w-8 h-8 text-cdlp-muted" />}
-          <span className="text-xs font-bold uppercase tracking-wider text-white">
+          <span className="text-xs font-bold uppercase tracking-wider">
             {documentLimitReached ? t('dpDocumentLimitReached') : t('dpDropFiles')}
           </span>
           {monthlyRemaining != null ? (

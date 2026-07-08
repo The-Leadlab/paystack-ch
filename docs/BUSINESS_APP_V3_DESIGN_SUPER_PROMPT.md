@@ -73,6 +73,21 @@ Root wrapper: `.ba-v3` on `RestaurantDashboard` outer div. Import `businessApp.c
 - Do not change Firestore schema, Gemini prompts, or Stripe billing logic
 - Personal finances route (`/app/personal/*`) unchanged unless asked
 
+## Theme behavior (light + dark)
+
+The V3 system is **theme-aware** via `cafe-shell.cafe-theme-light` / `cafe-theme-dark` on `/app`:
+
+| Layer | Light mode | Dark mode |
+|-------|------------|-----------|
+| Canvas (main bg) | `#fcfaf4` | `#121418` |
+| Sidebar | White (`cdlp-black` token) | Dark charcoal |
+| Content cards (`ba-panel`, `ba-kpi-card`) | Dark `#1e1e26` on light canvas | Dark surfaces |
+| Page titles (`ba-page-header`) | Dark text on canvas | Light text |
+
+**Do not** force dark `bg-cdlp-*` overrides inside `.ba-v3` — use `ba-panel`, `ba-kpi-card`, `ba-verify-field`, `ba-filter-chip` instead.
+
+Toggle: global `ThemeToggle` + `ThemeProvider` (`localStorage` + `html.dark`).
+
 ## Verification checklist
 
 - [ ] All sidebar nav links switch tabs
