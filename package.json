@@ -10,6 +10,8 @@
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",
     "check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "security:scan": "node scripts/security-scan.mjs",
     "assets:brand-icons": "node scripts/generate-brand-icons.mjs",
     "format": "prettier --write ."

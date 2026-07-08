@@ -1,0 +1,57 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { startGoogleDriveOAuth } from "../lib/googleServices.js";
+import { verifyFirebaseAuthorizationHeader } from "../lib/verifyFirebaseIdToken.js";
+
+vi.mock("../lib/verifyFirebaseIdToken.js", () => ({
+  verifyFirebaseAuthorizationHeader: vi.fn(),
+}));
+
+describe("startGoogleDriveOAuth", () => {
+  beforeEach(() => {
+    vi.mocked(verifyFirebaseAuthorizationHeader).mockReset();
+  });
+
+  it("rejects the request when the Firebase ID token is missing or invalid", async () => {
+    vi.mocked(verifyFirebaseAuthorizationHeader).mockRejectedValue(
+      Object.assign(new Error("Authentication required"), { status: 401 })
+    );
+
+    const result = await startGoogleDriveOAuth(undefined);
+
+    expect(result.status).toBe(401);
+  });
+
+  // TODO: redirects to Google's OAuth URL with the correct scope and client_id
+  // TODO: generates a `state` value that's unique per request and bound to the requesting user
+  // TODO: selects the client id based on environment (dev vs. prod)
+});
+
+describe("completeGoogleDriveOAuth (callback)", () => {
+  // TODO: exchanges a valid code and stores the resulting refresh token against the user
+  // TODO: creates a Drive folder and stores its id on first connect
+  // TODO: reconnecting an already-connected user overwrites the stored token without creating a duplicate folder
+  // TODO: rejects the callback and writes nothing to Firestore when the code exchange fails
+  // TODO: rejects the callback for an invalid `state` (missing, non-matching, or bound to a different user)
+  // TODO: response body excludes the refresh token and access token
+});
+
+describe("disconnectGoogleDrive", () => {
+  // TODO: revokes the token with Google and deletes the local integration doc
+  // TODO: clears local state cleanly when there's nothing to disconnect, or when Google's revoke call fails
+});
+
+describe("saveDocumentToDrive (upload hook)", () => {
+  // TODO: uploads the document into the user's Drive folder with matching bytes and filename
+  // TODO: when the user has no Drive connection, upload/scan completes normally with no Drive call and no surfaced error
+  // TODO: app upload/scan still succeeds when a connected user's Drive upload fails
+  // TODO: refreshes an expired access token and retries the upload once
+  // TODO: an `invalid_grant` response marks the integration as needing reconnection and stops further retries
+  // TODO: each document in a batch is saved to Drive independently, so one failure doesn't block the others
+  // TODO: does not upload the same document to Drive twice for a single upload event
+});
+
+describe("cross-user authorization", () => {
+  // TODO: rejects a drive-upload trigger where the target userId doesn't match the authenticated caller
+  // TODO: rejects a disconnect request where the target userId doesn't match the authenticated caller
+  // TODO: rejects a callback whose state-bound user doesn't match the authenticated caller
+});
