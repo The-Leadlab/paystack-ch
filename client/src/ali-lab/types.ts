@@ -65,3 +65,12 @@ export type LabFairSplit = {
   splitCount: number;
   settled: boolean;
 };
+
+/** Personal checklist item scoped to a Business session. */
+export type LabSessionTask = {
+  id: string;
+  sessionId: string;
+  label: string;
+  done: boolean;
+  createdAt?: string;
+};

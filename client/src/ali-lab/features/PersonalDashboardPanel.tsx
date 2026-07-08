@@ -14,6 +14,7 @@ import {
 import { formatChfDisplay, formatPct } from "../personal-plan/formatChfDisplay";
 
 const SECTION_HINTS: Record<string, string> = {
+  "session-tasks": "Per-session checklist with add, complete, remove, and progress",
   budgeting: "Set monthly limits and track spending by category",
   forecasting: "90-day cash flow projection from your ledger",
   goals: "Savings and debt targets with progress tracking",

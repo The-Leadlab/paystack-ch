@@ -6,7 +6,7 @@ import { labFeatureCopy } from "@/ali-lab/i18n/labRegistryI18n";
 import { LabLanguageProvider, useLabLanguage } from "@/ali-lab/context/LabLanguageContext";
 import { PersonalPlanShell } from "@/ali-lab/personal-plan/components/PersonalPlanShell";
 
-const KPI_HIDDEN_FEATURES = new Set(["forecasting", "investments", "goals", "bill-reminders"]);
+const KPI_HIDDEN_FEATURES = new Set(["forecasting", "investments", "goals", "bill-reminders", "session-tasks"]);
 
 function PersonalAppContent() {
   const [, params] = useRoute("/app/personal/:featureId");

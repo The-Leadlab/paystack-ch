@@ -9,9 +9,12 @@ import { AutomationRulesPanel } from "./features/AutomationRulesPanel";
 import { SharedAccessPanel } from "./features/SharedAccessPanel";
 import { OfflinePanel } from "./features/OfflinePanel";
 import { InvestmentsPanel } from "./features/InvestmentsPanel";
+import { SessionTasksPanel } from "./features/SessionTasksPanel";
 
 export function AliLabFeaturePanel({ feature }: { feature: AliLabFeature }) {
   switch (feature.id) {
+    case "session-tasks":
+      return <SessionTasksPanel feature={feature} />;
     case "overview":
       return <PersonalDashboardPanel feature={feature} />;
     case "budgeting":

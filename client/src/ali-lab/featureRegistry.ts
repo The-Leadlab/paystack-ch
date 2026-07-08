@@ -16,6 +16,15 @@ export type AliLabFeature = {
 /** Priority order: build & test here before promoting to `/app`. */
 export const ALI_LAB_FEATURES: AliLabFeature[] = [
   {
+    id: "session-tasks",
+    title: "Session tasks",
+    competitors: "BudgetCH, YNAB",
+    priority: "high",
+    status: "ready",
+    promoteTo: "Personal Tasks tab at /app/personal/session-tasks",
+    summary: "Per-session checklist — add, complete, and remove tasks; track personal progress for the active session",
+  },
+  {
     id: "overview",
     title: "Personal overview",
     competitors: "YNAB, BudgetCH",

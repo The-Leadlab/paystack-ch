@@ -111,6 +111,10 @@ service cloud.firestore {
       allow read, update, delete: if resourceOwnedByUser();
       allow create: if createOwnedByUser();
     }
+    match /ali_lab_session_tasks/{id} {
+      allow read, update, delete: if resourceOwnedByUser();
+      allow create: if createOwnedByUser();
+    }
 
     /**
      * Billing profile for the signed-in user (Option B: client writes after server-verified Stripe link).

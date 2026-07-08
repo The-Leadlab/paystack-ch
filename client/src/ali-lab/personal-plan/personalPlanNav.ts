@@ -7,6 +7,7 @@ import {
   TrendingUp,
   Receipt,
   FlaskConical,
+  ListChecks,
 } from "lucide-react";
 
 export type PersonalPlanSurface = "lab" | "app";
@@ -23,6 +24,7 @@ export type PersonalPlanNavItem = {
 /** Primary nav — same features in lab (`/ali`) and production personal (`/app/personal`). */
 export const PERSONAL_PLAN_NAV: PersonalPlanNavItem[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard, featureId: "overview", mobilePrimary: true },
+  { id: "tasks", label: "Tasks", icon: ListChecks, featureId: "session-tasks" },
   { id: "budget", label: "Budget", icon: Wallet, featureId: "budgeting", mobilePrimary: true },
   { id: "reports", label: "Reports", icon: BarChart3, featureId: "forecasting" },
   { id: "savings", label: "Savings", icon: PiggyBank, featureId: "goals", mobilePrimary: true },
