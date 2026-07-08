@@ -12,6 +12,9 @@ import { formatIssuerForDisplay, formatMonthYearLabel, parseMonthKey } from '../
 import { useDocuments } from '../context/DocumentContext';
 import { usePOS } from '../context/POSContext';
 import { DocumentProcessor } from './DocumentProcessor';
+import { BusinessKpiCard } from './BusinessKpiCard';
+import { BusinessSidebarNav, type BusinessTab } from './BusinessSidebarNav';
+import '../businessApp.css';
 import { UpgradePromptModal } from './UpgradePromptModal';
 import { PlanTestBanner, PlanTestPickerModal } from './PlanTestPickerModal';
 import { getSessionDisplayName } from '../lib/formatLocalDateTime';
@@ -30,9 +33,17 @@ import { suggestSwissAccountCode } from '@shared/suggestSwissAccountCode';
 import { classifyLineItemAccountCode } from '../services/swissAccountClassifierService';
 import type { FinancialData } from '../types';
 
-type Tab = 'dashboard' | 'revenue' | 'reports' | 'documents' | 'billing';
+type Tab = BusinessTab;
 
 const FIRESTORE_BATCH_MAX = 450;
+
+const BUSINESS_NAV_ITEMS: { id: Tab; labelKey: string; icon: typeof LayoutDashboard }[] = [
+  { id: 'dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
+  { id: 'revenue', labelKey: 'revenue', icon: Receipt },
+  { id: 'reports', labelKey: 'reports', icon: BarChart3 },
+  { id: 'documents', labelKey: 'documents', icon: FileText },
+  { id: 'billing', labelKey: 'billingTab', icon: Settings },
+];
 
 function dedupeSnapshots(...snapshots: { forEach: (fn: (d: { ref: DocumentReference }) => void) => void }[]): DocumentReference[] {
   const seen = new Set<string>();
@@ -645,8 +656,19 @@ export function RestaurantDashboard() {
     }
   };
 
+  const switchTab = (tab: Tab) => {
+    setActiveTab(tab);
+    setShowSidebar(false);
+  };
+
+  const sidebarNavItems = BUSINESS_NAV_ITEMS.map((item) => ({
+    id: item.id,
+    icon: item.icon,
+    label: t(item.labelKey),
+  }));
+
   return (
-    <div className="min-h-[100dvh] min-h-screen bg-cdlp-dark flex flex-col md:flex-row touch-manipulation overscroll-y-contain">
+    <div className="ba-v3 min-h-[100dvh] min-h-screen bg-cdlp-dark flex flex-col md:flex-row touch-manipulation overscroll-y-contain">
       {showUpgradePrompt && entitlements.maxDocumentsPerMonth != null && (
         <UpgradePromptModal
           documentCap={entitlements.maxDocumentsPerMonth}
@@ -704,41 +726,51 @@ export function RestaurantDashboard() {
         ${showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}
       >
-        {/* Desktop Header */}
-        <div className="hidden md:block shrink-0 p-4 border-b border-cdlp-border">
-          <div className="flex flex-col items-center mb-4">
+        {/* Desktop Header + nav */}
+        <div className="hidden md:flex md:flex-col shrink-0 p-4 border-b border-cdlp-border">
+          <div className="flex flex-col items-start mb-4">
             <img
               src={BRAND_LOGO_SRC}
               alt="Paystack.ch"
               width={BRAND_LOGO_SIZE}
               height={BRAND_LOGO_SIZE}
-              className="h-[3.75rem] w-auto max-w-[220px] object-contain mb-3 shrink-0 mx-auto"
+              className="h-10 w-auto max-w-[180px] object-contain shrink-0"
             />
           </div>
-          
-          {/* Master Reset Button */}
+
+          <BusinessSidebarNav
+            activeTab={activeTab}
+            onTabChange={switchTab}
+            showRevenueTab={showRevenueTab}
+            items={sidebarNavItems}
+          />
+
+          <div className="flex items-center justify-between gap-2 mb-3 pt-2 border-t border-cdlp-border">
+            <span className="text-[11px] text-cdlp-muted truncate">{user?.email}</span>
+            <button
+              type="button"
+              onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
+              className="shrink-0 px-2 py-1 rounded border border-cdlp-border text-[10px] font-bold text-cdlp-muted uppercase flex items-center gap-1"
+            >
+              <Globe className="w-3 h-3" />
+              {language === 'en' ? 'ENG' : 'FR'}
+            </button>
+          </div>
+
           <button
+            type="button"
             onClick={() => setShowMasterReset(true)}
-            className="w-full flex items-center justify-center gap-2 py-2 mb-3 bg-red-600/10 border border-red-600 text-red-400 text-xs font-bold uppercase rounded hover:bg-red-600/20"
+            className="ba-master-reset w-full flex items-center justify-center gap-2 py-2 mb-2 text-xs font-bold uppercase rounded"
           >
             <Trash2 className="w-4 h-4" /> {t('dashMasterReset')}
           </button>
-          
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs text-cdlp-muted">{user?.email}</span>
-            <button
-              onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
-              className="p-1.5 hover:bg-cdlp-border rounded flex items-center gap-1"
-            >
-              <Globe className="w-3 h-3 text-cdlp-gold" />
-              <span className="text-[10px] font-bold text-cdlp-gold">{language === 'en' ? 'FR' : 'EN'}</span>
-            </button>
-          </div>
+
           <button
+            type="button"
             onClick={handleAddSession}
             disabled={!canAddSession}
             title={!canAddSession ? sessionLimitMessage : undefined}
-            className="w-full flex items-center justify-center gap-2 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light disabled:opacity-40 disabled:cursor-not-allowed"
+            className="ba-new-session w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase rounded disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {canAddSession ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />} {t('newSession')}
           </button>
@@ -747,6 +779,23 @@ export function RestaurantDashboard() {
               {sessions.length}/{entitlements.maxSessions} {t('sessions')}
             </p>
           ) : null}
+        </div>
+
+        {/* Mobile nav + session controls */}
+        <div className="md:hidden shrink-0 px-4 pb-3 border-b border-cdlp-border space-y-3">
+          <BusinessSidebarNav
+            activeTab={activeTab}
+            onTabChange={switchTab}
+            showRevenueTab={showRevenueTab}
+            items={sidebarNavItems}
+          />
+          <button
+            type="button"
+            onClick={() => setShowMasterReset(true)}
+            className="ba-master-reset w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase rounded"
+          >
+            <Trash2 className="w-4 h-4" /> {t('dashMasterReset')}
+          </button>
         </div>
 
         {/* Mobile Header in Sidebar */}
@@ -775,9 +824,7 @@ export function RestaurantDashboard() {
         {/* Sessions List */}
         <div className="flex-1 min-h-0 overflow-y-auto p-4 custom-scrollbar">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-bold uppercase text-cdlp-muted">
-              {t('sessions')} ({sessions.length})
-            </h3>
+            <h3 className="text-xs font-bold uppercase text-cdlp-muted">{t('dashRecentSessions')}</h3>
           </div>
           
           {/* All Sessions View Button */}
@@ -869,18 +916,6 @@ export function RestaurantDashboard() {
           </Link>
           <button
             type="button"
-            onClick={openBillingTab}
-            className={`w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase rounded border transition-colors ${
-              activeTab === 'billing'
-                ? 'bg-cdlp-gold/15 border-cdlp-gold text-cdlp-gold'
-                : 'text-cdlp-gold border-cdlp-gold/40 hover:bg-cdlp-gold/10'
-            }`}
-          >
-            <CreditCard className="w-4 h-4" />
-            {t('subscriptionManageBilling')}
-          </button>
-          <button
-            type="button"
             onClick={() => void signOut()}
             className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-muted border border-cdlp-border rounded hover:text-cdlp-gold hover:border-cdlp-gold/40"
           >
@@ -904,64 +939,6 @@ export function RestaurantDashboard() {
         className="flex-1 flex flex-col overflow-hidden"
         aria-label={t('financialDashboard')}
       >
-        {/* Tab Navigation â€” desktop only; phones use bottom app bar */}
-        <div className="hidden md:block bg-cdlp-black border-b border-cdlp-border px-4 md:px-8 pt-4">
-          <div className="flex gap-2 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
-                activeTab === 'dashboard'
-                  ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
-                  : 'text-cdlp-muted hover:text-white'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4" /> {t('dashboard')}
-            </button>
-            {showRevenueTab ? (
-              <button
-                onClick={() => setActiveTab('revenue')}
-                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
-                  activeTab === 'revenue'
-                    ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
-                    : 'text-cdlp-muted hover:text-white'
-                }`}
-              >
-                <Receipt className="w-4 h-4" /> {t('revenue')}
-              </button>
-            ) : null}
-            <button
-              onClick={() => setActiveTab('reports')}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
-                activeTab === 'reports'
-                  ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
-                  : 'text-cdlp-muted hover:text-white'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" /> {t('reports')}
-            </button>
-            <button
-              onClick={() => setActiveTab('documents')}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
-                activeTab === 'documents'
-                  ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
-                  : 'text-cdlp-muted hover:text-white'
-              }`}
-            >
-              <FileText className="w-4 h-4" /> {t('documents')}
-            </button>
-            <button
-              onClick={() => setActiveTab('billing')}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase rounded-t transition-colors ${
-                activeTab === 'billing'
-                  ? 'bg-cdlp-dark text-cdlp-gold border-t-2 border-cdlp-gold'
-                  : 'text-cdlp-muted hover:text-white'
-              }`}
-            >
-              <Settings className="w-4 h-4" /> {t('billingTab')}
-            </button>
-          </div>
-        </div>
-
         {/* Tab Content */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-8 custom-scrollbar pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-8 [-webkit-overflow-scrolling:touch]">
           {activeTab === 'dashboard' && (
@@ -1589,11 +1566,31 @@ function IncomeExpenseSection({
 }
 
 // Dashboard Tab Component
+function formatLiveClock(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function useLiveClock(): string {
+  const [clock, setClock] = useState(() => formatLiveClock(new Date()));
+  useEffect(() => {
+    const id = setInterval(() => setClock(formatLiveClock(new Date())), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return clock;
+}
+
 function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument, onShowEmployeePanel }: any) {
   const chfLocale = useChfLocale();
+  const liveClock = useLiveClock();
   const vatOnSalesRate = totalIncome > 0 ? (vatReceived / totalIncome) * 100 : 0;
   const expenseBaseForVat = totalExpenses + totalPayroll;
   const vatOnPurchasesRate = expenseBaseForVat > 0 ? (vatPaid / expenseBaseForVat) * 100 : 0;
+  const sessionTimestamp = isAllSessionsView
+    ? t('allSessions')
+    : currentSession
+      ? getSessionDisplayName(currentSession)
+      : '';
 
   const handleItemClick = (item: any) => {
     if (item.document_id && onNavigateToDocument) {
@@ -1608,95 +1605,91 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
 
   return (
     <>
-      <div className="flex items-center justify-between mb-6 gap-3">
+      <div className="flex items-start justify-between mb-6 gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">{t('dashboard')}</h1>
-          {isAllSessionsView || currentSession ? (
-            <p className="text-xs md:text-sm font-bold text-white/90 truncate mt-1 tabular-nums">
-              {isAllSessionsView ? t('allSessions') : getSessionDisplayName(currentSession!)}
-            </p>
+          <h1 className="text-xl md:text-2xl font-black text-white uppercase tracking-wide">{t('dashboard')}</h1>
+          {sessionTimestamp ? (
+            <p className="text-xs text-cdlp-muted tabular-nums mt-1">{sessionTimestamp}</p>
           ) : null}
         </div>
-        <button
-          onClick={onShowEmployeePanel}
-          className="flex items-center gap-2 px-4 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light transition-colors"
-        >
-          <Users className="w-4 h-4" /> {t('employees')}
-        </button>
-      </div>
-
-      {/* Financial Summary Cards - 2 rows */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4">
-        <div className="bg-cdlp-black border border-cdlp-border p-3 md:p-4 rounded-lg shadow-card">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-4 md:w-5 h-4 md:h-5 text-emerald-500" />
-            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('income')}</span>
-          </div>
-          <p className="text-lg md:text-2xl font-black text-emerald-500">{totalIncome.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <p className="text-xs text-cdlp-muted">CHF</p>
-        </div>
-
-        <div className="bg-cdlp-black border border-cdlp-border p-3 md:p-4 rounded-lg shadow-card">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingDown className="w-4 md:w-5 h-4 md:h-5 text-red-500" />
-            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('expenses')}</span>
-          </div>
-          <p className="text-lg md:text-2xl font-black text-red-500">{totalExpenses.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <p className="text-xs text-cdlp-muted">CHF</p>
-        </div>
-
-        <div className="bg-cdlp-black border border-cdlp-border p-3 md:p-4 rounded-lg shadow-card">
-          <div className="flex items-center gap-2 mb-2">
-            <Users className="w-4 md:w-5 h-4 md:h-5 text-cdlp-gold" />
-            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('payroll')}</span>
-          </div>
-          <p className="text-lg md:text-2xl font-black text-cdlp-gold">{totalPayroll.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <p className="text-xs text-cdlp-muted">CHF</p>
-        </div>
-
-        <div className="bg-cdlp-black border border-cdlp-border p-3 md:p-4 rounded-lg shadow-card">
-          <div className="flex items-center gap-2 mb-2">
-            <DollarSign className="w-4 md:w-5 h-4 md:h-5 text-cdlp-gold" />
-            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('balance')}</span>
-          </div>
-          <p className={`text-lg md:text-2xl font-black ${balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-            {balance.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <p className="text-xs text-cdlp-muted">CHF</p>
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <p className="text-[11px] md:text-xs text-cdlp-muted tabular-nums font-mono">{liveClock}</p>
+          <button
+            onClick={onShowEmployeePanel}
+            className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded-lg hover:border-cdlp-gold/40 transition-colors"
+          >
+            <Users className="w-4 h-4" /> {t('employees')}
+          </button>
         </div>
       </div>
 
-      {/* VAT Summary Cards */}
-      <div className="grid grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
-        <div className="bg-cdlp-black border border-blue-500/30 p-3 md:p-4 rounded-lg shadow-card">
-          <div className="flex items-center gap-2 mb-2">
-            <Receipt className="w-4 md:w-5 h-4 md:h-5 text-blue-400" />
-            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('vatReceivedLabel')}</span>
-          </div>
-          <p className="text-lg md:text-2xl font-black text-blue-400">{vatReceived.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <p className="text-xs text-cdlp-muted">{t('vatFromCustomersHint').replace('{rate}', vatOnSalesRate.toFixed(2))}</p>
-        </div>
+      {/* Financial Summary Cards */}
+      {(() => {
+        const flowBase = Math.max(totalIncome, totalExpenses + totalPayroll, Math.abs(balance), 1);
+        const fmt = (n: number) =>
+          n.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4">
+              <BusinessKpiCard
+                label={t('income')}
+                value={fmt(totalIncome)}
+                icon={TrendingUp}
+                tone="green"
+                progressPct={(totalIncome / flowBase) * 100}
+              />
+              <BusinessKpiCard
+                label={t('expenses')}
+                value={fmt(totalExpenses)}
+                icon={TrendingDown}
+                tone="red"
+                progressPct={(totalExpenses / flowBase) * 100}
+              />
+              <BusinessKpiCard
+                label={t('payroll')}
+                value={fmt(totalPayroll)}
+                icon={Users}
+                tone="gold"
+                progressPct={(totalPayroll / flowBase) * 100}
+              />
+              <BusinessKpiCard
+                label={t('balance')}
+                value={fmt(balance)}
+                icon={DollarSign}
+                tone={balance >= 0 ? 'green' : 'red'}
+                progressPct={(Math.abs(balance) / flowBase) * 100}
+              />
+            </div>
 
-        <div className="bg-cdlp-black border border-orange-500/30 p-3 md:p-4 rounded-lg shadow-card">
-          <div className="flex items-center gap-2 mb-2">
-            <Receipt className="w-4 md:w-5 h-4 md:h-5 text-orange-400" />
-            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('vatPaidLabel')}</span>
-          </div>
-          <p className="text-lg md:text-2xl font-black text-orange-400">{vatPaid.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <p className="text-xs text-cdlp-muted">{t('vatOnPurchasesHint').replace('{rate}', vatOnPurchasesRate.toFixed(2))}</p>
-        </div>
-
-        <div className="bg-cdlp-black border border-purple-500/30 p-3 md:p-4 rounded-lg shadow-card">
-          <div className="flex items-center gap-2 mb-2">
-            <Receipt className="w-4 md:w-5 h-4 md:h-5 text-purple-400" />
-            <span className="text-[10px] md:text-xs font-bold uppercase text-cdlp-muted">{t('vatBalanceLabel')}</span>
-          </div>
-          <p className={`text-lg md:text-2xl font-black ${vatBalance >= 0 ? 'text-purple-400' : 'text-red-400'}`}>
-            {vatBalance.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <p className="text-xs text-cdlp-muted">{vatBalance >= 0 ? t('vatBalanceToPay') : t('vatBalanceRefund')}</p>
-        </div>
-      </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
+              <BusinessKpiCard
+                label={t('vatReceivedLabel')}
+                value={fmt(vatReceived)}
+                hint={t('vatFromCustomersHint').replace('{rate}', vatOnSalesRate.toFixed(2))}
+                icon={Receipt}
+                tone="blue"
+                progressPct={vatOnSalesRate > 0 ? Math.min(vatOnSalesRate * 10, 100) : 8}
+              />
+              <BusinessKpiCard
+                label={t('vatPaidLabel')}
+                value={fmt(vatPaid)}
+                hint={t('vatOnPurchasesHint').replace('{rate}', vatOnPurchasesRate.toFixed(2))}
+                icon={Receipt}
+                tone="gold"
+                progressPct={vatOnPurchasesRate > 0 ? Math.min(vatOnPurchasesRate * 10, 100) : 8}
+              />
+              <BusinessKpiCard
+                label={t('vatBalanceLabel')}
+                value={fmt(vatBalance)}
+                hint={vatBalance >= 0 ? t('vatBalanceToPay') : t('vatBalanceRefund')}
+                icon={Receipt}
+                tone={vatBalance >= 0 ? 'purple' : 'red'}
+                progressPct={Math.min((Math.abs(vatBalance) / Math.max(vatReceived, 1)) * 100, 100)}
+              />
+            </div>
+          </>
+        );
+      })()}
 
       {/* Document Upload Section */}
       {!currentSession && !isAllSessionsView && (
@@ -2019,8 +2012,11 @@ function ReportsPlaceholder() {
 
   return (
     <div className="space-y-6">
+      <div className="ba-page-header">
+        <h1>{t('reports')}</h1>
+      </div>
       {/* Filters */}
-      <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-4">
+      <div className="ba-panel">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <div>
             <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">{t('repDateRangeFilter')}</label>
@@ -2698,12 +2694,12 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">{t('documentsLibraryTitle')}</h2>
+      <div className="ba-page-header">
+        <h1>{t('documentsLibraryTitle')}</h1>
       </div>
 
       {/* Filter Options */}
-      <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card p-4">
+      <div className="ba-panel">
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setFilter('all')}

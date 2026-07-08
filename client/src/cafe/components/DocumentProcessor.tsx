@@ -1131,32 +1131,37 @@ const VerificationHub: React.FC<{
   };
 
   return (
-    <div className="bg-cdlp-black border-y border-cdlp-border animate-in slide-in-from-top-2 duration-400 overflow-hidden shadow-inner">
+    <div className="ba-verify-shell animate-in slide-in-from-top-2 duration-400 overflow-hidden">
       <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row min-h-[500px]">
-        <div className="w-full lg:w-[320px] xl:w-[420px] bg-slate-900 border-r border-cdlp-border flex flex-col shadow-2xl overflow-hidden shrink-0">
+        <div className="ba-verify-preview w-full lg:w-[320px] xl:w-[420px] flex flex-col overflow-hidden shrink-0">
           <NeuralLog doc={doc} />
         </div>
-        <div className="flex-1 min-w-0 p-4 sm:p-6 md:p-10 flex flex-col bg-cdlp-black overflow-x-auto overflow-y-visible">
-           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 border-b border-cdlp-border pb-5 gap-4">
+        <div className="ba-verify-form flex-1 min-w-0 p-4 sm:p-6 md:p-8 flex flex-col overflow-x-auto overflow-y-visible">
+           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 border-b border-cdlp-border pb-4 gap-4">
               <div>
-                 <h4 className="text-[12px] sm:text-[13px] font-black uppercase tracking-widest text-cdlp-gold flex items-center gap-3">
+                 <h4 className="text-xs sm:text-sm font-black uppercase tracking-widest text-white">
                    {t('dpVerificationCenter')}
                  </h4>
-                 <p className="text-[9px] sm:text-[10px] font-bold text-cdlp-muted uppercase opacity-50 mt-1 truncate max-w-[200px] sm:max-w-md">{doc.fileName}</p>
+                 <p className="text-[10px] text-cdlp-muted mt-1 truncate max-w-md">{doc.fileName}</p>
               </div>
-              <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                  {(doc.fileUrl || doc.fileDataUrl || doc.fileRaw) && (
                    <button
                      type="button"
                      onClick={() => openDocumentInNewTab(doc)}
-                     className="h-8 px-3 bg-cdlp-card border border-cdlp-border text-cdlp-gold rounded-sm text-[9px] sm:text-[10px] font-black uppercase flex items-center gap-2 hover:border-cdlp-gold transition-colors whitespace-nowrap"
+                     className="h-9 px-3 border border-cdlp-border text-cdlp-muted rounded text-[10px] font-bold uppercase hover:text-white transition-colors whitespace-nowrap"
                    >
-                     <ExternalLink className="w-3.5 h-3.5" /> {t('dpOpenPdf')}
+                     {t('dpOpenPdf')}
                    </button>
                  )}
-                 <div className="px-3 py-1.5 bg-emerald-600/10 text-emerald-400 border border-emerald-600/20 rounded-sm text-[9px] sm:text-[10px] font-black uppercase flex items-center gap-2 shadow-sm whitespace-nowrap">
-                    <Cpu className="w-3.5 h-3.5" /> {t('dpMatchConfidence').replace('{pct}', ((doc.data?.confidenceScore || 0.95) * 100).toFixed(0))}
-                 </div>
+                 <button
+                   type="button"
+                   disabled={isZeroValue}
+                   onClick={() => onSave({ ...editedData, isHumanVerified: true })}
+                   className="ba-btn-approve h-9 px-4 whitespace-nowrap"
+                 >
+                   {t('dpApprove')}
+                 </button>
               </div>
            </div>
 
@@ -1439,7 +1444,7 @@ const VerificationHub: React.FC<{
                       value={hasMultipleSubs ? formatIssuerForDisplay(editedData.issuer, t) : editedData.issuer}
                       onChange={(e) => handleFieldChange('issuer', e.target.value)}
                       readOnly={hasMultipleSubs}
-                      className={`w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-foreground outline-none focus:border-cdlp-gold transition-colors ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`}
+                      className={`ba-verify-field ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`}
                     />
                  </div>
                  {subDocuments.length > 0 && (
@@ -1476,11 +1481,11 @@ const VerificationHub: React.FC<{
                  <div className="grid grid-cols-2 gap-3">
                     <div>
                        <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">{t('dpCurrency')}</label>
-                       <input value={editedData.originalCurrency} onChange={e => handleFieldChange('originalCurrency', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-foreground outline-none uppercase" placeholder="CHF" />
+                       <input value={editedData.originalCurrency} onChange={e => handleFieldChange('originalCurrency', e.target.value)} className="ba-verify-field uppercase" placeholder="CHF" />
                     </div>
                     <div>
                        <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">{t('dpDocumentNumber')}</label>
-                       <input value={editedData.documentNumber} onChange={e => handleFieldChange('documentNumber', e.target.value)} className="w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-foreground outline-none" />
+                       <input value={editedData.documentNumber} onChange={e => handleFieldChange('documentNumber', e.target.value)} className="ba-verify-field" />
                     </div>
                  </div>
               </div>
@@ -1500,7 +1505,7 @@ const VerificationHub: React.FC<{
                         value={editedData.totalAmount} 
                         onChange={e => handleFieldChange('totalAmount', parseFloat(e.target.value) || 0)}
                         readOnly={hasMultipleSubs}
-                        className={`w-full h-11 px-4 rounded-sm text-xs font-black text-foreground outline-none transition-all ${isZeroValue ? 'bg-red-600/10 border-2 border-red-600' : 'bg-cdlp-card border border-cdlp-border'} ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`} 
+                        className={`ba-verify-field font-black ${isZeroValue ? 'ba-verify-field--error' : ''} ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`} 
                       />
                       {isZeroValue && (
                         <div className="absolute -bottom-5 left-0 text-[8px] font-black text-red-600 uppercase tracking-widest animate-pulse">{t('dpValueCannotBeZero')}</div>
@@ -1518,7 +1523,7 @@ const VerificationHub: React.FC<{
                          value={editedData.vatAmount || 0} 
                          onChange={e => handleFieldChange('vatAmount', parseFloat(e.target.value) || 0)}
                          readOnly={hasMultipleSubs}
-                        className={`w-full h-11 px-4 bg-blue-600/10 border border-blue-600/20 rounded-sm text-xs font-bold text-foreground outline-none focus:border-blue-600 transition-colors ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`} 
+                        className={`ba-verify-field ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`} 
                        />
                     </div>
                     <div>
@@ -1531,7 +1536,7 @@ const VerificationHub: React.FC<{
                          value={editedData.netAmount || 0} 
                          onChange={e => handleFieldChange('netAmount', parseFloat(e.target.value) || 0)}
                          readOnly={hasMultipleSubs}
-                        className={`w-full h-11 px-4 bg-emerald-600/10 border border-emerald-600/20 rounded-sm text-xs font-bold text-foreground outline-none focus:border-emerald-600 transition-colors ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`} 
+                        className={`ba-verify-field ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`} 
                        />
                     </div>
                  </div>
@@ -1546,7 +1551,7 @@ const VerificationHub: React.FC<{
                       value={editedData.date}
                       onChange={(e) => handleFieldChange('date', e.target.value)}
                       readOnly={hasMultipleSubs}
-                      className={`w-full h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-bold text-foreground outline-none ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`}
+                      className={`ba-verify-field ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`}
                     />
                  </div>
                  <div className="pt-1 sm:pt-0">
@@ -1558,10 +1563,10 @@ const VerificationHub: React.FC<{
                           value={editedData.expenseCategory} 
                           onChange={e => handleFieldChange('expenseCategory', e.target.value)} 
                           placeholder={t('dpTypeCustom')}
-                          className="flex-1 h-11 px-4 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-foreground uppercase outline-none shadow-inner"
+                          className="ba-verify-field flex-1 uppercase"
                         />
                       ) : (
-                        <select value={editedData.expenseCategory} onChange={e => handleFieldChange('expenseCategory', e.target.value)} className={`flex-1 h-11 px-4 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-foreground uppercase outline-none`}>
+                        <select value={editedData.expenseCategory} onChange={e => handleFieldChange('expenseCategory', e.target.value)} className="ba-verify-field flex-1 uppercase">
                            <option value="">{t('dpUncategorized')}</option>
                            {CATEGORY_GROUPS.map(group => (
                              <optgroup key={group.id} label={group.label}>
@@ -1888,39 +1893,15 @@ const VerificationHub: React.FC<{
              )}
            </div>
            
-          {/* Sticky Save Button - boosted contrast and visibility */}
-          <div className="sticky bottom-0 pt-6 pb-2 border-t-2 border-cdlp-gold/40 mt-6 bg-gradient-to-t from-cdlp-black via-cdlp-black/95 to-transparent">
-              <div className="bg-cdlp-card border border-cdlp-border rounded-lg p-4 mb-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span className="text-[9px] font-black uppercase text-emerald-400">Ready to Save</span>
-                  </div>
-                  <span className="text-[8px] text-cdlp-muted">All changes will be applied</span>
-                </div>
-                <div className="text-[8px] text-cdlp-muted space-y-1">
-                  <p>✓ Document data will be updated</p>
-                  <p>✓ Dashboard income/expenses will be recalculated</p>
-                  <p>✓ Totals will refresh automatically</p>
-                </div>
-              </div>
-              
-              <button 
-                onClick={() => {
-                  console.log('💾 SAVE BUTTON CLICKED - Saving document with data:', editedData);
-                  onSave({ ...editedData, isHumanVerified: true });
-                }} 
-                disabled={isZeroValue}
-                className={`w-full h-16 rounded-lg font-black text-[11px] sm:text-[12px] uppercase tracking-[0.28em] shadow-[0_0_0_1px_rgba(255,255,255,0.2),0_18px_40px_rgba(0,0,0,0.45)] transition-all flex items-center justify-center gap-3 ${isZeroValue ? 'bg-cdlp-card text-cdlp-muted cursor-not-allowed border-red-600/30 border' : 'bg-cdlp-gold text-cdlp-black border border-cdlp-gold-light hover:bg-cdlp-gold-light hover:scale-[1.01]'}`}
-              >
-                <ShieldCheck className="w-6 h-6" /> 
-                <span>Save & Update Dashboard</span>
-                <RefreshCcw className="w-5 h-5" />
-              </button>
-              <p className="text-center text-[9px] text-cdlp-gold-light mt-3 uppercase tracking-wider font-black">
-                ⚡ {t('dpSaveApplyHint')}
-              </p>
-           </div>
+          {isZeroValue ? (
+            <p className="text-center text-[9px] text-red-400 mt-4 uppercase tracking-wider font-bold">
+              {t('dpValueCannotBeZero')}
+            </p>
+          ) : (
+            <p className="text-center text-[9px] text-cdlp-muted mt-4 uppercase tracking-wider">
+              {t('dpSaveApplyHint')}
+            </p>
+          )}
         </div>
       </div>
       {showSubInvoiceModal && (
@@ -2517,92 +2498,81 @@ export const DocumentProcessor: React.FC<{
         addFiles(e.dataTransfer.files);
       }}
     >
-      <div className="bg-cdlp-black border border-cdlp-border p-4 md:p-6 rounded-lg shadow-card">
+      <div className="ba-panel">
         {uploadError && (
           <div className="mb-4 p-3 bg-red-600/10 border border-red-600 text-red-400 text-xs font-bold uppercase flex items-center justify-between rounded">
             <span className="flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> {uploadError}</span>
             <button onClick={() => setUploadError(null)} className="hover:text-red-300"><XCircle className="w-4 h-4" /></button>
           </div>
         )}
-        
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
-          {/* Upload Area */}
-          <div className="lg:col-span-5">
-            <label className={`flex flex-col items-center justify-center h-40 border-2 border-dashed rounded transition-all ${
-              documentLimitReached
-                ? 'cursor-not-allowed border-red-600/50 bg-red-950/20 opacity-80'
-                : isDragging
-                  ? 'cursor-pointer border-cdlp-gold bg-cdlp-gold/10 scale-105'
-                  : 'cursor-pointer border-cdlp-border hover:bg-cdlp-card'
-            }`}>
-              {documentLimitReached ? <Ban className="w-8 h-8 mb-3 text-red-400" /> : <Upload className="w-8 h-8 mb-3 text-cdlp-muted" />}
-              <div className="text-center px-4">
-                <span className={`text-xs font-bold uppercase tracking-wider block ${documentLimitReached ? 'text-red-400' : 'text-cdlp-gold'}`}>
-                  {documentLimitReached ? t('dpDocumentLimitReached') : t('dpUploadDocuments')}
-                </span>
-                <span className="text-[10px] text-cdlp-muted uppercase tracking-wider mt-1 block">
-                  {monthlyRemaining != null
-                    ? t('dpSlotsLeft').replace('{left}', String(monthlyRemaining)).replace('{cap}', String(documentCap))
-                    : t('dpDropFiles')}
-                </span>
-                <span className="text-[9px] text-cdlp-muted/60 uppercase tracking-wider mt-1 block">{t('dpClickRowsHint')}</span>
-              </div>
-              <input type="file" className="hidden" multiple accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp" disabled={documentLimitReached} onChange={(e) => addFiles(e.target.files)} />
-            </label>
-          </div>
 
-          {/* Controls */}
-          <div className="lg:col-span-3 flex flex-col justify-between gap-3">
-            {isProcessing ? (
-              <button onClick={stopBatch} className="w-full h-12 bg-red-600 text-white rounded font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-red-700">
-                <Ban className="w-4 h-4" /> {t('dpStopProcessing')}
-              </button>
-            ) : (
-              <button 
-                onClick={processAll} 
-                disabled={allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any)).length === 0} 
-                className="w-full h-12 bg-cdlp-gold text-cdlp-black rounded font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-30 hover:bg-cdlp-gold-light"
-              >
-                <ShieldCheck className="w-4 h-4" /> {t('dpStartProcessing').replace('{n}', String(allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any)).length))}
-              </button>
-            )}
-          </div>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-cdlp-muted mb-3">{t('dpUploadDocuments')}</p>
 
-          {/* Stats */}
-          <div className="lg:col-span-4 flex flex-col h-40 border border-cdlp-border rounded bg-cdlp-card p-4">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <p className="text-[10px] font-bold text-cdlp-muted uppercase tracking-wider mb-1">{t('dpQueueStatus')}</p>
-                <p className="text-xs font-bold text-cdlp-gold">{t('dpDone').replace('{done}', String(stats.completed)).replace('{total}', String(stats.total))}</p>
-              </div>
-            </div>
-            <div className="flex-1 flex flex-col justify-center">
-              <div className="w-full h-1.5 bg-cdlp-border rounded-full overflow-hidden mb-2">
-                <div className="h-full bg-cdlp-gold transition-all duration-1000" style={{ width: `${stats.progress}%` }} />
-              </div>
-              <p className="text-[10px] font-bold text-cdlp-muted text-center uppercase tracking-wider">{t('dpPercentComplete').replace('{n}', stats.progress.toFixed(0))}</p>
-            </div>
-            <div className="mt-3 bg-cdlp-black border border-cdlp-border rounded p-2 flex items-center justify-center gap-2">
-              <Zap className="w-3 h-3 text-cdlp-gold" />
-              <span className="text-[10px] font-bold text-cdlp-gold uppercase">{t('dpTurboParallel').replace('{n}', String(BATCH_SIZE))}</span>
-            </div>
-          </div>
+        <label
+          className={`ba-upload-zone w-full mb-4 ${documentLimitReached ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+          data-drag={isDragging && !documentLimitReached}
+        >
+          {documentLimitReached ? <Ban className="w-8 h-8 text-red-400" /> : <Upload className="w-8 h-8 text-cdlp-muted" />}
+          <span className="text-xs font-bold uppercase tracking-wider text-white">
+            {documentLimitReached ? t('dpDocumentLimitReached') : t('dpDropFiles')}
+          </span>
+          {monthlyRemaining != null ? (
+            <span className="text-[10px] text-cdlp-muted">
+              {t('dpSlotsLeft').replace('{left}', String(monthlyRemaining)).replace('{cap}', String(documentCap))}
+            </span>
+          ) : null}
+          <input
+            type="file"
+            className="hidden"
+            multiple
+            accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp"
+            disabled={documentLimitReached}
+            onChange={(e) => addFiles(e.target.files)}
+          />
+        </label>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {isProcessing ? (
+            <button
+              type="button"
+              onClick={stopBatch}
+              className="ba-btn-start bg-red-600 text-white hover:opacity-100"
+            >
+              {t('dpStopProcessing')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={processAll}
+              disabled={allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any)).length === 0}
+              className="ba-btn-start"
+            >
+              {t('dpStartProcessing').replace(
+                '{n}',
+                String(allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any)).length)
+              )}
+            </button>
+          )}
+          <span className="text-[10px] text-cdlp-muted uppercase tracking-wider">
+            {t('dpDone').replace('{done}', String(stats.completed)).replace('{total}', String(stats.total))}
+          </span>
         </div>
       </div>
 
       {/* Documents Table */}
       {allDocs.length > 0 && (
-        <div className="bg-cdlp-black border border-cdlp-border rounded-lg shadow-card overflow-hidden">
+        <div className="ba-panel overflow-hidden p-0">
           <div className="overflow-x-auto custom-scrollbar max-w-[100vw] sm:max-w-none">
-            <table className="min-w-[720px] w-full text-xs">
-              <thead className="bg-cdlp-gold text-cdlp-black uppercase font-bold text-[10px] tracking-wider">
+            <table className="ba-doc-table min-w-[720px] w-full text-xs">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left">{t('dpColDocument')}</th>
-                  <th className="px-4 py-3 text-left hidden md:table-cell">{t('dpColDate')}</th>
-                  <th className="px-4 py-3 text-right hidden md:table-cell">{t('dpColAmount')}</th>
-                  <th className="px-4 py-3 text-left hidden md:table-cell">{t('dpColType')}</th>
-                  <th className="px-4 py-3 text-right hidden md:table-cell">{t('dpColTvaCalc')}</th>
-                  <th className="px-4 py-3 text-right">{t('dpColStatus')}</th>
+                  <th className="text-left">{t('dpColDocument')}</th>
+                  <th className="text-left hidden md:table-cell">{t('dpColDate')}</th>
+                  <th className="text-right hidden md:table-cell">{t('dpColAmount')}</th>
+                  <th className="text-left hidden md:table-cell">{t('dpColType')}</th>
+                  <th className="text-right hidden md:table-cell">{t('dpColTvaCalc')}</th>
+                  <th className="text-right">{t('dpColStatus')}</th>
+                  <th className="text-right w-16">{t('dpColActions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-cdlp-border">
@@ -2719,30 +2689,26 @@ export const DocumentProcessor: React.FC<{
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {doc.status === 'processing' && <Loader2 className="w-4 h-4 text-cdlp-gold animate-spin" />}
-                            {doc.status === 'completed' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
-                            {doc.status === 'error' && <XCircle className="w-4 h-4 text-red-500" />}
-                            {doc.status === 'skipped' && <Ban className="w-4 h-4 text-amber-500" />}
-                            <span className={`text-[9px] font-bold uppercase tracking-wider hidden sm:inline ${
-                              doc.status === 'completed' ? 'text-emerald-500' : 
-                              doc.status === 'error' ? 'text-red-500' : 
-                              doc.status === 'skipped' ? 'text-amber-500' :
-                              'text-cdlp-muted'
-                            }`}>{docStatusLabel(doc.status)}</span>
-                            {doc.status === 'completed' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!isExpanded) toggleRow(doc.id);
-                                }}
-                                className="px-2 py-1 bg-cdlp-gold/15 hover:bg-cdlp-gold/25 text-cdlp-gold text-[9px] font-bold uppercase rounded transition-colors"
-                                title={t('dpVerificationCenter')}
+                          <div className="flex items-center justify-end gap-2 flex-wrap">
+                            {doc.status === 'completed' ? (
+                              <span
+                                className={`ba-status-pill ${isExpanded ? 'ba-status-pill--verify' : 'ba-status-pill--completed'}`}
                               >
-                                {t('dpVerificationCenter')}
-                              </button>
+                                {isExpanded ? t('dpVerificationCenter') : docStatusLabel(doc.status)}
+                              </span>
+                            ) : doc.status === 'error' ? (
+                              <span className="ba-status-pill ba-status-pill--error">{docStatusLabel(doc.status)}</span>
+                            ) : doc.status === 'skipped' ? (
+                              <span className="ba-status-pill ba-status-pill--pending">{docStatusLabel(doc.status)}</span>
+                            ) : (
+                              <span className="ba-status-pill ba-status-pill--pending inline-flex items-center gap-1">
+                                {doc.status === 'processing' ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : null}
+                                {docStatusLabel(doc.status)}
+                              </span>
                             )}
-                            
+
                             {doc.status === 'error' && (
                               <>
                                 {canProcessDoc(doc as ProcessedDocument & { source?: 'firestore' | 'local' }) ? (
@@ -2811,29 +2777,42 @@ export const DocumentProcessor: React.FC<{
                                 <span className="hidden lg:inline">{t('dpSkip')}</span>
                               </button>
                             )}
-                            
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {doc.status === 'completed' && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleRow(doc.id);
+                                }}
+                                className="p-1 rounded text-cdlp-muted hover:text-white"
+                                title={t('dpVerificationCenter')}
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                            )}
                             {doc.fileRaw && (
-                              <button 
-                                onClick={(e) => { 
+                              <button
+                                type="button"
+                                onClick={(e) => {
                                   e.stopPropagation();
                                   const url = URL.createObjectURL(doc.fileRaw);
                                   window.open(url, '_blank');
-                                }} 
-                                className="text-cdlp-muted/50 hover:text-cdlp-gold transition-colors"
+                                }}
+                                className="p-1 rounded text-cdlp-muted hover:text-cdlp-gold transition-colors"
                                 title={t('dpViewDocTitle')}
                               >
-                                <Eye className="w-3.5 h-3.5" />
+                                <Eye className="w-4 h-4" />
                               </button>
                             )}
-                            <button 
-                              onClick={async (e) => { 
+                            <button
+                              type="button"
+                              onClick={async (e) => {
                                 e.stopPropagation();
-                                if (
-                                  !confirm(
-                                    t('dpDeleteConfirm').replace('{name}', doc.fileName)
-                                  )
-                                )
-                                  return;
+                                if (!confirm(t('dpDeleteConfirm').replace('{name}', doc.fileName))) return;
                                 if (typeof onDeleteDocument !== 'function') {
                                   console.error('Document delete handler is unavailable');
                                   alert(t('dpDeleteUnavailable'));
@@ -2872,18 +2851,18 @@ export const DocumentProcessor: React.FC<{
                                   }
                                   setLocalDocs((p) => p.filter((d) => d.id !== doc.id));
                                 }
-                              }} 
-                              className="text-cdlp-muted/30 hover:text-red-500 transition-colors"
+                              }}
+                              className="p-1 rounded text-cdlp-muted hover:text-red-500 transition-colors"
                               title={t('dpDeleteDocTitle')}
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
                       </tr>
                       {doc.data && swissLines && swissLines.length > 0 && (
                         <tr className="md:hidden">
-                          <td colSpan={6} className="px-4 pb-3">
+                          <td colSpan={7} className="px-4 pb-3">
                             <div className="font-mono space-y-0.5 border border-cdlp-border rounded bg-cdlp-card/40 p-2">
                               {swissLines.slice(0, 3).map((l, i) => (
                                 <p key={i} className="text-[8px] text-cdlp-muted">
@@ -2899,7 +2878,7 @@ export const DocumentProcessor: React.FC<{
                       )}
                       {doc.data && !swissLines?.length && (
                         <tr className="md:hidden">
-                          <td colSpan={6} className="px-4 pb-3">
+                          <td colSpan={7} className="px-4 pb-3">
                             <div className="font-mono space-y-0.5 border border-cdlp-border rounded bg-cdlp-card/40 p-2">
                               <p className={`text-[10px] font-bold ${vatNeedsAttention ? 'text-amber-400' : 'text-blue-400'}`}>
                                 {t('docVatAmount')} {vat.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -2915,7 +2894,7 @@ export const DocumentProcessor: React.FC<{
                       )}
                       {isExpanded && doc.data && (
                         <tr onClick={(e) => e.stopPropagation()}>
-                          <td colSpan={6} className="p-0 bg-cdlp-card border-t border-cdlp-border">
+                          <td colSpan={7} className="p-0 bg-cdlp-card border-t border-cdlp-border">
                             <VerificationHub
                               doc={doc}
                               onUpdate={(newData) => {
