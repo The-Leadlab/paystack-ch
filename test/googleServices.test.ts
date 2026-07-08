@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startGoogleDriveOAuth } from "../lib/googleServices.js";
+import { decodeOAuthState, startGoogleDriveOAuth } from "../lib/googleServices.js";
 import { verifyFirebaseAuthorizationHeader } from "../lib/verifyFirebaseIdToken.js";
 
 vi.mock("../lib/verifyFirebaseIdToken.js", () => ({
@@ -42,7 +42,26 @@ describe("startGoogleDriveOAuth", () => {
     expect(url.searchParams.get("scope")).toBe("https://www.googleapis.com/auth/drive.file");
   });
 
-  // TODO: generates a `state` value that's unique per request and bound to the requesting user
+  it("generates a `state` value that's unique per request and bound to the requesting user", async () => {
+    vi.mocked(verifyFirebaseAuthorizationHeader).mockResolvedValue("test-uid");
+
+    const first = await startGoogleDriveOAuth("Bearer valid-token");
+    const second = await startGoogleDriveOAuth("Bearer valid-token");
+
+    if (!("redirectUrl" in first) || !("redirectUrl" in second)) {
+      throw new Error("Expected redirect results");
+    }
+    const firstState = new URL(first.redirectUrl).searchParams.get("state");
+    const secondState = new URL(second.redirectUrl).searchParams.get("state");
+    if (!firstState || !secondState) {
+      throw new Error("Expected a state param on both redirects");
+    }
+
+    expect(firstState).not.toBe(secondState);
+    expect(decodeOAuthState(firstState).uid).toBe("test-uid");
+    expect(decodeOAuthState(secondState).uid).toBe("test-uid");
+  });
+
   // TODO: selects the client id based on environment (dev vs. prod)
 });
 

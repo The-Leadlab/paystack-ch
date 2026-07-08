@@ -24,8 +24,16 @@ function resolveGoogleDriveRedirectUri(): string {
   return redirectUri;
 }
 
+export type OAuthState = { uid: string; nonce: string };
+
 function createOAuthState(uid: string): string {
-  return Buffer.from(JSON.stringify({ uid, nonce: nanoid() })).toString("base64url");
+  return Buffer.from(JSON.stringify({ uid, nonce: nanoid() } satisfies OAuthState)).toString(
+    "base64url"
+  );
+}
+
+export function decodeOAuthState(state: string): OAuthState {
+  return JSON.parse(Buffer.from(state, "base64url").toString("utf8")) as OAuthState;
 }
 
 export async function startGoogleDriveOAuth(
