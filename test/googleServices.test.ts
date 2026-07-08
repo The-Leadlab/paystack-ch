@@ -106,6 +106,29 @@ describe("startGoogleDriveOAuth", () => {
 describe("completeGoogleDriveOAuth (callback)", () => {
   const fetchMock = vi.fn();
 
+  function mockGoogleFetchRoutes(overrides: { tokenBody?: object; folderBody?: object } = {}) {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === "https://oauth2.googleapis.com/token") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            access_token: "access-123",
+            refresh_token: "refresh-456",
+            expires_in: 3600,
+            ...overrides.tokenBody,
+          }),
+        });
+      }
+      if (url === "https://www.googleapis.com/drive/v3/files") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ id: "folder-abc", ...overrides.folderBody }),
+        });
+      }
+      throw new Error(`Unexpected fetch call: ${url}`);
+    });
+  }
+
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchMock);
     fetchMock.mockReset();
@@ -123,14 +146,7 @@ describe("completeGoogleDriveOAuth (callback)", () => {
   });
 
   it("exchanges a valid code and stores the resulting refresh token against the user", async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        access_token: "access-123",
-        refresh_token: "refresh-456",
-        expires_in: 3600,
-      }),
-    });
+    mockGoogleFetchRoutes();
     const state = createOAuthState("test-uid");
 
     const result = await completeGoogleDriveOAuth("valid-code", state);
@@ -151,7 +167,29 @@ describe("completeGoogleDriveOAuth (callback)", () => {
       { merge: true }
     );
   });
-  // TODO: creates a Drive folder and stores its id on first connect
+
+  it("creates a Drive folder and stores its id on first connect", async () => {
+    mockGoogleFetchRoutes();
+    const state = createOAuthState("test-uid");
+
+    const result = await completeGoogleDriveOAuth("valid-code", state);
+
+    expect(result.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://www.googleapis.com/drive/v3/files",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ Authorization: "Bearer access-123" }),
+      })
+    );
+    expect(firestoreSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        googleDrive: expect.objectContaining({ folderId: "folder-abc" }),
+      }),
+      { merge: true }
+    );
+  });
+
   // TODO: reconnecting an already-connected user overwrites the stored token without creating a duplicate folder
   // TODO: rejects the callback and writes nothing to Firestore when the code exchange fails
   // TODO: rejects the callback for an invalid `state` (missing, non-matching, or bound to a different user)

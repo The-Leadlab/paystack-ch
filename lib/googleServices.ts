@@ -5,7 +5,9 @@ import { verifyFirebaseAuthorizationHeader } from "./verifyFirebaseIdToken.js";
 
 const GOOGLE_OAUTH_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
+const GOOGLE_DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
 const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+const GOOGLE_DRIVE_FOLDER_NAME = "Paystack Documents";
 
 export type GoogleServicesResult =
   | { status: number; redirectUrl: string }
@@ -117,7 +119,37 @@ async function exchangeGoogleAuthCode(code: string): Promise<GoogleTokenExchange
   };
 }
 
-async function storeGoogleDriveRefreshToken(uid: string, refreshToken: string): Promise<void> {
+async function createGoogleDriveFolder(accessToken: string): Promise<string> {
+  const res = await fetch(GOOGLE_DRIVE_FILES_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name: GOOGLE_DRIVE_FOLDER_NAME,
+      mimeType: "application/vnd.google-apps.folder",
+    }),
+  });
+
+  const data = (await res.json().catch(() => ({}))) as {
+    id?: string;
+    error?: { message?: string };
+  };
+
+  if (!res.ok || !data.id) {
+    throw Object.assign(new Error(data.error?.message || "Failed to create Google Drive folder"), {
+      status: 502,
+    });
+  }
+
+  return data.id;
+}
+
+async function storeGoogleDriveConnection(
+  uid: string,
+  connection: { refreshToken: string; folderId: string }
+): Promise<void> {
   ensureFirebaseAdmin();
   await getFirestore()
     .collection("users")
@@ -125,7 +157,8 @@ async function storeGoogleDriveRefreshToken(uid: string, refreshToken: string): 
     .set(
       {
         googleDrive: {
-          refreshToken,
+          refreshToken: connection.refreshToken,
+          folderId: connection.folderId,
           connectedAt: FieldValue.serverTimestamp(),
         },
       },
@@ -149,7 +182,8 @@ export async function completeGoogleDriveOAuth(
     if (!hasFirebaseAdminCredentials()) {
       throw Object.assign(new Error("Server missing Firebase Admin credentials"), { status: 503 });
     }
-    await storeGoogleDriveRefreshToken(uid, tokens.refresh_token);
+    const folderId = await createGoogleDriveFolder(tokens.access_token);
+    await storeGoogleDriveConnection(uid, { refreshToken: tokens.refresh_token, folderId });
     return { status: 200, json: { connected: true } };
   } catch (error) {
     const status = (error as { status?: number }).status || 400;
