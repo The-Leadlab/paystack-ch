@@ -1,19 +1,52 @@
+import { nanoid } from "nanoid";
 import { verifyFirebaseAuthorizationHeader } from "./verifyFirebaseIdToken.js";
 
-export type GoogleServicesResult = {
-  status: number;
-  json: Record<string, unknown>;
-};
+const GOOGLE_OAUTH_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
+const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+
+export type GoogleServicesResult =
+  | { status: number; redirectUrl: string }
+  | { status: number; json: Record<string, unknown> };
+
+function resolveGoogleDriveClientId(): string {
+  const clientId = process.env.GOOGLE_DRIVE_CLIENT_ID?.trim();
+  if (!clientId) {
+    throw Object.assign(new Error("Server missing GOOGLE_DRIVE_CLIENT_ID"), { status: 503 });
+  }
+  return clientId;
+}
+
+function resolveGoogleDriveRedirectUri(): string {
+  const redirectUri = process.env.GOOGLE_DRIVE_REDIRECT_URI?.trim();
+  if (!redirectUri) {
+    throw Object.assign(new Error("Server missing GOOGLE_DRIVE_REDIRECT_URI"), { status: 503 });
+  }
+  return redirectUri;
+}
+
+function createOAuthState(uid: string): string {
+  return Buffer.from(JSON.stringify({ uid, nonce: nanoid() })).toString("base64url");
+}
 
 export async function startGoogleDriveOAuth(
   authorization: string | undefined
 ): Promise<GoogleServicesResult> {
+  let uid: string;
   try {
-    await verifyFirebaseAuthorizationHeader(authorization);
+    uid = await verifyFirebaseAuthorizationHeader(authorization);
   } catch (error) {
     const status = (error as { status?: number }).status || 401;
     return { status, json: { error: (error as Error).message } };
   }
 
-  throw new Error("startGoogleDriveOAuth: OAuth redirect not yet implemented");
+  const authUrl = new URL(GOOGLE_OAUTH_AUTHORIZE_URL);
+  authUrl.searchParams.set("client_id", resolveGoogleDriveClientId());
+  authUrl.searchParams.set("redirect_uri", resolveGoogleDriveRedirectUri());
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("scope", GOOGLE_DRIVE_SCOPE);
+  authUrl.searchParams.set("access_type", "offline");
+  authUrl.searchParams.set("prompt", "consent");
+  authUrl.searchParams.set("state", createOAuthState(uid));
+
+  return { status: 302, redirectUrl: authUrl.toString() };
 }

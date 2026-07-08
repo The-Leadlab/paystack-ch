@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startGoogleDriveOAuth } from "../lib/googleServices.js";
 import { verifyFirebaseAuthorizationHeader } from "../lib/verifyFirebaseIdToken.js";
 
@@ -9,6 +9,12 @@ vi.mock("../lib/verifyFirebaseIdToken.js", () => ({
 describe("startGoogleDriveOAuth", () => {
   beforeEach(() => {
     vi.mocked(verifyFirebaseAuthorizationHeader).mockReset();
+    vi.stubEnv("GOOGLE_DRIVE_CLIENT_ID", "test-client-id");
+    vi.stubEnv("GOOGLE_DRIVE_REDIRECT_URI", "https://app.example.com/api/oauth/google/callback");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("rejects the request when the Firebase ID token is missing or invalid", async () => {
@@ -21,7 +27,21 @@ describe("startGoogleDriveOAuth", () => {
     expect(result.status).toBe(401);
   });
 
-  // TODO: redirects to Google's OAuth URL with the correct scope and client_id
+  it("redirects to Google's OAuth URL with the correct scope and client_id", async () => {
+    vi.mocked(verifyFirebaseAuthorizationHeader).mockResolvedValue("test-uid");
+
+    const result = await startGoogleDriveOAuth("Bearer valid-token");
+
+    if (!("redirectUrl" in result)) {
+      throw new Error(`Expected a redirect result, got: ${JSON.stringify(result)}`);
+    }
+    const url = new URL(result.redirectUrl);
+    expect(result.status).toBe(302);
+    expect(url.origin + url.pathname).toBe("https://accounts.google.com/o/oauth2/v2/auth");
+    expect(url.searchParams.get("client_id")).toBe("test-client-id");
+    expect(url.searchParams.get("scope")).toBe("https://www.googleapis.com/auth/drive.file");
+  });
+
   // TODO: generates a `state` value that's unique per request and bound to the requesting user
   // TODO: selects the client id based on environment (dev vs. prod)
 });
