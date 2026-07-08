@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 
-export type BusinessTab = 'dashboard' | 'revenue' | 'reports' | 'documents' | 'billing';
+export type BusinessTab = 'dashboard' | 'revenue' | 'invoices' | 'reports' | 'documents' | 'billing';
 
 export function BusinessSidebarNav({
   activeTab,

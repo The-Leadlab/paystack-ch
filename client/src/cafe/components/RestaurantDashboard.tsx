@@ -1,6 +1,6 @@
 ﻿import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Link } from 'wouter';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings, Wallet } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings, Wallet, FilePenLine } from 'lucide-react';
 import { BillingPlanPanel } from './BillingPlanPanel';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
@@ -19,6 +19,7 @@ import { UpgradePromptModal } from './UpgradePromptModal';
 import { PlanTestBanner, PlanTestPickerModal } from './PlanTestPickerModal';
 import { getSessionDisplayName } from '../lib/formatLocalDateTime';
 import { POSManager } from './POSManager';
+import { InvoiceMakerPanel } from './InvoiceMakerPanel';
 import type { ProcessedDocument, POSReading } from '../types';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
 import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from '@/const/branding';
@@ -40,6 +41,7 @@ const FIRESTORE_BATCH_MAX = 450;
 const BUSINESS_NAV_ITEMS: { id: Tab; labelKey: string; icon: typeof LayoutDashboard }[] = [
   { id: 'dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
   { id: 'revenue', labelKey: 'revenue', icon: Receipt },
+  { id: 'invoices', labelKey: 'invoiceMakerTab', icon: FilePenLine },
   { id: 'reports', labelKey: 'reports', icon: BarChart3 },
   { id: 'documents', labelKey: 'documents', icon: FileText },
   { id: 'billing', labelKey: 'billingTab', icon: Settings },
@@ -976,6 +978,7 @@ export function RestaurantDashboard() {
             />
           )}
           {activeTab === 'revenue' && showRevenueTab ? <POSManager /> : null}
+          {activeTab === 'invoices' && <InvoiceMakerPanel />}
           {activeTab === 'reports' && <ReportsPlaceholder />}
           {activeTab === 'documents' && <DocumentsTab selectedDocument={selectedDocumentFromFinance} onClearSelection={() => setSelectedDocumentFromFinance(null)} />}
           {activeTab === 'billing' ? <BillingPlanPanel /> : null}
@@ -1010,6 +1013,16 @@ export function RestaurantDashboard() {
               <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('revenue')}</span>
             </button>
           ) : null}
+          <button
+            type="button"
+            onClick={() => setActiveTab('invoices')}
+            className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
+              activeTab === 'invoices' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
+            }`}
+          >
+            <FilePenLine className="w-5 h-5 shrink-0" aria-hidden />
+            <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('invoiceMakerTab')}</span>
+          </button>
           <button
             type="button"
             onClick={() => setActiveTab('reports')}
