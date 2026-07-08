@@ -1,13 +1,12 @@
 import { Link } from "wouter";
-import { Plus, ListChecks } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useLinkedLedger } from "@/cafe/hooks/useLinkedLedger";
 import { usePersonalPlan } from "../context/PersonalPlanContext";
-import { businessAppPath, personalFeaturePath } from "../personalPlanNav";
+import { businessAppPath } from "../personalPlanNav";
 
 export function PersonalSessionBar({ month }: { month: string }) {
   const ledger = useLinkedLedger(month);
-  const { openTransaction, surface } = usePersonalPlan();
-  const tasksHref = personalFeaturePath("session-tasks", surface);
+  const { openTransaction } = usePersonalPlan();
 
   return (
     <div className="flex flex-wrap items-center gap-3 border-b border-[var(--pp-outline-variant)] bg-[var(--pp-surface-low)] px-4 md:px-16 py-2 text-xs">
@@ -40,23 +39,14 @@ export function PersonalSessionBar({ month }: { month: string }) {
           Create a session in Business
         </Link>
       ) : (
-        <>
-          <Link
-            href={tasksHref}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--pp-outline-variant)] text-[var(--pp-on-surface)] font-semibold hover:border-[var(--pp-primary)]/40"
-          >
-            <ListChecks className="size-3.5" />
-            Session tasks
-          </Link>
-          <button
-            type="button"
-            onClick={openTransaction}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] font-bold"
-          >
-            <Plus className="size-3.5" />
-            Add transaction
-          </button>
-        </>
+        <button
+          type="button"
+          onClick={openTransaction}
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] font-bold"
+        >
+          <Plus className="size-3.5" />
+          Add transaction
+        </button>
       )}
 
       <span className="text-[var(--pp-on-surface-variant)] ml-auto hidden sm:inline">

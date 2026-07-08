@@ -10,7 +10,7 @@ import { useLabLanguage } from "@/ali-lab/context/LabLanguageContext";
 import { labFeatureCopy } from "@/ali-lab/i18n/labRegistryI18n";
 import { PersonalPlanShell } from "@/ali-lab/personal-plan/components/PersonalPlanShell";
 
-const KPI_HIDDEN_FEATURES = new Set(["forecasting", "investments", "goals", "bill-reminders", "session-tasks"]);
+const KPI_HIDDEN_FEATURES = new Set(["forecasting", "investments", "goals", "bill-reminders"]);
 
 function useAliLabGate(): { allowed: boolean; checking: boolean } {
   const [checking, setChecking] = useState(true);

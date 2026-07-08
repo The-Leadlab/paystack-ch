@@ -45,7 +45,6 @@ Competitor **bank synchronization / bLink / CSV import** is **out of scope** (`A
 | Bill reminders | No | No | Yes | Yes (Serafe, etc.) | Due dates, overdue, log payment | **Implemented** (`/app/personal/bills`) |
 | Forecasting / cash flow | No | Loan calc | Yes | No | 90-day projection from ledger | **Implemented** (`/app/personal/reports`) |
 | Investment tracking | No | No | Yes | No | Holdings, P/L, allocation | **Implemented** (`/app/personal/investments`) |
-| **Session tasks (checklist)** | No | No | No | No | Per-session add/complete/remove + progress | **Implemented** (`/app/personal/session-tasks`) |
 | Shared budgets / family | Yes | YNAB Together | Access control | FairSplit | Members + FairSplit settlements | **In progress** (`/ali/shared-access`, lab ready) |
 | Automation rules | No | Templates | Yes | Auto categories | Keyword → category rules | **In progress** (`/ali/automation-rules`, lab ready) |
 | Offline capture | No | Yes | No | No | Offline queue prototype | **In progress** (`/ali/offline`, lab ready) |
@@ -82,7 +81,6 @@ Competitor **bank synchronization / bLink / CSV import** is **out of scope** (`A
 
 - Overview hub, shared Firebase ledger with Business
 - Budgeting (traditional + zero-based), bill reminders, goals, forecasting, investments
-- **Session tasks** — per-session checklist with progress (`/app/personal/session-tasks`)
 - Add/edit/delete transactions, session picker, month KPIs
 - Linked from Business sidebar
 
@@ -91,7 +89,6 @@ Competitor **bank synchronization / bLink / CSV import** is **out of scope** (`A
 | Feature ID | Status in lab | Production |
 |------------|---------------|------------|
 | overview | ready | **Implemented** (`/app/personal/overview`) |
-| session-tasks | ready | **Implemented** (`/app/personal/session-tasks`) |
 | budgeting | ready | **Implemented** |
 | bill-reminders | ready | **Implemented** |
 | goals | ready | **Implemented** |

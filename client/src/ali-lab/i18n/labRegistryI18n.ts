@@ -10,32 +10,6 @@ type FeatureCopy = {
 type RegistryEntry = Record<LabLang, FeatureCopy>;
 
 const REGISTRY: Record<string, RegistryEntry> = {
-  "session-tasks": {
-    en: {
-      title: "Session tasks",
-      summary:
-        "Pick a session, then manage your personal checklist — add, complete, and remove tasks with session progress.",
-      promoteTo: "Tasks tab at /app/personal/session-tasks",
-    },
-    fr: {
-      title: "Tâches de session",
-      summary:
-        "Choisissez une session, puis gérez votre liste — ajouter, cocher et supprimer des tâches avec progression par session.",
-      promoteTo: "Onglet Tâches sur /app/personal/session-tasks",
-    },
-    de: {
-      title: "Session-Aufgaben",
-      summary:
-        "Session wählen, dann persönliche Checkliste verwalten — Aufgaben hinzufügen, erledigen, entfernen; Fortschritt pro Session.",
-      promoteTo: "Tab Aufgaben unter /app/personal/session-tasks",
-    },
-    it: {
-      title: "Attività sessione",
-      summary:
-        "Scegli una sessione e gestisci la checklist — aggiungi, completa e rimuovi attività con progresso per sessione.",
-      promoteTo: "Scheda Attività su /app/personal/session-tasks",
-    },
-  },
   overview: {
     en: {
       title: "Personal overview",
