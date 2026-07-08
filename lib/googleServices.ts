@@ -315,6 +315,14 @@ async function getGoogleDriveConnection(uid: string): Promise<GoogleDriveConnect
   return null;
 }
 
+async function markGoogleDriveNeedsReconnect(uid: string): Promise<void> {
+  ensureFirebaseAdmin();
+  await getFirestore()
+    .collection("users")
+    .doc(uid)
+    .set({ googleDrive: { needsReconnect: true } }, { merge: true });
+}
+
 async function getGoogleDriveAccessToken(refreshToken: string): Promise<string> {
   const res = await fetch(GOOGLE_OAUTH_TOKEN_URL, {
     method: "POST",
@@ -378,6 +386,19 @@ async function uploadFileToDrive(accessToken: string, folderId: string, file: Dr
   return data.id;
 }
 
+/** Refreshes the access token; if the refresh token itself is dead (`invalid_grant`), marks the
+ * connection as needing reconnection instead of leaving it silently and permanently broken. */
+async function refreshAccessTokenOrMarkDisconnected(uid: string, refreshToken: string): Promise<string> {
+  try {
+    return await getGoogleDriveAccessToken(refreshToken);
+  } catch (error) {
+    if ((error as { code?: string }).code === "invalid_grant") {
+      await markGoogleDriveNeedsReconnect(uid);
+    }
+    throw error;
+  }
+}
+
 export async function saveDocumentToDrive(
   uid: string,
   file: DriveUploadFile
@@ -390,15 +411,15 @@ export async function saveDocumentToDrive(
     if (!connection) {
       return { status: 200, json: { skipped: true } };
     }
-    let accessToken = await getGoogleDriveAccessToken(connection.refreshToken);
+    let accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
     let fileId: string;
     try {
       fileId = await uploadFileToDrive(accessToken, connection.folderId, file);
     } catch (error) {
       if ((error as { status?: number }).status !== 401) throw error;
       // Access token expired/invalid between issuance and use: fetch a fresh one and retry
-      // exactly once. A second 401 propagates to the outer catch rather than looping.
-      accessToken = await getGoogleDriveAccessToken(connection.refreshToken);
+      // exactly once. A second 401 (or invalid_grant) propagates to the outer catch rather than looping.
+      accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
       fileId = await uploadFileToDrive(accessToken, connection.folderId, file);
     }
     return { status: 200, json: { uploaded: true, fileId } };

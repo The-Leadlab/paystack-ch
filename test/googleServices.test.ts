@@ -500,7 +500,39 @@ describe("saveDocumentToDrive (upload hook)", () => {
     expect(secondUploadInit.headers.Authorization).toBe("Bearer access-token-2");
   });
 
-  // TODO: an `invalid_grant` response marks the integration as needing reconnection and stops further retries
+  it("an `invalid_grant` response marks the integration as needing reconnection and stops further retries", async () => {
+    firestoreGetMock.mockResolvedValue({
+      data: () => ({ googleDrive: { refreshToken: "dead-refresh-token", folderId: "folder-abc" } }),
+    });
+    fetchMock.mockImplementation((url: string) => {
+      if (url === "https://oauth2.googleapis.com/token") {
+        return Promise.resolve({
+          ok: false,
+          json: async () => ({ error: "invalid_grant", error_description: "Token has been revoked" }),
+        });
+      }
+      throw new Error(`Unexpected fetch call: ${url}`);
+    });
+
+    const result = await saveDocumentToDrive("test-uid", {
+      bytes: Buffer.from("fake-pdf-bytes"),
+      filename: "report.pdf",
+      mimeType: "application/pdf",
+    });
+
+    expect(result.status).not.toBe(200);
+    // Only the one token-exchange attempt happened — no retry, and the upload endpoint was
+    // never reached, since a dead refresh token can't be fixed by retrying.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(firestoreSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        googleDrive: expect.objectContaining({ needsReconnect: true }),
+      }),
+      { merge: true }
+    );
+  });
+
+
   // TODO: each document in a batch is saved to Drive independently, so one failure doesn't block the others
   // TODO: does not upload the same document to Drive twice for a single upload event
 });
