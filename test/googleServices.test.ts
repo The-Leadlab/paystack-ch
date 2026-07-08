@@ -321,7 +321,31 @@ describe("disconnectGoogleDrive", () => {
     );
   });
 
-  // TODO: clears local state cleanly when there's nothing to disconnect, or when Google's revoke call fails
+  it("clears local state cleanly when there's nothing to disconnect, or when Google's revoke call fails", async () => {
+    vi.mocked(verifyFirebaseAuthorizationHeader).mockResolvedValue("test-uid");
+
+    firestoreGetMock.mockResolvedValueOnce({ data: () => undefined });
+    const noConnectionResult = await disconnectGoogleDrive("Bearer valid-token");
+    expect(noConnectionResult.status).toBe(200);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(firestoreSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({ googleDrive: "FIELD_DELETE_SENTINEL" }),
+      { merge: true }
+    );
+
+    firestoreSetMock.mockClear();
+    firestoreGetMock.mockResolvedValueOnce({
+      data: () => ({ googleDrive: { refreshToken: "refresh-456" } }),
+    });
+    fetchMock.mockResolvedValue({ ok: false, json: async () => ({ error: "server_error" }) });
+
+    const revokeFailedResult = await disconnectGoogleDrive("Bearer valid-token");
+    expect(revokeFailedResult.status).toBe(200);
+    expect(firestoreSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({ googleDrive: "FIELD_DELETE_SENTINEL" }),
+      { merge: true }
+    );
+  });
 });
 
 describe("saveDocumentToDrive (upload hook)", () => {

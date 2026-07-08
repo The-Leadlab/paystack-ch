@@ -285,7 +285,12 @@ export async function disconnectGoogleDrive(
     }
     const refreshToken = await getGoogleDriveRefreshToken(uid);
     if (refreshToken) {
-      await revokeGoogleToken(refreshToken);
+      try {
+        await revokeGoogleToken(refreshToken);
+      } catch {
+        // Best-effort: the local connection is still cleared even if Google's revoke call fails
+        // (e.g. the token was already revoked on Google's side, or a transient network error).
+      }
     }
     await deleteGoogleDriveConnection(uid);
     return { status: 200, json: { disconnected: true } };
