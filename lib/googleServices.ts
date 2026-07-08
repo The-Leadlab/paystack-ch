@@ -1,7 +1,10 @@
 import { nanoid } from "nanoid";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import { ensureFirebaseAdmin, hasFirebaseAdminCredentials } from "./firebaseAdmin.js";
 import { verifyFirebaseAuthorizationHeader } from "./verifyFirebaseIdToken.js";
 
 const GOOGLE_OAUTH_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
+const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 
 export type GoogleServicesResult =
@@ -12,14 +15,22 @@ function parseTruthyEnv(value: string | undefined): boolean {
   return value?.toLowerCase() === "true" || value === "1";
 }
 
-function resolveGoogleDriveClientId(): string {
+function resolveGoogleDriveEnv(baseVarName: string): string {
   const useTestMode = parseTruthyEnv(process.env.GOOGLE_DRIVE_USE_TEST_MODE);
-  const varName = useTestMode ? "GOOGLE_DRIVE_TEST_CLIENT_ID" : "GOOGLE_DRIVE_CLIENT_ID";
-  const clientId = process.env[varName]?.trim();
-  if (!clientId) {
+  const varName = useTestMode ? `GOOGLE_DRIVE_TEST_${baseVarName}` : `GOOGLE_DRIVE_${baseVarName}`;
+  const value = process.env[varName]?.trim();
+  if (!value) {
     throw Object.assign(new Error(`Server missing ${varName}`), { status: 503 });
   }
-  return clientId;
+  return value;
+}
+
+function resolveGoogleDriveClientId(): string {
+  return resolveGoogleDriveEnv("CLIENT_ID");
+}
+
+function resolveGoogleDriveClientSecret(): string {
+  return resolveGoogleDriveEnv("CLIENT_SECRET");
 }
 
 function resolveGoogleDriveRedirectUri(): string {
@@ -32,7 +43,7 @@ function resolveGoogleDriveRedirectUri(): string {
 
 export type OAuthState = { uid: string; nonce: string };
 
-function createOAuthState(uid: string): string {
+export function createOAuthState(uid: string): string {
   return Buffer.from(JSON.stringify({ uid, nonce: nanoid() } satisfies OAuthState)).toString(
     "base64url"
   );
@@ -63,4 +74,85 @@ export async function startGoogleDriveOAuth(
   authUrl.searchParams.set("state", createOAuthState(uid));
 
   return { status: 302, redirectUrl: authUrl.toString() };
+}
+
+type GoogleTokenExchange = {
+  access_token: string;
+  refresh_token?: string;
+  expires_in: number;
+};
+
+async function exchangeGoogleAuthCode(code: string): Promise<GoogleTokenExchange> {
+  const res = await fetch(GOOGLE_OAUTH_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: resolveGoogleDriveClientId(),
+      client_secret: resolveGoogleDriveClientSecret(),
+      redirect_uri: resolveGoogleDriveRedirectUri(),
+      grant_type: "authorization_code",
+    }).toString(),
+  });
+
+  const data = (await res.json().catch(() => ({}))) as {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+    error?: string;
+    error_description?: string;
+  };
+
+  if (!res.ok || !data.access_token) {
+    throw Object.assign(
+      new Error(data.error_description || data.error || "Failed to exchange Google authorization code"),
+      { status: 400 }
+    );
+  }
+
+  return {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+    expires_in: data.expires_in ?? 3600,
+  };
+}
+
+async function storeGoogleDriveRefreshToken(uid: string, refreshToken: string): Promise<void> {
+  ensureFirebaseAdmin();
+  await getFirestore()
+    .collection("users")
+    .doc(uid)
+    .set(
+      {
+        googleDrive: {
+          refreshToken,
+          connectedAt: FieldValue.serverTimestamp(),
+        },
+      },
+      { merge: true }
+    );
+}
+
+export async function completeGoogleDriveOAuth(
+  code: string,
+  state: string
+): Promise<GoogleServicesResult> {
+  try {
+    const { uid } = decodeOAuthState(state);
+    const tokens = await exchangeGoogleAuthCode(code);
+    if (!tokens.refresh_token) {
+      throw Object.assign(
+        new Error("Google did not return a refresh token. Reconnect and grant consent again."),
+        { status: 502 }
+      );
+    }
+    if (!hasFirebaseAdminCredentials()) {
+      throw Object.assign(new Error("Server missing Firebase Admin credentials"), { status: 503 });
+    }
+    await storeGoogleDriveRefreshToken(uid, tokens.refresh_token);
+    return { status: 200, json: { connected: true } };
+  } catch (error) {
+    const status = (error as { status?: number }).status || 400;
+    return { status, json: { error: (error as Error).message } };
+  }
 }

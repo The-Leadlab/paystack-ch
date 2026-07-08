@@ -1,9 +1,28 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { decodeOAuthState, startGoogleDriveOAuth } from "../lib/googleServices.js";
+import {
+  completeGoogleDriveOAuth,
+  createOAuthState,
+  decodeOAuthState,
+  startGoogleDriveOAuth,
+} from "../lib/googleServices.js";
 import { verifyFirebaseAuthorizationHeader } from "../lib/verifyFirebaseIdToken.js";
 
 vi.mock("../lib/verifyFirebaseIdToken.js", () => ({
   verifyFirebaseAuthorizationHeader: vi.fn(),
+}));
+
+const firestoreSetMock = vi.fn().mockResolvedValue(undefined);
+const firestoreDocMock = vi.fn(() => ({ set: firestoreSetMock }));
+const firestoreCollectionMock = vi.fn(() => ({ doc: firestoreDocMock }));
+
+vi.mock("firebase-admin/firestore", () => ({
+  getFirestore: vi.fn(() => ({ collection: firestoreCollectionMock })),
+  FieldValue: { serverTimestamp: vi.fn(() => "SERVER_TIMESTAMP") },
+}));
+
+vi.mock("../lib/firebaseAdmin.js", () => ({
+  ensureFirebaseAdmin: vi.fn(),
+  hasFirebaseAdminCredentials: vi.fn(() => true),
 }));
 
 describe("startGoogleDriveOAuth", () => {
@@ -85,7 +104,53 @@ describe("startGoogleDriveOAuth", () => {
 });
 
 describe("completeGoogleDriveOAuth (callback)", () => {
-  // TODO: exchanges a valid code and stores the resulting refresh token against the user
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockReset();
+    firestoreSetMock.mockClear();
+    firestoreDocMock.mockClear();
+    firestoreCollectionMock.mockClear();
+    vi.stubEnv("GOOGLE_DRIVE_CLIENT_ID", "test-client-id");
+    vi.stubEnv("GOOGLE_DRIVE_CLIENT_SECRET", "test-client-secret");
+    vi.stubEnv("GOOGLE_DRIVE_REDIRECT_URI", "https://app.example.com/api/oauth/google/callback");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("exchanges a valid code and stores the resulting refresh token against the user", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        access_token: "access-123",
+        refresh_token: "refresh-456",
+        expires_in: 3600,
+      }),
+    });
+    const state = createOAuthState("test-uid");
+
+    const result = await completeGoogleDriveOAuth("valid-code", state);
+
+    expect(result.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://oauth2.googleapis.com/token",
+      expect.objectContaining({ method: "POST" })
+    );
+    const requestBody = fetchMock.mock.calls[0][1].body as string;
+    expect(new URLSearchParams(requestBody).get("code")).toBe("valid-code");
+    expect(firestoreCollectionMock).toHaveBeenCalledWith("users");
+    expect(firestoreDocMock).toHaveBeenCalledWith("test-uid");
+    expect(firestoreSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        googleDrive: expect.objectContaining({ refreshToken: "refresh-456" }),
+      }),
+      { merge: true }
+    );
+  });
   // TODO: creates a Drive folder and stores its id on first connect
   // TODO: reconnecting an already-connected user overwrites the stored token without creating a duplicate folder
   // TODO: rejects the callback and writes nothing to Firestore when the code exchange fails
