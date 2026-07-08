@@ -5,6 +5,7 @@ import {
   createOAuthState,
   decodeOAuthState,
   disconnectGoogleDrive,
+  saveDocumentToDrive,
   startGoogleDriveOAuth,
 } from "../lib/googleServices.js";
 import { verifyFirebaseAuthorizationHeader } from "../lib/verifyFirebaseIdToken.js";
@@ -349,7 +350,60 @@ describe("disconnectGoogleDrive", () => {
 });
 
 describe("saveDocumentToDrive (upload hook)", () => {
-  // TODO: uploads the document into the user's Drive folder with matching bytes and filename
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockReset();
+    firestoreSetMock.mockClear();
+    firestoreDocMock.mockClear();
+    firestoreCollectionMock.mockClear();
+    firestoreGetMock.mockReset().mockResolvedValue({ data: () => undefined });
+    vi.stubEnv("GOOGLE_DRIVE_CLIENT_ID", "test-client-id");
+    vi.stubEnv("GOOGLE_DRIVE_CLIENT_SECRET", "test-client-secret");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("uploads the document into the user's Drive folder with matching bytes and filename", async () => {
+    firestoreGetMock.mockResolvedValue({
+      data: () => ({ googleDrive: { refreshToken: "refresh-456", folderId: "folder-abc" } }),
+    });
+    fetchMock.mockImplementation((url: string) => {
+      if (url === "https://oauth2.googleapis.com/token") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ access_token: "access-789", expires_in: 3600 }),
+        });
+      }
+      if (url === "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart") {
+        return Promise.resolve({ ok: true, json: async () => ({ id: "uploaded-file-id" }) });
+      }
+      throw new Error(`Unexpected fetch call: ${url}`);
+    });
+
+    const result = await saveDocumentToDrive("test-uid", {
+      bytes: Buffer.from("fake-pdf-bytes"),
+      filename: "report.pdf",
+      mimeType: "application/pdf",
+    });
+
+    expect(result.status).toBe(200);
+    const uploadCall = fetchMock.mock.calls.find(
+      ([url]) => url === "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
+    );
+    expect(uploadCall).toBeDefined();
+    const uploadInit = uploadCall![1] as { headers: Record<string, string>; body: Buffer };
+    expect(uploadInit.headers.Authorization).toBe("Bearer access-789");
+    const bodyText = Buffer.from(uploadInit.body).toString("utf8");
+    expect(bodyText).toContain('"name":"report.pdf"');
+    expect(bodyText).toContain('"parents":["folder-abc"]');
+    expect(bodyText).toContain("fake-pdf-bytes");
+  });
+
   // TODO: when the user has no Drive connection, upload/scan completes normally with no Drive call and no surfaced error
   // TODO: app upload/scan still succeeds when a connected user's Drive upload fails
   // TODO: refreshes an expired access token and retries the upload once

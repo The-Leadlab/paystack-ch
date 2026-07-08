@@ -8,6 +8,7 @@ const GOOGLE_OAUTH_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth
 const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_OAUTH_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const GOOGLE_DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
+const GOOGLE_DRIVE_UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
 const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 const GOOGLE_DRIVE_FOLDER_NAME = "Paystack Documents";
 
@@ -294,6 +295,104 @@ export async function disconnectGoogleDrive(
     }
     await deleteGoogleDriveConnection(uid);
     return { status: 200, json: { disconnected: true } };
+  } catch (error) {
+    const status = (error as { status?: number }).status || 400;
+    return { status, json: { error: (error as Error).message } };
+  }
+}
+
+export type GoogleDriveConnection = { refreshToken: string; folderId: string };
+
+async function getGoogleDriveConnection(uid: string): Promise<GoogleDriveConnection | null> {
+  ensureFirebaseAdmin();
+  const snap = await getFirestore().collection("users").doc(uid).get();
+  const googleDrive = (
+    snap.data() as { googleDrive?: { refreshToken?: unknown; folderId?: unknown } } | undefined
+  )?.googleDrive;
+  if (typeof googleDrive?.refreshToken === "string" && typeof googleDrive?.folderId === "string") {
+    return { refreshToken: googleDrive.refreshToken, folderId: googleDrive.folderId };
+  }
+  return null;
+}
+
+async function getGoogleDriveAccessToken(refreshToken: string): Promise<string> {
+  const res = await fetch(GOOGLE_OAUTH_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      refresh_token: refreshToken,
+      client_id: resolveGoogleDriveClientId(),
+      client_secret: resolveGoogleDriveClientSecret(),
+      grant_type: "refresh_token",
+    }).toString(),
+  });
+
+  const data = (await res.json().catch(() => ({}))) as {
+    access_token?: string;
+    error?: string;
+    error_description?: string;
+  };
+
+  if (!res.ok || !data.access_token) {
+    throw Object.assign(
+      new Error(data.error_description || data.error || "Failed to refresh Google Drive access token"),
+      { status: 401, code: data.error }
+    );
+  }
+
+  return data.access_token;
+}
+
+export type DriveUploadFile = { bytes: Buffer; filename: string; mimeType: string };
+
+async function uploadFileToDrive(accessToken: string, folderId: string, file: DriveUploadFile): Promise<string> {
+  const boundary = `paystack-${nanoid()}`;
+  const metadata = JSON.stringify({ name: file.filename, parents: [folderId] });
+  const body = Buffer.concat([
+    Buffer.from(
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n` +
+        `--${boundary}\r\nContent-Type: ${file.mimeType}\r\n\r\n`,
+      "utf8"
+    ),
+    file.bytes,
+    Buffer.from(`\r\n--${boundary}--`, "utf8"),
+  ]);
+
+  const res = await fetch(GOOGLE_DRIVE_UPLOAD_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": `multipart/related; boundary=${boundary}`,
+    },
+    body,
+  });
+
+  const data = (await res.json().catch(() => ({}))) as { id?: string; error?: { message?: string } };
+
+  if (!res.ok || !data.id) {
+    throw Object.assign(new Error(data.error?.message || "Failed to upload document to Google Drive"), {
+      status: 502,
+    });
+  }
+
+  return data.id;
+}
+
+export async function saveDocumentToDrive(
+  uid: string,
+  file: DriveUploadFile
+): Promise<GoogleServicesResult> {
+  try {
+    if (!hasFirebaseAdminCredentials()) {
+      throw Object.assign(new Error("Server missing Firebase Admin credentials"), { status: 503 });
+    }
+    const connection = await getGoogleDriveConnection(uid);
+    if (!connection) {
+      return { status: 200, json: { skipped: true } };
+    }
+    const accessToken = await getGoogleDriveAccessToken(connection.refreshToken);
+    const fileId = await uploadFileToDrive(accessToken, connection.folderId, file);
+    return { status: 200, json: { uploaded: true, fileId } };
   } catch (error) {
     const status = (error as { status?: number }).status || 400;
     return { status, json: { error: (error as Error).message } };
