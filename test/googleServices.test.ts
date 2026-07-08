@@ -264,8 +264,17 @@ describe("completeGoogleDriveOAuth (callback)", () => {
     expect(firestoreSetMock).not.toHaveBeenCalled();
   });
 
-  // TODO: response body excludes the refresh token and access token
-  // TODO: response body excludes the refresh token and access token
+  it("response body excludes the refresh token and access token", async () => {
+    mockGoogleFetchRoutes();
+    const state = createOAuthState("test-uid");
+
+    const result = await completeGoogleDriveOAuth("valid-code", state);
+
+    expect(result.status).toBe(200);
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain("access-123");
+    expect(serialized).not.toContain("refresh-456");
+  });
 });
 
 describe("disconnectGoogleDrive", () => {
