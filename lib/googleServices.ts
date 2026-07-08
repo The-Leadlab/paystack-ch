@@ -6,6 +6,7 @@ import { verifyFirebaseAuthorizationHeader } from "./verifyFirebaseIdToken.js";
 
 const GOOGLE_OAUTH_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
+const GOOGLE_OAUTH_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const GOOGLE_DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
 const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 const GOOGLE_DRIVE_FOLDER_NAME = "Paystack Documents";
@@ -234,6 +235,60 @@ export async function completeGoogleDriveOAuth(
     const folderId = existingFolderId ?? (await createGoogleDriveFolder(tokens.access_token));
     await storeGoogleDriveConnection(uid, { refreshToken: tokens.refresh_token, folderId });
     return { status: 200, json: { connected: true } };
+  } catch (error) {
+    const status = (error as { status?: number }).status || 400;
+    return { status, json: { error: (error as Error).message } };
+  }
+}
+
+async function getGoogleDriveRefreshToken(uid: string): Promise<string | null> {
+  ensureFirebaseAdmin();
+  const snap = await getFirestore().collection("users").doc(uid).get();
+  const refreshToken = (snap.data() as { googleDrive?: { refreshToken?: unknown } } | undefined)
+    ?.googleDrive?.refreshToken;
+  return typeof refreshToken === "string" ? refreshToken : null;
+}
+
+async function revokeGoogleToken(refreshToken: string): Promise<void> {
+  const res = await fetch(GOOGLE_OAUTH_REVOKE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ token: refreshToken }).toString(),
+  });
+  if (!res.ok) {
+    throw Object.assign(new Error("Failed to revoke Google Drive access"), { status: 502 });
+  }
+}
+
+async function deleteGoogleDriveConnection(uid: string): Promise<void> {
+  ensureFirebaseAdmin();
+  await getFirestore()
+    .collection("users")
+    .doc(uid)
+    .set({ googleDrive: FieldValue.delete() }, { merge: true });
+}
+
+export async function disconnectGoogleDrive(
+  authorization: string | undefined
+): Promise<GoogleServicesResult> {
+  let uid: string;
+  try {
+    uid = await verifyFirebaseAuthorizationHeader(authorization);
+  } catch (error) {
+    const status = (error as { status?: number }).status || 401;
+    return { status, json: { error: (error as Error).message } };
+  }
+
+  try {
+    if (!hasFirebaseAdminCredentials()) {
+      throw Object.assign(new Error("Server missing Firebase Admin credentials"), { status: 503 });
+    }
+    const refreshToken = await getGoogleDriveRefreshToken(uid);
+    if (refreshToken) {
+      await revokeGoogleToken(refreshToken);
+    }
+    await deleteGoogleDriveConnection(uid);
+    return { status: 200, json: { disconnected: true } };
   } catch (error) {
     const status = (error as { status?: number }).status || 400;
     return { status, json: { error: (error as Error).message } };

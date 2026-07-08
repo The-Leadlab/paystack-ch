@@ -4,6 +4,7 @@ import {
   completeGoogleDriveOAuth,
   createOAuthState,
   decodeOAuthState,
+  disconnectGoogleDrive,
   startGoogleDriveOAuth,
 } from "../lib/googleServices.js";
 import { verifyFirebaseAuthorizationHeader } from "../lib/verifyFirebaseIdToken.js";
@@ -19,7 +20,10 @@ const firestoreCollectionMock = vi.fn(() => ({ doc: firestoreDocMock }));
 
 vi.mock("firebase-admin/firestore", () => ({
   getFirestore: vi.fn(() => ({ collection: firestoreCollectionMock })),
-  FieldValue: { serverTimestamp: vi.fn(() => "SERVER_TIMESTAMP") },
+  FieldValue: {
+    serverTimestamp: vi.fn(() => "SERVER_TIMESTAMP"),
+    delete: vi.fn(() => "FIELD_DELETE_SENTINEL"),
+  },
 }));
 
 vi.mock("../lib/firebaseAdmin.js", () => ({
@@ -278,7 +282,45 @@ describe("completeGoogleDriveOAuth (callback)", () => {
 });
 
 describe("disconnectGoogleDrive", () => {
-  // TODO: revokes the token with Google and deletes the local integration doc
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    vi.mocked(verifyFirebaseAuthorizationHeader).mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockReset();
+    firestoreSetMock.mockClear();
+    firestoreDocMock.mockClear();
+    firestoreCollectionMock.mockClear();
+    firestoreGetMock.mockReset().mockResolvedValue({ data: () => undefined });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("revokes the token with Google and deletes the local integration doc", async () => {
+    vi.mocked(verifyFirebaseAuthorizationHeader).mockResolvedValue("test-uid");
+    firestoreGetMock.mockResolvedValue({
+      data: () => ({ googleDrive: { refreshToken: "refresh-456", folderId: "folder-abc" } }),
+    });
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
+
+    const result = await disconnectGoogleDrive("Bearer valid-token");
+
+    expect(result.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://oauth2.googleapis.com/revoke",
+      expect.objectContaining({ method: "POST" })
+    );
+    const requestBody = fetchMock.mock.calls[0][1].body as string;
+    expect(new URLSearchParams(requestBody).get("token")).toBe("refresh-456");
+    expect(firestoreDocMock).toHaveBeenCalledWith("test-uid");
+    expect(firestoreSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({ googleDrive: "FIELD_DELETE_SENTINEL" }),
+      { merge: true }
+    );
+  });
+
   // TODO: clears local state cleanly when there's nothing to disconnect, or when Google's revoke call fails
 });
 
