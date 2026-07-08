@@ -62,7 +62,26 @@ describe("startGoogleDriveOAuth", () => {
     expect(decodeOAuthState(secondState).uid).toBe("test-uid");
   });
 
-  // TODO: selects the client id based on environment (dev vs. prod)
+  it("selects the client id based on environment (dev vs. prod)", async () => {
+    vi.mocked(verifyFirebaseAuthorizationHeader).mockResolvedValue("test-uid");
+    vi.stubEnv("GOOGLE_DRIVE_TEST_CLIENT_ID", "test-mode-client-id");
+
+    vi.stubEnv("GOOGLE_DRIVE_USE_TEST_MODE", "true");
+    const testModeResult = await startGoogleDriveOAuth("Bearer valid-token");
+
+    vi.stubEnv("GOOGLE_DRIVE_USE_TEST_MODE", "false");
+    const prodModeResult = await startGoogleDriveOAuth("Bearer valid-token");
+
+    if (!("redirectUrl" in testModeResult) || !("redirectUrl" in prodModeResult)) {
+      throw new Error("Expected redirect results");
+    }
+    expect(new URL(testModeResult.redirectUrl).searchParams.get("client_id")).toBe(
+      "test-mode-client-id"
+    );
+    expect(new URL(prodModeResult.redirectUrl).searchParams.get("client_id")).toBe(
+      "test-client-id"
+    );
+  });
 });
 
 describe("completeGoogleDriveOAuth (callback)", () => {

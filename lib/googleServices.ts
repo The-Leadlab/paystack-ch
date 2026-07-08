@@ -8,10 +8,16 @@ export type GoogleServicesResult =
   | { status: number; redirectUrl: string }
   | { status: number; json: Record<string, unknown> };
 
+function parseTruthyEnv(value: string | undefined): boolean {
+  return value?.toLowerCase() === "true" || value === "1";
+}
+
 function resolveGoogleDriveClientId(): string {
-  const clientId = process.env.GOOGLE_DRIVE_CLIENT_ID?.trim();
+  const useTestMode = parseTruthyEnv(process.env.GOOGLE_DRIVE_USE_TEST_MODE);
+  const varName = useTestMode ? "GOOGLE_DRIVE_TEST_CLIENT_ID" : "GOOGLE_DRIVE_CLIENT_ID";
+  const clientId = process.env[varName]?.trim();
   if (!clientId) {
-    throw Object.assign(new Error("Server missing GOOGLE_DRIVE_CLIENT_ID"), { status: 503 });
+    throw Object.assign(new Error(`Server missing ${varName}`), { status: 503 });
   }
   return clientId;
 }
