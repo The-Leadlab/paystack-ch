@@ -301,18 +301,42 @@ export async function disconnectGoogleDrive(
   }
 }
 
-export type GoogleDriveConnection = { refreshToken: string; folderId: string };
+export type GoogleDriveConnection = {
+  refreshToken: string;
+  folderId: string;
+  uploadedDocuments: Record<string, string>;
+};
+
+/** Firestore map keys can't contain certain characters (e.g. `.`, `/`), which real source ids
+ * (Firebase Storage paths, filenames) commonly do — so the key is encoded, not used raw. */
+function driveUploadKey(sourceId: string): string {
+  return Buffer.from(sourceId).toString("base64url");
+}
 
 async function getGoogleDriveConnection(uid: string): Promise<GoogleDriveConnection | null> {
   ensureFirebaseAdmin();
   const snap = await getFirestore().collection("users").doc(uid).get();
   const googleDrive = (
-    snap.data() as { googleDrive?: { refreshToken?: unknown; folderId?: unknown } } | undefined
+    snap.data() as
+      | { googleDrive?: { refreshToken?: unknown; folderId?: unknown; uploadedDocuments?: unknown } }
+      | undefined
   )?.googleDrive;
   if (typeof googleDrive?.refreshToken === "string" && typeof googleDrive?.folderId === "string") {
-    return { refreshToken: googleDrive.refreshToken, folderId: googleDrive.folderId };
+    const uploadedDocuments =
+      googleDrive.uploadedDocuments && typeof googleDrive.uploadedDocuments === "object"
+        ? (googleDrive.uploadedDocuments as Record<string, string>)
+        : {};
+    return { refreshToken: googleDrive.refreshToken, folderId: googleDrive.folderId, uploadedDocuments };
   }
   return null;
+}
+
+async function recordDriveUpload(uid: string, sourceId: string, fileId: string): Promise<void> {
+  ensureFirebaseAdmin();
+  await getFirestore()
+    .collection("users")
+    .doc(uid)
+    .set({ googleDrive: { uploadedDocuments: { [driveUploadKey(sourceId)]: fileId } } }, { merge: true });
 }
 
 async function markGoogleDriveNeedsReconnect(uid: string): Promise<void> {
@@ -351,7 +375,14 @@ async function getGoogleDriveAccessToken(refreshToken: string): Promise<string> 
   return data.access_token;
 }
 
-export type DriveUploadFile = { bytes: Buffer; filename: string; mimeType: string };
+export type DriveUploadFile = {
+  bytes: Buffer;
+  filename: string;
+  mimeType: string;
+  /** Stable identifier for this upload event (e.g. the Firebase Storage path). Used to dedupe
+   * so a retried/duplicated request doesn't create a second copy in Drive. */
+  sourceId: string;
+};
 
 async function uploadFileToDrive(accessToken: string, folderId: string, file: DriveUploadFile): Promise<string> {
   const boundary = `paystack-${nanoid()}`;
@@ -411,6 +442,12 @@ export async function saveDocumentToDrive(
     if (!connection) {
       return { status: 200, json: { skipped: true } };
     }
+
+    const existingFileId = connection.uploadedDocuments[driveUploadKey(file.sourceId)];
+    if (existingFileId) {
+      return { status: 200, json: { uploaded: true, fileId: existingFileId, alreadyUploaded: true } };
+    }
+
     let accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
     let fileId: string;
     try {
@@ -422,6 +459,7 @@ export async function saveDocumentToDrive(
       accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
       fileId = await uploadFileToDrive(accessToken, connection.folderId, file);
     }
+    await recordDriveUpload(uid, file.sourceId, fileId);
     return { status: 200, json: { uploaded: true, fileId } };
   } catch (error) {
     const status = (error as { status?: number }).status || 400;

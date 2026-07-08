@@ -389,6 +389,7 @@ describe("saveDocumentToDrive (upload hook)", () => {
       bytes: Buffer.from("fake-pdf-bytes"),
       filename: "report.pdf",
       mimeType: "application/pdf",
+      sourceId: "documents/test-uid/report.pdf",
     });
 
     expect(result.status).toBe(200);
@@ -411,6 +412,7 @@ describe("saveDocumentToDrive (upload hook)", () => {
       bytes: Buffer.from("fake-pdf-bytes"),
       filename: "report.pdf",
       mimeType: "application/pdf",
+      sourceId: "documents/test-uid/report.pdf",
     });
 
     expect(result.status).toBe(200);
@@ -448,6 +450,7 @@ describe("saveDocumentToDrive (upload hook)", () => {
       bytes: Buffer.from("fake-pdf-bytes"),
       filename: "report.pdf",
       mimeType: "application/pdf",
+      sourceId: "documents/test-uid/report.pdf",
     });
 
     expect(result.status).not.toBe(200);
@@ -488,6 +491,7 @@ describe("saveDocumentToDrive (upload hook)", () => {
       bytes: Buffer.from("fake-pdf-bytes"),
       filename: "report.pdf",
       mimeType: "application/pdf",
+      sourceId: "documents/test-uid/report.pdf",
     });
 
     expect(result.status).toBe(200);
@@ -518,6 +522,7 @@ describe("saveDocumentToDrive (upload hook)", () => {
       bytes: Buffer.from("fake-pdf-bytes"),
       filename: "report.pdf",
       mimeType: "application/pdf",
+      sourceId: "documents/test-uid/report.pdf",
     });
 
     expect(result.status).not.toBe(200);
@@ -563,16 +568,19 @@ describe("saveDocumentToDrive (upload hook)", () => {
         bytes: Buffer.from("doc-1-bytes"),
         filename: "doc-1.pdf",
         mimeType: "application/pdf",
+        sourceId: "documents/test-uid/doc-1.pdf",
       }),
       saveDocumentToDrive("test-uid", {
         bytes: Buffer.from("doc-2-bytes"),
         filename: "bad-document.pdf",
         mimeType: "application/pdf",
+        sourceId: "documents/test-uid/bad-document.pdf",
       }),
       saveDocumentToDrive("test-uid", {
         bytes: Buffer.from("doc-3-bytes"),
         filename: "doc-3.pdf",
         mimeType: "application/pdf",
+        sourceId: "documents/test-uid/doc-3.pdf",
       }),
     ]);
 
@@ -581,8 +589,36 @@ describe("saveDocumentToDrive (upload hook)", () => {
     expect(result3.status).toBe(200);
   });
 
+  it("does not upload the same document to Drive twice for a single upload event", async () => {
+    firestoreGetMock.mockResolvedValue({
+      data: () => ({
+        googleDrive: {
+          refreshToken: "refresh-456",
+          folderId: "folder-abc",
+          uploadedDocuments: {
+            [Buffer.from("documents/test-uid/report.pdf").toString("base64url")]: "already-uploaded-file-id",
+          },
+        },
+      }),
+    });
+    fetchMock.mockImplementation((url: string) => {
+      throw new Error(`Unexpected fetch call: ${url}`);
+    });
 
-  // TODO: does not upload the same document to Drive twice for a single upload event
+    const result = await saveDocumentToDrive("test-uid", {
+      bytes: Buffer.from("fake-pdf-bytes"),
+      filename: "report.pdf",
+      mimeType: "application/pdf",
+      sourceId: "documents/test-uid/report.pdf",
+    });
+
+    expect(result.status).toBe(200);
+    if (!("json" in result)) {
+      throw new Error("Expected a json result");
+    }
+    expect(result.json).toMatchObject({ fileId: "already-uploaded-file-id", alreadyUploaded: true });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("cross-user authorization", () => {
