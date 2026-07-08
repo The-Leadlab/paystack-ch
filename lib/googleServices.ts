@@ -371,7 +371,7 @@ async function uploadFileToDrive(accessToken: string, folderId: string, file: Dr
 
   if (!res.ok || !data.id) {
     throw Object.assign(new Error(data.error?.message || "Failed to upload document to Google Drive"), {
-      status: 502,
+      status: res.status === 401 ? 401 : 502,
     });
   }
 
@@ -390,8 +390,17 @@ export async function saveDocumentToDrive(
     if (!connection) {
       return { status: 200, json: { skipped: true } };
     }
-    const accessToken = await getGoogleDriveAccessToken(connection.refreshToken);
-    const fileId = await uploadFileToDrive(accessToken, connection.folderId, file);
+    let accessToken = await getGoogleDriveAccessToken(connection.refreshToken);
+    let fileId: string;
+    try {
+      fileId = await uploadFileToDrive(accessToken, connection.folderId, file);
+    } catch (error) {
+      if ((error as { status?: number }).status !== 401) throw error;
+      // Access token expired/invalid between issuance and use: fetch a fresh one and retry
+      // exactly once. A second 401 propagates to the outer catch rather than looping.
+      accessToken = await getGoogleDriveAccessToken(connection.refreshToken);
+      fileId = await uploadFileToDrive(accessToken, connection.folderId, file);
+    }
     return { status: 200, json: { uploaded: true, fileId } };
   } catch (error) {
     const status = (error as { status?: number }).status || 400;

@@ -456,7 +456,50 @@ describe("saveDocumentToDrive (upload hook)", () => {
     }
     expect(result.json).toHaveProperty("error");
   });
-  // TODO: refreshes an expired access token and retries the upload once
+  it("refreshes an expired access token and retries the upload once", async () => {
+    firestoreGetMock.mockResolvedValue({
+      data: () => ({ googleDrive: { refreshToken: "refresh-456", folderId: "folder-abc" } }),
+    });
+    let tokenAttempts = 0;
+    let uploadAttempts = 0;
+    fetchMock.mockImplementation((url: string) => {
+      if (url === "https://oauth2.googleapis.com/token") {
+        tokenAttempts += 1;
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ access_token: `access-token-${tokenAttempts}`, expires_in: 3600 }),
+        });
+      }
+      if (url === "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart") {
+        uploadAttempts += 1;
+        if (uploadAttempts === 1) {
+          return Promise.resolve({
+            ok: false,
+            status: 401,
+            json: async () => ({ error: { message: "Invalid Credentials" } }),
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ id: "uploaded-file-id" }) });
+      }
+      throw new Error(`Unexpected fetch call: ${url}`);
+    });
+
+    const result = await saveDocumentToDrive("test-uid", {
+      bytes: Buffer.from("fake-pdf-bytes"),
+      filename: "report.pdf",
+      mimeType: "application/pdf",
+    });
+
+    expect(result.status).toBe(200);
+    expect(tokenAttempts).toBe(2);
+    expect(uploadAttempts).toBe(2);
+    const uploadCalls = fetchMock.mock.calls.filter(
+      ([url]) => url === "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
+    );
+    const secondUploadInit = uploadCalls[1][1] as { headers: Record<string, string> };
+    expect(secondUploadInit.headers.Authorization).toBe("Bearer access-token-2");
+  });
+
   // TODO: an `invalid_grant` response marks the integration as needing reconnection and stops further retries
   // TODO: each document in a batch is saved to Drive independently, so one failure doesn't block the others
   // TODO: does not upload the same document to Drive twice for a single upload event
