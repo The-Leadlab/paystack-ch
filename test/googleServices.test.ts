@@ -533,7 +533,55 @@ describe("saveDocumentToDrive (upload hook)", () => {
   });
 
 
-  // TODO: each document in a batch is saved to Drive independently, so one failure doesn't block the others
+  it("each document in a batch is saved to Drive independently, so one failure doesn't block the others", async () => {
+    firestoreGetMock.mockResolvedValue({
+      data: () => ({ googleDrive: { refreshToken: "refresh-456", folderId: "folder-abc" } }),
+    });
+    fetchMock.mockImplementation((url: string, init?: { body?: string | Buffer }) => {
+      if (url === "https://oauth2.googleapis.com/token") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ access_token: "access-789", expires_in: 3600 }),
+        });
+      }
+      if (url === "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart") {
+        const body = Buffer.from(init?.body ?? "").toString("utf8");
+        if (body.includes('"name":"bad-document.pdf"')) {
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            json: async () => ({ error: { message: "Drive server error" } }),
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ id: "uploaded-file-id" }) });
+      }
+      throw new Error(`Unexpected fetch call: ${url}`);
+    });
+
+    const [result1, result2, result3] = await Promise.all([
+      saveDocumentToDrive("test-uid", {
+        bytes: Buffer.from("doc-1-bytes"),
+        filename: "doc-1.pdf",
+        mimeType: "application/pdf",
+      }),
+      saveDocumentToDrive("test-uid", {
+        bytes: Buffer.from("doc-2-bytes"),
+        filename: "bad-document.pdf",
+        mimeType: "application/pdf",
+      }),
+      saveDocumentToDrive("test-uid", {
+        bytes: Buffer.from("doc-3-bytes"),
+        filename: "doc-3.pdf",
+        mimeType: "application/pdf",
+      }),
+    ]);
+
+    expect(result1.status).toBe(200);
+    expect(result2.status).not.toBe(200);
+    expect(result3.status).toBe(200);
+  });
+
+
   // TODO: does not upload the same document to Drive twice for a single upload event
 });
 
