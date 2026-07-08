@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   completeGoogleDriveOAuth,
@@ -31,6 +32,7 @@ describe("startGoogleDriveOAuth", () => {
     vi.mocked(verifyFirebaseAuthorizationHeader).mockReset();
     vi.stubEnv("GOOGLE_DRIVE_CLIENT_ID", "test-client-id");
     vi.stubEnv("GOOGLE_DRIVE_REDIRECT_URI", "https://app.example.com/api/oauth/google/callback");
+    vi.stubEnv("GOOGLE_DRIVE_STATE_SECRET", "test-state-signing-secret-value");
   });
 
   afterEach(() => {
@@ -140,6 +142,7 @@ describe("completeGoogleDriveOAuth (callback)", () => {
     vi.stubEnv("GOOGLE_DRIVE_CLIENT_ID", "test-client-id");
     vi.stubEnv("GOOGLE_DRIVE_CLIENT_SECRET", "test-client-secret");
     vi.stubEnv("GOOGLE_DRIVE_REDIRECT_URI", "https://app.example.com/api/oauth/google/callback");
+    vi.stubEnv("GOOGLE_DRIVE_STATE_SECRET", "test-state-signing-secret-value");
   });
 
   afterEach(() => {
@@ -235,7 +238,33 @@ describe("completeGoogleDriveOAuth (callback)", () => {
     expect(firestoreSetMock).not.toHaveBeenCalled();
   });
 
-  // TODO: rejects the callback for an invalid `state` (missing, non-matching, or bound to a different user)
+  it("rejects the callback for an invalid `state` (missing, non-matching, or bound to a different user)", async () => {
+    mockGoogleFetchRoutes();
+
+    const missingState = await completeGoogleDriveOAuth("valid-code", "");
+    expect(missingState.status).not.toBe(200);
+
+    const garbageState = await completeGoogleDriveOAuth("valid-code", "not-a-real-state");
+    expect(garbageState.status).not.toBe(200);
+
+    // Forged: claims uid "victim-uid" but wasn't signed with the real GOOGLE_DRIVE_STATE_SECRET,
+    // simulating an attacker who doesn't know the server's signing secret.
+    const forgedPayload = JSON.stringify({
+      uid: "victim-uid",
+      nonce: "fake-nonce",
+      expiresAt: Date.now() + 60_000,
+    });
+    const forgedSig = createHmac("sha256", "wrong-secret").update(forgedPayload).digest("base64url");
+    const forgedState = Buffer.from(JSON.stringify({ payload: forgedPayload, sig: forgedSig })).toString(
+      "base64url"
+    );
+    const forgedResult = await completeGoogleDriveOAuth("valid-code", forgedState);
+    expect(forgedResult.status).not.toBe(200);
+
+    expect(firestoreSetMock).not.toHaveBeenCalled();
+  });
+
+  // TODO: response body excludes the refresh token and access token
   // TODO: response body excludes the refresh token and access token
 });
 

@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { nanoid } from "nanoid";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { ensureFirebaseAdmin, hasFirebaseAdminCredentials } from "./firebaseAdmin.js";
@@ -43,16 +44,55 @@ function resolveGoogleDriveRedirectUri(): string {
   return redirectUri;
 }
 
-export type OAuthState = { uid: string; nonce: string };
+const STATE_TTL_MS = 10 * 60 * 1000;
 
+export type OAuthState = { uid: string; nonce: string; expiresAt: number };
+
+function stateSigningSecret(): string {
+  const secret = process.env.GOOGLE_DRIVE_STATE_SECRET?.trim();
+  if (!secret || secret.length < 16) {
+    throw Object.assign(
+      new Error("GOOGLE_DRIVE_STATE_SECRET is not configured (min 16 characters)."),
+      { status: 503 }
+    );
+  }
+  return secret;
+}
+
+/** HMAC-signed so a forged or tampered state (e.g. claiming another user's uid) is rejected. */
 export function createOAuthState(uid: string): string {
-  return Buffer.from(JSON.stringify({ uid, nonce: nanoid() } satisfies OAuthState)).toString(
-    "base64url"
-  );
+  const payload = JSON.stringify({
+    uid,
+    nonce: nanoid(),
+    expiresAt: Date.now() + STATE_TTL_MS,
+  } satisfies OAuthState);
+  const sig = createHmac("sha256", stateSigningSecret()).update(payload).digest("base64url");
+  return Buffer.from(JSON.stringify({ payload, sig }), "utf8").toString("base64url");
 }
 
 export function decodeOAuthState(state: string): OAuthState {
-  return JSON.parse(Buffer.from(state, "base64url").toString("utf8")) as OAuthState;
+  const invalid = () => Object.assign(new Error("Invalid or expired state parameter"), { status: 400 });
+
+  let parsed: { payload?: string; sig?: string };
+  try {
+    parsed = JSON.parse(Buffer.from(state, "base64url").toString("utf8"));
+  } catch {
+    throw invalid();
+  }
+  if (!parsed.payload || !parsed.sig) throw invalid();
+
+  const expectedSig = createHmac("sha256", stateSigningSecret()).update(parsed.payload).digest("base64url");
+  const provided = Buffer.from(parsed.sig);
+  const expected = Buffer.from(expectedSig);
+  if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+    throw invalid();
+  }
+
+  const inner = JSON.parse(parsed.payload) as OAuthState;
+  if (!inner.uid || !inner.nonce || typeof inner.expiresAt !== "number") throw invalid();
+  if (inner.expiresAt < Date.now()) throw invalid();
+
+  return inner;
 }
 
 export async function startGoogleDriveOAuth(
