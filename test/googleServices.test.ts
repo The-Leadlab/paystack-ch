@@ -217,7 +217,24 @@ describe("completeGoogleDriveOAuth (callback)", () => {
     );
   });
 
-  // TODO: rejects the callback and writes nothing to Firestore when the code exchange fails
+  it("rejects the callback and writes nothing to Firestore when the code exchange fails", async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === "https://oauth2.googleapis.com/token") {
+        return Promise.resolve({
+          ok: false,
+          json: async () => ({ error: "invalid_grant", error_description: "Malformed auth code" }),
+        });
+      }
+      throw new Error(`Unexpected fetch call: ${url}`);
+    });
+    const state = createOAuthState("test-uid");
+
+    const result = await completeGoogleDriveOAuth("bad-code", state);
+
+    expect(result.status).not.toBe(200);
+    expect(firestoreSetMock).not.toHaveBeenCalled();
+  });
+
   // TODO: rejects the callback for an invalid `state` (missing, non-matching, or bound to a different user)
   // TODO: response body excludes the refresh token and access token
 });
