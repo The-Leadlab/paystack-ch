@@ -404,7 +404,23 @@ describe("saveDocumentToDrive (upload hook)", () => {
     expect(bodyText).toContain("fake-pdf-bytes");
   });
 
-  // TODO: when the user has no Drive connection, upload/scan completes normally with no Drive call and no surfaced error
+  it("when the user has no Drive connection, upload/scan completes normally with no Drive call and no surfaced error", async () => {
+    firestoreGetMock.mockResolvedValue({ data: () => undefined });
+
+    const result = await saveDocumentToDrive("test-uid", {
+      bytes: Buffer.from("fake-pdf-bytes"),
+      filename: "report.pdf",
+      mimeType: "application/pdf",
+    });
+
+    expect(result.status).toBe(200);
+    if (!("json" in result)) {
+      throw new Error("Expected a json result");
+    }
+    expect(result.json).not.toHaveProperty("error");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   // TODO: app upload/scan still succeeds when a connected user's Drive upload fails
   // TODO: refreshes an expired access token and retries the upload once
   // TODO: an `invalid_grant` response marks the integration as needing reconnection and stops further retries
