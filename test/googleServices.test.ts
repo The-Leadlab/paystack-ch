@@ -12,7 +12,8 @@ vi.mock("../lib/verifyFirebaseIdToken.js", () => ({
 }));
 
 const firestoreSetMock = vi.fn().mockResolvedValue(undefined);
-const firestoreDocMock = vi.fn(() => ({ set: firestoreSetMock }));
+const firestoreGetMock = vi.fn().mockResolvedValue({ data: () => undefined });
+const firestoreDocMock = vi.fn(() => ({ set: firestoreSetMock, get: firestoreGetMock }));
 const firestoreCollectionMock = vi.fn(() => ({ doc: firestoreDocMock }));
 
 vi.mock("firebase-admin/firestore", () => ({
@@ -135,6 +136,7 @@ describe("completeGoogleDriveOAuth (callback)", () => {
     firestoreSetMock.mockClear();
     firestoreDocMock.mockClear();
     firestoreCollectionMock.mockClear();
+    firestoreGetMock.mockReset().mockResolvedValue({ data: () => undefined });
     vi.stubEnv("GOOGLE_DRIVE_CLIENT_ID", "test-client-id");
     vi.stubEnv("GOOGLE_DRIVE_CLIENT_SECRET", "test-client-secret");
     vi.stubEnv("GOOGLE_DRIVE_REDIRECT_URI", "https://app.example.com/api/oauth/google/callback");
@@ -190,7 +192,31 @@ describe("completeGoogleDriveOAuth (callback)", () => {
     );
   });
 
-  // TODO: reconnecting an already-connected user overwrites the stored token without creating a duplicate folder
+  it("reconnecting an already-connected user overwrites the stored token without creating a duplicate folder", async () => {
+    mockGoogleFetchRoutes();
+    firestoreGetMock.mockResolvedValueOnce({
+      data: () => ({ googleDrive: { folderId: "existing-folder-id", refreshToken: "old-refresh" } }),
+    });
+    const state = createOAuthState("test-uid");
+
+    const result = await completeGoogleDriveOAuth("valid-code", state);
+
+    expect(result.status).toBe(200);
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "https://www.googleapis.com/drive/v3/files",
+      expect.anything()
+    );
+    expect(firestoreSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        googleDrive: expect.objectContaining({
+          folderId: "existing-folder-id",
+          refreshToken: "refresh-456",
+        }),
+      }),
+      { merge: true }
+    );
+  });
+
   // TODO: rejects the callback and writes nothing to Firestore when the code exchange fails
   // TODO: rejects the callback for an invalid `state` (missing, non-matching, or bound to a different user)
   // TODO: response body excludes the refresh token and access token

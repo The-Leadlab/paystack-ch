@@ -146,6 +146,14 @@ async function createGoogleDriveFolder(accessToken: string): Promise<string> {
   return data.id;
 }
 
+async function getExistingGoogleDriveFolderId(uid: string): Promise<string | null> {
+  ensureFirebaseAdmin();
+  const snap = await getFirestore().collection("users").doc(uid).get();
+  const folderId = (snap.data() as { googleDrive?: { folderId?: unknown } } | undefined)?.googleDrive
+    ?.folderId;
+  return typeof folderId === "string" ? folderId : null;
+}
+
 async function storeGoogleDriveConnection(
   uid: string,
   connection: { refreshToken: string; folderId: string }
@@ -182,7 +190,8 @@ export async function completeGoogleDriveOAuth(
     if (!hasFirebaseAdminCredentials()) {
       throw Object.assign(new Error("Server missing Firebase Admin credentials"), { status: 503 });
     }
-    const folderId = await createGoogleDriveFolder(tokens.access_token);
+    const existingFolderId = await getExistingGoogleDriveFolderId(uid);
+    const folderId = existingFolderId ?? (await createGoogleDriveFolder(tokens.access_token));
     await storeGoogleDriveConnection(uid, { refreshToken: tokens.refresh_token, folderId });
     return { status: 200, json: { connected: true } };
   } catch (error) {
