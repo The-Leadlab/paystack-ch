@@ -5,6 +5,7 @@ import { useSubscription } from '../context/SubscriptionContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { PaystackPlanId } from '@shared/planCatalog';
 import { PlanMarketingFeatureBullets, PlanMarketingPanel, PLAN_ENTERPRISE_SALES_MAILTO } from './PlanMarketingPanel';
+import { GoogleDriveConnectPanel } from './GoogleDriveConnectPanel';
 
 function planDisplayName(id: PaystackPlanId | null | undefined, t: (k: string) => string): string {
   if (id === 'starter') return t('planStarterName');
@@ -296,6 +297,8 @@ export function BillingPlanPanel() {
           </button>
         </section>
       ) : null}
+
+      <GoogleDriveConnectPanel />
 
       <section className="rounded-xl border border-cdlp-border bg-cdlp-card p-5 sm:p-6 space-y-4">
         <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">

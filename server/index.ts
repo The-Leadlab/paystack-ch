@@ -3,6 +3,7 @@ import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import { registerGeminiRoutes } from "./gemini";
+import { registerGoogleDriveRoutes } from "./googleDrive";
 import { registerStripeIfConfigured } from "./stripe";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -14,6 +15,7 @@ async function startServer() {
 
   registerStripeIfConfigured(app);
   registerGeminiRoutes(app);
+  registerGoogleDriveRoutes(app);
 
   // Serve static files from dist/public in production
   const staticPath =

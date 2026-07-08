@@ -108,16 +108,21 @@ export async function startGoogleDriveOAuth(
     return { status, json: { error: (error as Error).message } };
   }
 
-  const authUrl = new URL(GOOGLE_OAUTH_AUTHORIZE_URL);
-  authUrl.searchParams.set("client_id", resolveGoogleDriveClientId());
-  authUrl.searchParams.set("redirect_uri", resolveGoogleDriveRedirectUri());
-  authUrl.searchParams.set("response_type", "code");
-  authUrl.searchParams.set("scope", GOOGLE_DRIVE_SCOPE);
-  authUrl.searchParams.set("access_type", "offline");
-  authUrl.searchParams.set("prompt", "consent");
-  authUrl.searchParams.set("state", createOAuthState(uid));
+  try {
+    const authUrl = new URL(GOOGLE_OAUTH_AUTHORIZE_URL);
+    authUrl.searchParams.set("client_id", resolveGoogleDriveClientId());
+    authUrl.searchParams.set("redirect_uri", resolveGoogleDriveRedirectUri());
+    authUrl.searchParams.set("response_type", "code");
+    authUrl.searchParams.set("scope", GOOGLE_DRIVE_SCOPE);
+    authUrl.searchParams.set("access_type", "offline");
+    authUrl.searchParams.set("prompt", "consent");
+    authUrl.searchParams.set("state", createOAuthState(uid));
 
-  return { status: 302, redirectUrl: authUrl.toString() };
+    return { status: 302, redirectUrl: authUrl.toString() };
+  } catch (error) {
+    const status = (error as { status?: number }).status || 500;
+    return { status, json: { error: (error as Error).message } };
+  }
 }
 
 type GoogleTokenExchange = {
@@ -461,6 +466,39 @@ export async function saveDocumentToDrive(
     }
     await recordDriveUpload(uid, file.sourceId, fileId);
     return { status: 200, json: { uploaded: true, fileId } };
+  } catch (error) {
+    const status = (error as { status?: number }).status || 400;
+    return { status, json: { error: (error as Error).message } };
+  }
+}
+
+export async function getGoogleDriveStatus(
+  authorization: string | undefined
+): Promise<GoogleServicesResult> {
+  let uid: string;
+  try {
+    uid = await verifyFirebaseAuthorizationHeader(authorization);
+  } catch (error) {
+    const status = (error as { status?: number }).status || 401;
+    return { status, json: { error: (error as Error).message } };
+  }
+
+  try {
+    if (!hasFirebaseAdminCredentials()) {
+      throw Object.assign(new Error("Server missing Firebase Admin credentials"), { status: 503 });
+    }
+    ensureFirebaseAdmin();
+    const snap = await getFirestore().collection("users").doc(uid).get();
+    const googleDrive = (
+      snap.data() as { googleDrive?: { refreshToken?: unknown; needsReconnect?: unknown } } | undefined
+    )?.googleDrive;
+    return {
+      status: 200,
+      json: {
+        connected: typeof googleDrive?.refreshToken === "string",
+        needsReconnect: googleDrive?.needsReconnect === true,
+      },
+    };
   } catch (error) {
     const status = (error as { status?: number }).status || 400;
     return { status, json: { error: (error as Error).message } };

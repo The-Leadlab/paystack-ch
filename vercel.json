@@ -58,6 +58,18 @@
     "api/gemini/generate-from-storage.ts": {
       "maxDuration": 300,
       "includeFiles": "{lib,shared}/**"
+    },
+    "api/oauth/google/status.ts": {
+      "includeFiles": "lib/**"
+    },
+    "api/oauth/google/start.ts": {
+      "includeFiles": "lib/**"
+    },
+    "api/oauth/google/callback.ts": {
+      "includeFiles": "lib/**"
+    },
+    "api/oauth/google/disconnect.ts": {
+      "includeFiles": "lib/**"
     }
   }
 }

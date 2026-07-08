@@ -91,7 +91,11 @@ export function RestaurantDashboard() {
     setShowSidebar(false);
   };
   
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [activeTab, setActiveTab] = useState<Tab>(() =>
+    // Land on the billing tab when returning from the Google Drive OAuth redirect
+    // (see server/googleDrive.ts's callback route and GoogleDriveConnectPanel.tsx).
+    new URLSearchParams(window.location.search).has('googleDrive') ? 'billing' : 'dashboard'
+  );
   const showRevenueTab = !enforcementEnabled || entitlements.allCoreModules;
   const showAllSessionsView = !enforcementEnabled || entitlements.allCoreModules;
   const canAddSession =
