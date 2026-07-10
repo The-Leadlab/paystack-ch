@@ -31,11 +31,13 @@ function PersonalPlanShellInner({
     <div className="personal-plan-shell">
       <PersonalPlanSidebar featureId={featureId} surface={surface} />
       <main className="md:ml-64 min-h-screen pb-24 md:pb-8">
-        <AliLabAuthBanner
-          variant="personal"
-          signInRedirect={surface === "app" ? "/app/personal/overview" : "/ali/overview"}
-        />
-        {surface === "app" ? (
+        {surface !== "app" ? (
+          <AliLabAuthBanner
+            variant="personal"
+            signInRedirect={surface === "app" ? "/app/personal/overview" : "/ali/overview"}
+          />
+        ) : null}
+        {surface === "app" ? null : (
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--pp-outline-variant)] bg-[var(--pp-surface-container)] px-4 md:px-16 py-2 text-[11px] text-[var(--pp-on-surface-variant)]">
             <span>
               Linked to your business ledger — same Firebase data as{" "}
@@ -48,8 +50,8 @@ function PersonalPlanShellInner({
               <span>Use Add transaction below or enter data in Business.</span>
             ) : null}
           </div>
-        ) : null}
-        <PersonalSessionBar month={month} />
+        )}
+        {surface !== "app" ? <PersonalSessionBar month={month} /> : null}
         <PersonalPlanHeader title={title} />
         <div className="p-4 md:p-16 space-y-6 max-w-[1400px]">
           {showKpi ? <PersonalPlanKpiStrip month={month} /> : null}
