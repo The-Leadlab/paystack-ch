@@ -65,7 +65,6 @@ export function useAliLabPersist<T extends { id: string }>(
         }
         return next;
       });
-      if (uid && db) void refresh();
       return row;
     },
     [uid, collectionName, localKey, refresh]

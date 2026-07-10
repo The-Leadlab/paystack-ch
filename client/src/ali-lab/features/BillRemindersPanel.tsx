@@ -11,9 +11,22 @@ import { GlassCard } from "../personal-plan/components/GlassCard";
 import { formatChfDisplay } from "../personal-plan/formatChfDisplay";
 
 function annualizedChf(b: LabBill): number {
+  if (b.recurrence === "weekly") return b.amountChf * 52;
+  if (b.recurrence === "biweekly") return b.amountChf * 26;
   if (b.recurrence === "monthly") return b.amountChf * 12;
   if (b.recurrence === "yearly") return b.amountChf;
   return b.amountChf;
+}
+
+function recurrenceLabel(recurrence: LabBill["recurrence"], t: (k: string) => string): string {
+  const map: Record<LabBill["recurrence"], string> = {
+    once: t("billFreqOnce"),
+    weekly: t("billFreqWeekly"),
+    biweekly: t("billFreqBiweekly"),
+    monthly: t("billFreqMonthly"),
+    yearly: t("billFreqYearly"),
+  };
+  return map[recurrence];
 }
 
 export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
@@ -27,7 +40,8 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
 
   const [name, setName] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [amountChf, setAmountChf] = useState(0);
+  const [amountInput, setAmountInput] = useState("");
+  const [recurrence, setRecurrence] = useState<LabBill["recurrence"]>("yearly");
 
   const today = new Date().toISOString().slice(0, 10);
   const monthPrefix = month;
@@ -61,13 +75,26 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
   const editBill = (bill: LabBill) => {
     const nextName = prompt("Bill name", bill.name);
     if (nextName == null || !nextName.trim()) return;
-    const nextAmount = prompt("Amount (CHF)", String(bill.amountChf));
+    const nextAmount = prompt(t("billAmountPrompt"), String(bill.amountChf));
     if (nextAmount == null) return;
     const parsed = Number(nextAmount);
     if (!Number.isFinite(parsed) || parsed < 0) return;
-    const nextDue = prompt("Due date (YYYY-MM-DD)", bill.dueDate);
+    const nextDue = prompt(t("billDuePrompt"), bill.dueDate);
     if (nextDue == null || !nextDue.trim()) return;
-    void update(bill.id, { name: nextName.trim(), amountChf: parsed, dueDate: nextDue.trim() });
+    const nextRec = prompt(
+      `${t("billFrequency")} (once|weekly|biweekly|monthly|yearly)`,
+      bill.recurrence
+    );
+    const allowed: LabBill["recurrence"][] = ["once", "weekly", "biweekly", "monthly", "yearly"];
+    const rec = allowed.includes(nextRec as LabBill["recurrence"])
+      ? (nextRec as LabBill["recurrence"])
+      : bill.recurrence;
+    void update(bill.id, {
+      name: nextName.trim(),
+      amountChf: parsed,
+      dueDate: nextDue.trim(),
+      recurrence: rec,
+    });
   };
 
   const totalAnnual = upcoming.reduce((s, b) => s + b.annualChf, 0);
@@ -103,26 +130,43 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
           />
           <input
             type="number"
-            className="pp-input px-3 py-2 w-24 text-sm"
-            placeholder="CHF"
-            value={amountChf || ""}
-            onChange={(e) => setAmountChf(Number(e.target.value))}
+            min="0"
+            step="0.05"
+            className="pp-input px-3 py-2 w-28 text-sm pp-tabular"
+            placeholder={t("billAmountPlaceholder")}
+            value={amountInput}
+            onChange={(e) => setAmountInput(e.target.value)}
           />
+          <select
+            className="pp-input px-2 py-2 text-sm min-w-[110px]"
+            value={recurrence}
+            onChange={(e) => setRecurrence(e.target.value as LabBill["recurrence"])}
+            aria-label={t("billFrequency")}
+          >
+            <option value="once">{t("billFreqOnce")}</option>
+            <option value="weekly">{t("billFreqWeekly")}</option>
+            <option value="biweekly">{t("billFreqBiweekly")}</option>
+            <option value="monthly">{t("billFreqMonthly")}</option>
+            <option value="yearly">{t("billFreqYearly")}</option>
+          </select>
           <button
             type="button"
             className="bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] px-4 py-2 rounded-lg text-xs font-bold"
             onClick={() => {
               if (!name.trim() || !dueDate) return;
+              const amountChf = Number(amountInput);
+              if (!Number.isFinite(amountChf) || amountChf <= 0) return;
               void add({
                 name: name.trim(),
                 dueDate,
                 amountChf,
-                recurrence: "yearly",
+                recurrence,
                 remindDaysBefore: 14,
               });
               setName("");
               setDueDate("");
-              setAmountChf(0);
+              setAmountInput("");
+              setRecurrence("yearly");
             }}
           >
             {t("addBill")}
@@ -155,6 +199,8 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
                 <p className="font-semibold">{b.name}</p>
                 <p className="text-xs text-[var(--pp-on-surface-variant)]">
                   {t("due")} {b.dueDate}
+                  <span className="mx-1">·</span>
+                  {recurrenceLabel(b.recurrence, t)}
                   {b.paidInLedger && (
                     <span className="text-[var(--pp-secondary)] ml-2 font-semibold uppercase text-[10px]">
                       {t("paidInLedger")}

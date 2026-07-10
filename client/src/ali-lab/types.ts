@@ -13,7 +13,7 @@ export type LabBill = {
   name: string;
   dueDate: string;
   amountChf: number;
-  recurrence: "once" | "monthly" | "yearly";
+  recurrence: "once" | "weekly" | "biweekly" | "monthly" | "yearly";
   remindDaysBefore: number;
 };
 

@@ -55,17 +55,20 @@ const INCOME_ICONS: Record<PersonalIncomeCategory, typeof Banknote> = {
 
 function ExpenseRow({
   label,
-  budget,
+  budgetInput,
   spent,
-  onBudgetChange,
+  onBudgetInputChange,
+  onBudgetCommit,
   Icon,
 }: {
   label: string;
-  budget: number;
+  budgetInput: string;
   spent: number;
-  onBudgetChange: (v: number) => void;
+  onBudgetInputChange: (v: string) => void;
+  onBudgetCommit: () => void;
   Icon: typeof Home;
 }) {
+  const budget = Number(budgetInput) || 0;
   const pct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : spent > 0 ? 100 : 0;
   const over = budget > 0 && spent > budget;
   const barWidth = budget > 0 ? Math.min(100, (spent / budget) * 100) : spent > 0 ? 100 : 0;
@@ -86,10 +89,12 @@ function ExpenseRow({
           </span>
           <span className="text-[var(--pp-on-surface-variant)] mx-1">/</span>
           <input
-            type="number"
+            type="text"
+            inputMode="decimal"
             className="pp-input w-20 text-right text-xs py-0.5 px-1 inline-block"
-            value={budget || ""}
-            onChange={(e) => onBudgetChange(Number(e.target.value) || 0)}
+            value={budgetInput}
+            onChange={(e) => onBudgetInputChange(e.target.value)}
+            onBlur={onBudgetCommit}
             aria-label={`Budget for ${label}`}
           />
         </div>
@@ -115,6 +120,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   const ledger = useAliLabLedger(month);
   const { loading: finLoading, currentSession } = ledger;
   const [mode, setMode] = useState<LabBudgetMode>("traditional");
+  const [draftBudgets, setDraftBudgets] = useState<Record<string, string>>({});
 
   const { items: saved, update, add, uid } = useAliLabPersist<BudgetRow>(
     labCollections.budgets,
@@ -129,6 +135,20 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
       const row = saved.find((b) => b.month === month && b.mode);
       if (row?.mode) setMode(row.mode);
     }
+  }, [saved, month]);
+
+  useEffect(() => {
+    const next: Record<string, string> = {};
+    for (const cat of PERSONAL_EXPENSE_CATEGORIES) {
+      const row = saved.find((b) => b.month === month && b.category === cat);
+      next[cat] = row && row.budgetChf > 0 ? String(row.budgetChf) : "";
+    }
+    for (const cat of PERSONAL_INCOME_CATEGORIES) {
+      const key = `income:${cat}`;
+      const row = saved.find((b) => b.month === month && b.category === key);
+      next[key] = row && row.budgetChf > 0 ? String(row.budgetChf) : "";
+    }
+    setDraftBudgets(next);
   }, [saved, month]);
 
   const persistMode = async (next: LabBudgetMode) => {
@@ -183,6 +203,16 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
     else await add(payload);
   };
 
+  const commitBudgetDraft = (category: string) => {
+    const raw = draftBudgets[category] ?? "";
+    const parsed = raw.trim() === "" ? 0 : Number(raw);
+    if (!Number.isFinite(parsed) || parsed < 0) return;
+    void setBudget(category, parsed);
+  };
+
+  const displayBudget = (category: string, fallback: number) =>
+    draftBudgets[category] ?? (fallback > 0 ? String(fallback) : "");
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-3 items-center text-xs">
@@ -226,10 +256,14 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold pp-tabular">{formatChfDisplay(row.received)}</p>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         className="pp-input w-24 text-right text-xs py-0.5 px-1 mt-1"
-                        value={row.budgetChf || ""}
-                        onChange={(e) => void setBudget(row.key, Number(e.target.value) || 0)}
+                        value={displayBudget(row.key, row.budgetChf)}
+                        onChange={(e) =>
+                          setDraftBudgets((prev) => ({ ...prev, [row.key]: e.target.value }))
+                        }
+                        onBlur={() => commitBudgetDraft(row.key)}
                         aria-label={t(personalIncomeLabelKey(row.cat))}
                       />
                       <div className="pp-progress-track h-1 w-24 ml-auto mt-1">
@@ -265,9 +299,12 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
                 <ExpenseRow
                   key={row.cat}
                   label={t(personalExpenseLabelKey(row.cat))}
-                  budget={row.budgetChf}
+                  budgetInput={displayBudget(row.cat, row.budgetChf)}
                   spent={row.spent}
-                  onBudgetChange={(v) => void setBudget(row.cat, v)}
+                  onBudgetInputChange={(v) =>
+                    setDraftBudgets((prev) => ({ ...prev, [row.cat]: v }))
+                  }
+                  onBudgetCommit={() => commitBudgetDraft(row.cat)}
                   Icon={EXPENSE_ICONS[row.cat]}
                 />
               ))}

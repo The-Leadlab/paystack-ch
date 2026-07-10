@@ -1,6 +1,6 @@
 ﻿import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Link } from 'wouter';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings, Wallet, FilePenLine } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings, Wallet, FilePenLine, Mail } from 'lucide-react';
 import { BillingPlanPanel } from './BillingPlanPanel';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
@@ -104,7 +104,11 @@ export function RestaurantDashboard() {
     setShowSidebar(false);
   };
   
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [activeTab, setActiveTab] = useState<Tab>(() =>
+    // Land on the billing tab when returning from the Google Drive OAuth redirect
+    // (see server/googleDrive.ts's callback route and GoogleDriveConnectPanel.tsx).
+    new URLSearchParams(window.location.search).has('googleDrive') ? 'billing' : 'dashboard'
+  );
   const showRevenueTab = !enforcementEnabled || entitlements.allCoreModules;
   const showAllSessionsView = !enforcementEnabled || entitlements.allCoreModules;
   const canAddSession =
@@ -1866,6 +1870,7 @@ function ReportsPlaceholder() {
   const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
   const [supplierFilter, setSupplierFilter] = React.useState<string>('all');
   const [vatPeriodMode, setVatPeriodMode] = React.useState<'month' | 'semester' | 'year' | 'allYears'>('month');
+  const [emailBusy, setEmailBusy] = React.useState<string | null>(null);
 
   // Filter data by current session
   // For "All Sessions" view, only show data from existing sessions (not orphaned data)
@@ -2023,6 +2028,26 @@ function ReportsPlaceholder() {
     }
   };
 
+  const handleEmailReport = async (cadence: 'weekly' | 'biweekly' | 'monthly' | 'annual') => {
+    if (!advancedReports) return;
+    setEmailBusy(cadence);
+    try {
+      const { emailFinancialReport } = await import('../lib/reportEmailClient');
+      const { sentTo } = await emailFinancialReport({
+        cadence,
+        sessionName: reportPayload().sessionName || t('allSessions'),
+        locale: language,
+        income: filteredIncome,
+        expenses: filteredExpenses,
+      });
+      alert(t('repEmailSent').replace('{email}', sentTo));
+    } catch (e) {
+      alert(t('repEmailFailed').replace('{msg}', e instanceof Error ? e.message : String(e)));
+    } finally {
+      setEmailBusy(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="ba-page-header">
@@ -2174,6 +2199,36 @@ function ReportsPlaceholder() {
           </div>
         </div>
       </div>
+
+      {advancedReports ? (
+        <div className="ba-panel">
+          <div className="mb-3">
+            <h3 className="text-sm font-bold text-cdlp-gold uppercase mb-1">{t('repEmailReport')}</h3>
+            <p className="text-xs text-cdlp-muted">{t('repEmailReportDesc')}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ['weekly', 'repEmailWeekly'],
+                ['biweekly', 'repEmailBiweekly'],
+                ['monthly', 'repEmailMonthly'],
+                ['annual', 'repEmailAnnual'],
+              ] as const
+            ).map(([cadence, labelKey]) => (
+              <button
+                key={cadence}
+                type="button"
+                disabled={emailBusy !== null}
+                onClick={() => void handleEmailReport(cadence)}
+                className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-gold/50 text-cdlp-gold text-xs font-bold uppercase rounded hover:bg-cdlp-gold/10 transition-colors disabled:opacity-50"
+              >
+                <Mail className="w-4 h-4" />
+                {emailBusy === cadence ? t('repEmailSending') : t(labelKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* Monthly Revenue Analysis */}
       <div className="ba-panel">

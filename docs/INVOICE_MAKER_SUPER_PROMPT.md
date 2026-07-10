@@ -7,7 +7,7 @@ Port the **Invoice Maker** from [The-Leadlab/LL](https://github.com/The-Leadlab/
 | Item | Location |
 |------|----------|
 | Original UI | `frontend/src/pages/Admin/InvoiceMaker.tsx` |
-| Behavior | Client-side only: form + preview + local save + mock PDF download + email send |
+| Behavior | Client-side only: form + preview + local save + PDF download + email send |
 
 LL uses a backend email API; Paystack uses **`mailto:`** with a pre-filled subject/body instead. LL uses a leads API for quick client select; Paystack uses **document issuers** from `useDocuments()`.
 
@@ -20,6 +20,7 @@ LL uses a backend email API; Paystack uses **`mailto:`** with a pre-filled subje
 | Panel UI | `client/src/cafe/components/InvoiceMakerPanel.tsx` |
 | Types | `client/src/cafe/types/invoice.ts` |
 | Storage | `client/src/cafe/lib/invoiceStorage.ts` — `localStorage` keyed by `paystack_invoices_${userId}` |
+| PDF export | `client/src/cafe/lib/invoicePdf.ts` — lightweight client-side PDF builder (no extra dependency) |
 | i18n | `client/src/cafe/i18n/dashboardTranslations.ts` — keys prefixed `inv*` + `invoiceMakerTab` |
 
 ## Tab wiring
@@ -39,7 +40,7 @@ LL uses a backend email API; Paystack uses **`mailto:`** with a pre-filled subje
 - Sidebar: financial summary (subtotal, tax, discount, total), quick actions, status panel
 - **Preview mode**: printable white layout with Paystack logo (`BRAND_LOGO_SRC`)
 - **Save draft** → `upsertInvoice()` in localStorage
-- **Download PDF** → JSON blob download (same mock behavior as LL)
+- **Download PDF** → real `.pdf` via `client/src/cafe/lib/invoicePdf.ts`
 - **Send** → `mailto:` with invoice summary (requires client email)
 - **Saved invoices table**: edit / view / preview
 
@@ -60,7 +61,7 @@ Add EN + FR for all `inv*` keys and `invoiceMakerTab`. Reuse `dpColActions` for 
 ## Out of scope (unless explicitly requested)
 
 - Firestore sync / multi-device invoice storage
-- Real PDF generation (e.g. jsPDF, server-side)
+- Real PDF generation is client-side (`invoicePdf.ts`); no server round-trip
 - Stripe invoicing integration
 - Promotion to `/ali` lab
 - Wiring outbound invoices into finance ledger automatically
@@ -71,7 +72,7 @@ Add EN + FR for all `inv*` keys and `invoiceMakerTab`. Reuse `dpColActions` for 
 2. Create invoice with line items → totals recalculate (8.1% VAT)
 3. Save draft → appears in saved list; reload page → data persists per user
 4. Preview → white printable layout; back to edit works
-5. Download → `.json` file with invoice payload
+5. Download → `.pdf` file with printable invoice layout
 6. Send → opens mail client when client email is set
 7. Quick select supplier prefills client fields from document issuers
 8. ENG/FR toggle translates all invoice labels

@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useDocuments } from '../context/DocumentContext';
 import { loadSavedInvoices, upsertInvoice } from '../lib/invoiceStorage';
+import { downloadInvoicePdf } from '../lib/invoicePdf';
 import type { InvoiceData, InvoiceItem, InvoiceStatus } from '../types/invoice';
 import { INVOICE_CURRENCY_SYMBOLS } from '../types/invoice';
 import { BRAND_LOGO_SRC } from '@/const/branding';
@@ -170,17 +171,37 @@ export function InvoiceMakerPanel() {
     return true;
   };
 
-  const generatePdf = () => {
+  const invoicePdfLabels = useMemo(
+    () => ({
+      previewTitle: t('invPreviewTitle'),
+      invoiceNumber: t('invNumber'),
+      from: t('invFrom'),
+      to: t('invTo'),
+      date: t('invDate'),
+      dueDate: t('invDueDate'),
+      paymentTerms: t('invPaymentTerms'),
+      colDescription: t('invColDescription'),
+      colQty: t('invColQty'),
+      colUnit: t('invColUnit'),
+      colTotal: t('invColTotal'),
+      subtotal: t('invSubtotal'),
+      discount: t('invDiscount'),
+      tax: t('invTax'),
+      total: t('invTotal'),
+      notes: t('invNotes'),
+      terms: t('invTerms'),
+      status: t('invStatus'),
+    }),
+    [t]
+  );
+
+  const generatePdf = async () => {
+    if (invoiceData.items.length === 0) {
+      alert(t('invValidationItems'));
+      return;
+    }
     try {
-      const blob = new Blob([JSON.stringify(invoiceData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${invoiceData.invoiceNumber}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await downloadInvoicePdf(invoiceData, invoicePdfLabels, chfLocale);
     } catch {
       alert(t('invPdfFailed'));
     }

@@ -79,3 +79,26 @@
 .personal-plan-shell .pp-tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/* Light theme — follows café shell `cafe-theme-light` on /app/personal */
+.cafe-theme-light .personal-plan-shell {
+  --pp-bg: #f5f3f2;
+  --pp-surface: #ffffff;
+  --pp-surface-low: #faf9f8;
+  --pp-surface-container: #f0eeed;
+  --pp-surface-high: #e8e6e5;
+  --pp-surface-highest: #ddd9d8;
+  --pp-on-surface: #1c1b1b;
+  --pp-on-surface-variant: #5b403e;
+  --pp-outline: #8a6f6b;
+  --pp-outline-variant: #c4b0ac;
+  --pp-primary: #c62828;
+  --pp-primary-container: #ff544e;
+  --pp-on-primary: #ffffff;
+  --pp-on-primary-container: #ffffff;
+  --pp-secondary: #007a52;
+  --pp-secondary-container: #00a572;
+  --pp-tertiary: #00838f;
+  --pp-error: #b3261e;
+  --pp-border: #e0dcdb;
+}

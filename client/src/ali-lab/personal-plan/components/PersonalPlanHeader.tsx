@@ -1,5 +1,7 @@
 import { useMemo } from "react";
-import { RefreshCw } from "lucide-react";
+import { Moon, RefreshCw, Sun } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useLanguage } from "@/cafe/context/LanguageContext";
 import { useLabLanguage } from "../../context/LabLanguageContext";
 import { useLinkedLedger } from "@/cafe/hooks/useLinkedLedger";
 import { usePersonalPlan } from "../context/PersonalPlanContext";
@@ -11,6 +13,8 @@ export function PersonalPlanHeader({ title }: { title?: string }) {
   const { lang, setLang } = useLabLanguage();
   const { month, setMonth } = usePersonalPlan();
   const ledger = useLinkedLedger(month);
+  const { theme, toggleTheme, switchable } = useTheme();
+  const { t } = useLanguage();
 
   const monthLabel = useMemo(() => {
     const [y, m] = month.split("-").map(Number);
@@ -57,6 +61,19 @@ export function PersonalPlanHeader({ title }: { title?: string }) {
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
+        {switchable && toggleTheme ? (
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[var(--pp-outline-variant)] text-[10px] font-bold uppercase tracking-wide text-[var(--pp-on-surface-variant)] hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)]"
+            aria-label={theme === "dark" ? t("themeAriaLight") : t("themeAriaDark")}
+          >
+            {theme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+            <span className="hidden sm:inline">
+              {theme === "dark" ? t("themeLabelLight") : t("themeLabelDark")}
+            </span>
+          </button>
+        ) : null}
         <button
           type="button"
           className="p-2 rounded-full hover:bg-[var(--pp-surface-high)] transition-colors text-[var(--pp-on-surface-variant)]"
