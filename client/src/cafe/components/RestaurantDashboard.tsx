@@ -1411,7 +1411,7 @@ function IncomeExpenseSection({
       onDrop={handleDrop}
     >
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base md:text-lg font-black text-cdlp-gold uppercase">{title}</h2>
+        <h2 className="text-base md:text-lg font-black text-white uppercase">{title}</h2>
         {onAdd && (
           <button
             onClick={onAdd}
@@ -1666,7 +1666,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                 label={t('payroll')}
                 value={fmt(totalPayroll)}
                 icon={Users}
-                tone="gold"
+                tone="purple"
                 progressPct={(totalPayroll / flowBase) * 100}
               />
               <BusinessKpiCard

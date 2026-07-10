@@ -2,24 +2,44 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, Cloud, Loader2, Unlink } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  googleDriveErrorUserMessage,
+  type GoogleDriveErrorReason,
+} from '@shared/googleDriveErrors';
+import {
   connectGoogleDrive,
   disconnectGoogleDriveAccount,
   fetchGoogleDriveStatus,
   type GoogleDriveStatus,
 } from '../lib/googleDriveClient';
 
+function parseDriveErrorReason(raw: string | null): GoogleDriveErrorReason | null {
+  if (!raw) return null;
+  const allowed = new Set([
+    'firebase_admin',
+    'no_refresh_token',
+    'invalid_state',
+    'redirect_mismatch',
+    'missing_config',
+    'oauth_denied',
+    'unknown',
+  ]);
+  return allowed.has(raw) ? (raw as GoogleDriveErrorReason) : 'unknown';
+}
+
 export function GoogleDriveConnectPanel() {
   const [status, setStatus] = useState<GoogleDriveStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const loadStatus = async () => {
     setLoadingStatus(true);
+    setStatusError(null);
     try {
       setStatus(await fetchGoogleDriveStatus());
-    } catch {
-      // Leave status unknown — the Connect button below still works if the user retries.
+    } catch (e) {
       setStatus(null);
+      setStatusError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoadingStatus(false);
     }
@@ -39,10 +59,12 @@ export function GoogleDriveConnectPanel() {
       toast.success('Google Drive connected.');
       void loadStatus();
     } else {
-      toast.error('Could not connect Google Drive. Please try again.');
+      const reason = parseDriveErrorReason(params.get('googleDriveReason'));
+      toast.error(googleDriveErrorUserMessage(reason ?? 'unknown'), { duration: 12000 });
     }
 
     params.delete('googleDrive');
+    params.delete('googleDriveReason');
     const query = params.toString();
     window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
   }, []);
@@ -75,14 +97,22 @@ export function GoogleDriveConnectPanel() {
   const needsReconnect = status?.needsReconnect ?? false;
 
   return (
-    <section className="rounded-xl border border-cdlp-border bg-cdlp-card p-5 sm:p-6 space-y-4">
+    <section className="ba-panel space-y-4">
       <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
         <Cloud className="w-4 h-4 shrink-0 text-cdlp-muted" aria-hidden />
         Google Drive
       </h2>
       <p className="text-xs text-cdlp-muted leading-relaxed">
-        Connect Google Drive so every document you upload is automatically saved to your own Drive.
+        Connect Google Drive so every document you upload is automatically saved to your own Drive folder
+        &ldquo;Paystack Documents&rdquo;.
       </p>
+
+      {statusError ? (
+        <p className="flex items-start gap-2 text-[10px] font-medium text-amber-300/95 bg-amber-950/25 border border-amber-900/35 rounded-md px-3 py-2">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden />
+          {statusError}
+        </p>
+      ) : null}
 
       {needsReconnect ? (
         <p className="flex items-center gap-2 text-[10px] font-bold text-red-400/90 bg-red-950/25 border border-red-900/30 rounded-md px-3 py-2">
@@ -115,7 +145,7 @@ export function GoogleDriveConnectPanel() {
           type="button"
           disabled={busy}
           onClick={() => void handleConnect()}
-          className="w-full h-11 rounded-sm bg-cdlp-gold text-cdlp-black font-black text-xs uppercase tracking-wider hover:bg-cdlp-gold-light disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
+          className="w-full h-11 rounded-sm bg-cdlp-gold text-white font-black text-xs uppercase tracking-wider hover:bg-cdlp-gold-light disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
         >
           {busy ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Cloud className="w-4 h-4" aria-hidden />}
           {needsReconnect ? 'Reconnect Google Drive' : 'Connect Google Drive'}

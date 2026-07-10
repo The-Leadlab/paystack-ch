@@ -6,6 +6,10 @@ import {
   startGoogleDriveOAuth,
 } from "../lib/googleServices";
 import { publicAppOriginFromHeaders } from "../lib/stripeCore";
+import {
+  googleDriveCallbackRedirect,
+  resolveGoogleDriveErrorReason,
+} from "../shared/googleDriveErrors";
 
 export function registerGoogleDriveRoutes(app: Express): void {
   app.get("/api/oauth/google/status", async (req: Request, res: Response) => {
@@ -30,15 +34,27 @@ export function registerGoogleDriveRoutes(app: Express): void {
     const origin = publicAppOriginFromHeaders(req.headers as Record<string, string | string[] | undefined>);
     const code = typeof req.query.code === "string" ? req.query.code : "";
     const state = typeof req.query.state === "string" ? req.query.state : "";
+    const oauthError = typeof req.query.error === "string" ? req.query.error : "";
+
+    if (oauthError) {
+      const reason = resolveGoogleDriveErrorReason(oauthError);
+      res.redirect(303, googleDriveCallbackRedirect(origin, false, reason));
+      return;
+    }
+
     if (!code || !state) {
-      res.redirect(303, `${origin}/app?googleDrive=error`);
+      res.redirect(303, googleDriveCallbackRedirect(origin, false, "unknown"));
       return;
     }
     const out = await completeGoogleDriveOAuth(code, state);
     if (out.status !== 200) {
-      console.error("[googleDrive] callback failed:", out.status, "json" in out ? out.json : out);
+      const errMsg = "json" in out && typeof out.json.error === "string" ? out.json.error : "unknown";
+      console.error("[googleDrive] callback failed:", out.status, errMsg);
+      const reason = resolveGoogleDriveErrorReason(errMsg);
+      res.redirect(303, googleDriveCallbackRedirect(origin, false, reason));
+      return;
     }
-    res.redirect(303, `${origin}/app?googleDrive=${out.status === 200 ? "connected" : "error"}`);
+    res.redirect(303, googleDriveCallbackRedirect(origin, true));
   });
 
   app.post("/api/oauth/google/disconnect", async (req: Request, res: Response) => {

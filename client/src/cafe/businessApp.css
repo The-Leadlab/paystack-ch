@@ -32,6 +32,7 @@
 
 .ba-v3 {
   color: var(--ba-canvas-text);
+  font-family: var(--font-display), system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 .ba-v3 main,
@@ -121,6 +122,19 @@
   transition: width 0.5s ease;
 }
 
+.ba-v3 .ba-kpi-card .text-emerald-400 {
+  color: var(--ba-accent-green) !important;
+}
+.ba-v3 .ba-kpi-card .bg-emerald-500 {
+  background-color: var(--ba-accent-green) !important;
+}
+.ba-v3 .ba-kpi-card .text-red-400 {
+  color: var(--ba-accent-red) !important;
+}
+.ba-v3 .ba-kpi-card .bg-red-500 {
+  background-color: var(--ba-accent-red) !important;
+}
+
 /* Panels & sections */
 .ba-v3 .ba-panel {
   background: var(--ba-surface);
@@ -167,7 +181,7 @@
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-cdlp-gold);
+  color: var(--ba-canvas-text);
 }
 
 .ba-v3 .ba-field-value {
@@ -194,17 +208,18 @@
 
 .ba-v3 .ba-page-header h1,
 .ba-v3 .ba-page-header h2 {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 900;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ba-canvas-text);
+  color: #ffffff;
+  font-family: var(--font-display), system-ui, sans-serif;
 }
 
 @media (min-width: 768px) {
   .ba-v3 .ba-page-header h1,
   .ba-v3 .ba-page-header h2 {
-    font-size: 1.5rem;
+    font-size: 2.25rem;
   }
 }
 
