@@ -28,6 +28,28 @@ Match the **dark charcoal** business dashboard mockup on `/app` (Dashboard, Reve
 | Upload + doc table | `client/src/cafe/components/DocumentProcessor.tsx` |
 | Brand logo | `client/src/const/branding.ts` |
 
+## Sidebar (compact)
+
+| Element | Style |
+|---------|--------|
+| Width | `13rem` (`.ba-sidebar`) |
+| Structure | Logo + nav → tools (email, reset, new session) → scrollable sessions → footer |
+| Nav | `0.625rem` caps, `2px` left active border, tight padding |
+| Actions | `.ba-sidebar-action-btn` — small uppercase buttons |
+| Sessions | `.ba-session-item` — `0.6875rem`, truncated labels |
+| Footer | `.ba-sidebar-link-btn` — Personal + Logout |
+
+**Fix:** Never stack nav + email + both action buttons in one non-scrolling block — that clips top nav items on short viewports.
+
+## Dashboard density (compact)
+
+| Element | Size |
+|---------|------|
+| Page title | `1.125rem` mobile / `1.375rem` desktop |
+| KPI cards | `min-height: 6.75rem`, smaller values |
+| Upload zone | `min-height: 9rem`, smaller START PROCESSING |
+| Revenue/Expense | `.ba-section-title` + `.ba-section-add-btn` |
+
 ## Document table (mockup)
 
 Scoped under `.ba-v3 .ba-doc-table` in `businessApp.css` + `DocumentProcessor.tsx`:

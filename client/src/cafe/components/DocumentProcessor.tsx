@@ -2506,13 +2506,13 @@ export const DocumentProcessor: React.FC<{
           </div>
         )}
 
-        <p className="text-[10px] font-bold uppercase tracking-wider text-cdlp-muted mb-3">{t('dpUploadDocuments')}</p>
+        <p className="text-[9px] font-bold uppercase tracking-wider text-cdlp-muted mb-2">{t('dpUploadDocuments')}</p>
 
         <label
           className={`ba-upload-zone w-full mb-4 ${documentLimitReached ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
           data-drag={isDragging && !documentLimitReached}
         >
-          {documentLimitReached ? <Ban className="w-8 h-8 text-red-400" /> : <Upload className="w-8 h-8 text-cdlp-muted" />}
+          {documentLimitReached ? <Ban className="w-6 h-6 text-red-400" /> : <Upload className="w-6 h-6 text-cdlp-muted" />}
           <span className="text-xs font-bold uppercase tracking-wider">
             {documentLimitReached ? t('dpDocumentLimitReached') : t('dpDropFiles')}
           </span>

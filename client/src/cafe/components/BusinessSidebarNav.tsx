@@ -14,7 +14,7 @@ export function BusinessSidebarNav({
   items: { id: BusinessTab; label: string; icon: LucideIcon }[];
 }) {
   return (
-    <nav className="space-y-1 mb-4" aria-label="Main navigation">
+    <nav className="space-y-0.5 mb-0" aria-label="Main navigation">
       {items
         .filter((item) => (item.id === 'revenue' ? showRevenueTab : true))
         .map((item) => {
@@ -28,7 +28,7 @@ export function BusinessSidebarNav({
               onClick={() => onTabChange(item.id)}
               className="ba-sidebar-nav-btn"
             >
-              <Icon className="w-4 h-4 shrink-0" />
+              <Icon className="w-3.5 h-3.5 shrink-0" />
               {item.label}
             </button>
           );

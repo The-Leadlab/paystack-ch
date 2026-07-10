@@ -727,22 +727,20 @@ export function RestaurantDashboard() {
       {/* Session Sidebar */}
       <div
         className={`
-        fixed md:relative inset-y-0 left-0 z-50 w-64 bg-cdlp-black border-r border-cdlp-border flex flex-col
+        ba-sidebar fixed md:relative inset-y-0 left-0 z-50 bg-cdlp-black border-r border-cdlp-border flex flex-col
         h-[100dvh] max-h-[100dvh] transform transition-transform duration-300 ease-in-out
         ${showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}
       >
-        {/* Desktop Header + nav */}
-        <div className="hidden md:flex md:flex-col shrink-0 p-4 border-b border-cdlp-border">
-          <div className="flex flex-col items-start mb-4">
-            <img
-              src={BRAND_LOGO_SRC}
-              alt="Paystack.ch"
-              width={BRAND_LOGO_SIZE}
-              height={BRAND_LOGO_SIZE}
-              className="h-10 w-auto max-w-[180px] object-contain shrink-0"
-            />
-          </div>
+        {/* Desktop: logo + nav */}
+        <div className="hidden md:flex md:flex-col shrink-0 ba-sidebar-head border-b border-cdlp-border">
+          <img
+            src={BRAND_LOGO_SRC}
+            alt="Paystack.ch"
+            width={BRAND_LOGO_SIZE}
+            height={BRAND_LOGO_SIZE}
+            className="h-8 w-auto max-w-[140px] object-contain shrink-0 mb-2"
+          />
 
           <BusinessSidebarNav
             activeTab={activeTab}
@@ -750,15 +748,18 @@ export function RestaurantDashboard() {
             showRevenueTab={showRevenueTab}
             items={sidebarNavItems}
           />
+        </div>
 
-          <div className="flex items-center justify-between gap-2 mb-3 pt-2 border-t border-cdlp-border">
-            <span className="text-[11px] text-cdlp-muted truncate">{user?.email}</span>
+        {/* Desktop: account + session actions (below nav so all tabs stay visible) */}
+        <div className="hidden md:block shrink-0 ba-sidebar-tools space-y-1.5">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[10px] text-cdlp-muted truncate min-w-0">{user?.email}</span>
             <button
               type="button"
               onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
-              className="shrink-0 px-2 py-1 rounded border border-cdlp-border text-[10px] font-bold text-cdlp-muted uppercase flex items-center gap-1"
+              className="shrink-0 px-1.5 py-0.5 rounded border border-cdlp-border text-[9px] font-bold text-cdlp-muted uppercase flex items-center gap-0.5"
             >
-              <Globe className="w-3 h-3" />
+              <Globe className="w-2.5 h-2.5" />
               {language === 'en' ? 'ENG' : 'FR'}
             </button>
           </div>
@@ -766,9 +767,9 @@ export function RestaurantDashboard() {
           <button
             type="button"
             onClick={() => setShowMasterReset(true)}
-            className="ba-master-reset w-full flex items-center justify-center gap-2 py-2 mb-2 text-xs font-bold uppercase rounded"
+            className="ba-sidebar-action-btn ba-master-reset"
           >
-            <Trash2 className="w-4 h-4" /> {t('dashMasterReset')}
+            <Trash2 className="w-3 h-3 shrink-0" /> {t('dashMasterReset')}
           </button>
 
           <button
@@ -776,12 +777,13 @@ export function RestaurantDashboard() {
             onClick={handleAddSession}
             disabled={!canAddSession}
             title={!canAddSession ? sessionLimitMessage : undefined}
-            className="ba-new-session w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase rounded disabled:opacity-40 disabled:cursor-not-allowed"
+            className="ba-sidebar-action-btn ba-new-session disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {canAddSession ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />} {t('newSession')}
+            {canAddSession ? <Plus className="w-3 h-3 shrink-0" /> : <Lock className="w-3 h-3 shrink-0" />}{' '}
+            {t('newSession')}
           </button>
           {enforcementEnabled && entitlements.maxSessions != null ? (
-            <p className="mt-2 text-[10px] text-cdlp-muted font-bold uppercase tracking-tight">
+            <p className="text-[9px] text-cdlp-muted font-bold uppercase tracking-tight">
               {sessions.length}/{entitlements.maxSessions} {t('sessions')}
             </p>
           ) : null}
@@ -828,9 +830,9 @@ export function RestaurantDashboard() {
         </div>
 
         {/* Sessions List */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 custom-scrollbar">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-bold uppercase text-cdlp-muted">{t('dashRecentSessions')}</h3>
+        <div className="ba-sidebar-sessions flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-[10px] font-bold uppercase text-cdlp-muted tracking-wide">{t('dashRecentSessions')}</h3>
           </div>
           
           {/* All Sessions View Button */}
@@ -841,14 +843,14 @@ export function RestaurantDashboard() {
                 setCurrentSession(null);
                 setShowSidebar(false);
               }}
-              className={`w-full p-3 mb-2 rounded border transition-colors ${
+              className={`w-full ba-session-item mb-1.5 border transition-colors ${
                 isAllSessionsView
                   ? 'bg-cdlp-gold/10 border-cdlp-gold text-cdlp-gold'
                   : 'bg-cdlp-card border-cdlp-border hover:border-cdlp-gold/50'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-bold text-sm">{t('allSessions')}</span>
+                <span className="font-bold text-xs">{t('allSessions')}</span>
                 {isAllSessionsView && <X className="w-4 h-4" onClick={(e) => { e.stopPropagation(); setAllSessionsView(false); setCurrentSession(sessions[0] || null); }} />}
               </div>
             </button>
@@ -857,11 +859,12 @@ export function RestaurantDashboard() {
           {sessions.length === 0 ? (
             <p className="text-xs text-cdlp-muted/60">{t('noSessionsYet')}</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {sessions.map((session) => (
                 <div
                   key={session.id}
-                  className={`p-3 rounded border cursor-pointer transition-colors ${
+                  data-active={currentSession?.id === session.id && !isAllSessionsView}
+                  className={`ba-session-item border cursor-pointer transition-colors ${
                     currentSession?.id === session.id && !isAllSessionsView
                       ? 'bg-cdlp-gold/10 border-cdlp-gold'
                       : 'bg-cdlp-card border-cdlp-border hover:border-cdlp-gold/50'
@@ -887,7 +890,7 @@ export function RestaurantDashboard() {
                     />
                   ) : (
                     <div className="flex items-start justify-between">
-                      <p className="font-bold text-sm flex-1">{getSessionDisplayName(session)}</p>
+                      <p className="font-bold text-xs flex-1 min-w-0 truncate">{getSessionDisplayName(session)}</p>
                       <div className="flex gap-1">
                         <button
                           onClick={(e) => { e.stopPropagation(); startRename(session.id, session.name); }}
@@ -912,20 +915,20 @@ export function RestaurantDashboard() {
         </div>
 
         {/* Pinned bottom: billing + logout (sessions scroll above) */}
-        <div className="shrink-0 p-4 border-t border-cdlp-border bg-cdlp-black space-y-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="ba-sidebar-foot shrink-0 border-t border-cdlp-border bg-cdlp-black space-y-1.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
           <Link
             href="/app/personal/overview"
-            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase rounded border border-cdlp-gold/40 text-cdlp-gold hover:bg-cdlp-gold/10 transition-colors"
+            className="ba-sidebar-link-btn ba-sidebar-link-btn--accent"
           >
-            <Wallet className="w-4 h-4" />
+            <Wallet className="w-3 h-3 shrink-0" />
             Personal finances
           </Link>
           <button
             type="button"
             onClick={() => void signOut()}
-            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase text-cdlp-muted border border-cdlp-border rounded hover:text-cdlp-gold hover:border-cdlp-gold/40"
+            className="ba-sidebar-link-btn ba-sidebar-link-btn--muted"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-3 h-3 shrink-0" />
             {t('logout')}
           </button>
         </div>
@@ -946,7 +949,7 @@ export function RestaurantDashboard() {
         aria-label={t('financialDashboard')}
       >
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 lg:px-12 custom-scrollbar pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-10 [-webkit-overflow-scrolling:touch]">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 lg:px-8 custom-scrollbar pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-6 [-webkit-overflow-scrolling:touch]">
           {activeTab === 'dashboard' && (
             <DashboardTab
               currentSession={currentSession}
@@ -1410,14 +1413,15 @@ function IncomeExpenseSection({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base md:text-lg font-black text-white uppercase">{title}</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="ba-section-title">{title}</h2>
         {onAdd && (
           <button
+            type="button"
             onClick={onAdd}
-            className={`flex items-center gap-1 px-2 md:px-3 py-1 bg-${colorClass}-600 text-white text-[10px] md:text-xs font-bold uppercase rounded hover:bg-${colorClass}-700`}
+            className={`ba-section-add-btn ${isIncome ? 'ba-section-add-btn--income' : 'ba-section-add-btn--expense'}`}
           >
-            <Plus className="w-3 h-3" /> {t('add')}
+            <Plus className="w-3 h-3 shrink-0" /> {t('add')}
           </button>
         )}
       </div>
@@ -1714,7 +1718,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
       </div>
 
       {/* Income & Expense Sections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
         {/* Income Section */}
         <IncomeExpenseSection
           title={t('income')}
