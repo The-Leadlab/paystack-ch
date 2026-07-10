@@ -2531,7 +2531,7 @@ export const DocumentProcessor: React.FC<{
           />
         </label>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-3 ba-upload-actions">
           {isProcessing ? (
             <button
               type="button"

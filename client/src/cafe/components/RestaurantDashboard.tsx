@@ -946,7 +946,7 @@ export function RestaurantDashboard() {
         aria-label={t('financialDashboard')}
       >
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-8 custom-scrollbar pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-8 [-webkit-overflow-scrolling:touch]">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 lg:px-12 custom-scrollbar pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-10 [-webkit-overflow-scrolling:touch]">
           {activeTab === 'dashboard' && (
             <DashboardTab
               currentSession={currentSession}
@@ -1597,17 +1597,11 @@ function useLiveClock(): string {
   return clock;
 }
 
-function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument, onShowEmployeePanel }: any) {
-  const chfLocale = useChfLocale();
+function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument }: any) {
   const liveClock = useLiveClock();
   const vatOnSalesRate = totalIncome > 0 ? (vatReceived / totalIncome) * 100 : 0;
   const expenseBaseForVat = totalExpenses + totalPayroll;
   const vatOnPurchasesRate = expenseBaseForVat > 0 ? (vatPaid / expenseBaseForVat) * 100 : 0;
-  const sessionTimestamp = isAllSessionsView
-    ? t('allSessions')
-    : currentSession
-      ? getSessionDisplayName(currentSession)
-      : '';
 
   const handleItemClick = (item: any) => {
     if (item.document_id && onNavigateToDocument) {
@@ -1625,63 +1619,53 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
       <div className="ba-page-header">
         <div className="min-w-0">
           <h1>{t('dashboard')}</h1>
-          {sessionTimestamp ? (
-            <p className="text-xs text-cdlp-muted tabular-nums mt-1 font-normal normal-case tracking-normal">{sessionTimestamp}</p>
-          ) : null}
         </div>
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <p className="text-[11px] md:text-xs text-cdlp-muted tabular-nums font-mono">{liveClock}</p>
-          <button
-            onClick={onShowEmployeePanel}
-            className="ba-filter-chip flex items-center gap-2 !h-auto py-2"
-          >
-            <Users className="w-4 h-4" /> {t('employees')}
-          </button>
-        </div>
+        <p className="ba-page-clock">{liveClock}</p>
       </div>
 
+      <div className="ba-dashboard-stack">
       {/* Financial Summary Cards */}
       {(() => {
         const flowBase = Math.max(totalIncome, totalExpenses + totalPayroll, Math.abs(balance), 1);
-        const fmt = (n: number) =>
-          n.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const fmtKpi = (n: number) =>
+          n.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         return (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4">
+            <div className="ba-kpi-grid-4">
               <BusinessKpiCard
                 label={t('income')}
-                value={fmt(totalIncome)}
+                value={fmtKpi(totalIncome)}
                 icon={TrendingUp}
                 tone="green"
                 progressPct={(totalIncome / flowBase) * 100}
               />
               <BusinessKpiCard
                 label={t('expenses')}
-                value={fmt(totalExpenses)}
+                value={fmtKpi(totalExpenses)}
                 icon={TrendingDown}
                 tone="red"
                 progressPct={(totalExpenses / flowBase) * 100}
               />
               <BusinessKpiCard
                 label={t('payroll')}
-                value={fmt(totalPayroll)}
+                value={fmtKpi(totalPayroll)}
                 icon={Users}
-                tone="purple"
+                tone="neutral"
                 progressPct={(totalPayroll / flowBase) * 100}
               />
               <BusinessKpiCard
                 label={t('balance')}
-                value={fmt(balance)}
+                value={fmtKpi(balance)}
                 icon={DollarSign}
                 tone={balance >= 0 ? 'green' : 'red'}
                 progressPct={(Math.abs(balance) / flowBase) * 100}
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
+            <div className="ba-kpi-grid-3">
               <BusinessKpiCard
                 label={t('vatReceivedLabel')}
-                value={fmt(vatReceived)}
+                value={fmtKpi(vatReceived)}
                 hint={t('vatFromCustomersHint').replace('{rate}', vatOnSalesRate.toFixed(2))}
                 icon={Receipt}
                 tone="blue"
@@ -1689,18 +1673,18 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
               />
               <BusinessKpiCard
                 label={t('vatPaidLabel')}
-                value={fmt(vatPaid)}
+                value={fmtKpi(vatPaid)}
                 hint={t('vatOnPurchasesHint').replace('{rate}', vatOnPurchasesRate.toFixed(2))}
                 icon={Receipt}
-                tone="gold"
+                tone="neutral"
                 progressPct={vatOnPurchasesRate > 0 ? Math.min(vatOnPurchasesRate * 10, 100) : 8}
               />
               <BusinessKpiCard
                 label={t('vatBalanceLabel')}
-                value={fmt(vatBalance)}
+                value={fmtKpi(vatBalance)}
                 hint={vatBalance >= 0 ? t('vatBalanceToPay') : t('vatBalanceRefund')}
                 icon={Receipt}
-                tone={vatBalance >= 0 ? 'purple' : 'red'}
+                tone={vatBalance >= 0 ? 'green' : 'red'}
                 progressPct={Math.min((Math.abs(vatBalance) / Math.max(vatReceived, 1)) * 100, 100)}
               />
             </div>
@@ -1715,7 +1699,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
         </div>
       )}
       {currentSession && (
-        <div className="mb-6">
+        <div>
           <DocumentProcessor 
             documents={documents}
             updateDocument={updateDocument}
@@ -1726,6 +1710,8 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           />
         </div>
       )}
+
+      </div>
 
       {/* Income & Expense Sections */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">

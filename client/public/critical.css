@@ -70,8 +70,8 @@ h3 {
 
 @media (prefers-color-scheme: dark) {
   #static-app-lcp-fallback {
-    background-color: #160f12;
-    color: #f7f3f4;
+    background-color: #1a1d23;
+    color: #ffffff;
   }
 }
 
@@ -108,16 +108,17 @@ h3 {
   box-sizing: border-box;
   margin: 0;
   font-family: var(--font-display-fallback);
-  font-size: 1.25rem;
-  line-height: 1.2;
-  font-weight: 900;
-  color: #e8423f;
+  font-size: 1.875rem;
+  line-height: 1.05;
+  font-weight: 800;
+  color: #ffffff;
+  background: transparent;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.12em;
 }
 
 @media (min-width: 768px) {
   .static-app-lcp-title {
-    font-size: 1.5rem;
+    font-size: 2.75rem;
   }
 }

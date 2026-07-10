@@ -165,16 +165,16 @@
 
 .cafe-shell.cafe-theme-dark {
   /* Dashboard V3 mockup palette */
-  --color-cdlp-black: #1a1d21;
-  --color-cdlp-dark: #1e2228;
-  --color-cdlp-card: #2d3238;
-  --color-cdlp-border: #3d4450;
-  --color-cdlp-gold: #f25f5c;
-  --color-cdlp-gold-light: #f57a77;
-  --color-cdlp-gold-pale: #f9a8a5;
-  --color-cdlp-cream: #353b44;
+  --color-cdlp-black: #111111;
+  --color-cdlp-dark: #1a1d23;
+  --color-cdlp-card: #252a31;
+  --color-cdlp-border: #3a4048;
+  --color-cdlp-gold: #ef4444;
+  --color-cdlp-gold-light: #f87171;
+  --color-cdlp-gold-pale: #fca5a5;
+  --color-cdlp-cream: #2d3238;
   --color-cdlp-muted: #9aa0a6;
-  --color-cdlp-red: #f87171;
+  --color-cdlp-red: #ef4444;
   font-family: var(--font-app);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -182,25 +182,25 @@
 
 /* Force visible visual change for the cafe dashboard shells */
 .cafe-shell.cafe-theme-dark .bg-cdlp-dark {
-  background-color: #1e2228 !important;
+  background-color: #1a1d23 !important;
 }
 .cafe-shell.cafe-theme-dark .bg-cdlp-black {
-  background-color: #1a1d21 !important;
+  background-color: #111111 !important;
 }
 .cafe-shell.cafe-theme-dark .bg-cdlp-card {
-  background-color: #2d3238 !important;
+  background-color: #252a31 !important;
 }
 .cafe-shell.cafe-theme-dark .border-cdlp-border {
-  border-color: #3d4450 !important;
+  border-color: #3a4048 !important;
 }
 .cafe-shell.cafe-theme-dark .text-cdlp-muted {
   color: #9aa0a6 !important;
 }
 .cafe-shell.cafe-theme-dark .text-cdlp-gold {
-  color: #f25f5c !important;
+  color: #f87171 !important;
 }
 .cafe-shell.cafe-theme-dark .bg-cdlp-gold {
-  background-color: #f25f5c !important;
+  background-color: #ef4444 !important;
 }
 
 .cafe-shell.cafe-theme-light .bg-cdlp-dark {
