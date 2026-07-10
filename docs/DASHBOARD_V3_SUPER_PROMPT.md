@@ -28,13 +28,27 @@ Match the **dark charcoal** business dashboard mockup on `/app` (Dashboard, Reve
 | Upload + doc table | `client/src/cafe/components/DocumentProcessor.tsx` |
 | Brand logo | `client/src/const/branding.ts` |
 
+## Document table (mockup)
+
+Scoped under `.ba-v3 .ba-doc-table` in `businessApp.css` + `DocumentProcessor.tsx`:
+
+| Element | Style |
+|---------|--------|
+| Layout | `border-spacing` row gaps — no vertical grid lines |
+| Header | Transparent bg, gray uppercase labels (`0.12em` tracking) |
+| Rows | `#1e2126` elevated surface, `0.5rem` radius per row |
+| Values | White text; amounts/VAT end with ` CHF` (`de-CH`) |
+| TYPE | Borderless select (looks like plain white label) |
+| Status | Pill badges: green **COMPLETED**, amber **VERIFICATION CENTER** |
+| Actions | Circular `ba-doc-action-btn` (edit / view / delete) |
+
 ## Layout checklist (mockup)
 
-- [x] 4 KPI row: Income (green), Expenses (red), Payroll (purple), Balance (green/red)
+- [x] 4 KPI row: Income (green bar), Expenses (red bar), Payroll (gray), Balance
 - [x] VAT row: 3 cards with hint subtext
 - [x] Large white uppercase page title + live clock top-right
-- [x] Dashed upload zone (`ba-upload-zone`)
-- [x] Documents table + status pills (`ba-status-pill--*`)
+- [x] Dashed upload zone + centered white **START PROCESSING**
+- [x] Documents table: spaced rows, pills, round action icons
 - [x] Sidebar: uppercase nav, white left border on active tab
 - [x] Charcoal palette (not burgundy `#160f12`)
 

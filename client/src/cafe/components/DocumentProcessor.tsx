@@ -2561,9 +2561,9 @@ export const DocumentProcessor: React.FC<{
 
       {/* Documents Table */}
       {allDocs.length > 0 && (
-        <div className="ba-panel overflow-hidden p-0">
+        <div className="ba-doc-table-wrap">
           <div className="overflow-x-auto custom-scrollbar max-w-[100vw] sm:max-w-none">
-            <table className="ba-doc-table min-w-[720px] w-full text-xs">
+            <table className="ba-doc-table w-full text-xs">
               <thead>
                 <tr>
                   <th className="text-left">{t('dpColDocument')}</th>
@@ -2575,8 +2575,10 @@ export const DocumentProcessor: React.FC<{
                   <th className="text-right w-16">{t('dpColActions')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-cdlp-border">
+              <tbody>
                 {allDocs.map((doc) => {
+                  const fmtDocChf = (n: number) =>
+                    `${n.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF`;
                   const isExpanded = expandedRows.has(doc.id);
                   const vat = Number(doc.data?.vatAmount || 0);
                   const swissLines = doc.data?.swissVatBreakdown;
@@ -2603,11 +2605,11 @@ export const DocumentProcessor: React.FC<{
                         className={`transition-colors ${doc.status === 'completed' ? 'cursor-pointer' : ''} ${isExpanded ? 'ba-doc-row--expanded' : ''}`}
                       >
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
                             {doc.status === 'completed' && (
-                              isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-cdlp-gold" /> : <ChevronRight className="w-3.5 h-3.5 text-cdlp-muted" />
+                              isExpanded ? <ChevronDown className="w-3.5 h-3.5 shrink-0 text-cdlp-muted" /> : <ChevronRight className="w-3.5 h-3.5 shrink-0 text-cdlp-muted" />
                             )}
-                            <span className="font-bold text-[11px] truncate max-w-[200px]">{doc.fileName}</span>
+                            <span className="ba-doc-filename truncate max-w-[200px]">{doc.fileName}</span>
                           </div>
                           {doc.data?.issuer && (
                             <div className="ml-5 mt-1">
@@ -2620,14 +2622,9 @@ export const DocumentProcessor: React.FC<{
                             </p>
                           )}
                         </td>
-                        <td className="px-4 py-3 font-mono text-[10px] ba-table-muted hidden md:table-cell">{doc.data?.date || '---'}</td>
-                        <td className="px-4 py-3 text-right font-bold font-mono text-[11px] hidden md:table-cell">
-                          {doc.data
-                            ? documentTableDisplayAmount(doc.data).toLocaleString(chfLocale, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })
-                            : '0.00'}
+                        <td className="px-4 py-3 ba-table-muted hidden md:table-cell">{doc.data?.date || '---'}</td>
+                        <td className="px-4 py-3 text-right ba-doc-amount hidden md:table-cell">
+                          {doc.data ? fmtDocChf(documentTableDisplayAmount(doc.data)) : '0.00 CHF'}
                         </td>
                         <td className="px-4 py-3 hidden md:table-cell align-top">
                           {doc.data ? (
@@ -2655,14 +2652,8 @@ export const DocumentProcessor: React.FC<{
                         <td className="px-4 py-3 text-right hidden md:table-cell align-top max-w-[240px]">
                           {doc.data ? (
                             swissLines && swissLines.length > 0 ? (
-                              <div className="font-mono leading-snug space-y-0.5">
-                                <p className={`text-[10px] font-bold ${vat > 0 ? 'text-blue-400' : 'text-amber-400'}`}>
-                                  Σ{' '}
-                                  {vat.toLocaleString(chfLocale, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  })}
-                                </p>
+                              <div className="leading-snug space-y-0.5">
+                                <p className="ba-doc-vat-main">{fmtDocChf(vat)}</p>
                                 {swissLines.slice(0, 5).map((l, i) => (
                                   <p key={i} className="text-[8px] text-cdlp-muted">
                                     {t('dpVatLineFormat')
@@ -2673,10 +2664,8 @@ export const DocumentProcessor: React.FC<{
                                 ))}
                               </div>
                             ) : (
-                              <div className="font-mono leading-tight">
-                                <p className={`text-[11px] font-bold ${vatNeedsAttention ? 'text-amber-400' : 'text-blue-400'}`}>
-                                  {vat.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </p>
+                              <div className="leading-tight">
+                                <p className="ba-doc-vat-main">{fmtDocChf(vat)}</p>
                                 <p className="text-[9px] text-cdlp-muted">
                                   {vatNeedsAttention
                                     ? t('dpVatWarning')
@@ -2688,7 +2677,7 @@ export const DocumentProcessor: React.FC<{
                             <span className="text-[10px] text-cdlp-muted">---</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right ba-status-cell">
                           <div className="flex items-center justify-end gap-2 flex-wrap">
                             {doc.status === 'completed' ? (
                               <span
@@ -2779,7 +2768,7 @@ export const DocumentProcessor: React.FC<{
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right ba-actions-cell">
                           <div className="flex items-center justify-end gap-1.5">
                             {doc.status === 'completed' && (
                               <button
@@ -2788,10 +2777,10 @@ export const DocumentProcessor: React.FC<{
                                   e.stopPropagation();
                                   toggleRow(doc.id);
                                 }}
-                                className="p-1 rounded text-cdlp-muted hover:text-white"
+                                className="ba-doc-action-btn"
                                 title={t('dpVerificationCenter')}
                               >
-                                <Edit3 className="w-4 h-4" />
+                                <Edit3 className="w-3.5 h-3.5" />
                               </button>
                             )}
                             {doc.fileRaw && (
@@ -2802,10 +2791,10 @@ export const DocumentProcessor: React.FC<{
                                   const url = URL.createObjectURL(doc.fileRaw);
                                   window.open(url, '_blank');
                                 }}
-                                className="p-1 rounded text-cdlp-muted hover:text-cdlp-gold transition-colors"
+                                className="ba-doc-action-btn"
                                 title={t('dpViewDocTitle')}
                               >
-                                <Eye className="w-4 h-4" />
+                                <Eye className="w-3.5 h-3.5" />
                               </button>
                             )}
                             <button
@@ -2852,10 +2841,10 @@ export const DocumentProcessor: React.FC<{
                                   setLocalDocs((p) => p.filter((d) => d.id !== doc.id));
                                 }
                               }}
-                              className="p-1 rounded text-cdlp-muted hover:text-red-500 transition-colors"
+                              className="ba-doc-action-btn ba-doc-action-btn--danger"
                               title={t('dpDeleteDocTitle')}
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>

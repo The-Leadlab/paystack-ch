@@ -3,7 +3,7 @@ export const BUSINESS_DASHBOARD_V3 = {
   sidebar: "#111111",
   canvas: "#1a1d23",
   surface: "#252a31",
-  surfaceElevated: "#2d3238",
+  surfaceElevated: "#1e2126",
   border: "#3a4048",
   text: "#ffffff",
   muted: "#9aa0a6",
