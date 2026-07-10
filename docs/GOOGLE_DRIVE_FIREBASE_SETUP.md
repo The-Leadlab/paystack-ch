@@ -27,24 +27,32 @@ Google OAuth **works** in the browser; Paystack **cannot finish** the connection
 
 ### 2. Add to Vercel
 
-**Settings** → **Environment Variables** → **Production**:
+**Recommended: Base64 (avoids broken `private_key` / PEM errors)**
+
+1. Download the JSON key file from GCP (see step 1).
+2. Encode the **entire file** (PowerShell):
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\path\to\paystack-ch-firebase-adminsdk.json"))
+```
+
+3. Vercel → **Settings** → **Environment Variables** → **Production**:
 
 | Name | Value |
 |------|--------|
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | Entire **JSON file** as **one line** (minified) |
+| `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` | Output of the command above (one line) |
 
-**Important:** paste the **contents of the downloaded `.json` file**, not the Key ID shown in the service accounts table (e.g. `1e2bb12b…` is **not** valid — that causes `Unexpected non-whitespace character after JSON at position 3`).
+4. **Remove** `FIREBASE_SERVICE_ACCOUNT_JSON` if you added it earlier (wrong paste / Key ID / broken PEM).
 
-The value must start with: `{"type":"service_account","project_id":"paystack-ch",...}`
+5. **Redeploy** production.
 
-**Or** base64-encode the file:
+**Alternative: inline JSON** — only if minified correctly; the `private_key` field must keep `\n` escapes:
 
-```bash
-# macOS / Linux
-base64 -i service-account.json | tr -d '\n'
+```json
+"private_key":"-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"
 ```
 
-Set as `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64`.
+Do **not** paste the Key ID from the service accounts table. Do **not** strip `\n` from the private key.
 
 Also confirm these exist:
 

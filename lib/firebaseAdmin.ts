@@ -1,47 +1,89 @@
 import { cert, getApps, initializeApp, type ServiceAccount } from "firebase-admin/app";
 
-function normalizeServiceAccountJsonInput(raw: string): string {
-  let body = raw.trim().replace(/^\uFEFF/, "");
-  if (
-    (body.startsWith('"') && body.endsWith('"')) ||
-    (body.startsWith("'") && body.endsWith("'"))
-  ) {
-    body = body.slice(1, -1).trim();
+const PEM_BEGIN = "-----BEGIN PRIVATE KEY-----";
+const PEM_END = "-----END PRIVATE KEY-----";
+const PEM_BEGIN_RSA = "-----BEGIN RSA PRIVATE KEY-----";
+const PEM_END_RSA = "-----END RSA PRIVATE KEY-----";
+
+/** Fixes common Vercel paste issues (stripped \\n, single-line PEM). */
+export function normalizeServiceAccountPrivateKey(privateKey: string): string {
+  let key = privateKey.trim();
+  if (!key) return key;
+
+  if (key.includes("\\n")) {
+    key = key.replace(/\\n/g, "\n");
   }
-  // Common mistake: pasting .env line "FIREBASE_SERVICE_ACCOUNT_JSON={...}"
-  const envPrefix = /^FIREBASE_SERVICE_ACCOUNT_JSON\s*=\s*/i;
-  if (envPrefix.test(body)) {
-    body = body.replace(envPrefix, "").trim();
+
+  const pairs: [string, string][] = [
+    [PEM_BEGIN, PEM_END],
+    [PEM_BEGIN_RSA, PEM_END_RSA],
+  ];
+
+  for (const [begin, end] of pairs) {
+    if (!key.includes(begin) || !key.includes(end)) continue;
+
+    const start = key.indexOf(begin);
+    const endIdx = key.indexOf(end);
+    if (start === -1 || endIdx === -1 || endIdx <= start) continue;
+
+    const body = key.slice(start + begin.length, endIdx).replace(/\s+/g, "");
+    if (!body) continue;
+
+    const wrapped = body.match(/.{1,64}/g)?.join("\n") ?? body;
+    key = `${begin}\n${wrapped}\n${end}\n`;
+    break;
   }
-  return body;
+
+  if (!key.endsWith("\n")) key += "\n";
+  return key;
 }
 
-function parseServiceAccountJson(raw: string): ServiceAccount {
-  const body = normalizeServiceAccountJsonInput(raw);
-  if (!body.startsWith("{")) {
-    throw new Error(
-      'Expected full service account JSON (starts with {"type":"service_account",...}). ' +
-        "Do not paste the Key ID from Google Cloud — download the .json key file instead."
-    );
-  }
-  return JSON.parse(body) as ServiceAccount;
+export function normalizeServiceAccount(cred: ServiceAccount): ServiceAccount {
+  if (typeof cred.private_key !== "string") return cred;
+  return {
+    ...cred,
+    private_key: normalizeServiceAccountPrivateKey(cred.private_key),
+  };
+}
+
+function stripBom(value: string): string {
+  return value.charCodeAt(0) === 0xfeff ? value.slice(1) : value;
+}
+
+function looksLikeBase64(value: string): boolean {
+  return /^[A-Za-z0-9+/=\s]+$/.test(value) && value.replace(/\s/g, "").startsWith("eyJ");
 }
 
 function loadServiceAccountJson(): string {
   const inline = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
-  if (inline) return inline;
+  if (inline) return stripBom(inline);
   const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64?.trim();
   if (b64) {
-    return Buffer.from(b64, "base64").toString("utf8");
+    return stripBom(Buffer.from(b64.replace(/\s/g, ""), "base64").toString("utf8"));
   }
   throw Object.assign(
     new Error(
       "Server missing Firebase Admin credentials. In Vercel → Environment Variables add " +
-        "FIREBASE_SERVICE_ACCOUNT_JSON (full service-account JSON on one line) or " +
-        "FIREBASE_SERVICE_ACCOUNT_JSON_BASE64, then redeploy."
+        "FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 (recommended) or FIREBASE_SERVICE_ACCOUNT_JSON, then redeploy."
     ),
     { status: 503 }
   );
+}
+
+export function parseServiceAccountJson(jsonText: string): ServiceAccount {
+  const trimmed = stripBom(jsonText.trim());
+  let parsed: ServiceAccount;
+  try {
+    parsed = JSON.parse(trimmed) as ServiceAccount;
+  } catch (firstError) {
+    if (looksLikeBase64(trimmed)) {
+      parsed = JSON.parse(Buffer.from(trimmed.replace(/\s/g, ""), "base64").toString("utf8")) as ServiceAccount;
+    } else {
+      const msg = firstError instanceof Error ? firstError.message : String(firstError);
+      throw Object.assign(new Error(`Invalid FIREBASE_SERVICE_ACCOUNT_JSON: ${msg}`), { status: 503 });
+    }
+  }
+  return normalizeServiceAccount(parsed);
 }
 
 export function hasFirebaseAdminCredentials(): boolean {
@@ -63,8 +105,20 @@ export function ensureFirebaseAdmin(): void {
   try {
     cred = parseServiceAccountJson(loadServiceAccountJson());
   } catch (e) {
+    if ((e as { status?: number }).status === 503) throw e;
     const msg = e instanceof Error ? e.message : String(e);
     throw Object.assign(new Error(`Invalid FIREBASE_SERVICE_ACCOUNT_JSON: ${msg}`), { status: 503 });
   }
-  initializeApp({ credential: cert(cred) });
+  try {
+    initializeApp({ credential: cert(cred) });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw Object.assign(
+      new Error(
+        `Invalid Firebase service account private key: ${msg}. ` +
+          "Use FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 (full downloaded .json file, base64-encoded) in Vercel."
+      ),
+      { status: 503 }
+    );
+  }
 }
