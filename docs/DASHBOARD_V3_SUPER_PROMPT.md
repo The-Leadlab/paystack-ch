@@ -6,17 +6,15 @@ Match the **dark charcoal** business dashboard mockup on `/app` (Dashboard, Reve
 
 | Token | Dark value | Use |
 |-------|------------|-----|
-| `--ba-canvas` / `bg-cdlp-dark` | `#121418` | Main content background |
-| `--ba-surface` / `bg-cdlp-card` | `#20232b` | KPI cards, panels |
-| Sidebar `bg-cdlp-black` | `#1e2128` | Left nav |
-| `--ba-border` / `border-cdlp-border` | `#3a3f4b` | Borders |
-| `--ba-muted` / `text-cdlp-muted` | `#9ca3af` | Labels |
-| `--ba-accent-green` | `#22c55e` | Income, positive balance |
-| `--ba-accent-red` | `#ef4444` | Expenses, negative balance |
-| Brand CTA red | `#e8423f` | Buttons (MASTER RESET, Connect) |
-| Page title | `#ffffff`, **Sora** 2.25rem desktop | `DASHBOARD` header |
-
-**Fonts:** `Sora` (display/sans) via `--font-display`; amounts use tabular nums; clock uses `JetBrains Mono`.
+| Sidebar | `#1a1d21` | Left nav (`bg-cdlp-black`) |
+| Canvas | `#1e2228` | Main content (`bg-cdlp-dark`, `--ba-canvas`) |
+| Cards | `#2d3238` | KPI, panels (`--ba-surface`) |
+| Border | `#3d4450` | Dividers |
+| Muted text | `#9aa0a6` | Labels |
+| CTA accent | `#f25f5c` | Connect, upgrade buttons (`cdlp-gold` in dark) |
+| Success green | `#34d399` | Income, balance |
+| Error red | `#f87171` | Expenses, master reset |
+| **Font** | **Inter** 400–900 | All `/app` UI under `.cafe-shell` + `.ba-v3` |
 
 ## Architecture
 
@@ -51,10 +49,7 @@ Match the **dark charcoal** business dashboard mockup on `/app` (Dashboard, Reve
 
 See `shared/googleDriveErrors.ts` + `docs/REPORT_EMAIL_SUPER_PROMPT.md` Google Drive section.
 
-**Production connect requires:**
-- `GOOGLE_DRIVE_CLIENT_ID`, `CLIENT_SECRET`, `REDIRECT_URI`, `STATE_SECRET`
-- **`FIREBASE_SERVICE_ACCOUNT_JSON`** (callback stores tokens in Firestore)
-- Redirect URI in Google Cloud Console: `https://paystack.ch/api/oauth/google/callback`
+**Production connect requires:** see `docs/GOOGLE_DRIVE_FIREBASE_SETUP.md`
 
 On failure, URL includes `?googleDrive=error&googleDriveReason=firebase_admin|...` — toast shows actionable message.
 

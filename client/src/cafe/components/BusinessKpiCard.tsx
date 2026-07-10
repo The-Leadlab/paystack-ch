@@ -3,12 +3,12 @@ import type { LucideIcon } from 'lucide-react';
 type Tone = 'green' | 'red' | 'gold' | 'neutral' | 'blue' | 'purple';
 
 const toneColors: Record<Tone, { value: string; bar: string }> = {
-  green: { value: 'text-emerald-400', bar: 'bg-emerald-500' },
-  red: { value: 'text-red-400', bar: 'bg-red-500' },
-  gold: { value: 'text-cdlp-gold', bar: 'bg-cdlp-gold' },
+  green: { value: 'text-emerald-400', bar: 'bg-emerald-400' },
+  red: { value: 'text-red-400', bar: 'bg-red-400' },
+  gold: { value: 'text-zinc-300', bar: 'bg-zinc-500' },
   neutral: { value: 'text-zinc-300', bar: 'bg-zinc-500' },
-  blue: { value: 'text-blue-400', bar: 'bg-blue-500' },
-  purple: { value: 'text-purple-400', bar: 'bg-purple-500' },
+  blue: { value: 'text-blue-400', bar: 'bg-blue-400' },
+  purple: { value: 'text-violet-400', bar: 'bg-violet-500' },
 };
 
 export function BusinessKpiCard({
@@ -35,7 +35,9 @@ export function BusinessKpiCard({
         <Icon className={`w-4 h-4 shrink-0 ${colors.value}`} />
         <span className="text-[10px] font-bold uppercase tracking-wider text-cdlp-muted">{label}</span>
       </div>
-      <p className={`text-xl md:text-2xl font-black tabular-nums ${colors.value}`}>{value}</p>
+      <p className={`text-2xl md:text-[1.75rem] font-extrabold tabular-nums tracking-tight ${colors.value}`}>
+        {value}
+      </p>
       {hint ? <p className="text-[10px] text-cdlp-muted leading-snug">{hint}</p> : null}
       <div className="ba-kpi-track">
         <div className={`ba-kpi-fill ${colors.bar}`} style={{ width: `${pct}%` }} />

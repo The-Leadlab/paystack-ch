@@ -3,17 +3,18 @@
 /* Dark theme (default canvas + cards) */
 .cafe-shell.cafe-theme-dark .ba-v3,
 .ba-v3 {
-  --ba-canvas: #121418;
-  --ba-surface: #20232b;
-  --ba-surface-elevated: #2a2e38;
-  --ba-border: #3a3f4b;
-  --ba-text: #f4f4f5;
-  --ba-canvas-text: #f4f4f5;
-  --ba-muted: #9ca3af;
-  --ba-accent-blue: #2563eb;
-  --ba-accent-green: #22c55e;
-  --ba-accent-red: #ef4444;
-  --ba-preview-bg: #0a0a0a;
+  --ba-canvas: #1e2228;
+  --ba-surface: #2d3238;
+  --ba-surface-elevated: #353b44;
+  --ba-border: #3d4450;
+  --ba-text: #ffffff;
+  --ba-canvas-text: #ffffff;
+  --ba-muted: #9aa0a6;
+  --ba-accent-blue: #60a5fa;
+  --ba-accent-green: #34d399;
+  --ba-accent-red: #f87171;
+  --ba-accent-cta: #f25f5c;
+  --ba-preview-bg: #1a1d21;
   --ba-sidebar-active-border: #ffffff;
 }
 
@@ -32,7 +33,9 @@
 
 .ba-v3 {
   color: var(--ba-canvas-text);
-  font-family: var(--font-display), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--font-app), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-feature-settings: 'tnum' 1;
+  -webkit-font-smoothing: antialiased;
 }
 
 .ba-v3 main,
@@ -47,11 +50,12 @@
   gap: 0.75rem;
   width: 100%;
   padding: 0.625rem 0.875rem;
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
   font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
+  font-family: var(--font-app), system-ui, sans-serif;
   color: var(--ba-muted);
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   border-left: 3px solid transparent;
@@ -125,12 +129,14 @@
 .ba-v3 .ba-kpi-card .text-emerald-400 {
   color: var(--ba-accent-green) !important;
 }
+.ba-v3 .ba-kpi-card .bg-emerald-400,
 .ba-v3 .ba-kpi-card .bg-emerald-500 {
   background-color: var(--ba-accent-green) !important;
 }
 .ba-v3 .ba-kpi-card .text-red-400 {
   color: var(--ba-accent-red) !important;
 }
+.ba-v3 .ba-kpi-card .bg-red-400,
 .ba-v3 .ba-kpi-card .bg-red-500 {
   background-color: var(--ba-accent-red) !important;
 }
@@ -208,18 +214,19 @@
 
 .ba-v3 .ba-page-header h1,
 .ba-v3 .ba-page-header h2 {
-  font-size: 1.5rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #ffffff;
-  font-family: var(--font-display), system-ui, sans-serif;
+  font-family: var(--font-app), system-ui, sans-serif;
 }
 
 @media (min-width: 768px) {
   .ba-v3 .ba-page-header h1,
   .ba-v3 .ba-page-header h2 {
-    font-size: 2.25rem;
+    font-size: 2.5rem;
+    font-weight: 900;
   }
 }
 
