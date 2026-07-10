@@ -1,5 +1,32 @@
 import { cert, getApps, initializeApp, type ServiceAccount } from "firebase-admin/app";
 
+function normalizeServiceAccountJsonInput(raw: string): string {
+  let body = raw.trim().replace(/^\uFEFF/, "");
+  if (
+    (body.startsWith('"') && body.endsWith('"')) ||
+    (body.startsWith("'") && body.endsWith("'"))
+  ) {
+    body = body.slice(1, -1).trim();
+  }
+  // Common mistake: pasting .env line "FIREBASE_SERVICE_ACCOUNT_JSON={...}"
+  const envPrefix = /^FIREBASE_SERVICE_ACCOUNT_JSON\s*=\s*/i;
+  if (envPrefix.test(body)) {
+    body = body.replace(envPrefix, "").trim();
+  }
+  return body;
+}
+
+function parseServiceAccountJson(raw: string): ServiceAccount {
+  const body = normalizeServiceAccountJsonInput(raw);
+  if (!body.startsWith("{")) {
+    throw new Error(
+      'Expected full service account JSON (starts with {"type":"service_account",...}). ' +
+        "Do not paste the Key ID from Google Cloud — download the .json key file instead."
+    );
+  }
+  return JSON.parse(body) as ServiceAccount;
+}
+
 function loadServiceAccountJson(): string {
   const inline = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
   if (inline) return inline;
@@ -34,7 +61,7 @@ export function ensureFirebaseAdmin(): void {
   }
   let cred: ServiceAccount;
   try {
-    cred = JSON.parse(loadServiceAccountJson()) as ServiceAccount;
+    cred = parseServiceAccountJson(loadServiceAccountJson());
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     throw Object.assign(new Error(`Invalid FIREBASE_SERVICE_ACCOUNT_JSON: ${msg}`), { status: 503 });

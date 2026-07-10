@@ -31,7 +31,11 @@ Google OAuth **works** in the browser; Paystack **cannot finish** the connection
 
 | Name | Value |
 |------|--------|
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | Entire JSON file as **one line** (minified) |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Entire **JSON file** as **one line** (minified) |
+
+**Important:** paste the **contents of the downloaded `.json` file**, not the Key ID shown in the service accounts table (e.g. `1e2bb12b…` is **not** valid — that causes `Unexpected non-whitespace character after JSON at position 3`).
+
+The value must start with: `{"type":"service_account","project_id":"paystack-ch",...}`
 
 **Or** base64-encode the file:
 
