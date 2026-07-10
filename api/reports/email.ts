@@ -3,6 +3,7 @@ import { stripeCorsApplyHeaders } from "../lib/stripeCors.js";
 import { verifyFirebaseUser } from "../../lib/verifyFirebaseIdToken.js";
 import { resolveReportPeriod, type ReportEmailCadence } from "../../shared/reportPeriod.js";
 import { buildReportPdfBuffer, type ReportPdfLine } from "../../lib/reportEmailPdf.js";
+import { buildReportEmailHtml } from "../../lib/reportEmailTemplate.js";
 import { sendReportEmail } from "../../lib/resendReports.js";
 
 type IncomeRow = {
@@ -116,10 +117,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         ? `Paystack — ${periodLabel} (${period.from} → ${period.to})`
         : `Paystack — ${periodLabel} (${period.from} → ${period.to})`;
 
-    const html =
-      locale === "fr"
-        ? `<p>Bonjour,</p><p>Votre ${periodLabel.toLowerCase()} pour <strong>${sessionName}</strong> est en pièce jointe (PDF).</p><p>Période : ${period.from} → ${period.to}<br/>Revenus : CHF ${totalIncome.toFixed(2)}<br/>Dépenses : CHF ${totalExpenses.toFixed(2)}<br/>Solde : CHF ${(totalIncome - totalExpenses).toFixed(2)}</p><p>— Paystack.ch</p>`
-        : `<p>Hello,</p><p>Your ${periodLabel.toLowerCase()} for <strong>${sessionName}</strong> is attached as a PDF.</p><p>Period: ${period.from} → ${period.to}<br/>Income: CHF ${totalIncome.toFixed(2)}<br/>Expenses: CHF ${totalExpenses.toFixed(2)}<br/>Balance: CHF ${(totalIncome - totalExpenses).toFixed(2)}</p><p>— Paystack.ch</p>`;
+    const html = buildReportEmailHtml({
+      locale,
+      periodLabel,
+      sessionName,
+      dateFrom: period.from,
+      dateTo: period.to,
+      totalIncome,
+      totalExpenses,
+      balance: totalIncome - totalExpenses,
+    });
 
     const pdfFilename = `paystack-report-${cadence}-${period.to}.pdf`;
 
