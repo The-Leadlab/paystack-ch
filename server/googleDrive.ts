@@ -1,11 +1,15 @@
 import type { Express, Request, Response } from "express";
+import express from "express";
 import {
   completeGoogleDriveOAuth,
   disconnectGoogleDrive,
   getGoogleDriveStatus,
+  saveUploadedDocumentToDrive,
   startGoogleDriveOAuth,
 } from "../lib/googleServices";
 import { publicAppOriginFromHeaders } from "../lib/stripeCore";
+
+const jsonParser = express.json();
 
 export function registerGoogleDriveRoutes(app: Express): void {
   app.get("/api/oauth/google/status", async (req: Request, res: Response) => {
@@ -47,5 +51,11 @@ export function registerGoogleDriveRoutes(app: Express): void {
     res.status(out.status).json("json" in out ? out.json : {});
   });
 
-  console.info("[googleDrive] OAuth routes enabled (/api/oauth/google/*).");
+  app.post("/api/drive/save", jsonParser, async (req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "no-store");
+    const out = await saveUploadedDocumentToDrive(req.headers.authorization, req.body || {});
+    res.status(out.status).json("json" in out ? out.json : {});
+  });
+
+  console.info("[googleDrive] OAuth routes enabled (/api/oauth/google/*, /api/drive/save).");
 }

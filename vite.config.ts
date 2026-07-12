@@ -240,6 +240,7 @@ export default defineConfig({
     proxy: {
       "/api/ali": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/api/oauth": { target: "http://127.0.0.1:8787", changeOrigin: true },
+      "/api/drive": { target: "http://127.0.0.1:8787", changeOrigin: true },
       ...(stripeDevProxy
         ? {
             "/api/stripe": { target: "http://127.0.0.1:8787", changeOrigin: true },

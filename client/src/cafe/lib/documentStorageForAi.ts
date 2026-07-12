@@ -1,5 +1,6 @@
 import { auth } from "./firebase";
 import { uploadDocument, type UploadedDocumentMeta } from "../services/storageService";
+import { saveUploadedDocumentToDrive } from "./googleDriveClient";
 
 export type DocumentStorageRef = UploadedDocumentMeta & {
   mimeType: string;
@@ -35,8 +36,21 @@ export async function ensureDocumentStorageForAi(
   }
 
   const uploaded = await uploadDocument(file, user.uid, file.name);
+  const mimeType = guessMimeType(file.name, file.type);
+
+  // Fire-and-forget: a Drive save failure (not connected, quota, revoked access, etc.) must
+  // never block or fail the upload/scan flow itself — see saveDocumentToDrive's own contract.
+  void saveUploadedDocumentToDrive({
+    storagePath: uploaded.storagePath,
+    fileUrl: uploaded.downloadURL,
+    filename: file.name,
+    mimeType,
+  }).catch((error) => {
+    console.warn("⚠️ Could not save document to Google Drive:", error);
+  });
+
   return {
     ...uploaded,
-    mimeType: guessMimeType(file.name, file.type),
+    mimeType,
   };
 }

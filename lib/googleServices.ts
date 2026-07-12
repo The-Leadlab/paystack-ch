@@ -3,6 +3,8 @@ import { nanoid } from "nanoid";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { ensureFirebaseAdmin, hasFirebaseAdminCredentials } from "./firebaseAdmin.js";
 import { verifyFirebaseAuthorizationHeader } from "./verifyFirebaseIdToken.js";
+import { assertOwnedStoragePath, fetchStorageBytes, isAllowedFirebaseStorageUrl } from "./firebaseStorageFetch.js";
+import { MAX_STORAGE_UPLOAD_BYTES } from "../shared/geminiLimits.js";
 
 const GOOGLE_OAUTH_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -499,6 +501,52 @@ export async function getGoogleDriveStatus(
         needsReconnect: googleDrive?.needsReconnect === true,
       },
     };
+  } catch (error) {
+    const status = (error as { status?: number }).status || 400;
+    return { status, json: { error: (error as Error).message } };
+  }
+}
+
+export type SaveUploadedDocumentRequest = {
+  storagePath?: unknown;
+  fileUrl?: unknown;
+  filename?: unknown;
+  mimeType?: unknown;
+};
+
+/** Called right after a document lands in Firebase Storage — fetches those same bytes and
+ * pushes them into the uploader's connected Drive folder, if they have one. A no-op (not an
+ * error) when the user isn't connected; that's handled inside saveDocumentToDrive. */
+export async function saveUploadedDocumentToDrive(
+  authorization: string | undefined,
+  body: SaveUploadedDocumentRequest
+): Promise<GoogleServicesResult> {
+  let uid: string;
+  try {
+    uid = await verifyFirebaseAuthorizationHeader(authorization);
+  } catch (error) {
+    const status = (error as { status?: number }).status || 401;
+    return { status, json: { error: (error as Error).message } };
+  }
+
+  try {
+    const storagePath = typeof body.storagePath === "string" ? body.storagePath.trim() : "";
+    const fileUrl = typeof body.fileUrl === "string" ? body.fileUrl.trim() : "";
+    const filename = typeof body.filename === "string" && body.filename.trim() ? body.filename.trim() : "document";
+    if (!storagePath || !fileUrl) {
+      return { status: 400, json: { error: "storagePath and fileUrl are required" } };
+    }
+
+    assertOwnedStoragePath(uid, storagePath);
+    if (!isAllowedFirebaseStorageUrl(fileUrl, uid)) {
+      return { status: 403, json: { error: "fileUrl is not allowed for this account" } };
+    }
+
+    const { bytes, mimeType: fetchedMime } = await fetchStorageBytes(fileUrl, MAX_STORAGE_UPLOAD_BYTES);
+    const mimeType =
+      (typeof body.mimeType === "string" && body.mimeType.trim()) || fetchedMime || "application/octet-stream";
+
+    return await saveDocumentToDrive(uid, { bytes, filename, mimeType, sourceId: storagePath });
   } catch (error) {
     const status = (error as { status?: number }).status || 400;
     return { status, json: { error: (error as Error).message } };

@@ -60,16 +60,19 @@
       "includeFiles": "{lib,shared}/**"
     },
     "api/oauth/google/status.ts": {
-      "includeFiles": "lib/**"
+      "includeFiles": "{lib,shared}/**"
     },
     "api/oauth/google/start.ts": {
-      "includeFiles": "lib/**"
+      "includeFiles": "{lib,shared}/**"
     },
     "api/oauth/google/callback.ts": {
-      "includeFiles": "lib/**"
+      "includeFiles": "{lib,shared}/**"
     },
     "api/oauth/google/disconnect.ts": {
-      "includeFiles": "lib/**"
+      "includeFiles": "{lib,shared}/**"
+    },
+    "api/drive/save.ts": {
+      "includeFiles": "{lib,shared}/**"
     }
   }
 }

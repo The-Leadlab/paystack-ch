@@ -7,6 +7,11 @@ import {
 import { verifyFirebaseAuthorizationHeader } from "./verifyFirebaseIdToken.js";
 import type { HeaderMap } from "./stripeBilling.js";
 import {
+  assertOwnedStoragePath,
+  fetchStorageBytes as fetchStorageBytesCapped,
+  isAllowedFirebaseStorageUrl,
+} from "./firebaseStorageFetch.js";
+import {
   MAX_GEMINI_ANALYSIS_BYTES,
   formatMegabytes,
 } from "../shared/geminiLimits.js";
@@ -28,63 +33,21 @@ function normalizeHeader(value: string | string[] | undefined): string | undefin
   return Array.isArray(value) ? value[0] : value;
 }
 
-function assertOwnedStoragePath(uid: string, storagePath: string): void {
-  const normalized = storagePath.replace(/^\/+/, "").trim();
-  const prefix = `documents/${uid}/`;
-  if (!normalized.startsWith(prefix)) {
-    throw Object.assign(new Error("Storage path is not allowed for this account"), { status: 403 });
-  }
-}
-
-function isAllowedFirebaseStorageUrl(fileUrl: string, uid: string): boolean {
-  try {
-    const u = new URL(fileUrl);
-    if (!/\.googleapis\.com$/i.test(u.hostname) && !u.hostname.includes("firebasestorage")) {
-      return false;
-    }
-    const decoded = decodeURIComponent(`${u.pathname}${u.search}`);
-    return decoded.includes(`/documents/${uid}/`) || decoded.includes(`documents%2F${uid}%2F`);
-  } catch {
-    return false;
-  }
-}
-
 async function fetchStorageBytes(fileUrl: string): Promise<{ bytes: Buffer; mimeType: string }> {
-  const fetchTimeoutMs = Number(process.env.GEMINI_STORAGE_FETCH_TIMEOUT_MS || 120_000);
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), fetchTimeoutMs);
-  let res: Response;
   try {
-    res = await fetch(fileUrl, { redirect: "follow", cache: "no-store", signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-  if (!res.ok) {
-    throw Object.assign(new Error(`Could not read file from storage (HTTP ${res.status})`), { status: 502 });
-  }
-  const lenHeader = res.headers.get("content-length");
-  if (lenHeader) {
-    const len = Number(lenHeader);
-    if (Number.isFinite(len) && len > MAX_FETCH_BYTES) {
+    return await fetchStorageBytesCapped(fileUrl, MAX_FETCH_BYTES);
+  } catch (error) {
+    const err = error as { status?: number };
+    if (err.status === 413) {
       throw Object.assign(
         new Error(
-          `This file is ${formatMegabytes(len)} MB. AI analysis supports up to ${formatMegabytes(MAX_FETCH_BYTES)} MB per Google Gemini — compress or split the PDF. The file remains stored.`
+          `This file exceeds ${formatMegabytes(MAX_FETCH_BYTES)} MB. AI analysis supports up to ${formatMegabytes(MAX_FETCH_BYTES)} MB per Google Gemini — compress or split the PDF. The file remains stored.`
         ),
         { status: 413 }
       );
     }
+    throw error;
   }
-  const arrayBuffer = await res.arrayBuffer();
-  if (arrayBuffer.byteLength > MAX_FETCH_BYTES) {
-    throw Object.assign(
-      new Error(
-        `This file is ${formatMegabytes(arrayBuffer.byteLength)} MB. AI analysis supports up to ${formatMegabytes(MAX_FETCH_BYTES)} MB per Google Gemini — compress or split the PDF. The file remains stored.`
-      ),
-      { status: 413 }
-    );
-  }
-  const mimeType = (res.headers.get("content-type") || "application/octet-stream").split(";")[0].trim();
-  return { bytes: Buffer.from(arrayBuffer), mimeType };
 }
 
 function resolveApiKey(): string {
