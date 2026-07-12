@@ -624,7 +624,7 @@ describe("saveDocumentToDrive (upload hook)", () => {
 });
 
 describe("cross-user authorization", () => {
-  // TODO: rejects a drive-upload trigger where the target userId doesn't match the authenticated caller
-  // TODO: rejects a disconnect request where the target userId doesn't match the authenticated caller
-  // TODO: rejects a callback whose state-bound user doesn't match the authenticated caller
+  it.todo("rejects a drive-upload trigger where the target userId doesn't match the authenticated caller");
+  it.todo("rejects a disconnect request where the target userId doesn't match the authenticated caller");
+  it.todo("rejects a callback whose state-bound user doesn't match the authenticated caller");
 });
