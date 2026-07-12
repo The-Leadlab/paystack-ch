@@ -89,9 +89,15 @@ See `shared/googleDriveErrors.ts` + `docs/REPORT_EMAIL_SUPER_PROMPT.md` Google D
 
 On failure, URL includes `?googleDrive=error&googleDriveReason=firebase_admin|...` — toast shows actionable message.
 
+## Light theme
+
+- **Always** use `--ba-text` / `--ba-canvas-text` for copy on surfaces — never hardcode `#ffffff`.
+- Light tokens set dark text (`#2b2b2b`); legacy `text-white` utilities are remapped under `.cafe-shell.cafe-theme-light .ba-v3`.
+- Preserve white text only on saturated buttons (red/green/blue CTAs, active filter chips).
+
 ## Verification
 
 1. `/app` dark theme: charcoal shell, white `DASHBOARD` title, green/red KPIs
-2. Upload zone + documents table match card surface `#20232b`
-3. Billing → Connect Google Drive → success toast or specific error reason
-4. Light theme still readable (`cafe-theme-light` overrides in `businessApp.css`)
+2. `/app` **light theme**: all titles, KPI values, table rows, section headers readable (dark on light)
+3. Upload zone + documents table match card surface
+4. Billing → Connect Google Drive → success toast or specific error reason

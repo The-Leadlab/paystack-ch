@@ -16,6 +16,7 @@
   --ba-accent-cta: #ef4444;
   --ba-preview-bg: #111111;
   --ba-sidebar-active-border: #ffffff;
+  --ba-row-hover: #252b33;
 }
 
 /* Light theme: unified light surfaces with readable dark text */
@@ -29,6 +30,7 @@
   --ba-muted: #6f6669;
   --ba-preview-bg: #eceae4;
   --ba-sidebar-active-border: var(--color-cdlp-gold);
+  --ba-row-hover: #eae8e3;
 }
 
 .ba-v3 {
@@ -112,7 +114,7 @@
 
 .ba-v3 .ba-sidebar-link-btn--muted:hover {
   color: var(--ba-canvas-text);
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: var(--ba-border);
 }
 
 .ba-v3 .ba-session-item {
@@ -193,7 +195,7 @@
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.02em;
-  color: #ffffff;
+  color: var(--ba-text);
   font-variant-numeric: tabular-nums;
 }
 
@@ -325,7 +327,7 @@
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #ffffff;
+  color: var(--ba-canvas-text);
   background: transparent;
   font-family: var(--font-app), system-ui, sans-serif;
   line-height: 1.1;
@@ -507,13 +509,13 @@
 
 .ba-v3 .ba-doc-table tbody tr:hover,
 .ba-v3 .ba-doc-table tbody tr.ba-doc-row--expanded {
-  background: #252b33;
+  background: var(--ba-row-hover);
 }
 
 .ba-v3 .ba-doc-table tbody td {
   padding: 0.875rem 1rem;
   border: none;
-  color: #ffffff;
+  color: var(--ba-text);
   font-size: 0.6875rem;
   vertical-align: middle;
 }
@@ -529,7 +531,7 @@
 .ba-v3 .ba-doc-table .ba-doc-filename {
   font-weight: 600;
   font-size: 0.6875rem;
-  color: #ffffff;
+  color: var(--ba-text);
   letter-spacing: 0.01em;
 }
 
@@ -537,12 +539,12 @@
 .ba-v3 .ba-doc-table .ba-doc-vat-main {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--ba-text);
   font-size: 0.6875rem;
 }
 
 .ba-v3 .ba-doc-table .ba-table-muted {
-  color: #ffffff;
+  color: var(--ba-text);
   font-size: 0.6875rem;
 }
 
@@ -550,7 +552,7 @@
   background: transparent;
   border: none;
   border-radius: 0;
-  color: #ffffff;
+  color: var(--ba-text);
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: capitalize;
@@ -577,16 +579,24 @@
   width: 2rem;
   height: 2rem;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(128, 128, 128, 0.12);
   border: 1px solid var(--ba-border);
   color: var(--ba-muted);
   transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
 
 .ba-v3 .ba-doc-action-btn:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--ba-text);
+  background: rgba(128, 128, 128, 0.18);
+  border-color: var(--ba-border);
+}
+
+.cafe-shell.cafe-theme-light .ba-v3 .ba-doc-action-btn {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.cafe-shell.cafe-theme-light .ba-v3 .ba-doc-action-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .ba-v3 .ba-doc-action-btn--danger:hover {
@@ -784,13 +794,13 @@
 
 .ba-v3 .ba-new-session {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  color: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--ba-canvas-text) 35%, transparent);
+  color: var(--ba-canvas-text);
 }
 
 .ba-v3 .ba-new-session:hover {
-  border-color: rgba(255, 255, 255, 0.55);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: color-mix(in srgb, var(--ba-canvas-text) 55%, transparent);
+  background: color-mix(in srgb, var(--ba-canvas-text) 4%, transparent);
 }
 
 .cafe-shell.cafe-theme-light .ba-v3 .ba-new-session {
@@ -846,7 +856,7 @@
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #ffffff;
+  color: var(--ba-canvas-text);
   margin: 0;
 }
 
@@ -932,4 +942,38 @@
 
 .ba-v3 .ba-entity-card:hover h3 {
   color: var(--color-cdlp-gold);
+}
+
+/* Light theme: legacy Tailwind text-white inside /app dashboard */
+.cafe-shell.cafe-theme-light .ba-v3 .text-white {
+  color: var(--ba-text) !important;
+}
+
+.cafe-shell.cafe-theme-light .ba-v3 .bg-red-600.text-white,
+.cafe-shell.cafe-theme-light .ba-v3 .bg-red-500.text-white,
+.cafe-shell.cafe-theme-light .ba-v3 .bg-emerald-600.text-white,
+.cafe-shell.cafe-theme-light .ba-v3 .bg-emerald-500.text-white,
+.cafe-shell.cafe-theme-light .ba-v3 .bg-blue-600.text-white,
+.cafe-shell.cafe-theme-light .ba-v3 .ba-section-add-btn,
+.cafe-shell.cafe-theme-light .ba-v3 .ba-btn-start,
+.cafe-shell.cafe-theme-light .ba-v3 .ba-btn-approve,
+.cafe-shell.cafe-theme-light .ba-v3 .ba-filter-chip--active {
+  color: #ffffff !important;
+}
+
+.cafe-shell.cafe-theme-light .ba-v3 input.text-white,
+.cafe-shell.cafe-theme-light .ba-v3 select.text-white,
+.cafe-shell.cafe-theme-light .ba-v3 textarea.text-white {
+  color: var(--ba-text) !important;
+}
+
+.cafe-shell.cafe-theme-light .ba-v3 input.bg-cdlp-dark,
+.cafe-shell.cafe-theme-light .ba-v3 select.bg-cdlp-dark,
+.cafe-shell.cafe-theme-light .ba-v3 textarea.bg-cdlp-dark,
+.cafe-shell.cafe-theme-light .ba-v3 input.bg-cdlp-black,
+.cafe-shell.cafe-theme-light .ba-v3 select.bg-cdlp-black,
+.cafe-shell.cafe-theme-light .ba-v3 textarea.bg-cdlp-black {
+  background-color: #ffffff !important;
+  color: var(--ba-text) !important;
+  border-color: var(--ba-border) !important;
 }
