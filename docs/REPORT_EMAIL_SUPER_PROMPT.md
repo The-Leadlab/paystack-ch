@@ -70,15 +70,26 @@ OAuth + per-user Drive sync lives on **Billing** tab (`GoogleDriveConnectPanel`)
 4. Server exchanges code for **refresh token**, creates a **“Paystack Documents”** folder in the user’s Drive (if none stored), saves `users/{uid}.googleDrive` in Firestore (`refreshToken`, `folderId`).
 5. **Disconnect** revokes the token and clears Firestore.
 
-### Auto-upload hook (server)
+### Two-way sync (live)
+
+| Direction | Trigger | API |
+|-----------|---------|-----|
+| Platform → Drive | After Firebase Storage upload in dashboard | `POST /api/drive/save-document` → `saveDocumentToDrive()` |
+| Drive → Platform | Auto on session load + **Sync from Drive** button | `POST /api/drive/sync-from-drive` |
+
+OAuth scopes: `drive.file` (upload) + `drive.readonly` (import files user adds to the folder). **Reconnect** if you connected before this scope change.
 
 `saveDocumentToDrive(uid, file)` in `lib/googleServices.ts`:
 
 - Refreshes access token from stored refresh token
-- Uploads to the user’s folder via Drive API (`drive.file` scope — only files created by Paystack)
-- Dedupes by `sourceId` (e.g. Firebase Storage path) in `uploadedDocuments`
+- Uploads to the user’s folder via Drive API
+- Dedupes by `sourceId` (Firebase Storage path) in `uploadedDocuments`
 
-**Note:** OAuth connect/disconnect is live. Wire `saveDocumentToDrive` from the document upload pipeline (`storageService.uploadDocument` or post-Gemini API) when enabling automatic Drive backup.
+`runDriveSyncFromDrive()` in `lib/googleDriveSync.ts`:
+
+- Lists PDF/images in **Paystack Documents**
+- Skips files already uploaded by Paystack or previously imported
+- Copies new files into Firebase Storage and returns metadata for Firestore document rows
 
 ## Verification
 
@@ -86,4 +97,5 @@ OAuth + per-user Drive sync lives on **Billing** tab (`GoogleDriveConnectPanel`)
 2. `/app` → Reports → click **Email weekly** (Business plan)
 3. Inbox shows branded HTML + PDF attachment (logo loads from your domain)
 4. Billing → connect Google Drive → status shows connected
-5. (After upload hook) upload document → copy appears in Drive folder **Paystack Documents**
+5. Upload document on dashboard → file appears in Drive folder **Paystack Documents**
+6. Add a PDF to that Drive folder → **Sync from Drive** (or reload session) → document appears on dashboard as pending

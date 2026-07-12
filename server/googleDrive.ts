@@ -63,5 +63,20 @@ export function registerGoogleDriveRoutes(app: Express): void {
     res.status(out.status).json("json" in out ? out.json : {});
   });
 
+  app.post("/api/drive/save-document", async (req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "no-store");
+    const { runDriveSaveDocument } = await import("../lib/googleDriveSync");
+    const out = await runDriveSaveDocument(req.headers.authorization, req.body);
+    res.status(out.status).json(out.json);
+  });
+
+  app.post("/api/drive/sync-from-drive", async (req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "no-store");
+    const { runDriveSyncFromDrive } = await import("../lib/googleDriveSync");
+    const out = await runDriveSyncFromDrive(req.headers.authorization);
+    res.status(out.status).json(out.json);
+  });
+
   console.info("[googleDrive] OAuth routes enabled (/api/oauth/google/*).");
+  console.info("[googleDrive] Sync routes enabled (/api/drive/*).");
 }

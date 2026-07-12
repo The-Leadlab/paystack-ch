@@ -26,7 +26,11 @@ function parseDriveErrorReason(raw: string | null): GoogleDriveErrorReason | nul
   return allowed.has(raw) ? (raw as GoogleDriveErrorReason) : 'unknown';
 }
 
-export function GoogleDriveConnectPanel() {
+export function GoogleDriveConnectPanel({
+  onDriveSync,
+}: {
+  onDriveSync?: () => Promise<{ count: number }>;
+}) {
   const [status, setStatus] = useState<GoogleDriveStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -58,6 +62,15 @@ export function GoogleDriveConnectPanel() {
     if (result === 'connected') {
       toast.success('Google Drive connected.');
       void loadStatus();
+      if (onDriveSync) {
+        void onDriveSync().then(({ count }) => {
+          if (count > 0) {
+            toast.success(`${count} document(s) imported from Google Drive.`);
+          }
+        }).catch((e) => {
+          console.warn('Drive import after connect failed:', e);
+        });
+      }
     } else {
       const reason = parseDriveErrorReason(params.get('googleDriveReason'));
       toast.error(googleDriveErrorUserMessage(reason ?? 'unknown'), { duration: 12000 });
@@ -76,6 +89,23 @@ export function GoogleDriveConnectPanel() {
       // No further code runs on success — connectGoogleDrive navigates away.
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
+      setBusy(false);
+    }
+  };
+
+  const handleSync = async () => {
+    if (!onDriveSync) return;
+    setBusy(true);
+    try {
+      const { count } = await onDriveSync();
+      if (count > 0) {
+        toast.success(`${count} document(s) imported from Google Drive.`);
+      } else {
+        toast.message('Google Drive is up to date — no new files to import.');
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
       setBusy(false);
     }
   };
@@ -103,8 +133,9 @@ export function GoogleDriveConnectPanel() {
         Google Drive
       </h2>
       <p className="text-xs text-cdlp-muted leading-relaxed">
-        Connect Google Drive so every document you upload is automatically saved to your own Drive folder
-        &ldquo;Paystack Documents&rdquo;.
+        Connect Google Drive for two-way sync with your &ldquo;Paystack Documents&rdquo; folder: uploads on
+        Paystack are backed up to Drive, and new files added in Drive are imported here automatically.
+        If you connected before, reconnect once to grant read access for imports.
       </p>
 
       {statusError ? (
@@ -147,19 +178,36 @@ export function GoogleDriveConnectPanel() {
           Checking connection…
         </div>
       ) : connected && !needsReconnect ? (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void handleDisconnect()}
-          className="inline-flex items-center justify-center gap-2 rounded-sm border border-cdlp-border bg-cdlp-dark/40 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cdlp-muted hover:border-cdlp-gold/35 hover:bg-cdlp-cream/30 hover:text-white disabled:opacity-50 transition-colors"
-        >
-          {busy ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-cdlp-gold" aria-hidden />
-          ) : (
-            <Unlink className="w-3.5 h-3.5 text-cdlp-gold/80" aria-hidden />
-          )}
-          Disconnect Google Drive
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          {onDriveSync ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void handleSync()}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-sm border border-cdlp-border bg-cdlp-dark/40 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cdlp-muted hover:border-cdlp-gold/35 hover:bg-cdlp-cream/30 hover:text-white disabled:opacity-50 transition-colors"
+            >
+              {busy ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-cdlp-gold" aria-hidden />
+              ) : (
+                <Cloud className="w-3.5 h-3.5 text-cdlp-gold/80" aria-hidden />
+              )}
+              Sync from Drive
+            </button>
+          ) : null}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void handleDisconnect()}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-sm border border-cdlp-border bg-cdlp-dark/40 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cdlp-muted hover:border-cdlp-gold/35 hover:bg-cdlp-cream/30 hover:text-white disabled:opacity-50 transition-colors"
+          >
+            {busy ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-cdlp-gold" aria-hidden />
+            ) : (
+              <Unlink className="w-3.5 h-3.5 text-cdlp-gold/80" aria-hidden />
+            )}
+            Disconnect Google Drive
+          </button>
+        </div>
       ) : (
         <button
           type="button"

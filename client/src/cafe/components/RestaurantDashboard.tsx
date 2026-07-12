@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useRef, useEffect } from 'react';
+﻿import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'wouter';
 import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings, Wallet, FilePenLine, Mail } from 'lucide-react';
 import { BillingPlanPanel } from './BillingPlanPanel';
@@ -369,6 +369,20 @@ export function RestaurantDashboard() {
           const { downloadURL, storagePath } = await uploadDocument(fileRaw, user.uid, fileName);
           await updateDocumentData(createdId, { fileUrl: downloadURL, storagePath });
           console.log('✅ File stored for processing:', createdId);
+          void (async () => {
+            try {
+              const { backupDocumentToGoogleDrive } = await import('../lib/googleDriveClient');
+              await backupDocumentToGoogleDrive({
+                storagePath,
+                fileUrl: downloadURL,
+                filename: fileName,
+                mimeType: fileRaw.type || 'application/octet-stream',
+              });
+              console.log('☁️ Backed up to Google Drive:', createdId);
+            } catch (driveErr) {
+              console.warn('Google Drive backup skipped:', driveErr);
+            }
+          })();
         } catch (uploadError: any) {
           console.error('⚠️ Storage upload failed:', uploadError);
           if (uploadError?.code === 'storage/unauthorized') {
@@ -666,6 +680,42 @@ export function RestaurantDashboard() {
     setActiveTab(tab);
     setShowSidebar(false);
   };
+
+  const syncFromGoogleDrive = useCallback(async (): Promise<{ count: number }> => {
+    if (!currentSession) return { count: 0 };
+    const { syncDocumentsFromGoogleDrive } = await import('../lib/googleDriveClient');
+    const { imported } = await syncDocumentsFromGoogleDrive();
+    let count = 0;
+    for (const file of imported) {
+      await addDocument({
+        fileName: file.fileName,
+        status: 'pending',
+        fileUrl: file.fileUrl,
+        storagePath: file.storagePath,
+      });
+      count += 1;
+    }
+    return { count };
+  }, [currentSession, addDocument]);
+
+  const driveAutoSyncRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!currentSession?.id || !user?.uid) return;
+    const key = `${user.uid}:${currentSession.id}`;
+    if (driveAutoSyncRef.current === key) return;
+    driveAutoSyncRef.current = key;
+
+    void (async () => {
+      try {
+        const { fetchGoogleDriveStatus } = await import('../lib/googleDriveClient');
+        const status = await fetchGoogleDriveStatus();
+        if (!status.connected || status.needsReconnect) return;
+        await syncFromGoogleDrive();
+      } catch (err) {
+        console.warn('Google Drive import sync skipped:', err);
+      }
+    })();
+  }, [currentSession?.id, user?.uid, syncFromGoogleDrive]);
 
   const sidebarNavItems = BUSINESS_NAV_ITEMS.map((item) => ({
     id: item.id,
@@ -988,7 +1038,7 @@ export function RestaurantDashboard() {
           {activeTab === 'invoices' && <InvoiceMakerPanel />}
           {activeTab === 'reports' && <ReportsPlaceholder />}
           {activeTab === 'documents' && <DocumentsTab selectedDocument={selectedDocumentFromFinance} onClearSelection={() => setSelectedDocumentFromFinance(null)} />}
-          {activeTab === 'billing' ? <BillingPlanPanel /> : null}
+          {activeTab === 'billing' ? <BillingPlanPanel onDriveSync={syncFromGoogleDrive} /> : null}
         </div>
       </main>
 

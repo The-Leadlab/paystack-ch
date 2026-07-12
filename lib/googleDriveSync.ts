@@ -1,0 +1,375 @@
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
+import { ensureFirebaseAdmin, hasFirebaseAdminCredentials, parseServiceAccountJson } from "./firebaseAdmin.js";
+import { saveDocumentToDrive, type DriveUploadFile } from "./googleServices.js";
+import { verifyFirebaseAuthorizationHeader } from "./verifyFirebaseIdToken.js";
+
+const GOOGLE_DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
+const GOOGLE_DRIVE_SCOPE_READONLY = "https://www.googleapis.com/auth/drive.readonly";
+const MAX_DRIVE_IMPORT_BYTES = 25 * 1024 * 1024;
+
+const IMPORTABLE_MIME = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+]);
+
+export type GoogleDriveSyncResult = { status: number; json: Record<string, unknown> };
+
+function loadServiceAccountProjectId(): string | null {
+  try {
+    const inline = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+    const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64?.trim();
+    const jsonText = inline || (b64 ? Buffer.from(b64.replace(/\s/g, ""), "base64").toString("utf8") : "");
+    if (!jsonText) return null;
+    const cred = parseServiceAccountJson(jsonText);
+    return typeof cred.project_id === "string" ? cred.project_id : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveFirebaseStorageBucket(): string {
+  const explicit = process.env.FIREBASE_STORAGE_BUCKET?.trim();
+  if (explicit) return explicit;
+  const projectId = loadServiceAccountProjectId();
+  if (projectId) return `${projectId}.firebasestorage.app`;
+  throw Object.assign(new Error("Server missing FIREBASE_STORAGE_BUCKET"), { status: 503 });
+}
+
+function assertOwnedStoragePath(uid: string, storagePath: string): void {
+  const normalized = storagePath.replace(/^\/+/, "").trim();
+  const prefix = `documents/${uid}/`;
+  if (!normalized.startsWith(prefix)) {
+    throw Object.assign(new Error("Storage path is not allowed for this account"), { status: 403 });
+  }
+}
+
+function isAllowedFirebaseStorageUrl(fileUrl: string, uid: string): boolean {
+  try {
+    const u = new URL(fileUrl);
+    if (!/\.googleapis\.com$/i.test(u.hostname) && !u.hostname.includes("firebasestorage")) {
+      return false;
+    }
+    const decoded = decodeURIComponent(`${u.pathname}${u.search}`);
+    return decoded.includes(`/documents/${uid}/`) || decoded.includes(`documents%2F${uid}%2F`);
+  } catch {
+    return false;
+  }
+}
+
+async function fetchStorageBytes(fileUrl: string): Promise<{ bytes: Buffer; mimeType: string }> {
+  const res = await fetch(fileUrl, { redirect: "follow", cache: "no-store" });
+  if (!res.ok) {
+    throw Object.assign(new Error(`Could not read file from storage (HTTP ${res.status})`), { status: 502 });
+  }
+  const arrayBuffer = await res.arrayBuffer();
+  const mimeType = (res.headers.get("content-type") || "application/octet-stream").split(";")[0].trim();
+  return { bytes: Buffer.from(arrayBuffer), mimeType };
+}
+
+async function uploadBytesToFirebaseStorage(
+  uid: string,
+  filename: string,
+  bytes: Buffer,
+  mimeType: string
+): Promise<{ storagePath: string; fileUrl: string }> {
+  ensureFirebaseAdmin();
+  const bucket = getStorage().bucket(resolveFirebaseStorageBucket());
+  const timestamp = Date.now();
+  const safeName = filename.replace(/[^\w.\-() ]+/g, "_").slice(0, 180);
+  const storagePath = `documents/${uid}/${timestamp}_${safeName || "document.bin"}`;
+  const file = bucket.file(storagePath);
+  await file.save(bytes, { metadata: { contentType: mimeType } });
+  const [fileUrl] = await file.getSignedUrl({
+    action: "read",
+    expires: Date.now() + 10 * 365 * 24 * 60 * 60 * 1000,
+  });
+  return { storagePath, fileUrl };
+}
+
+type DriveConnection = {
+  refreshToken: string;
+  folderId: string;
+  uploadedDocuments: Record<string, string>;
+  importedDriveFiles: Record<string, { storagePath: string; fileName: string }>;
+};
+
+async function getDriveConnection(uid: string): Promise<DriveConnection | null> {
+  ensureFirebaseAdmin();
+  const snap = await getFirestore().collection("users").doc(uid).get();
+  const googleDrive = (
+    snap.data() as
+      | {
+          googleDrive?: {
+            refreshToken?: unknown;
+            folderId?: unknown;
+            uploadedDocuments?: unknown;
+            importedDriveFiles?: unknown;
+          };
+        }
+      | undefined
+  )?.googleDrive;
+  if (typeof googleDrive?.refreshToken !== "string" || typeof googleDrive?.folderId !== "string") {
+    return null;
+  }
+  const uploadedDocuments =
+    googleDrive.uploadedDocuments && typeof googleDrive.uploadedDocuments === "object"
+      ? (googleDrive.uploadedDocuments as Record<string, string>)
+      : {};
+  const importedDriveFiles =
+    googleDrive.importedDriveFiles && typeof googleDrive.importedDriveFiles === "object"
+      ? (googleDrive.importedDriveFiles as Record<string, { storagePath: string; fileName: string }>)
+      : {};
+  return {
+    refreshToken: googleDrive.refreshToken,
+    folderId: googleDrive.folderId,
+    uploadedDocuments,
+    importedDriveFiles,
+  };
+}
+
+async function getGoogleDriveAccessToken(refreshToken: string): Promise<string> {
+  const useTestMode =
+    process.env.GOOGLE_DRIVE_USE_TEST_MODE?.toLowerCase() === "true" ||
+    process.env.GOOGLE_DRIVE_USE_TEST_MODE === "1";
+  const clientId = (useTestMode ? process.env.GOOGLE_DRIVE_TEST_CLIENT_ID : process.env.GOOGLE_DRIVE_CLIENT_ID)?.trim();
+  const clientSecret = (useTestMode
+    ? process.env.GOOGLE_DRIVE_TEST_CLIENT_SECRET
+    : process.env.GOOGLE_DRIVE_CLIENT_SECRET)?.trim();
+  if (!clientId || !clientSecret) {
+    throw Object.assign(new Error("Server missing GOOGLE_DRIVE_CLIENT_ID/SECRET"), { status: 503 });
+  }
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      refresh_token: refreshToken,
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: "refresh_token",
+    }).toString(),
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    access_token?: string;
+    error?: string;
+    error_description?: string;
+  };
+  if (!res.ok || !data.access_token) {
+    throw Object.assign(
+      new Error(data.error_description || data.error || "Failed to refresh Google Drive access token"),
+      { status: 401, code: data.error }
+    );
+  }
+  return data.access_token;
+}
+
+async function markGoogleDriveNeedsReconnect(uid: string): Promise<void> {
+  ensureFirebaseAdmin();
+  await getFirestore()
+    .collection("users")
+    .doc(uid)
+    .set({ googleDrive: { needsReconnect: true } }, { merge: true });
+}
+
+async function refreshAccessTokenOrMarkDisconnected(uid: string, refreshToken: string): Promise<string> {
+  try {
+    return await getGoogleDriveAccessToken(refreshToken);
+  } catch (error) {
+    if ((error as { code?: string }).code === "invalid_grant") {
+      await markGoogleDriveNeedsReconnect(uid);
+    }
+    throw error;
+  }
+}
+
+type DriveListedFile = { id: string; name: string; mimeType: string; size?: string };
+
+async function listDriveFolderFiles(accessToken: string, folderId: string): Promise<DriveListedFile[]> {
+  const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+  const fields = encodeURIComponent("files(id,name,mimeType,size)");
+  const res = await fetch(`${GOOGLE_DRIVE_FILES_URL}?q=${q}&fields=${fields}&pageSize=100`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    files?: DriveListedFile[];
+    error?: { message?: string };
+  };
+  if (!res.ok) {
+    throw Object.assign(new Error(data.error?.message || "Failed to list Google Drive folder"), {
+      status: res.status === 401 ? 401 : 502,
+    });
+  }
+  return data.files ?? [];
+}
+
+async function downloadDriveFileBytes(accessToken: string, fileId: string): Promise<{ bytes: Buffer; mimeType: string }> {
+  const res = await fetch(`${GOOGLE_DRIVE_FILES_URL}/${fileId}?alt=media`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    throw Object.assign(new Error(`Failed to download Drive file (HTTP ${res.status})`), {
+      status: res.status === 401 ? 401 : 502,
+    });
+  }
+  const arrayBuffer = await res.arrayBuffer();
+  if (arrayBuffer.byteLength > MAX_DRIVE_IMPORT_BYTES) {
+    throw Object.assign(new Error("Drive file exceeds import size limit (25 MB)"), { status: 413 });
+  }
+  const mimeType = (res.headers.get("content-type") || "application/octet-stream").split(";")[0].trim();
+  return { bytes: Buffer.from(arrayBuffer), mimeType };
+}
+
+async function recordDriveImport(
+  uid: string,
+  driveFileId: string,
+  meta: { storagePath: string; fileName: string }
+): Promise<void> {
+  ensureFirebaseAdmin();
+  await getFirestore()
+    .collection("users")
+    .doc(uid)
+    .set({ googleDrive: { importedDriveFiles: { [driveFileId]: meta } } }, { merge: true });
+}
+
+export type DriveSaveDocumentRequest = {
+  storagePath?: unknown;
+  fileUrl?: unknown;
+  filename?: unknown;
+  mimeType?: unknown;
+};
+
+/** Platform → Drive: fetch from Firebase Storage and upload to the user's Drive folder. */
+export async function runDriveSaveDocument(
+  authorization: string | undefined,
+  body: DriveSaveDocumentRequest
+): Promise<GoogleDriveSyncResult> {
+  let uid: string;
+  try {
+    uid = await verifyFirebaseAuthorizationHeader(authorization);
+  } catch (error) {
+    return { status: (error as { status?: number }).status || 401, json: { error: (error as Error).message } };
+  }
+
+  try {
+    if (!hasFirebaseAdminCredentials()) {
+      throw Object.assign(new Error("Server missing Firebase Admin credentials"), { status: 503 });
+    }
+
+    const storagePath = typeof body.storagePath === "string" ? body.storagePath.trim() : "";
+    const fileUrl = typeof body.fileUrl === "string" ? body.fileUrl.trim() : "";
+    const filename = typeof body.filename === "string" ? body.filename.trim() : "";
+    const mimeTypeHint = typeof body.mimeType === "string" ? body.mimeType.trim() : "";
+
+    if (!storagePath || !fileUrl || !filename) {
+      return { status: 400, json: { error: "storagePath, fileUrl, and filename are required" } };
+    }
+
+    assertOwnedStoragePath(uid, storagePath);
+    if (!isAllowedFirebaseStorageUrl(fileUrl, uid)) {
+      return { status: 403, json: { error: "fileUrl is not allowed for this account" } };
+    }
+
+    const { bytes, mimeType: fetchedMime } = await fetchStorageBytes(fileUrl);
+    const file: DriveUploadFile = {
+      bytes,
+      filename,
+      mimeType: mimeTypeHint || fetchedMime || "application/octet-stream",
+      sourceId: storagePath,
+    };
+
+    const out = await saveDocumentToDrive(uid, file);
+    return { status: out.status, json: "json" in out ? out.json : {} };
+  } catch (error) {
+    const status = (error as { status?: number }).status || 502;
+    return { status, json: { error: (error as Error).message } };
+  }
+}
+
+export type DriveImportedFile = {
+  driveFileId: string;
+  fileName: string;
+  storagePath: string;
+  fileUrl: string;
+  mimeType: string;
+};
+
+/** Drive → Platform: import new files from the user's Paystack Documents folder into Firebase Storage. */
+export async function runDriveSyncFromDrive(authorization: string | undefined): Promise<GoogleDriveSyncResult> {
+  let uid: string;
+  try {
+    uid = await verifyFirebaseAuthorizationHeader(authorization);
+  } catch (error) {
+    return { status: (error as { status?: number }).status || 401, json: { error: (error as Error).message } };
+  }
+
+  try {
+    if (!hasFirebaseAdminCredentials()) {
+      throw Object.assign(new Error("Server missing Firebase Admin credentials"), { status: 503 });
+    }
+
+    const connection = await getDriveConnection(uid);
+    if (!connection) {
+      return { status: 200, json: { imported: [], skipped: 0, message: "Google Drive not connected" } };
+    }
+
+    const uploadedDriveIds = new Set(Object.values(connection.uploadedDocuments));
+    let accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
+
+    let files: DriveListedFile[];
+    try {
+      files = await listDriveFolderFiles(accessToken, connection.folderId);
+    } catch (error) {
+      if ((error as { status?: number }).status !== 401) throw error;
+      accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
+      files = await listDriveFolderFiles(accessToken, connection.folderId);
+    }
+
+    const imported: DriveImportedFile[] = [];
+    let skipped = 0;
+
+    for (const file of files) {
+      if (file.mimeType === "application/vnd.google-apps.folder") {
+        skipped += 1;
+        continue;
+      }
+      if (!IMPORTABLE_MIME.has(file.mimeType)) {
+        skipped += 1;
+        continue;
+      }
+      if (connection.importedDriveFiles[file.id] || uploadedDriveIds.has(file.id)) {
+        skipped += 1;
+        continue;
+      }
+
+      try {
+        const { bytes, mimeType } = await downloadDriveFileBytes(accessToken, file.id);
+        const { storagePath, fileUrl } = await uploadBytesToFirebaseStorage(uid, file.name, bytes, mimeType);
+        await recordDriveImport(uid, file.id, { storagePath, fileName: file.name });
+        imported.push({
+          driveFileId: file.id,
+          fileName: file.name,
+          storagePath,
+          fileUrl,
+          mimeType,
+        });
+      } catch (err) {
+        console.warn("[googleDrive] import skipped for file", file.id, err instanceof Error ? err.message : err);
+        skipped += 1;
+      }
+    }
+
+    return { status: 200, json: { imported, skipped, count: imported.length } };
+  } catch (error) {
+    const status = (error as { status?: number }).status || 502;
+    return { status, json: { error: (error as Error).message } };
+  }
+}
+
+/** OAuth scopes required for bidirectional sync (exported for tests). */
+export const GOOGLE_DRIVE_OAUTH_SCOPES = [
+  "https://www.googleapis.com/auth/drive.file",
+  GOOGLE_DRIVE_SCOPE_READONLY,
+].join(" ");

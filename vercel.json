@@ -71,6 +71,14 @@
     "api/oauth/google/disconnect.ts": {
       "includeFiles": "lib/**"
     },
+    "api/drive/save-document.ts": {
+      "maxDuration": 60,
+      "includeFiles": "lib/**"
+    },
+    "api/drive/sync-from-drive.ts": {
+      "maxDuration": 60,
+      "includeFiles": "lib/**"
+    },
     "api/reports/email.ts": {
       "maxDuration": 30,
       "includeFiles": "{lib,shared}/**"

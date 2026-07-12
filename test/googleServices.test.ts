@@ -66,7 +66,9 @@ describe("startGoogleDriveOAuth", () => {
     expect(result.status).toBe(302);
     expect(url.origin + url.pathname).toBe("https://accounts.google.com/o/oauth2/v2/auth");
     expect(url.searchParams.get("client_id")).toBe("test-client-id");
-    expect(url.searchParams.get("scope")).toBe("https://www.googleapis.com/auth/drive.file");
+    expect(url.searchParams.get("scope")).toBe(
+      "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
+    );
   });
 
   it("generates a `state` value that's unique per request and bound to the requesting user", async () => {

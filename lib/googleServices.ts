@@ -9,7 +9,8 @@ const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_OAUTH_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const GOOGLE_DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
 const GOOGLE_DRIVE_UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
-const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+const GOOGLE_DRIVE_SCOPE =
+  "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly";
 const GOOGLE_DRIVE_FOLDER_NAME = "Paystack Documents";
 
 export type GoogleServicesResult =

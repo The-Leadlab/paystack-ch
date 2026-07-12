@@ -22,7 +22,7 @@ function formatLimit(n: number | null, t: (k: string) => string): string {
 
 const UPGRADE_PLANS: PaystackPlanId[] = ['starter', 'business', 'unlimited', 'enterprise'];
 
-export function BillingPlanPanel() {
+export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<{ count: number }> }) {
   const { t } = useLanguage();
   const { user, changePassword } = useAuth();
   const { enforcementEnabled, loading, billing, entitlements, startCheckout, openCustomerPortal, isPlanTestUser, setPlanTestPlan } = useSubscription();
@@ -300,7 +300,7 @@ export function BillingPlanPanel() {
         </section>
       ) : null}
 
-      <GoogleDriveConnectPanel />
+      <GoogleDriveConnectPanel onDriveSync={onDriveSync} />
 
       <section className="ba-panel space-y-4">
         <h2 className="text-sm font-black uppercase tracking-wider ba-field-value flex items-center gap-2">
