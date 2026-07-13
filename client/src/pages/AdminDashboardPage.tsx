@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
-import { CreditCard, Loader2, Lock, LogIn, Users, Wrench } from "lucide-react";
+import { CreditCard, ExternalLink, Loader2, Lock, LogIn, LogOut, Users, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { isSubscriptionBypassEmail } from "@/cafe/lib/subscriptionBypass";
 import { GoogleGIcon } from "@/components/icons/GoogleGIcon";
 import { AuthLayout } from "./auth/AuthLayout";
+import { AdminLayout } from "./admin/AdminLayout";
 import { logoutAdmin } from "@/lib/adminGateClient";
 import { checkAdminSession } from "@/lib/adminUsersClient";
 import { clientStripeUseTest, startGuestCheckoutSession } from "@/cafe/lib/stripeCheckoutClient";
@@ -25,7 +26,6 @@ type AdminTab = "users" | "operator";
 function OperatorToolsPanel() {
   const { t } = useLanguage();
   const { user, loading, signIn, signInWithGoogle, signOut } = useAuth();
-  const [, setLocation] = useLocation();
 
   const [testPlan, setTestPlan] = useState<PaystackPlanId>("starter");
   const [checkoutBusy, setCheckoutBusy] = useState<"live" | "test" | null>(null);
@@ -36,17 +36,17 @@ function OperatorToolsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [signOutBusy, setSignOutBusy] = useState(false);
   const sandboxOnly = clientStripeUseTest();
+
+  const bypassSignedIn = Boolean(user && isSubscriptionBypassEmail(user.email));
 
   useEffect(() => {
     if (loading || !user) return;
-    if (isSubscriptionBypassEmail(user.email)) {
-      setLocation("/app");
-      return;
-    }
+    if (isSubscriptionBypassEmail(user.email)) return;
     setError(t("authAdminUnauthorized"));
     void signOut();
-  }, [loading, user, setLocation, signOut, t]);
+  }, [loading, user, signOut, t]);
 
   const openGuestCheckout = async (useTest: boolean) => {
     setGateErr(null);
@@ -78,7 +78,11 @@ function OperatorToolsPanel() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-2xl">
+      <p className="text-sm text-muted-foreground leading-relaxed rounded-lg border border-border bg-muted/20 px-4 py-3">
+        {t("adminOperatorIntro")}
+      </p>
+
       <Card className="border-border shadow-sm">
         <CardHeader className="pb-2">
           <span className="font-display text-xs font-bold uppercase tracking-wider text-brand-red">
@@ -143,16 +147,55 @@ function OperatorToolsPanel() {
         </CardContent>
       </Card>
 
-      <p className="font-display text-xs font-bold uppercase tracking-wider text-center text-muted-foreground">
+      <p className="font-display text-xs font-bold uppercase tracking-wider text-muted-foreground">
         {t("authAdminBypassSectionTitle")}
       </p>
+      <p className="text-xs text-muted-foreground -mt-4">{t("adminOperatorBypassHint")}</p>
 
       {!firebaseReady ? (
         <FirebaseMissing />
-      ) : loading || user ? (
+      ) : loading ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="size-8 animate-spin text-brand-red" aria-hidden />
         </div>
+      ) : bypassSignedIn && user ? (
+        <Card className="border-border shadow-sm border-emerald-500/30 bg-emerald-500/5">
+          <CardContent className="pt-6 space-y-4">
+            <p className="text-sm font-medium">{t("adminOperatorSignedInAs")}</p>
+            <p className="font-editorial text-sm break-all">{user.email}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">{t("adminOperatorStayOnAdmin")}</p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="font-display gap-2"
+                onClick={() => {
+                  window.open("/app", "_blank", "noopener,noreferrer");
+                }}
+              >
+                <ExternalLink className="size-4" />
+                {t("adminOperatorOpenApp")}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="font-display gap-2"
+                disabled={signOutBusy}
+                onClick={async () => {
+                  setSignOutBusy(true);
+                  try {
+                    await signOut();
+                  } finally {
+                    setSignOutBusy(false);
+                  }
+                }}
+              >
+                {signOutBusy ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
+                {t("adminOperatorSignOut")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <Card className="border-border shadow-sm">
           <CardHeader className="pb-2">
@@ -296,13 +339,12 @@ export default function AdminDashboardPage() {
   return (
     <>
       <SeoNoIndex />
-      <AuthLayout
+      <AdminLayout
         heading={t("adminDashboardTitle")}
         description={t("adminDashboardDescription")}
-        showFooterSecure={false}
       >
-        <div className="max-w-5xl mx-auto space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="space-y-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex gap-2 overflow-x-auto pb-1">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
@@ -312,7 +354,7 @@ export default function AdminDashboardPage() {
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-display text-sm whitespace-nowrap transition-colors ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-display text-sm whitespace-nowrap transition-colors ${
                       active
                         ? "bg-brand-red/10 text-brand-red border border-brand-red/30"
                         : "bg-card text-muted-foreground border border-border hover:border-brand-red/20"
@@ -324,15 +366,19 @@ export default function AdminDashboardPage() {
                 );
               })}
             </div>
-            <Button type="button" variant="outline" size="sm" className="font-display gap-1 shrink-0" onClick={() => void lockGate()} disabled={lockBusy}>
+            <Button type="button" variant="outline" size="sm" className="font-display gap-1 shrink-0 self-start lg:self-auto" onClick={() => void lockGate()} disabled={lockBusy}>
               {lockBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Lock className="size-3.5" />}
               {t("authAdminGateLock")}
             </Button>
           </div>
 
+          <p className="text-sm text-muted-foreground -mt-2">
+            {activeTab === "users" ? t("adminTabUsersHint") : t("adminTabOperatorHint")}
+          </p>
+
           {activeTab === "users" ? <AdminUsersPanel /> : <OperatorToolsPanel />}
         </div>
-      </AuthLayout>
+      </AdminLayout>
     </>
   );
 }
