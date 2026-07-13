@@ -6,7 +6,7 @@
  * Local `vite` dev does not run this file — use client gate on `/ali` or `vercel dev`.
  */
 export const config = {
-  matcher: ["/admin", "/admin/", "/ali", "/ali/", "/ali/:path*"],
+  matcher: ["/admin", "/admin/", "/admin/:path*", "/ali", "/ali/", "/ali/:path*"],
 };
 
 const ADMIN_COOKIE = "paystack_admin_session";

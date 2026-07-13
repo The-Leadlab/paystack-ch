@@ -11,7 +11,7 @@ import { AuthProvider } from "./cafe/context/AuthContext";
 import Home from "./pages/Home";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
-import AdminSignInPage from "./pages/AdminSignInPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
 import OperatorGatePage from "./pages/OperatorGatePage";
 import StartTrialPage from "./pages/StartTrialPage";
 import AliGatePage from "./pages/AliGatePage";
@@ -41,7 +41,7 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/sign-in"} component={SignInPage} />
       <Route path={"/sign-up"} component={SignUpPage} />
-      <Route path={"/admin"} component={AdminSignInPage} />
+      <Route path={"/admin"} component={AdminDashboardPage} />
       <Route path={"/operator"} component={OperatorGatePage} />
       <Route path={"/start-trial"} component={StartTrialPage} />
       <Route path={"/login"} component={SignInPage} />

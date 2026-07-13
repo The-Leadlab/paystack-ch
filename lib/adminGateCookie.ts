@@ -12,12 +12,12 @@ export function adminSessionCookieValue(password: string): string {
 
 export function adminSessionSetCookieHeader(token: string, maxAgeSec: number): string {
   const secure = useSecureCookieFlag();
-  return `${ADMIN_SESSION_COOKIE_NAME}=${token}; HttpOnly; ${secure ? "Secure; " : ""}SameSite=Lax; Path=/admin; Max-Age=${maxAgeSec}`;
+  return `${ADMIN_SESSION_COOKIE_NAME}=${token}; HttpOnly; ${secure ? "Secure; " : ""}SameSite=Lax; Path=/; Max-Age=${maxAgeSec}`;
 }
 
 export function adminSessionClearCookieHeader(): string {
   const secure = useSecureCookieFlag();
-  return `${ADMIN_SESSION_COOKIE_NAME}=; HttpOnly; ${secure ? "Secure; " : ""}SameSite=Lax; Path=/admin; Max-Age=0`;
+  return `${ADMIN_SESSION_COOKIE_NAME}=; HttpOnly; ${secure ? "Secure; " : ""}SameSite=Lax; Path=/; Max-Age=0`;
 }
 
 function useSecureCookieFlag(): boolean {
