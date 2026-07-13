@@ -96,7 +96,35 @@ export type AdminUserActionBody =
   | { action: "enable_user" }
   | { action: "delete_user" }
   | { action: "set_plan"; planId: string | null; planTestMode?: boolean }
-  | { action: "resend_verification" };
+  | { action: "resend_verification" }
+  | {
+      action: "update_user";
+      displayName?: string;
+      email?: string;
+      password?: string;
+      phoneNumber?: string;
+      emailVerified?: boolean;
+      disabled?: boolean;
+    };
+
+export type CreateAdminUserBody = {
+  email: string;
+  password: string;
+  displayName?: string;
+  emailVerified?: boolean;
+  disabled?: boolean;
+  planId?: string | null;
+  planTestMode?: boolean;
+};
+
+export async function createAdminUser(
+  body: CreateAdminUserBody
+): Promise<{ ok: boolean; uid: string; email: string; message: string }> {
+  return adminFetch("/api/admin/users", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
 
 export async function runAdminUserAction(
   uid: string,

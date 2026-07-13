@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ChevronRight, Loader2, RefreshCw, Search, Users } from "lucide-react";
+import { ChevronRight, Loader2, Plus, RefreshCw, Search, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,13 +9,8 @@ import {
   type AdminUserSummary,
 } from "@/lib/adminUsersClient";
 import { AdminUserDetailPanel } from "./AdminUserDetailPanel";
-
-function statusBadgeVariant(status: string | null): "default" | "secondary" | "destructive" | "outline" {
-  if (!status || status === "none") return "outline";
-  if (status === "active" || status === "trialing") return "default";
-  if (status === "canceled" || status === "unpaid" || status === "past_due") return "destructive";
-  return "secondary";
-}
+import { AdminCreateUserDialog } from "./AdminCreateUserDialog";
+import { subscriptionStatusClass } from "./adminUserUi";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -38,6 +33,7 @@ export function AdminUsersPanel() {
   const [search, setSearch] = useState("");
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const loadUsers = useCallback(async (term?: string) => {
     setLoading(true);
@@ -80,6 +76,14 @@ export function AdminUsersPanel() {
         </div>
 
         <div className="flex gap-2 w-full lg:w-auto lg:min-w-[360px]">
+          <Button
+            type="button"
+            className="font-display bg-brand-red text-white hover:bg-brand-red/90 gap-1 shrink-0"
+            onClick={() => setCreateOpen(true)}
+          >
+            <Plus className="size-4" />
+            {t("adminCreateUserTitle")}
+          </Button>
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
             <Input
@@ -179,9 +183,11 @@ export function AdminUsersPanel() {
                     </td>
                     <td className="py-3.5 px-4 align-top">
                       <div className="flex flex-wrap gap-1">
-                        <Badge variant={statusBadgeVariant(user.subscriptionStatus)}>
+                        <span
+                          className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${subscriptionStatusClass(user.subscriptionStatus)}`}
+                        >
                           {user.subscriptionStatus ?? "none"}
-                        </Badge>
+                        </span>
                         {user.disabled ? (
                           <Badge variant="destructive">{t("adminUsersDisabled")}</Badge>
                         ) : null}
@@ -203,6 +209,15 @@ export function AdminUsersPanel() {
           </table>
         </div>
       </div>
+
+      <AdminCreateUserDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={(uid) => {
+          void loadUsers(search);
+          openUser(uid);
+        }}
+      />
 
       <AdminUserDetailPanel
         uid={selectedUid}

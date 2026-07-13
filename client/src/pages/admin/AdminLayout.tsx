@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "wouter";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useLanguage } from "@/cafe/context/LanguageContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 type AdminLayoutProps = {
   children: ReactNode;
@@ -12,9 +13,16 @@ type AdminLayoutProps = {
 /** Full-width shell for /admin — not the narrow auth sign-in column. */
 export function AdminLayout({ children, heading, description }: AdminLayoutProps) {
   const { t } = useLanguage();
+  const { theme } = useTheme();
 
   return (
-    <div className="min-h-[100dvh] min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-[oklch(0.97_0.01_85)] text-foreground">
+    <div
+      className={`min-h-[100dvh] min-h-screen flex flex-col text-foreground ${
+        theme === "dark"
+          ? "bg-background"
+          : "bg-gradient-to-br from-background via-background to-[oklch(0.97_0.01_85)]"
+      }`}
+    >
       <header className="border-b border-border/60 bg-background/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="container max-w-7xl mx-auto flex items-center justify-between gap-4 py-4 px-4 sm:px-6">
           <div className="flex items-center gap-4 min-w-0">

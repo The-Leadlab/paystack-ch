@@ -267,7 +267,73 @@ export type AdminUserAction =
   | { action: "enable_user" }
   | { action: "delete_user" }
   | { action: "set_plan"; planId: PaystackPlanId | null; planTestMode?: boolean }
-  | { action: "resend_verification" };
+  | { action: "resend_verification" }
+  | {
+      action: "update_user";
+      displayName?: string;
+      email?: string;
+      password?: string;
+      phoneNumber?: string;
+      emailVerified?: boolean;
+      disabled?: boolean;
+    };
+
+export type CreateAdminUserInput = {
+  email: string;
+  password: string;
+  displayName?: string;
+  emailVerified?: boolean;
+  disabled?: boolean;
+  planId?: PaystackPlanId | null;
+  planTestMode?: boolean;
+};
+
+export async function createAdminUser(
+  input: CreateAdminUserInput
+): Promise<{ ok: true; uid: string; email: string; message: string }> {
+  if (!hasFirebaseAdminCredentials()) {
+    throw Object.assign(new Error("Firebase Admin credentials are not configured."), { status: 503 });
+  }
+  ensureFirebaseAdmin();
+  const auth = getAuth();
+  const db = getFirestore();
+
+  const email = input.email.trim().toLowerCase();
+  const password = input.password;
+  if (!email) throw Object.assign(new Error("Email is required."), { status: 400 });
+  if (!password || password.length < 6) {
+    throw Object.assign(new Error("Password must be at least 6 characters."), { status: 400 });
+  }
+
+  const created = await auth.createUser({
+    email,
+    password,
+    displayName: input.displayName?.trim() || undefined,
+    emailVerified: input.emailVerified === true,
+    disabled: input.disabled === true,
+  });
+
+  await db
+    .collection("users")
+    .doc(created.uid)
+    .set(
+      {
+        email,
+        subscriptionStatus: input.planId ? "active" : "none",
+        planId: input.planId ?? null,
+        planTestMode: input.planTestMode === true,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+  return {
+    ok: true,
+    uid: created.uid,
+    email,
+    message: `User created (${email}).`,
+  };
+}
 
 export async function runAdminUserAction(
   uid: string,
@@ -426,6 +492,44 @@ export async function runAdminUserAction(
         message: "Verification link generated. Copy the link below or configure Firebase email templates.",
         data: { verificationLink: link },
       };
+    }
+
+    case "update_user": {
+      const updates: Parameters<typeof auth.updateUser>[1] = {};
+      if (typeof body.displayName === "string") {
+        updates.displayName = body.displayName.trim() || undefined;
+      }
+      if (typeof body.email === "string") {
+        const nextEmail = body.email.trim().toLowerCase();
+        if (!nextEmail) throw Object.assign(new Error("Email cannot be empty."), { status: 400 });
+        updates.email = nextEmail;
+      }
+      if (typeof body.password === "string") {
+        if (body.password.length > 0 && body.password.length < 6) {
+          throw Object.assign(new Error("Password must be at least 6 characters."), { status: 400 });
+        }
+        if (body.password.length >= 6) updates.password = body.password;
+      }
+      if (typeof body.phoneNumber === "string") {
+        updates.phoneNumber = body.phoneNumber.trim() || undefined;
+      }
+      if (typeof body.emailVerified === "boolean") updates.emailVerified = body.emailVerified;
+      if (typeof body.disabled === "boolean") updates.disabled = body.disabled;
+
+      if (Object.keys(updates).length === 0) {
+        throw Object.assign(new Error("No profile fields to update."), { status: 400 });
+      }
+
+      await auth.updateUser(uid, updates);
+
+      if (typeof updates.email === "string") {
+        await db.collection("users").doc(uid).set(
+          { email: updates.email, updatedAt: FieldValue.serverTimestamp() },
+          { merge: true }
+        );
+      }
+
+      return { ok: true, message: "User profile updated." };
     }
 
     default:

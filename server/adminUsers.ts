@@ -2,7 +2,8 @@ import express, { type Express, type Request, type Response } from "express";
 import { createHash, timingSafeEqual } from "crypto";
 import { adminSessionCookieValue, adminSessionSetCookieHeader } from "../lib/adminGateCookie.js";
 import { adminSessionIsValid, requireAdminSession } from "../lib/adminSession.js";
-import { getAdminUserDetail, listAdminUsers, runAdminUserAction, type AdminUserAction } from "../lib/adminUsers.js";
+import { getAdminUserDetail, createAdminUser, listAdminUsers, runAdminUserAction, type AdminUserAction, type CreateAdminUserInput } from "../lib/adminUsers.js";
+import { parsePaystackPlanId } from "../shared/planCatalog.js";
 
 function passwordMatches(given: string, expected: string): boolean {
   if (!given || !expected) return false;
@@ -45,6 +46,32 @@ export function registerAdminRoutes(app: Express): void {
         typeof req.query.limit === "string" ? parseInt(req.query.limit, 10) : undefined;
       const result = await listAdminUsers({ search, maxResults });
       res.json(result);
+    } catch (e) {
+      const status = (e as { status?: number }).status ?? 500;
+      res.status(status).json({ error: e instanceof Error ? e.message : "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/users", express.json(), async (req: Request, res: Response) => {
+    try {
+      const gate = requireAdminSession(req.headers.cookie);
+      if (!gate.ok) {
+        res.status(gate.status).json({ error: gate.error });
+        return;
+      }
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const planRaw = typeof body.planId === "string" ? body.planId : null;
+      const input: CreateAdminUserInput = {
+        email: typeof body.email === "string" ? body.email : "",
+        password: typeof body.password === "string" ? body.password : "",
+        displayName: typeof body.displayName === "string" ? body.displayName : undefined,
+        emailVerified: body.emailVerified === true,
+        disabled: body.disabled === true,
+        planId: planRaw ? parsePaystackPlanId(planRaw) : null,
+        planTestMode: body.planTestMode === true,
+      };
+      const result = await createAdminUser(input);
+      res.status(201).json(result);
     } catch (e) {
       const status = (e as { status?: number }).status ?? 500;
       res.status(status).json({ error: e instanceof Error ? e.message : "Internal server error" });
@@ -94,6 +121,6 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   console.info(
-    "[admin] POST /api/admin/verify, GET /api/admin/session, GET /api/admin/users, GET|POST /api/admin/user"
+    "[admin] POST /api/admin/verify, GET /api/admin/session, GET|POST /api/admin/users, GET|POST /api/admin/user"
   );
 }
