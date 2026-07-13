@@ -17,6 +17,7 @@ import {
   checkoutSuccessSessionId,
   linkCheckoutSessionAfterAuth,
   preserveCheckoutInAuthHref,
+  withStripeTestQuery,
 } from "@/cafe/lib/stripeCheckoutClient";
 import { formatCheckoutLinkError } from "@/cafe/lib/formatCheckoutLinkError";
 import { canOpenPublicSignUp, formatAuthAccessError } from "@/cafe/lib/authAccess";
@@ -27,10 +28,12 @@ function sanitizeRedirect(search: string): string {
   if (redirect && redirect.startsWith("/") && !redirect.startsWith("//")) {
     return redirect;
   }
-  if (params.get("stripe_test") === "1") {
-    return "/app";
-  }
   return "/app";
+}
+
+function withSubscriptionSuccess(path: string, search: string): string {
+  const join = path.includes("?") ? "&" : "?";
+  return withStripeTestQuery(`${path}${join}subscription=success`, search);
 }
 
 export default function SignUpPage() {
@@ -76,7 +79,7 @@ export default function SignUpPage() {
       try {
         const token = await user.getIdToken();
         await linkCheckoutSessionAfterAuth(token, checkoutSid, user.uid, checkoutBillingPath);
-        if (alive) setLocation(nextPath);
+        if (alive) setLocation(withSubscriptionSuccess(nextPath, search));
       } catch (e) {
         linkStartedRef.current = false;
         if (alive) setCheckoutLinkError(formatCheckoutLinkError(e, t));
