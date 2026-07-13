@@ -32,6 +32,8 @@ import {
 } from "./subscriptionLinkSign.js";
 import { verifyFirebaseUser } from "./verifyFirebaseIdToken.js";
 import { serverStripeUseTestMode } from "./stripeMode.js";
+import { notifyAdminsNewUser } from "./newUserNotify.js";
+import { getAuth } from "firebase-admin/auth";
 
 export type { HeaderMap } from "./stripeCore.js";
 export { getStripe, getStripeTest, publicAppOriginFromHeaders, trialDays } from "./stripeCore.js";
@@ -191,6 +193,23 @@ export async function dispatchStripeEvent(
         fullSub = await stripe.subscriptions.retrieve(subId);
       }
       await handleStripeSubscription(fullSub, useTestPrices);
+      if (uid) {
+        const email = await resolveStripeCheckoutEmail(stripe, session);
+        const planId =
+          parsePaystackPlanId(session.metadata?.planId) ||
+          parsePaystackPlanId(fullSub.metadata?.planId) ||
+          "starter";
+        if (email) {
+          void notifyAdminsNewUser({
+            email,
+            uid,
+            planId: isSelfServePlan(planId) ? planId : "starter",
+            stripeSessionId: session.id,
+            source: "checkout_webhook",
+            useTestStripe: useTestPrices,
+          });
+        }
+      }
       break;
     }
     case "customer.subscription.updated":
@@ -606,6 +625,21 @@ export async function runLinkCheckoutSession(
       await syncSubscriptionToFirestore(uid, fullSub, useTestStripe);
       const db = getFirestore();
       await db.collection("pendingStripeCheckouts").doc(sessionId).delete().catch(() => undefined);
+      let displayName: string | null = null;
+      try {
+        displayName = (await getAuth().getUser(uid)).displayName ?? null;
+      } catch {
+        /* optional */
+      }
+      void notifyAdminsNewUser({
+        email: userEmail,
+        displayName,
+        uid,
+        planId: safePlanId,
+        stripeSessionId: sessionId,
+        source: "checkout_link",
+        useTestStripe,
+      });
       return { status: 200, json: { ok: true, billing } };
     }
 

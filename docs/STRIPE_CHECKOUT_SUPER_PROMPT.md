@@ -28,7 +28,9 @@ If **any** of these are true on **production** (`paystack.ch`), Checkout uses **
 ### Fix
 
 1. Vercel → Project → Settings → Environment Variables (**Production**)
-2. **Remove** or set to `false`: `VITE_STRIPE_USE_TEST`, `STRIPE_USE_TEST_MODE`
+Removing **`STRIPE_USE_TEST_MODE`** from Vercel Production is **correct and recommended** — production checkout must use `sk_live_...` only. Keep sandbox for local QA via `?stripe_test=1` only.
+
+2. **Remove** or set to `false`: `VITE_STRIPE_USE_TEST`, `STRIPE_USE_TEST_MODE` (delete the var entirely)
 3. Ensure **Production** has:
    - `STRIPE_SECRET_KEY=sk_live_...`
    - `STRIPE_PRICE_STARTER` / `BUSINESS` / `UNLIMITED` = **live** Dashboard `price_...` IDs (CHF, recurring)
