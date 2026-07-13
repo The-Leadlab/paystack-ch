@@ -8,6 +8,7 @@ import {
   Banknote,
   TrendingUp,
   Gift,
+  Wand2,
 } from "lucide-react";
 import type { AliLabFeature } from "../featureRegistry";
 import { useLabFeatureText } from "../hooks/useLabFeatureText";
@@ -25,6 +26,7 @@ import {
   type PersonalExpenseCategory,
   type PersonalIncomeCategory,
 } from "../personalCategories";
+import { suggestExpenseBudgets, suggestIncomeBudgets } from "../utils/budgetSuggestions";
 import { GlassCard } from "../personal-plan/components/GlassCard";
 import { PersonalRecentLedger } from "../personal-plan/components/PersonalRecentLedger";
 import { usePersonalPlan } from "../personal-plan/context/PersonalPlanContext";
@@ -121,6 +123,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   const { loading: finLoading, currentSession } = ledger;
   const [mode, setMode] = useState<LabBudgetMode>("traditional");
   const [draftBudgets, setDraftBudgets] = useState<Record<string, string>>({});
+  const [suggestMessage, setSuggestMessage] = useState<string | null>(null);
 
   const { items: saved, update, add, uid } = useAliLabPersist<BudgetRow>(
     labCollections.budgets,
@@ -213,6 +216,34 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   const displayBudget = (category: string, fallback: number) =>
     draftBudgets[category] ?? (fallback > 0 ? String(fallback) : "");
 
+  const applySuggestions = () => {
+    const expenseSuggestions = suggestExpenseBudgets(ledger.filteredExpenses, month);
+    const incomeSuggestions = suggestIncomeBudgets(ledger.filteredIncome, month);
+
+    let applied = 0;
+    for (const row of expenseRows) {
+      if (row.budgetChf > 0) continue;
+      const suggested = expenseSuggestions[row.cat];
+      if (!suggested) continue;
+      setDraftBudgets((prev) => ({ ...prev, [row.cat]: String(suggested) }));
+      void setBudget(row.cat, suggested);
+      applied += 1;
+    }
+    for (const row of incomeRows) {
+      if (row.budgetChf > 0) continue;
+      const suggested = incomeSuggestions[row.cat];
+      if (!suggested) continue;
+      setDraftBudgets((prev) => ({ ...prev, [row.key]: String(suggested) }));
+      void setBudget(row.key, suggested);
+      applied += 1;
+    }
+    setSuggestMessage(
+      applied > 0
+        ? `Filled ${applied} empty ${applied === 1 ? "category" : "categories"} from your last 3 months.`
+        : "Not enough history yet — add a few months of transactions first."
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-3 items-center text-xs">
@@ -226,6 +257,17 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
         </select>
         {finLoading && <span className="text-[var(--pp-on-surface-variant)]">{t("loadingLedger")}</span>}
         {!uid && <span className="text-[var(--pp-primary)]">{t("localBudgetCache")}</span>}
+        <button
+          type="button"
+          onClick={applySuggestions}
+          className="flex items-center gap-1.5 bg-[var(--pp-primary)]/10 text-[var(--pp-primary)] font-semibold px-3 py-1 rounded-full hover:bg-[var(--pp-primary)]/20 transition-colors"
+        >
+          <Wand2 className="size-3.5" />
+          Suggest from history
+        </button>
+        {suggestMessage && (
+          <span className="text-[var(--pp-on-surface-variant)]">{suggestMessage}</span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
