@@ -37,7 +37,16 @@ vi.mock("firebase-admin/storage", () => ({
 vi.mock("../lib/firebaseAdmin.js", () => ({
   ensureFirebaseAdmin: vi.fn(),
   hasFirebaseAdminCredentials: vi.fn(() => true),
-  parseServiceAccountJson: vi.fn(() => ({ project_id: "test-project" })),
+}));
+
+vi.mock("../lib/firebaseStorageAdmin.js", () => ({
+  assertOwnedStoragePath: vi.fn(),
+  isAllowedFirebaseStorageUrl: vi.fn(() => true),
+  readStorageFileForUser: vi.fn(async () => ({
+    bytes: Buffer.from("pdf-bytes"),
+    mimeType: "application/pdf",
+  })),
+  resolveFirebaseStorageBucket: vi.fn(() => "test-project.firebasestorage.app"),
 }));
 
 describe("runDriveSaveDocument", () => {
