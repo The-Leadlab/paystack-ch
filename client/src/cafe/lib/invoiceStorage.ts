@@ -1,4 +1,5 @@
 import type { InvoiceData } from '../types/invoice';
+import { normalizeInvoice } from './invoiceTotals';
 
 const STORAGE_PREFIX = 'paystack_invoices';
 
@@ -11,7 +12,7 @@ export function loadSavedInvoices(userId: string | undefined): InvoiceData[] {
     const raw = localStorage.getItem(invoiceStorageKey(userId));
     if (!raw) return [];
     const parsed = JSON.parse(raw) as InvoiceData[];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(normalizeInvoice) : [];
   } catch {
     return [];
   }

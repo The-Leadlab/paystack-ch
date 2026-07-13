@@ -11,10 +11,13 @@ export type InvoicePdfLabels = {
   colDescription: string;
   colQty: string;
   colUnit: string;
+  colDiscount: string;
+  colVat: string;
   colTotal: string;
   subtotal: string;
   discount: string;
   tax: string;
+  vatBreakdown: string;
   total: string;
   notes: string;
   terms: string;
@@ -167,54 +170,91 @@ export async function downloadInvoicePdf(
   cmds.push({ type: 'text', x: 380, y, size: 9, bold: false, text: invoice.paymentTerms });
   y -= 22;
 
-  cmds.push({ type: 'text', x: MARGIN, y, size: 8, bold: true, text: labels.colDescription });
-  cmds.push({ type: 'text', x: 300, y, size: 8, bold: true, text: labels.colQty });
-  cmds.push({ type: 'text', x: 360, y, size: 8, bold: true, text: labels.colUnit });
-  cmds.push({ type: 'text', x: 460, y, size: 8, bold: true, text: labels.colTotal });
+  cmds.push({ type: 'text', x: MARGIN, y, size: 7, bold: true, text: labels.colDescription });
+  cmds.push({ type: 'text', x: 230, y, size: 7, bold: true, text: labels.colQty });
+  cmds.push({ type: 'text', x: 270, y, size: 7, bold: true, text: labels.colUnit });
+  cmds.push({ type: 'text', x: 340, y, size: 7, bold: true, text: labels.colDiscount });
+  cmds.push({ type: 'text', x: 400, y, size: 7, bold: true, text: labels.colVat });
+  cmds.push({ type: 'text', x: 460, y, size: 7, bold: true, text: labels.colTotal });
   y -= 14;
 
   for (const item of invoice.items) {
-    const descLines = wrapText(item.description, 42);
-    cmds.push({ type: 'text', x: MARGIN, y, size: 9, bold: false, text: descLines[0] });
-    cmds.push({ type: 'text', x: 300, y, size: 9, bold: false, text: String(item.quantity) });
+    const descLines = wrapText(item.description, 32);
+    cmds.push({ type: 'text', x: MARGIN, y, size: 8, bold: false, text: descLines[0] });
+    cmds.push({ type: 'text', x: 230, y, size: 8, bold: false, text: String(item.quantity) });
     cmds.push({
       type: 'text',
-      x: 360,
+      x: 270,
       y,
-      size: 9,
+      size: 8,
       bold: false,
       text: fmtMoney(item.unitPrice, invoice.currencySymbol, locale),
     });
     cmds.push({
       type: 'text',
+      x: 340,
+      y,
+      size: 8,
+      bold: false,
+      text: item.discountAmount > 0 ? `-${fmtMoney(item.discountAmount, invoice.currencySymbol, locale)}` : '—',
+    });
+    cmds.push({ type: 'text', x: 400, y, size: 8, bold: false, text: `${item.taxRate}%` });
+    cmds.push({
+      type: 'text',
       x: 460,
       y,
-      size: 9,
+      size: 8,
       bold: false,
       text: fmtMoney(item.total, invoice.currencySymbol, locale),
     });
     y -= 12;
     for (let i = 1; i < descLines.length; i += 1) {
-      cmds.push({ type: 'text', x: MARGIN, y, size: 9, bold: false, text: descLines[i] });
+      cmds.push({ type: 'text', x: MARGIN, y, size: 8, bold: false, text: descLines[i] });
       y -= 12;
     }
-    if (y < 120) break;
+    if (y < 140) break;
   }
 
   y -= 10;
   cmds.push({
     type: 'text',
-    x: 360,
+    x: 340,
     y,
     size: 9,
     bold: false,
     text: `${labels.subtotal}: ${fmtMoney(invoice.subtotal, invoice.currencySymbol, locale)}`,
   });
   y -= 12;
+
+  const breakdown = invoice.vatBreakdown ?? [];
+  if (breakdown.length > 1) {
+    for (const line of breakdown) {
+      cmds.push({
+        type: 'text',
+        x: 340,
+        y,
+        size: 9,
+        bold: false,
+        text: `${labels.tax} (${line.ratePercent}%): ${fmtMoney(line.vatAmount, invoice.currencySymbol, locale)}`,
+      });
+      y -= 12;
+    }
+  } else {
+    cmds.push({
+      type: 'text',
+      x: 340,
+      y,
+      size: 9,
+      bold: false,
+      text: `${labels.tax}: ${fmtMoney(invoice.taxAmount, invoice.currencySymbol, locale)}`,
+    });
+    y -= 12;
+  }
+
   if (invoice.discountAmount > 0) {
     cmds.push({
       type: 'text',
-      x: 360,
+      x: 340,
       y,
       size: 9,
       bold: false,
@@ -222,18 +262,10 @@ export async function downloadInvoicePdf(
     });
     y -= 12;
   }
+  y -= 2;
   cmds.push({
     type: 'text',
-    x: 360,
-    y,
-    size: 9,
-    bold: false,
-    text: `${labels.tax} (${invoice.taxRate}%): ${fmtMoney(invoice.taxAmount, invoice.currencySymbol, locale)}`,
-  });
-  y -= 14;
-  cmds.push({
-    type: 'text',
-    x: 360,
+    x: 340,
     y,
     size: 12,
     bold: true,

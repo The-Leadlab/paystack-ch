@@ -5,7 +5,18 @@ export interface InvoiceItem {
   description: string;
   quantity: number;
   unitPrice: number;
+  /** Per-line discount (subtracted before VAT). */
+  discountAmount: number;
+  /** Per-line VAT rate (%). */
+  taxRate: number;
+  /** Line net total (HT, after discount) — computed. */
   total: number;
+}
+
+export interface InvoiceVatBreakdownLine {
+  ratePercent: number;
+  baseAmount: number;
+  vatAmount: number;
 }
 
 export interface InvoiceData {
@@ -25,9 +36,12 @@ export interface InvoiceData {
   clientEmail: string;
   items: InvoiceItem[];
   subtotal: number;
+  /** Default VAT % for new lines + bulk "apply to all". */
   taxRate: number;
   taxAmount: number;
+  /** Optional invoice-wide discount applied after VAT (legacy / extra). */
   discountAmount: number;
+  vatBreakdown?: InvoiceVatBreakdownLine[];
   total: number;
   currency: string;
   currencySymbol: string;
@@ -39,7 +53,7 @@ export interface InvoiceData {
 }
 
 export const INVOICE_CURRENCY_SYMBOLS: Record<string, string> = {
-  CHF: "CHF",
+  CHF: 'CHF',
   EUR: '€',
   USD: '$',
   GBP: '£',

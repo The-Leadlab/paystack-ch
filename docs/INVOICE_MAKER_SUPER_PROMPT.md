@@ -20,6 +20,7 @@ LL uses a backend email API; Paystack uses **`mailto:`** with a pre-filled subje
 | Panel UI | `client/src/cafe/components/InvoiceMakerPanel.tsx` |
 | Types | `client/src/cafe/types/invoice.ts` |
 | Storage | `client/src/cafe/lib/invoiceStorage.ts` — `localStorage` keyed by `paystack_invoices_${userId}` |
+| Totals engine | `client/src/cafe/lib/invoiceTotals.ts` — post-discount VAT, mixed rates, `vatBreakdown` |
 | PDF export | `client/src/cafe/lib/invoicePdf.ts` — lightweight client-side PDF builder (no extra dependency) |
 | i18n | `client/src/cafe/i18n/dashboardTranslations.ts` — keys prefixed `inv*` + `invoiceMakerTab` |
 
@@ -35,9 +36,12 @@ LL uses a backend email API; Paystack uses **`mailto:`** with a pre-filled subje
 - Invoice header: number (regenerate), date, due date, status, payment terms
 - Company block (defaults: Paystack.ch, Switzerland, 8.1% VAT, CHF)
 - Client block + quick select from known suppliers/issuers
-- Line items: description, qty, unit price, computed total; add/remove rows
+- Line items: description, qty, unit price, **per-line discount**, **per-line VAT %** (Swiss presets: 0%, 2.6%, 8.1%), computed line total HT; add/remove rows
+- **Default VAT** + **Apply to all** copies the default rate to every line when all items share the same rate
+- **VAT is calculated on post-discount line amounts** (not on gross before discount)
+- Optional **invoice-wide discount** applied after VAT (legacy field)
 - Notes + terms & conditions
-- Sidebar: financial summary (subtotal, tax, discount, total), quick actions, status panel
+- Sidebar: financial summary (subtotal HT, VAT breakdown by rate, invoice discount, total TTC), quick actions, status panel
 - **Preview mode**: printable white layout with Paystack logo (`BRAND_LOGO_SRC`)
 - **Save draft** → `upsertInvoice()` in localStorage
 - **Download PDF** → real `.pdf` via `client/src/cafe/lib/invoicePdf.ts`
@@ -69,7 +73,7 @@ Add EN + FR for all `inv*` keys and `invoiceMakerTab`. Reuse `dpColActions` for 
 ## Verification checklist
 
 1. `/app` → **Invoices** tab appears in sidebar and mobile nav
-2. Create invoice with line items → totals recalculate (8.1% VAT)
+2. Create invoice with line items → totals recalculate; VAT on net after line discount; mixed VAT rates show breakdown
 3. Save draft → appears in saved list; reload page → data persists per user
 4. Preview → white printable layout; back to edit works
 5. Download → `.pdf` file with printable invoice layout

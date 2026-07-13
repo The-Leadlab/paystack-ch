@@ -17,9 +17,11 @@ import { useAuth } from '../context/AuthContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useDocuments } from '../context/DocumentContext';
 import { loadSavedInvoices, upsertInvoice } from '../lib/invoiceStorage';
+import { applyInvoiceTotals, normalizeInvoice } from '../lib/invoiceTotals';
 import { downloadInvoicePdf } from '../lib/invoicePdf';
 import type { InvoiceData, InvoiceItem, InvoiceStatus } from '../types/invoice';
 import { INVOICE_CURRENCY_SYMBOLS } from '../types/invoice';
+import { DEFAULT_SWISS_VAT_RATE, SWISS_VAT_RATES } from '@shared/swissVatRates';
 import { BRAND_LOGO_SRC } from '@/const/branding';
 
 function generateInvoiceNumber(): string {
@@ -53,7 +55,7 @@ function createInitialInvoice(t: (k: string) => string): InvoiceData {
     clientEmail: '',
     items: [],
     subtotal: 0,
-    taxRate: 8.1,
+    taxRate: DEFAULT_SWISS_VAT_RATE,
     taxAmount: 0,
     discountAmount: 0,
     total: 0,
@@ -95,7 +97,7 @@ export function InvoiceMakerPanel() {
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setSavedInvoices(loadSavedInvoices(user?.uid));
+    setSavedInvoices(loadSavedInvoices(user?.uid).map(normalizeInvoice));
   }, [user?.uid]);
 
   const supplierOptions = useMemo(() => {
@@ -107,15 +109,7 @@ export function InvoiceMakerPanel() {
     return Array.from(names).sort((a, b) => a.localeCompare(b));
   }, [documents]);
 
-  useEffect(() => {
-    const subtotal = invoiceData.items.reduce((sum, item) => sum + item.total, 0);
-    const taxAmount = (subtotal * invoiceData.taxRate) / 100;
-    const total = Math.max(0, subtotal + taxAmount - invoiceData.discountAmount);
-    setInvoiceData((prev) => {
-      if (prev.subtotal === subtotal && prev.taxAmount === taxAmount && prev.total === total) return prev;
-      return { ...prev, subtotal, taxAmount, total };
-    });
-  }, [invoiceData.items, invoiceData.taxRate, invoiceData.discountAmount]);
+  const displayInvoice = useMemo(() => applyInvoiceTotals(invoiceData), [invoiceData]);
 
   const addItem = () => {
     const newItem: InvoiceItem = {
@@ -123,6 +117,8 @@ export function InvoiceMakerPanel() {
       description: '',
       quantity: 1,
       unitPrice: 0,
+      discountAmount: 0,
+      taxRate: invoiceData.taxRate,
       total: 0,
     };
     setInvoiceData((prev) => ({ ...prev, items: [...prev.items, newItem] }));
@@ -134,11 +130,16 @@ export function InvoiceMakerPanel() {
       items: prev.items.map((item) => {
         if (item.id !== id) return item;
         const updated = { ...item, [field]: value };
-        if (field === 'quantity' || field === 'unitPrice') {
-          updated.total = Number(updated.quantity) * Number(updated.unitPrice);
-        }
-        return updated;
+        const normalized = applyInvoiceTotals({ ...prev, items: [updated] }).items[0];
+        return normalized ?? updated;
       }),
+    }));
+  };
+
+  const applyVatToAllItems = () => {
+    setInvoiceData((prev) => ({
+      ...prev,
+      items: prev.items.map((item) => ({ ...item, taxRate: prev.taxRate })),
     }));
   };
 
@@ -165,7 +166,7 @@ export function InvoiceMakerPanel() {
       alert(t('invValidationItems'));
       return false;
     }
-    const next = upsertInvoice(user?.uid, invoiceData);
+    const next = upsertInvoice(user?.uid, applyInvoiceTotals(invoiceData));
     setSavedInvoices(next);
     alert(t('invSavedSuccess'));
     return true;
@@ -183,11 +184,14 @@ export function InvoiceMakerPanel() {
       colDescription: t('invColDescription'),
       colQty: t('invColQty'),
       colUnit: t('invColUnit'),
-      colTotal: t('invColTotal'),
-      subtotal: t('invSubtotal'),
+      colDiscount: t('invColDiscount'),
+      colVat: t('invColVat'),
+      colTotal: t('invColTotalHt'),
+      subtotal: t('invSubtotalHt'),
       discount: t('invDiscount'),
       tax: t('invTax'),
-      total: t('invTotal'),
+      vatBreakdown: t('invVatBreakdown'),
+      total: t('invTotalTtc'),
       notes: t('invNotes'),
       terms: t('invTerms'),
       status: t('invStatus'),
@@ -201,7 +205,7 @@ export function InvoiceMakerPanel() {
       return;
     }
     try {
-      await downloadInvoicePdf(invoiceData, invoicePdfLabels, chfLocale);
+      await downloadInvoicePdf(displayInvoice, invoicePdfLabels, chfLocale);
     } catch {
       alert(t('invPdfFailed'));
     }
@@ -214,11 +218,12 @@ export function InvoiceMakerPanel() {
     }
     const subject = encodeURIComponent(`${t('invEmailSubject')} ${invoiceData.invoiceNumber}`);
     const body = encodeURIComponent(
-      `${t('invEmailBodyIntro')}\n\n${invoiceData.invoiceNumber}\n${t('invTotal')}: ${invoiceData.currencySymbol} ${invoiceData.total.toFixed(2)}\n${t('invDueDate')}: ${invoiceData.dueDate}`
+      `${t('invEmailBodyIntro')}\n\n${displayInvoice.invoiceNumber}\n${t('invTotalTtc')}: ${displayInvoice.currencySymbol} ${displayInvoice.total.toFixed(2)}\n${t('invDueDate')}: ${displayInvoice.dueDate}`
     );
     window.open(`mailto:${invoiceData.clientEmail}?subject=${subject}&body=${body}`, '_blank');
-    setInvoiceData((prev) => ({ ...prev, status: 'sent' }));
-    upsertInvoice(user?.uid, { ...invoiceData, status: 'sent' });
+    const sent = applyInvoiceTotals({ ...invoiceData, status: 'sent' });
+    setInvoiceData(sent);
+    upsertInvoice(user?.uid, sent);
     setSavedInvoices(loadSavedInvoices(user?.uid));
   };
 
@@ -289,19 +294,27 @@ export function InvoiceMakerPanel() {
             <th className="text-left py-3 font-semibold">{t('invColDescription')}</th>
             <th className="text-center py-3 font-semibold">{t('invColQty')}</th>
             <th className="text-right py-3 font-semibold">{t('invColUnit')}</th>
-            <th className="text-right py-3 font-semibold">{t('invColTotal')}</th>
+            <th className="text-right py-3 font-semibold">{t('invColDiscount')}</th>
+            <th className="text-right py-3 font-semibold">{t('invColVat')}</th>
+            <th className="text-right py-3 font-semibold">{t('invColTotalHt')}</th>
           </tr>
         </thead>
         <tbody>
-          {invoiceData.items.map((item) => (
+          {displayInvoice.items.map((item) => (
             <tr key={item.id} className="border-b border-gray-100">
               <td className="py-3">{item.description}</td>
               <td className="py-3 text-center">{item.quantity}</td>
               <td className="py-3 text-right">
-                {invoiceData.currencySymbol} {fmtMoney(item.unitPrice)}
+                {displayInvoice.currencySymbol} {fmtMoney(item.unitPrice)}
               </td>
+              <td className="py-3 text-right">
+                {item.discountAmount > 0
+                  ? `-${displayInvoice.currencySymbol} ${fmtMoney(item.discountAmount)}`
+                  : '—'}
+              </td>
+              <td className="py-3 text-right">{item.taxRate}%</td>
               <td className="py-3 text-right font-medium">
-                {invoiceData.currencySymbol} {fmtMoney(item.total)}
+                {displayInvoice.currencySymbol} {fmtMoney(item.total)}
               </td>
             </tr>
           ))}
@@ -309,33 +322,35 @@ export function InvoiceMakerPanel() {
       </table>
 
       <div className="flex justify-end mb-8">
-        <div className="w-64 text-sm space-y-2">
+        <div className="w-72 text-sm space-y-2">
           <div className="flex justify-between">
-            <span className="text-gray-600">{t('invSubtotal')}</span>
+            <span className="text-gray-600">{t('invSubtotalHt')}</span>
             <span>
-              {invoiceData.currencySymbol} {fmtMoney(invoiceData.subtotal)}
+              {displayInvoice.currencySymbol} {fmtMoney(displayInvoice.subtotal)}
             </span>
           </div>
-          {invoiceData.discountAmount > 0 ? (
-            <div className="flex justify-between">
-              <span className="text-gray-600">{t('invDiscount')}</span>
+          {(displayInvoice.vatBreakdown ?? []).map((line) => (
+            <div key={line.ratePercent} className="flex justify-between">
+              <span className="text-gray-600">
+                {t('invTax')} ({line.ratePercent}%)
+              </span>
               <span>
-                -{invoiceData.currencySymbol} {fmtMoney(invoiceData.discountAmount)}
+                {displayInvoice.currencySymbol} {fmtMoney(line.vatAmount)}
+              </span>
+            </div>
+          ))}
+          {displayInvoice.discountAmount > 0 ? (
+            <div className="flex justify-between">
+              <span className="text-gray-600">{t('invInvoiceDiscount')}</span>
+              <span>
+                -{displayInvoice.currencySymbol} {fmtMoney(displayInvoice.discountAmount)}
               </span>
             </div>
           ) : null}
-          <div className="flex justify-between">
-            <span className="text-gray-600">
-              {t('invTax')} ({invoiceData.taxRate}%)
-            </span>
-            <span>
-              {invoiceData.currencySymbol} {fmtMoney(invoiceData.taxAmount)}
-            </span>
-          </div>
           <div className="flex justify-between border-t-2 border-gray-200 pt-3 text-lg font-bold">
-            <span>{t('invTotal')}</span>
+            <span>{t('invTotalTtc')}</span>
             <span>
-              {invoiceData.currencySymbol} {fmtMoney(invoiceData.total)}
+              {displayInvoice.currencySymbol} {fmtMoney(displayInvoice.total)}
             </span>
           </div>
         </div>
@@ -576,24 +591,44 @@ export function InvoiceMakerPanel() {
               </button>
             </div>
             <div className="space-y-3">
-              {invoiceData.items.map((item) => (
+              {invoiceData.items.map((item) => {
+                const displayItem = displayInvoice.items.find((i) => i.id === item.id) ?? item;
+                return (
                 <div key={item.id} className="ba-subpanel grid grid-cols-12 gap-3 items-end">
-                  <div className="col-span-12 md:col-span-5">
+                  <div className="col-span-12 md:col-span-4">
                     <FieldLabel>{t('invColDescription')}</FieldLabel>
                     <input className="ba-verify-field" value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder={t('invItemDescPlaceholder')} />
                   </div>
-                  <div className="col-span-4 md:col-span-2">
+                  <div className="col-span-3 md:col-span-1">
                     <FieldLabel>{t('invColQty')}</FieldLabel>
                     <input type="number" min={1} className="ba-verify-field" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))} />
                   </div>
-                  <div className="col-span-4 md:col-span-2">
+                  <div className="col-span-3 md:col-span-2">
                     <FieldLabel>{t('invColUnit')}</FieldLabel>
                     <input type="number" min={0} step={0.01} className="ba-verify-field" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', Number(e.target.value))} />
                   </div>
                   <div className="col-span-3 md:col-span-2">
-                    <FieldLabel>{t('invColTotal')}</FieldLabel>
-                    <div className="ba-verify-field flex items-center justify-end font-bold tabular-nums">
-                      {invoiceData.currencySymbol} {fmtMoney(item.total)}
+                    <FieldLabel>{t('invLineDiscount')}</FieldLabel>
+                    <input type="number" min={0} step={0.01} className="ba-verify-field" value={item.discountAmount ?? 0} onChange={(e) => updateItem(item.id, 'discountAmount', Number(e.target.value))} />
+                  </div>
+                  <div className="col-span-3 md:col-span-1">
+                    <FieldLabel>{t('invColVat')}</FieldLabel>
+                    <select
+                      className="ba-verify-field"
+                      value={item.taxRate ?? invoiceData.taxRate}
+                      onChange={(e) => updateItem(item.id, 'taxRate', Number(e.target.value))}
+                    >
+                      {SWISS_VAT_RATES.map((rate) => (
+                        <option key={rate} value={rate}>
+                          {rate}%
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-3 md:col-span-1">
+                    <FieldLabel>{t('invColTotalHt')}</FieldLabel>
+                    <div className="ba-verify-field flex items-center justify-end font-bold tabular-nums text-xs">
+                      {invoiceData.currencySymbol} {fmtMoney(displayItem.total)}
                     </div>
                   </div>
                   <div className="col-span-1 flex justify-end">
@@ -602,7 +637,8 @@ export function InvoiceMakerPanel() {
                     </button>
                   </div>
                 </div>
-              ))}
+              );
+              })}
               {invoiceData.items.length === 0 ? (
                 <p className="text-center text-sm text-cdlp-muted py-6">{t('invNoItems')}</p>
               ) : null}
@@ -652,29 +688,62 @@ export function InvoiceMakerPanel() {
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-cdlp-muted">{t('invSubtotal')}</span>
+                <span className="text-cdlp-muted">{t('invSubtotalHt')}</span>
                 <span className="ba-field-value tabular-nums">
-                  {invoiceData.currencySymbol} {fmtMoney(invoiceData.subtotal)}
+                  {invoiceData.currencySymbol} {fmtMoney(displayInvoice.subtotal)}
                 </span>
               </div>
               <div>
-                <FieldLabel>{t('invTaxRate')}</FieldLabel>
-                <input type="number" min={0} max={100} step={0.1} className="ba-verify-field" value={invoiceData.taxRate} onChange={(e) => setInvoiceData((p) => ({ ...p, taxRate: Number(e.target.value) }))} />
+                <FieldLabel>{t('invDefaultVat')}</FieldLabel>
+                <div className="flex gap-2">
+                  <select
+                    className="ba-verify-field flex-1"
+                    value={invoiceData.taxRate}
+                    onChange={(e) => setInvoiceData((p) => ({ ...p, taxRate: Number(e.target.value) }))}
+                  >
+                    {SWISS_VAT_RATES.map((rate) => (
+                      <option key={rate} value={rate}>
+                        {rate}%
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="ba-filter-chip shrink-0 px-3 text-xs"
+                    onClick={applyVatToAllItems}
+                    disabled={invoiceData.items.length === 0}
+                    title={t('invApplyVatToAll')}
+                  >
+                    {t('invApplyVatToAll')}
+                  </button>
+                </div>
               </div>
-              <div className="flex justify-between">
+              {(displayInvoice.vatBreakdown ?? []).length > 1
+                ? (displayInvoice.vatBreakdown ?? []).map((line) => (
+                    <div key={line.ratePercent} className="flex justify-between">
+                      <span className="text-cdlp-muted">
+                        {t('invTax')} ({line.ratePercent}%)
+                      </span>
+                      <span className="ba-field-value tabular-nums">
+                        {invoiceData.currencySymbol} {fmtMoney(line.vatAmount)}
+                      </span>
+                    </div>
+                  ))
+                : null}
+              <div className="flex justify-between font-medium">
                 <span className="text-cdlp-muted">{t('invTax')}</span>
                 <span className="ba-field-value tabular-nums">
-                  {invoiceData.currencySymbol} {fmtMoney(invoiceData.taxAmount)}
+                  {invoiceData.currencySymbol} {fmtMoney(displayInvoice.taxAmount)}
                 </span>
               </div>
               <div>
-                <FieldLabel>{t('invDiscount')}</FieldLabel>
+                <FieldLabel>{t('invInvoiceDiscount')}</FieldLabel>
                 <input type="number" min={0} step={0.01} className="ba-verify-field" value={invoiceData.discountAmount} onChange={(e) => setInvoiceData((p) => ({ ...p, discountAmount: Number(e.target.value) }))} />
               </div>
               <div className="border-t border-cdlp-border pt-3 flex justify-between text-lg font-black">
-                <span>{t('invTotal')}</span>
+                <span>{t('invTotalTtc')}</span>
                 <span className="text-cdlp-gold tabular-nums">
-                  {invoiceData.currencySymbol} {fmtMoney(invoiceData.total)}
+                  {invoiceData.currencySymbol} {fmtMoney(displayInvoice.total)}
                 </span>
               </div>
             </div>
@@ -728,7 +797,7 @@ export function InvoiceMakerPanel() {
                   <th className="text-left">{t('invNumber')}</th>
                   <th className="text-left">{t('invClientName')}</th>
                   <th className="text-left">{t('invClientCompany')}</th>
-                  <th className="text-right">{t('invTotal')}</th>
+                  <th className="text-right">{t('invTotalTtc')}</th>
                   <th className="text-left">{t('invStatus')}</th>
                   <th className="text-left">{t('invDate')}</th>
                   <th className="text-right">{t('dpColActions')}</th>
@@ -749,14 +818,14 @@ export function InvoiceMakerPanel() {
                     <td className="px-4 py-3 ba-table-muted">{new Date(invoice.date).toLocaleDateString(chfLocale)}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
-                        <button type="button" className="ba-filter-chip !py-1" onClick={() => setInvoiceData(invoice)}>
+                        <button type="button" className="ba-filter-chip !py-1" onClick={() => setInvoiceData(normalizeInvoice(invoice))}>
                           {t('invEdit')}
                         </button>
                         <button
                           type="button"
                           className="ba-filter-chip !py-1"
                           onClick={() => {
-                            setInvoiceData(invoice);
+                            setInvoiceData(normalizeInvoice(invoice));
                             setIsPreviewMode(true);
                           }}
                         >
