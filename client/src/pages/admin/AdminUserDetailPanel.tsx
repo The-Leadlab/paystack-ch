@@ -81,6 +81,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
   const [editPhone, setEditPhone] = useState("");
   const [editEmailVerified, setEditEmailVerified] = useState(false);
   const [editDisabled, setEditDisabled] = useState(false);
+  const [actionPassword, setActionPassword] = useState("");
 
   const loadUser = useCallback(async () => {
     setLoading(true);
@@ -130,12 +131,14 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
   };
 
   const saveProfile = async () => {
+    if (!user) return;
+    const canEditEmail = user.providerIds.includes("password") || user.providerIds.length === 0;
     setActionBusy("saveProfile");
     try {
       const result = await runAdminUserAction(uid, {
         action: "update_user",
         displayName: editDisplayName,
-        email: editEmail,
+        ...(canEditEmail ? { email: editEmail } : {}),
         ...(editPassword.trim() ? { password: editPassword } : {}),
         phoneNumber: editPhone,
         emailVerified: editEmailVerified,
@@ -143,6 +146,26 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
       });
       toast.success(result.message);
       setEditPassword("");
+      await loadUser();
+      onUserUpdated();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setActionBusy(null);
+    }
+  };
+
+  const setPassword = async () => {
+    const pwd = actionPassword.trim();
+    if (pwd.length < 6) {
+      toast.error(t("adminUserPasswordTooShort"));
+      return;
+    }
+    setActionBusy("setPassword");
+    try {
+      const result = await runAdminUserAction(uid, { action: "set_password", password: pwd });
+      toast.success(result.message);
+      setActionPassword("");
       await loadUser();
       onUserUpdated();
     } catch (e) {
@@ -161,6 +184,8 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
   };
 
   const isPasswordUser = user?.providerIds.includes("password");
+  const canEditEmail = isPasswordUser || (user?.providerIds.length ?? 0) === 0;
+  const canSetPassword = Boolean(user?.email);
 
   const detailTabs: { id: DetailTab; label: string }[] = [
     { id: "profile", label: t("adminUserTabProfile") },
@@ -251,7 +276,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                     value={editEmail}
                     onChange={(e) => setEditEmail(e.target.value)}
                     className="bg-background"
-                    disabled={!isPasswordUser && user.providerIds.length > 0}
+                    disabled={!canEditEmail}
                   />
                 </div>
                 <div className="space-y-2">
@@ -277,12 +302,18 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                     placeholder={t("adminUserPasswordPlaceholder")}
                     className="bg-background"
                     minLength={6}
-                    disabled={!isPasswordUser}
+                    disabled={!canSetPassword}
                   />
                 </div>
               </div>
-              {!isPasswordUser && user.providerIds.length > 0 ? (
+              {!canEditEmail && user.providerIds.length > 0 ? (
                 <p className="text-xs text-muted-foreground">{t("adminUserEmailOAuthHint")}</p>
+              ) : null}
+              {canSetPassword && !isPasswordUser && user.providerIds.length > 0 ? (
+                <p className="text-xs text-muted-foreground">{t("adminUserPasswordOAuthHint")}</p>
+              ) : null}
+              {!canSetPassword ? (
+                <p className="text-xs text-muted-foreground">{t("adminUserNoEmailForPassword")}</p>
               ) : null}
               <div className="flex flex-wrap gap-4 pt-1">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -418,6 +449,32 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
           </TabsContent>
 
           <TabsContent value="actions" className="mt-0 space-y-4">
+            <div className={`${adminPanelCardClass} space-y-3`}>
+              <p className="text-sm font-medium text-foreground">{t("adminUserSetPasswordTitle")}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">{t("adminUserSetPasswordHint")}</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  type="password"
+                  value={actionPassword}
+                  onChange={(e) => setActionPassword(e.target.value)}
+                  placeholder={t("adminUserNewPassword")}
+                  className="bg-background flex-1"
+                  minLength={6}
+                  disabled={!canSetPassword || actionBusy !== null}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  className="font-display bg-brand-red text-white hover:bg-brand-red/90 shrink-0 gap-1.5"
+                  disabled={!canSetPassword || actionBusy !== null || actionPassword.trim().length < 6}
+                  onClick={() => void setPassword()}
+                >
+                  {actionBusy === "setPassword" ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />}
+                  {t("adminUserSetPassword")}
+                </Button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Button type="button" variant="outline" size="sm" className={adminOutlineBtnClass} disabled={!user.email || actionBusy !== null}
                 onClick={() => void runAction("passwordReset", { action: "send_password_reset" })}>

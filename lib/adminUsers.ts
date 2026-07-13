@@ -263,6 +263,7 @@ export type AdminUserAction =
   | { action: "apply_coupon"; couponId: string }
   | { action: "remove_coupon" }
   | { action: "send_password_reset" }
+  | { action: "set_password"; password: string }
   | { action: "disable_user" }
   | { action: "enable_user" }
   | { action: "delete_user" }
@@ -440,6 +441,24 @@ export async function runAdminUserAction(
       };
     }
 
+    case "set_password": {
+      const pwd = typeof body.password === "string" ? body.password : "";
+      if (!record.email?.trim()) {
+        throw Object.assign(new Error("User has no email — cannot set a password."), { status: 400 });
+      }
+      if (!pwd || pwd.length < 6) {
+        throw Object.assign(new Error("Password must be at least 6 characters."), { status: 400 });
+      }
+      await auth.updateUser(uid, { password: pwd });
+      const hadPassword = record.providerData.some((p) => p.providerId === "password");
+      return {
+        ok: true,
+        message: hadPassword
+          ? "Password updated."
+          : "Password set — user can now sign in with email and password.",
+      };
+    }
+
     case "disable_user": {
       await auth.updateUser(uid, { disabled: true });
       return { ok: true, message: "User account disabled." };
@@ -508,7 +527,12 @@ export async function runAdminUserAction(
         if (body.password.length > 0 && body.password.length < 6) {
           throw Object.assign(new Error("Password must be at least 6 characters."), { status: 400 });
         }
-        if (body.password.length >= 6) updates.password = body.password;
+        if (body.password.length >= 6) {
+          if (!record.email?.trim()) {
+            throw Object.assign(new Error("User has no email — cannot set a password."), { status: 400 });
+          }
+          updates.password = body.password;
+        }
       }
       if (typeof body.phoneNumber === "string") {
         updates.phoneNumber = body.phoneNumber.trim() || undefined;

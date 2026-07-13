@@ -92,6 +92,7 @@ export type AdminUserActionBody =
   | { action: "apply_coupon"; couponId: string }
   | { action: "remove_coupon" }
   | { action: "send_password_reset" }
+  | { action: "set_password"; password: string }
   | { action: "disable_user" }
   | { action: "enable_user" }
   | { action: "delete_user" }
