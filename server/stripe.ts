@@ -79,13 +79,28 @@ export async function handleCreatePortalSessionExpress(
 export async function handleCreateCheckoutSessionGuestExpress(
   req: Request,
   res: Response,
-  useTestStripe = false
+  useTestStripe = false,
+  sandboxSource?: "build" | "query" | "server"
 ): Promise<void> {
   try {
+    const body = (req.body || {}) as {
+      planId?: string;
+      stripeTest?: unknown;
+      stripeSandboxSource?: string;
+    };
+    const parsedSource =
+      sandboxSource ??
+      (body.stripeSandboxSource === "build" || body.stripeSandboxSource === "query"
+        ? body.stripeSandboxSource
+        : undefined);
     const out = await runCreateCheckoutSessionGuest(
-      (req.body || {}) as { planId?: string },
+      {
+        planId: body.planId,
+        stripeTest: body.stripeTest === true || String(body.stripeTest).toLowerCase() === "true",
+        stripeSandboxSource: parsedSource,
+      },
       req.headers as Record<string, string | string[] | undefined>,
-      { useTestStripe }
+      { useTestStripe, sandboxSource: parsedSource }
     );
     res.status(out.status).json(out.json);
   } catch (e) {
@@ -122,11 +137,15 @@ const jsonParser = express.json({ limit: "256kb" });
 /** Single URL for guest trial: body `stripeTest: true` selects test keys (matches Vercel). */
 function mountSharedGuestTrialCheckout(app: Express): void {
   app.post("/api/stripe/guest-trial-checkout", jsonParser, (req, res) => {
-    const b = (req.body || {}) as { planId?: string; stripeTest?: unknown };
+    const b = (req.body || {}) as { planId?: string; stripeTest?: unknown; stripeSandboxSource?: string };
     const useTest =
       b.stripeTest === true ||
       (typeof b.stripeTest === "string" && String(b.stripeTest).toLowerCase() === "true");
-    void handleCreateCheckoutSessionGuestExpress(req, res, useTest);
+    const sandboxSource =
+      b.stripeSandboxSource === "build" || b.stripeSandboxSource === "query"
+        ? b.stripeSandboxSource
+        : undefined;
+    void handleCreateCheckoutSessionGuestExpress(req, res, useTest, sandboxSource);
   });
 }
 

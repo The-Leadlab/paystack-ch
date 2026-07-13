@@ -8,7 +8,7 @@ import { firebaseReady } from "@/cafe/lib/firebase";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { AuthLayout } from "./auth/AuthLayout";
 import { isSelfServePlan, parsePaystackPlanId, SELECTED_PLAN_STORAGE_KEY, type PaystackPlanId } from "@shared/planCatalog";
-import { isStripeSandboxActive, startGuestCheckoutSession, withStripeTestQuery } from "@/cafe/lib/stripeCheckoutClient";
+import { isStripeSandboxActive, startGuestCheckoutSession, stripeTestQueryFromSearch, withStripeTestQuery, clientStripeUseTest } from "@/cafe/lib/stripeCheckoutClient";
 
 export default function StartTrialPage() {
   const { t } = useLanguage();
@@ -23,6 +23,11 @@ export default function StartTrialPage() {
   }, [search]);
 
   const useTestStripe = useMemo(() => isStripeSandboxActive(search), [search]);
+  const sandboxSource = useMemo((): "build" | "query" | undefined => {
+    if (stripeTestQueryFromSearch(search)) return "query";
+    if (clientStripeUseTest()) return "build";
+    return undefined;
+  }, [search]);
 
   const cancelled = useMemo(() => {
     const qs = search.startsWith("?") ? search.slice(1) : search;
@@ -37,14 +42,14 @@ export default function StartTrialPage() {
         if (typeof sessionStorage !== "undefined") {
           sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, planId);
         }
-        const url = await startGuestCheckoutSession(planId, { useTestStripe });
+        const url = await startGuestCheckoutSession(planId, { useTestStripe, sandboxSource });
         window.location.href = url;
       } catch (e) {
         setErr(e instanceof Error ? e.message : String(e));
         redirectStarted.current = false;
       }
     })();
-  }, [firebaseReady, cancelled, planId, useTestStripe]);
+  }, [firebaseReady, cancelled, planId, useTestStripe, sandboxSource]);
 
   if (!firebaseReady) {
     return <FirebaseMissing />;

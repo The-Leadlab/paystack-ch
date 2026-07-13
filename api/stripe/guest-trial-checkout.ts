@@ -8,6 +8,11 @@ import { runCreateCheckoutSessionGuest } from "../../lib/stripeCore.js";
 import { serverStripeUseTestMode } from "../../lib/stripeMode.js";
 import { stripeCorsApplyHeaders, stripeCorsPreflight } from "../lib/stripeCors.js";
 
+function parseSandboxSource(raw: unknown): "build" | "query" | undefined {
+  if (raw === "build" || raw === "query") return raw;
+  return undefined;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (stripeCorsPreflight(req, res)) return;
   try {
@@ -16,21 +21,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       res.status(405).json({ error: "Method not allowed" });
       return;
     }
-    let raw: { planId?: string; stripeTest?: boolean } = {};
+    let raw: { planId?: string; stripeTest?: boolean; stripeSandboxSource?: string } = {};
     if (typeof req.body === "string") {
       try {
-        raw = JSON.parse(req.body) as { planId?: string; stripeTest?: boolean };
+        raw = JSON.parse(req.body) as { planId?: string; stripeTest?: boolean; stripeSandboxSource?: string };
       } catch {
         raw = {};
       }
     } else if (typeof req.body === "object" && req.body !== null && !Buffer.isBuffer(req.body)) {
-      raw = req.body as { planId?: string; stripeTest?: boolean };
+      raw = req.body as { planId?: string; stripeTest?: boolean; stripeSandboxSource?: string };
     }
-    const useTestStripe =
-      serverStripeUseTestMode() ||
-      raw.stripeTest === true ||
-      (typeof raw.stripeTest === "string" && String(raw.stripeTest).toLowerCase() === "true");
-    const out = await runCreateCheckoutSessionGuest({ planId: raw.planId }, req.headers, { useTestStripe });
+    const serverForcedTest = serverStripeUseTestMode();
+    const clientSandbox = raw.stripeTest === true || String(raw.stripeTest).toLowerCase() === "true";
+    const useTestStripe = serverForcedTest || clientSandbox;
+    const sandboxSource = serverForcedTest
+      ? "server"
+      : parseSandboxSource(raw.stripeSandboxSource);
+    const out = await runCreateCheckoutSessionGuest(
+      { planId: raw.planId, stripeTest: clientSandbox, stripeSandboxSource: sandboxSource },
+      req.headers,
+      { useTestStripe, sandboxSource }
+    );
     stripeCorsApplyHeaders(req, res);
     res.status(out.status).json(out.json);
   } catch (e) {

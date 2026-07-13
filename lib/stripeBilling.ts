@@ -19,6 +19,11 @@ import {
   stripeCheckoutLineItemForPlan,
   trialDays,
 } from "./stripeCore.js";
+import {
+  assertRecurringChfPrice,
+  assertStripeCheckoutConfig,
+  buildSubscriptionCheckoutParams,
+} from "./stripeCheckoutSession.js";
 import { ensureFirebaseAdmin, hasFirebaseAdminCredentials } from "./firebaseAdmin.js";
 import { resolvePlanIdFromStripeSubscription } from "./stripePlanResolve.js";
 import {
@@ -328,24 +333,40 @@ export async function runCreateCheckoutSession(
     return { status: 401, json: { error: "Missing Authorization Bearer token" } };
   }
   try {
+    const origin = publicAppOriginFromHeaders(headers);
+    assertStripeCheckoutConfig(useTestStripe, origin, {
+      sandboxSource: useTestStripe ? "build" : undefined,
+    });
+  } catch (e) {
+    const status = (e as { status?: number }).status ?? 503;
+    const code = (e as { code?: string }).code;
+    return {
+      status,
+      json: {
+        error: e instanceof Error ? e.message : "Stripe checkout is not configured.",
+        ...(code ? { code } : {}),
+      },
+    };
+  }
+  try {
     const { uid, email: verifiedEmail } = await verifyFirebaseUser(m[1]);
     const email = verifiedEmail || undefined;
     const origin = publicAppOriginFromHeaders(headers);
     const appPath = "/app";
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      client_reference_id: uid,
-      customer_email: email,
-      line_items: [lineItem],
-      subscription_data: {
-        trial_period_days: trialDays(),
-        metadata: { firebaseUid: uid, planId: checkoutPlanId },
-      },
-      metadata: { firebaseUid: uid, planId: checkoutPlanId },
-      success_url: `${origin}${appPath}?subscription=success`,
-      cancel_url: `${origin}${appPath}?subscription=cancel`,
-      allow_promotion_codes: true,
-    });
+    const metadata = { firebaseUid: uid, planId: checkoutPlanId };
+    await assertRecurringChfPrice(stripe, lineItem);
+    const session = await stripe.checkout.sessions.create(
+      buildSubscriptionCheckoutParams({
+        lineItem,
+        planId: checkoutPlanId,
+        origin,
+        successUrl: `${origin}${appPath}?subscription=success`,
+        cancelUrl: `${origin}${appPath}?subscription=cancel`,
+        metadata,
+        clientReferenceId: uid,
+        customerEmail: email,
+      })
+    );
     if (!session.url) {
       return { status: 500, json: { error: "Checkout session missing URL" } };
     }

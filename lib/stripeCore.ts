@@ -12,6 +12,11 @@ import {
   stripePriceIdForPlan,
   type PaystackPlanId,
 } from "../shared/planCatalog.js";
+import {
+  assertRecurringChfPrice,
+  assertStripeCheckoutConfig,
+  buildSubscriptionCheckoutParams,
+} from "./stripeCheckoutSession.js";
 
 export type HeaderMap = Record<string, string | string[] | undefined>;
 
@@ -151,11 +156,30 @@ export function stripeCheckoutLineItemForPlan(
 
 /** Pre-login checkout: 7-day trial + card on Stripe, then user creates account and links session. */
 export async function runCreateCheckoutSessionGuest(
-  body: { planId?: string },
+  body: { planId?: string; stripeTest?: boolean; stripeSandboxSource?: "build" | "query" | "server" },
   headers: HeaderMap,
-  options?: { useTestStripe?: boolean }
+  options?: { useTestStripe?: boolean; sandboxSource?: "build" | "query" | "server" }
 ): Promise<{ status: number; json: Record<string, unknown> }> {
   const useTest = Boolean(options?.useTestStripe);
+  const sandboxSource = options?.sandboxSource ?? body.stripeSandboxSource;
+
+  let stripeMode: "live" | "test";
+  try {
+    const origin = publicAppOriginFromHeaders(headers);
+    const config = assertStripeCheckoutConfig(useTest, origin, { sandboxSource });
+    stripeMode = config.mode;
+  } catch (e) {
+    const status = (e as { status?: number }).status ?? 503;
+    const code = (e as { code?: string }).code;
+    return {
+      status,
+      json: {
+        error: e instanceof Error ? e.message : "Stripe checkout is not configured.",
+        ...(code ? { code } : {}),
+      },
+    };
+  }
+
   const stripe = useTest ? getStripeTest() : getStripe();
   if (!stripe) {
     return {
@@ -197,24 +221,27 @@ export async function runCreateCheckoutSessionGuest(
   try {
     const origin = publicAppOriginFromHeaders(headers);
     const testQs = useTest ? "&stripe_test=1" : "";
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      line_items: [lineItem],
-      subscription_data: {
-        trial_period_days: trialDays(),
-        metadata: { planId: checkoutPlanId, pendingFirebaseLink: "1" },
-      },
-      metadata: { planId: checkoutPlanId, pendingFirebaseLink: "1" },
-      success_url: `${origin}/sign-up?checkout=success&session_id={CHECKOUT_SESSION_ID}${testQs}`,
-      cancel_url: useTest
-        ? `${origin}/start-trial?plan=${checkoutPlanId}&stripe_test=1&checkout=cancel`
-        : `${origin}/start-trial?plan=${checkoutPlanId}&checkout=cancel`,
-      allow_promotion_codes: true,
-    });
+    const metadata = { planId: checkoutPlanId, pendingFirebaseLink: "1" };
+    await assertRecurringChfPrice(stripe, lineItem);
+    const session = await stripe.checkout.sessions.create(
+      buildSubscriptionCheckoutParams({
+        lineItem,
+        planId: checkoutPlanId,
+        origin,
+        successUrl: `${origin}/sign-up?checkout=success&session_id={CHECKOUT_SESSION_ID}${testQs}`,
+        cancelUrl: useTest
+          ? `${origin}/start-trial?plan=${checkoutPlanId}&stripe_test=1&checkout=cancel`
+          : `${origin}/start-trial?plan=${checkoutPlanId}&checkout=cancel`,
+        metadata,
+      })
+    );
     if (!session.url) {
       return { status: 500, json: { error: "Checkout session missing URL" } };
     }
-    return { status: 200, json: { url: session.url } };
+    return {
+      status: 200,
+      json: { url: session.url, stripeMode, sessionId: session.id },
+    };
   } catch (e) {
     console.error("[stripe] create-checkout-session-guest:", e);
     const msg = e instanceof Error ? e.message : "Checkout failed";

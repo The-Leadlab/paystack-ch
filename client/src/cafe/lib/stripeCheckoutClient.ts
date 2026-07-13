@@ -104,13 +104,22 @@ export function checkoutSuccessSessionId(search: string): string | null {
 /** Start guest trial checkout. Always POSTs `/api/stripe/guest-trial-checkout`; set `useTestStripe` for test keys. */
 export async function startGuestCheckoutSession(
   planId: string | undefined,
-  opts?: { useTestStripe?: boolean }
+  opts?: { useTestStripe?: boolean; sandboxSource?: "build" | "query" }
 ): Promise<string> {
-  const useTest = clientStripeUseTest() || Boolean(opts?.useTestStripe);
+  const fromBuild = clientStripeUseTest();
+  const fromQuery =
+    typeof window !== "undefined" ? stripeTestQueryFromSearch(window.location.search) : false;
+  const useTest = fromBuild || fromQuery || Boolean(opts?.useTestStripe);
+  const sandboxSource =
+    opts?.sandboxSource ?? (fromQuery ? "query" : fromBuild ? "build" : undefined);
   const res = await fetch(apiUrl("/api/stripe/guest-trial-checkout"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ planId: planId ?? undefined, stripeTest: useTest }),
+    body: JSON.stringify({
+      planId: planId ?? undefined,
+      stripeTest: useTest,
+      ...(sandboxSource ? { stripeSandboxSource: sandboxSource } : {}),
+    }),
   });
   const { json, errorMessage } = await parseStripeFetchResponse(res);
   if (!json) throw new Error(errorMessage || "Checkout failed");
