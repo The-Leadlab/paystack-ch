@@ -31,6 +31,7 @@ import {
   signBillingLinkToken,
 } from "./subscriptionLinkSign.js";
 import { verifyFirebaseUser } from "./verifyFirebaseIdToken.js";
+import { serverStripeUseTestMode } from "./stripeMode.js";
 
 export type { HeaderMap } from "./stripeCore.js";
 export { getStripe, getStripeTest, publicAppOriginFromHeaders, trialDays } from "./stripeCore.js";
@@ -335,7 +336,7 @@ export async function runCreateCheckoutSession(
   try {
     const origin = publicAppOriginFromHeaders(headers);
     assertStripeCheckoutConfig(useTestStripe, origin, {
-      sandboxSource: useTestStripe ? "build" : undefined,
+      sandboxSource: serverStripeUseTestMode() ? "server" : undefined,
     });
   } catch (e) {
     const status = (e as { status?: number }).status ?? 503;

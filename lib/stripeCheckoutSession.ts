@@ -3,6 +3,7 @@
  */
 import type Stripe from "stripe";
 import { parseTruthyEnv } from "../shared/stripeMode.js";
+import { isProductionPaystackHost } from "../shared/paystackHosts.js";
 import type { PaystackPlanId } from "../shared/planCatalog.js";
 import { trialDays } from "./stripeCore.js";
 
@@ -21,8 +22,7 @@ export function stripeKeyMode(key: string): StripeCheckoutMode | null {
 
 export function isProductionPaystackOrigin(origin: string): boolean {
   try {
-    const host = new URL(origin).hostname.toLowerCase();
-    return host === "paystack.ch" || host === "www.paystack.ch";
+    return isProductionPaystackHost(new URL(origin).hostname);
   } catch {
     return false;
   }

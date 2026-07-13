@@ -14,6 +14,7 @@ import SignUpPage from "./pages/SignUpPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import OperatorGatePage from "./pages/OperatorGatePage";
 import StartTrialPage from "./pages/StartTrialPage";
+import AuthActionPage from "./pages/AuthActionPage";
 import AliGatePage from "./pages/AliGatePage";
 import AliLabPage from "./pages/AliLabPage";
 import { DashboardLoadingShell } from "./cafe/components/DashboardLoadingShell";
@@ -44,6 +45,7 @@ function Router() {
       <Route path={"/admin"} component={AdminDashboardPage} />
       <Route path={"/operator"} component={OperatorGatePage} />
       <Route path={"/start-trial"} component={StartTrialPage} />
+      <Route path={"/auth/action"} component={AuthActionPage} />
       <Route path={"/login"} component={SignInPage} />
       <Route path={"/signup"} component={SignUpPage} />
       <Route path={"/app/personal/:featureId"} component={CafeShellRoute} />

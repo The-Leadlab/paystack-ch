@@ -389,6 +389,7 @@ const translations = {
     startTrialRetry: 'Try checkout again',
 
     subscriptionLoading: 'Checking subscription…',
+    subscriptionActivating: 'Activating your subscription…',
     subscriptionTitle: 'Subscribe to continue',
     subscriptionBody:
       'Your workspace requires an active plan. Start a 7-day trial (card required today), then you are billed automatically when the trial ends unless you cancel in the billing portal.',
@@ -768,6 +769,17 @@ const translations = {
     emailVerifyResend: 'Resend verification email',
     emailVerifyResending: 'Sending…',
     emailVerifySignOut: 'Sign out',
+    authActionWorkingTitle: 'Confirming your email',
+    authActionWorkingBody: 'Please wait while we verify your link…',
+    authActionVerifiedTitle: 'Email verified',
+    authActionVerifiedBody: 'Your email address is confirmed. Sign in to start your trial and open the dashboard.',
+    authActionSuccessTitle: 'Action complete',
+    authActionSuccessBody: 'You can continue to Paystack.',
+    authActionErrorTitle: 'Link could not be used',
+    authActionInvalidLink: 'This verification link is invalid or has already been used.',
+    authActionFirebaseMissing: 'Firebase is not configured on this page.',
+    authActionContinueSignIn: 'Continue to sign in',
+    authActionGoHome: 'Back to homepage',
     emailVerifyRefresh: "I've verified — check again",
     emailVerifyChecking: 'Checking…',
     emailVerifyStillPending:
@@ -1257,6 +1269,7 @@ const translations = {
     startTrialRetry: 'Relancer la caisse',
 
     subscriptionLoading: 'Verification de l\'abonnement…',
+    subscriptionActivating: 'Activation de votre abonnement…',
     subscriptionTitle: 'Abonnez-vous pour continuer',
     subscriptionBody:
       'Cet espace necessite un abonnement actif. Demarrez un essai de 7 jours (carte requise), puis facturation automatique a la fin de l\'essai sauf annulation dans le portail Stripe.',
@@ -1636,6 +1649,17 @@ const translations = {
     emailVerifyResend: 'Renvoyer l\'e-mail de verification',
     emailVerifyResending: 'Envoi…',
     emailVerifySignOut: 'Deconnexion',
+    authActionWorkingTitle: 'Confirmation de l\'e-mail',
+    authActionWorkingBody: 'Verification de votre lien en cours…',
+    authActionVerifiedTitle: 'E-mail verifie',
+    authActionVerifiedBody: 'Votre adresse e-mail est confirmee. Connectez-vous pour demarrer l\'essai et ouvrir le tableau de bord.',
+    authActionSuccessTitle: 'Action terminee',
+    authActionSuccessBody: 'Vous pouvez continuer sur Paystack.',
+    authActionErrorTitle: 'Lien invalide',
+    authActionInvalidLink: 'Ce lien de verification est invalide ou deja utilise.',
+    authActionFirebaseMissing: 'Firebase n\'est pas configure sur cette page.',
+    authActionContinueSignIn: 'Continuer vers la connexion',
+    authActionGoHome: 'Retour a l\'accueil',
     emailVerifyRefresh: 'J\'ai verifie — verifier a nouveau',
     emailVerifyChecking: 'Verification…',
     emailVerifyStillPending:

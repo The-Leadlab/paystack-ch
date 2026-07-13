@@ -42,8 +42,8 @@ const bulletPresets: Record<
 > = {
   cdlp: {
     ul: 'list-disc pl-4 space-y-1.5 text-[11px] text-cdlp-muted leading-snug marker:text-cdlp-gold/80',
-    li: 'pl-0.5',
-    span: 'text-white/95',
+    li: 'pl-0.5 text-cdlp-muted',
+    span: 'text-inherit',
   },
   card: {
     ul: 'list-disc pl-4 space-y-1.5 text-[11px] text-muted-foreground leading-snug marker:text-brand-red/70',

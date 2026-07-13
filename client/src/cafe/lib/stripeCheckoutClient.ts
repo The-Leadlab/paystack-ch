@@ -1,5 +1,6 @@
 import { apiUrl } from "@/lib/apiBase";
 import { parseTruthyEnv } from "@shared/stripeMode";
+import { isProductionPaystackHost } from "@shared/paystackHosts";
 import type { BillingLinkFirestorePatch } from "@shared/billingLink";
 import { applyBillingLinkToFirestore } from "./applyBillingLink";
 
@@ -8,8 +9,11 @@ export const STRIPE_BILLING_PATH_LIVE = "/api/stripe";
 /** Stripe sandbox (`sk_test_...`) — `/api/stripe-test/*` */
 export const STRIPE_BILLING_PATH_TEST = "/api/stripe-test";
 
-/** Build-time: when true, all checkout / portal / link calls use sandbox Stripe. */
+/** Build-time sandbox flag — ignored on paystack.ch unless `?stripe_test=1`. */
 export function clientStripeUseTest(): boolean {
+  if (typeof window !== "undefined" && isProductionPaystackHost(window.location.hostname)) {
+    return stripeTestQueryFromSearch(window.location.search);
+  }
   return parseTruthyEnv(import.meta.env.VITE_STRIPE_USE_TEST);
 }
 

@@ -16,6 +16,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, firebaseReady } from '../lib/firebase';
+import { emailVerificationActionCodeSettings } from '../lib/firebaseEmailAction';
 import {
   AUTH_ERR_REGISTRATION_CLOSED,
   type AuthAccessOptions,
@@ -127,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (displayName) {
         await updateProfile(newUser, { displayName });
       }
-      await sendEmailVerification(newUser);
+      await sendEmailVerification(newUser, emailVerificationActionCodeSettings());
       return { error: null };
     } catch (err) {
       return { error: err instanceof Error ? err : new Error(String(err)) };
@@ -162,7 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const user = auth.currentUser;
     if (!user) return { error: new Error('Not signed in.') };
     try {
-      await sendEmailVerification(user);
+      await sendEmailVerification(user, emailVerificationActionCodeSettings());
       return { error: null };
     } catch (err) {
       return { error: err instanceof Error ? err : new Error(String(err)) };

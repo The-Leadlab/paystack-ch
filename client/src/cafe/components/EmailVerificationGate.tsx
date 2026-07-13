@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, LogOut, MailCheck } from 'lucide-react';
+import { Loader2, LogOut, MailCheck, Home } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { productionSiteHomeUrl } from '../lib/firebaseEmailAction';
 
 function authErrorCode(err: unknown): string | null {
   if (typeof err !== 'object' || err === null) return null;
@@ -138,6 +139,13 @@ export function EmailVerificationGate() {
             <LogOut className="w-3.5 h-3.5" />
             {t('emailVerifySignOut')}
           </button>
+          <a
+            href={productionSiteHomeUrl()}
+            className="w-full h-10 rounded-sm border border-cdlp-border text-[10px] font-bold uppercase text-cdlp-muted hover:text-white flex items-center justify-center gap-2"
+          >
+            <Home className="w-3.5 h-3.5" />
+            {t('authActionGoHome')}
+          </a>
         </div>
       </div>
     </div>

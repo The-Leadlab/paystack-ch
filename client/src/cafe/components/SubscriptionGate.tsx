@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { CreditCard, Loader2, LogOut } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { CreditCard, Home, Loader2, LogOut } from 'lucide-react';
+import { useSearch } from 'wouter';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useLanguage } from '../context/LanguageContext';
 import { SELECTED_PLAN_STORAGE_KEY, parsePaystackPlanId, type PaystackPlanId } from '@shared/planCatalog';
 import { PlanMarketingPanel, PLAN_ENTERPRISE_SALES_MAILTO } from './PlanMarketingPanel';
+import { productionSiteHomeUrl } from '../lib/firebaseEmailAction';
 
 /**
  * When VITE_SUBSCRIPTION_ENABLED=true, blocks the dashboard until Stripe subscription is trialing or active.
@@ -12,18 +14,36 @@ import { PlanMarketingPanel, PLAN_ENTERPRISE_SALES_MAILTO } from './PlanMarketin
 export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   const { signOut } = useAuth();
   const { t } = useLanguage();
+  const search = useSearch();
   const { enforcementEnabled, loading, billing, inGoodStanding, startCheckout, openCustomerPortal } =
     useSubscription();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [activating, setActivating] = useState(() => {
+    const qs = search.startsWith('?') ? search.slice(1) : search;
+    return new URLSearchParams(qs).get('subscription') === 'success';
+  });
   const [chosenPlan, setChosenPlan] = useState<PaystackPlanId | null>(() => {
-    if (typeof sessionStorage === 'undefined') return null;
+    if (typeof sessionStorage === 'undefined') return 'starter';
     const raw = sessionStorage.getItem(SELECTED_PLAN_STORAGE_KEY);
     const p = parsePaystackPlanId(raw);
-    return p === 'enterprise' ? null : p;
+    if (p && p !== 'enterprise') return p;
+    return 'starter';
   });
   const st = billing?.subscriptionStatus;
   const needsPaymentMethodFix = st === 'past_due' || st === 'unpaid';
+
+  useEffect(() => {
+    if (!activating) return;
+    if (inGoodStanding) {
+      setActivating(false);
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('subscription');
+        window.history.replaceState({}, '', url.pathname + url.search);
+      }
+    }
+  }, [activating, inGoodStanding]);
 
   const selectPlan = (id: PaystackPlanId) => {
     if (typeof sessionStorage !== 'undefined') {
@@ -37,11 +57,13 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  if (loading) {
+  if (loading || (activating && !inGoodStanding)) {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-cdlp-dark flex flex-col items-center justify-center gap-4 px-4 py-8 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
         <Loader2 className="w-10 h-10 text-cdlp-gold animate-spin" />
-        <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted">{t('subscriptionLoading')}</p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted">
+          {activating ? t('subscriptionActivating') : t('subscriptionLoading')}
+        </p>
       </div>
     );
   }
@@ -149,6 +171,13 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
             <LogOut className="w-3.5 h-3.5" />
             {t('logout')}
           </button>
+          <a
+            href={productionSiteHomeUrl()}
+            className="w-full h-10 rounded-sm border border-cdlp-border text-[10px] font-bold uppercase text-cdlp-muted hover:text-white flex items-center justify-center gap-2"
+          >
+            <Home className="w-3.5 h-3.5" />
+            {t('authActionGoHome')}
+          </a>
         </div>
       </div>
     </div>
