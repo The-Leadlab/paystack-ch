@@ -373,7 +373,7 @@ export default function AdminDashboardPage() {
           </div>
 
           <p className="text-sm text-muted-foreground -mt-2">
-            {activeTab === "users" ? t("adminTabUsersHint") : t("adminTabOperatorHint")}
+            {activeTab === "users" ? t("adminUsersHint") : t("adminTabOperatorHint")}
           </p>
 
           {activeTab === "users" ? <AdminUsersPanel /> : <OperatorToolsPanel />}

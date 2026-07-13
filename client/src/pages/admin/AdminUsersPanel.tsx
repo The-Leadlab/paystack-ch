@@ -32,7 +32,6 @@ export function AdminUsersPanel() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
   const loadUsers = useCallback(async (term?: string) => {
@@ -56,8 +55,17 @@ export function AdminUsersPanel() {
 
   const openUser = (uid: string) => {
     setSelectedUid(uid);
-    setDetailOpen(true);
   };
+
+  if (selectedUid) {
+    return (
+      <AdminUserDetailPanel
+        uid={selectedUid}
+        onBack={() => setSelectedUid(null)}
+        onUserUpdated={() => void loadUsers(search)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -215,15 +223,8 @@ export function AdminUsersPanel() {
         onOpenChange={setCreateOpen}
         onCreated={(uid) => {
           void loadUsers(search);
-          openUser(uid);
+          setSelectedUid(uid);
         }}
-      />
-
-      <AdminUserDetailPanel
-        uid={selectedUid}
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        onUserUpdated={() => void loadUsers(search)}
       />
     </div>
   );
