@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useSearch } from "wouter";
-import { LogIn, Shield } from "lucide-react";
+import { LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -270,12 +270,6 @@ export default function SignInPage() {
               </Link>
             </p>
           )}
-          <Button type="button" variant="outline" className="w-full font-display gap-2" asChild>
-            <Link href="/operator?next=%2Fadmin">
-              <Shield className="size-4" />
-              {t("authTeamSignIn")}
-            </Link>
-          </Button>
         </CardFooter>
       </Card>
     </AuthLayout>
