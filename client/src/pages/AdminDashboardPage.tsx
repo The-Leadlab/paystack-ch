@@ -60,7 +60,10 @@ function OperatorToolsPanel() {
       if (typeof sessionStorage !== "undefined") {
         sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, testPlan);
       }
-      const url = await startGuestCheckoutSession(testPlan, { useTestStripe: effectiveTest });
+      const url = await startGuestCheckoutSession(testPlan, {
+        useTestStripe: effectiveTest,
+        sandboxSource: effectiveTest ? "query" : undefined,
+      });
       window.location.href = url;
     } catch (e) {
       setGateErr(e instanceof Error ? e.message : String(e));

@@ -1,5 +1,5 @@
 /**
- * Billing POSTs to `/api/stripe/*` (live) or `/api/stripe-test/*` (sandbox) when `VITE_STRIPE_USE_TEST=true`.
+ * Billing POSTs to `/api/stripe/*` (live). Sandbox checkout is admin-only via `/admin` operator tools.
  * Same origin on Vercel, or set VITE_API_BASE_URL when the SPA is hosted separately.
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -17,7 +17,7 @@ import {
   type PaystackPlanId,
   type PlanEntitlements,
 } from '@shared/planCatalog';
-import { activeStripeBillingPath, parseStripeFetchResponse } from '../lib/stripeCheckoutClient';
+import { STRIPE_BILLING_PATH_LIVE, parseStripeFetchResponse } from '../lib/stripeCheckoutClient';
 import { apiUrl } from '@/lib/apiBase';
 
 type UserBillingSnapshot = {
@@ -141,7 +141,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(SELECTED_PLAN_STORAGE_KEY) : null;
       const resolved = planIdArg ?? parsePaystackPlanId(fromStorage);
       const token = await user.getIdToken();
-      const billingPath = activeStripeBillingPath();
+      const billingPath = STRIPE_BILLING_PATH_LIVE;
       const res = await fetch(apiUrl(`${billingPath}/create-checkout-session`), {
         method: 'POST',
         headers: {
@@ -165,7 +165,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const openCustomerPortal = useCallback(async () => {
     if (!user) throw new Error('Not signed in');
     const token = await user.getIdToken();
-    const billingPath = activeStripeBillingPath();
+    const billingPath = STRIPE_BILLING_PATH_LIVE;
     const stripeCustomerId = billing?.stripeCustomerId;
     const res = await fetch(apiUrl(`${billingPath}/create-portal-session`), {
       method: 'POST',

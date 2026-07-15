@@ -13,6 +13,19 @@ Use this when checkout shows **“Your card was declined”** on a **CHF 0.00 tr
 
 ---
 
+## Customer vs admin sandbox
+
+| Surface | Stripe mode |
+|---------|-------------|
+| `/app` paywall (`SubscriptionGate`), `/start-trial`, `/sign-in`, `/sign-up`, landing CTAs | **Live only** — never `stripe_test=1`, never `/api/stripe-test/*` |
+| `/admin` → Operator tab | Live + **Test checkout** buttons (explicit admin QA) |
+
+Customer flows ignore `VITE_STRIPE_USE_TEST` and strip `?stripe_test=1` on `/app`. Sandbox banners and env-var errors are **not** shown to customers.
+
+See also `docs/TEAM_SIGN_IN_SUPER_PROMPT.md` (team routes) and `client/src/cafe/lib/stripeCheckoutClient.ts` (`customerStripeBillingPath`).
+
+---
+
 ## Root cause #1 (most common): Test mode + real card
 
 If **any** of these are true on **production** (`paystack.ch`), Checkout uses **`sk_test_...`**:

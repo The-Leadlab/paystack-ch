@@ -1,4 +1,5 @@
 import type { CheckoutLinkFailure } from "./stripeCheckoutClient";
+import { formatCustomerCheckoutError } from "./formatCustomerCheckoutError";
 
 /** Map API / Firestore link errors to LanguageContext keys or a fallback message. */
 export function formatCheckoutLinkError(
@@ -24,5 +25,5 @@ export function formatCheckoutLinkError(
   if (/Firebase Admin credentials/i.test(msg)) {
     return t("checkoutLinkAdminBlockedHint");
   }
-  return msg || t("checkoutLinkGeneric");
+  return formatCustomerCheckoutError(err, t, "checkoutLinkGeneric");
 }

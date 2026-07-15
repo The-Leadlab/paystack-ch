@@ -22,27 +22,27 @@ export function stripeTestQueryFromSearch(search: string): boolean {
   return new URLSearchParams(qs).get("stripe_test") === "1";
 }
 
-/** True when sandbox is active via env or `?stripe_test=1` on the current URL. */
+/** True when sandbox is active via env or `?stripe_test=1` — admin / local dev only. */
 export function isStripeSandboxActive(search = ""): boolean {
   return clientStripeUseTest() || stripeTestQueryFromSearch(search);
 }
 
-export function activeStripeBillingPath(search = ""): string {
-  return isStripeSandboxActive(search) ? STRIPE_BILLING_PATH_TEST : STRIPE_BILLING_PATH_LIVE;
+/** Customer app and marketing always bill via live Stripe. */
+export function customerStripeBillingPath(): string {
+  return STRIPE_BILLING_PATH_LIVE;
 }
 
-export function billingPathFromSearch(search: string): string {
-  return activeStripeBillingPath(search);
+export function activeStripeBillingPath(_search = ""): string {
+  return STRIPE_BILLING_PATH_LIVE;
 }
 
-/** Append `stripe_test=1` when sandbox mode is on (keeps redirects linkable after checkout). */
-export function withStripeTestQuery(href: string, search = ""): string {
-  if (!isStripeSandboxActive(search)) return href;
-  const qIdx = href.indexOf("?");
-  const path = qIdx >= 0 ? href.slice(0, qIdx) : href;
-  const params = new URLSearchParams(qIdx >= 0 ? href.slice(qIdx + 1) : "");
-  params.set("stripe_test", "1");
-  return `${path}?${params.toString()}`;
+export function billingPathFromSearch(_search: string): string {
+  return STRIPE_BILLING_PATH_LIVE;
+}
+
+/** Customer links must not carry sandbox query params (admin uses explicit checkout opts). */
+export function withStripeTestQuery(href: string, _search = ""): string {
+  return href;
 }
 
 function truncateForMessage(text: string, maxLen: number): string {
@@ -105,17 +105,13 @@ export function checkoutSuccessSessionId(search: string): string | null {
   return params.get("session_id");
 }
 
-/** Start guest trial checkout. Always POSTs `/api/stripe/guest-trial-checkout`; set `useTestStripe` for test keys. */
+/** Start guest trial checkout. Pass `{ useTestStripe: true }` only from `/admin` operator tools. */
 export async function startGuestCheckoutSession(
   planId: string | undefined,
   opts?: { useTestStripe?: boolean; sandboxSource?: "build" | "query" }
 ): Promise<string> {
-  const fromBuild = clientStripeUseTest();
-  const fromQuery =
-    typeof window !== "undefined" ? stripeTestQueryFromSearch(window.location.search) : false;
-  const useTest = fromBuild || fromQuery || Boolean(opts?.useTestStripe);
-  const sandboxSource =
-    opts?.sandboxSource ?? (fromQuery ? "query" : fromBuild ? "build" : undefined);
+  const useTest = Boolean(opts?.useTestStripe);
+  const sandboxSource = useTest ? (opts?.sandboxSource ?? "query") : undefined;
   const res = await fetch(apiUrl("/api/stripe/guest-trial-checkout"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -146,9 +142,6 @@ export function preserveCheckoutInAuthHref(baseHref: string, currentSearch: stri
   const params = new URLSearchParams(existing);
   params.set("checkout", "success");
   params.set("session_id", sid);
-  if (isStripeSandboxActive(currentSearch)) {
-    params.set("stripe_test", "1");
-  }
   return `${path}?${params.toString()}`;
 }
 
@@ -168,7 +161,7 @@ export async function linkCheckoutSessionAfterAuth(
   idToken: string,
   sessionId: string,
   uid: string,
-  billingPath: string = activeStripeBillingPath()
+  billingPath: string = STRIPE_BILLING_PATH_LIVE
 ): Promise<void> {
   const res = await fetch(apiUrl(`${billingPath}/link-checkout-session`), {
     method: "POST",

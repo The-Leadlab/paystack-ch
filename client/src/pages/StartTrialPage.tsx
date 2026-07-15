@@ -8,7 +8,7 @@ import { firebaseReady } from "@/cafe/lib/firebase";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { AuthLayout } from "./auth/AuthLayout";
 import { isSelfServePlan, parsePaystackPlanId, SELECTED_PLAN_STORAGE_KEY, type PaystackPlanId } from "@shared/planCatalog";
-import { isStripeSandboxActive, startGuestCheckoutSession, stripeTestQueryFromSearch, withStripeTestQuery, clientStripeUseTest } from "@/cafe/lib/stripeCheckoutClient";
+import { startGuestCheckoutSession } from "@/cafe/lib/stripeCheckoutClient";
 
 export default function StartTrialPage() {
   const { t } = useLanguage();
@@ -20,13 +20,6 @@ export default function StartTrialPage() {
     const qs = search.startsWith("?") ? search.slice(1) : search;
     const p = parsePaystackPlanId(new URLSearchParams(qs).get("plan"));
     return p && isSelfServePlan(p) ? p : ("starter" as PaystackPlanId);
-  }, [search]);
-
-  const useTestStripe = useMemo(() => isStripeSandboxActive(search), [search]);
-  const sandboxSource = useMemo((): "build" | "query" | undefined => {
-    if (stripeTestQueryFromSearch(search)) return "query";
-    if (clientStripeUseTest()) return "build";
-    return undefined;
   }, [search]);
 
   const cancelled = useMemo(() => {
@@ -42,21 +35,21 @@ export default function StartTrialPage() {
         if (typeof sessionStorage !== "undefined") {
           sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, planId);
         }
-        const url = await startGuestCheckoutSession(planId, { useTestStripe, sandboxSource });
+        const url = await startGuestCheckoutSession(planId);
         window.location.href = url;
       } catch (e) {
         setErr(e instanceof Error ? e.message : String(e));
         redirectStarted.current = false;
       }
     })();
-  }, [firebaseReady, cancelled, planId, useTestStripe, sandboxSource]);
+  }, [firebaseReady, cancelled, planId]);
 
   if (!firebaseReady) {
     return <FirebaseMissing />;
   }
 
   if (cancelled) {
-    const retryHref = withStripeTestQuery(`/start-trial?plan=${planId}`, search);
+    const retryHref = `/start-trial?plan=${planId}`;
     return (
       <AuthLayout heading={t("startTrialCheckoutCancelled")}>
         <Card className="border-border shadow-sm max-w-lg mx-auto">

@@ -7,6 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { SELECTED_PLAN_STORAGE_KEY, parsePaystackPlanId, type PaystackPlanId } from '@shared/planCatalog';
 import { PlanMarketingPanel, PLAN_ENTERPRISE_SALES_MAILTO } from './PlanMarketingPanel';
 import { productionSiteHomeUrl } from '../lib/firebaseEmailAction';
+import { formatCustomerCheckoutError } from '../lib/formatCustomerCheckoutError';
 
 /**
  * When VITE_SUBSCRIPTION_ENABLED=true, blocks the dashboard until Stripe subscription is trialing or active.
@@ -32,6 +33,14 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   });
   const st = billing?.subscriptionStatus;
   const needsPaymentMethodFix = st === 'past_due' || st === 'unpaid';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('stripe_test')) return;
+    url.searchParams.delete('stripe_test');
+    window.history.replaceState({}, '', url.pathname + url.search);
+  }, []);
 
   useEffect(() => {
     if (!activating) return;
@@ -149,7 +158,7 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
                   await startCheckout(chosenPlan);
                 }
               } catch (e) {
-                setErr(e instanceof Error ? e.message : String(e));
+                setErr(formatCustomerCheckoutError(e, t));
               } finally {
                 setBusy(false);
               }

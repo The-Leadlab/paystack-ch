@@ -12,11 +12,10 @@ import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { AuthLayout } from "./auth/AuthLayout";
 import { GoogleGIcon } from "@/components/icons/GoogleGIcon";
 import {
-  billingPathFromSearch,
+  STRIPE_BILLING_PATH_LIVE,
   checkoutSuccessSessionId,
   linkCheckoutSessionAfterAuth,
   preserveCheckoutInAuthHref,
-  withStripeTestQuery,
 } from "@/cafe/lib/stripeCheckoutClient";
 import { formatCheckoutLinkError } from "@/cafe/lib/formatCheckoutLinkError";
 import { formatAuthAccessError, isPaidRegistrationEnforced } from "@/cafe/lib/authAccess";
@@ -30,9 +29,9 @@ function sanitizeRedirect(search: string): string {
   return "/app";
 }
 
-function withSubscriptionSuccess(path: string, search: string): string {
+function withSubscriptionSuccess(path: string): string {
   const join = path.includes("?") ? "&" : "?";
-  return withStripeTestQuery(`${path}${join}subscription=success`, search);
+  return `${path}${join}subscription=success`;
 }
 
 export default function SignInPage() {
@@ -51,7 +50,7 @@ export default function SignInPage() {
 
   const nextPath = sanitizeRedirect(search);
   const checkoutSid = useMemo(() => checkoutSuccessSessionId(search), [search]);
-  const checkoutBillingPath = useMemo(() => billingPathFromSearch(search), [search]);
+  const checkoutBillingPath = STRIPE_BILLING_PATH_LIVE;
   const registrationClosed = isPaidRegistrationEnforced();
 
   useEffect(() => {
@@ -68,7 +67,7 @@ export default function SignInPage() {
       try {
         const token = await user.getIdToken();
         await linkCheckoutSessionAfterAuth(token, checkoutSid, user.uid, checkoutBillingPath);
-        if (alive) setLocation(withSubscriptionSuccess(nextPath, search));
+        if (alive) setLocation(withSubscriptionSuccess(nextPath));
       } catch (e) {
         linkStartedRef.current = false;
         if (alive) setCheckoutLinkError(formatCheckoutLinkError(e, t));

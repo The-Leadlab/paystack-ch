@@ -400,6 +400,8 @@ const translations = {
     subscriptionPickPlan: 'Choose a plan',
     subscriptionEnterpriseHint: 'Enterprise (custom pricing): contact sales at info@paystack.ch.',
     subscriptionPickPlanError: 'Please choose Starter, Business, or Unlimited before continuing to checkout.',
+    subscriptionCheckoutUnavailable:
+      'We could not start checkout. Please try again in a few minutes or contact support@paystack.ch.',
     planLimitDocuments: 'Monthly document processing limit reached ({n} completed this month). Upgrade your plan to process more.',
     planLimitSessions: 'Your plan allows up to {n} accounting periods (sessions). Upgrade to add more.',
     planLimitEmployees: 'Your plan allows up to {n} employee slot(s). Upgrade to add more.',
@@ -1280,6 +1282,8 @@ const translations = {
     subscriptionPickPlan: 'Choisissez une offre',
     subscriptionEnterpriseHint: 'Entreprise (tarif sur mesure) : contactez info@paystack.ch.',
     subscriptionPickPlanError: 'Choisissez Starter, Business ou Illimite avant le paiement.',
+    subscriptionCheckoutUnavailable:
+      'Impossible de demarrer le paiement. Reessayez dans quelques minutes ou contactez support@paystack.ch.',
     planLimitDocuments: 'Plafond mensuel de traitement de documents atteint ({n} termines ce mois-ci). Passez a une offre superieure pour continuer.',
     planLimitSessions: 'Votre offre autorise au plus {n} periodes comptables (sessions). Passez a une offre superieure pour en ajouter.',
     planLimitEmployees: 'Votre offre autorise au plus {n} employe(s). Passez a une offre superieure pour en ajouter.',

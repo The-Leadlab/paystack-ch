@@ -9,7 +9,6 @@ import { ArrowRight, Mail, Phone, MapPin, CheckCircle } from "lucide-react";
 import ScrollReveal from "./ScrollReveal";
 import SectionLabel from "./SectionLabel";
 import { useLanguage } from "@/cafe/context/LanguageContext";
-import { withStripeTestQuery } from "@/cafe/lib/stripeCheckoutClient";
 
 export default function CTASection() {
   const { t } = useLanguage();
@@ -38,7 +37,7 @@ export default function CTASection() {
                 size="lg"
                 className="font-display bg-brand-red text-white hover:bg-brand-red/90 rounded-lg px-8 h-12 text-sm gap-2 group"
               >
-                <Link href={withStripeTestQuery("/start-trial")} className="inline-flex items-center gap-2">
+                <Link href="/start-trial" className="inline-flex items-center gap-2">
                   {t("ctaStartTrial")}
                   <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
                 </Link>

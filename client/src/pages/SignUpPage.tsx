@@ -13,11 +13,10 @@ import { AuthLayout } from "./auth/AuthLayout";
 import { GoogleGIcon } from "@/components/icons/GoogleGIcon";
 import { isSelfServePlan, parsePaystackPlanId, SELECTED_PLAN_STORAGE_KEY } from "@shared/planCatalog";
 import {
-  billingPathFromSearch,
+  STRIPE_BILLING_PATH_LIVE,
   checkoutSuccessSessionId,
   linkCheckoutSessionAfterAuth,
   preserveCheckoutInAuthHref,
-  withStripeTestQuery,
 } from "@/cafe/lib/stripeCheckoutClient";
 import { formatCheckoutLinkError } from "@/cafe/lib/formatCheckoutLinkError";
 import { canOpenPublicSignUp, formatAuthAccessError } from "@/cafe/lib/authAccess";
@@ -31,9 +30,9 @@ function sanitizeRedirect(search: string): string {
   return "/app";
 }
 
-function withSubscriptionSuccess(path: string, search: string): string {
+function withSubscriptionSuccess(path: string): string {
   const join = path.includes("?") ? "&" : "?";
-  return withStripeTestQuery(`${path}${join}subscription=success`, search);
+  return `${path}${join}subscription=success`;
 }
 
 export default function SignUpPage() {
@@ -53,7 +52,7 @@ export default function SignUpPage() {
 
   const nextPath = sanitizeRedirect(search);
   const checkoutSid = useMemo(() => checkoutSuccessSessionId(search), [search]);
-  const checkoutBillingPath = useMemo(() => billingPathFromSearch(search), [search]);
+  const checkoutBillingPath = STRIPE_BILLING_PATH_LIVE;
   const signUpAllowed = canOpenPublicSignUp(Boolean(checkoutSid));
 
   useEffect(() => {
@@ -79,7 +78,7 @@ export default function SignUpPage() {
       try {
         const token = await user.getIdToken();
         await linkCheckoutSessionAfterAuth(token, checkoutSid, user.uid, checkoutBillingPath);
-        if (alive) setLocation(withSubscriptionSuccess(nextPath, search));
+        if (alive) setLocation(withSubscriptionSuccess(nextPath));
       } catch (e) {
         linkStartedRef.current = false;
         if (alive) setCheckoutLinkError(formatCheckoutLinkError(e, t));

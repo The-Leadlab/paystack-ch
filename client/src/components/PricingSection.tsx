@@ -11,11 +11,10 @@ import SectionLabel from "./SectionLabel";
 import { useMemo } from "react";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import { PLAN_ENTERPRISE_SALES_MAILTO } from "@/cafe/components/PlanMarketingPanel";
-import { withStripeTestQuery } from "@/cafe/lib/stripeCheckoutClient";
 
 export default function PricingSection() {
   const { t, language } = useLanguage();
-  const trialHref = (plan: string) => withStripeTestQuery(`/start-trial?plan=${plan}`);
+  const trialHref = (plan: string) => `/start-trial?plan=${plan}`;
   const plans = useMemo(() => [
     {
       name: t("planStarterName"),
