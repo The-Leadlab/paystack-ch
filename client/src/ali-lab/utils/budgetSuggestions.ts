@@ -8,7 +8,7 @@ import {
 
 const DEFAULT_LOOKBACK_MONTHS = 3;
 
-function shiftMonth(month: string, delta: number): string {
+export function shiftMonth(month: string, delta: number): string {
   const [year, mon] = month.split("-").map(Number);
   const d = new Date(year, mon - 1 + delta, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;

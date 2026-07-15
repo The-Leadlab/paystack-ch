@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Gift,
   Wand2,
+  CopyPlus,
 } from "lucide-react";
 import type { AliLabFeature } from "../featureRegistry";
 import { useLabFeatureText } from "../hooks/useLabFeatureText";
@@ -26,7 +27,7 @@ import {
   type PersonalExpenseCategory,
   type PersonalIncomeCategory,
 } from "../personalCategories";
-import { suggestExpenseBudgets, suggestIncomeBudgets } from "../utils/budgetSuggestions";
+import { shiftMonth, suggestExpenseBudgets, suggestIncomeBudgets } from "../utils/budgetSuggestions";
 import { GlassCard } from "../personal-plan/components/GlassCard";
 import { PersonalRecentLedger } from "../personal-plan/components/PersonalRecentLedger";
 import { usePersonalPlan } from "../personal-plan/context/PersonalPlanContext";
@@ -228,6 +229,23 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
     });
   };
 
+  const stagePending = (pending: Record<string, number>, verb: string, emptyMessage: string) => {
+    const applied = Object.keys(pending).length;
+    if (applied > 0) {
+      setDraftBudgets((prev) => {
+        const next = { ...prev };
+        for (const [key, value] of Object.entries(pending)) next[key] = String(value);
+        return next;
+      });
+      setPendingSuggestions(pending);
+    }
+    setSuggestMessage(
+      applied > 0
+        ? `${verb} ${applied} empty ${applied === 1 ? "category" : "categories"} — review, then save.`
+        : emptyMessage
+    );
+  };
+
   const applySuggestions = () => {
     const expenseSuggestions = suggestExpenseBudgets(ledger.filteredExpenses, month);
     const incomeSuggestions = suggestIncomeBudgets(ledger.filteredIncome, month);
@@ -245,21 +263,25 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
       if (!suggested) continue;
       pending[row.key] = suggested;
     }
+    stagePending(pending, "Suggested", "Not enough history yet — add a few months of transactions first.");
+  };
 
-    const applied = Object.keys(pending).length;
-    if (applied > 0) {
-      setDraftBudgets((prev) => {
-        const next = { ...prev };
-        for (const [key, value] of Object.entries(pending)) next[key] = String(value);
-        return next;
-      });
-      setPendingSuggestions(pending);
+  const carryForwardBudgets = () => {
+    const prevMonth = shiftMonth(month, -1);
+    const pending: Record<string, number> = {};
+    for (const row of expenseRows) {
+      if (row.budgetChf > 0) continue;
+      const prior = saved.find((b) => b.month === prevMonth && b.category === row.cat);
+      if (!prior || prior.budgetChf <= 0) continue;
+      pending[row.cat] = prior.budgetChf;
     }
-    setSuggestMessage(
-      applied > 0
-        ? `Suggested ${applied} empty ${applied === 1 ? "category" : "categories"} from your last 3 months — review, then save.`
-        : "Not enough history yet — add a few months of transactions first."
-    );
+    for (const row of incomeRows) {
+      if (row.budgetChf > 0) continue;
+      const prior = saved.find((b) => b.month === prevMonth && b.category === row.key);
+      if (!prior || prior.budgetChf <= 0) continue;
+      pending[row.key] = prior.budgetChf;
+    }
+    stagePending(pending, "Copied", "No budget set last month to copy.");
   };
 
   const saveSuggestions = () => {
@@ -301,6 +323,14 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
         >
           <Wand2 className="size-3.5" />
           Suggest from history
+        </button>
+        <button
+          type="button"
+          onClick={carryForwardBudgets}
+          className="flex items-center gap-1.5 bg-[var(--pp-primary)]/10 text-[var(--pp-primary)] font-semibold px-3 py-1 rounded-full hover:bg-[var(--pp-primary)]/20 transition-colors"
+        >
+          <CopyPlus className="size-3.5" />
+          Copy last month
         </button>
         {Object.keys(pendingSuggestions).length > 0 && (
           <>
