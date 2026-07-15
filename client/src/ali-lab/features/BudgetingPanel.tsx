@@ -124,6 +124,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   const [mode, setMode] = useState<LabBudgetMode>("traditional");
   const [draftBudgets, setDraftBudgets] = useState<Record<string, string>>({});
   const [suggestMessage, setSuggestMessage] = useState<string | null>(null);
+  const [pendingSuggestions, setPendingSuggestions] = useState<Record<string, number>>({});
 
   const { items: saved, update, add, uid } = useAliLabPersist<BudgetRow>(
     labCollections.budgets,
@@ -216,32 +217,68 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   const displayBudget = (category: string, fallback: number) =>
     draftBudgets[category] ?? (fallback > 0 ? String(fallback) : "");
 
+  /** Manual edits take priority — drop any pending (unsaved) suggestion for that field. */
+  const updateDraft = (category: string, value: string) => {
+    setDraftBudgets((prev) => ({ ...prev, [category]: value }));
+    setPendingSuggestions((prev) => {
+      if (!(category in prev)) return prev;
+      const next = { ...prev };
+      delete next[category];
+      return next;
+    });
+  };
+
   const applySuggestions = () => {
     const expenseSuggestions = suggestExpenseBudgets(ledger.filteredExpenses, month);
     const incomeSuggestions = suggestIncomeBudgets(ledger.filteredIncome, month);
 
-    let applied = 0;
+    const pending: Record<string, number> = {};
     for (const row of expenseRows) {
       if (row.budgetChf > 0) continue;
       const suggested = expenseSuggestions[row.cat];
       if (!suggested) continue;
-      setDraftBudgets((prev) => ({ ...prev, [row.cat]: String(suggested) }));
-      void setBudget(row.cat, suggested);
-      applied += 1;
+      pending[row.cat] = suggested;
     }
     for (const row of incomeRows) {
       if (row.budgetChf > 0) continue;
       const suggested = incomeSuggestions[row.cat];
       if (!suggested) continue;
-      setDraftBudgets((prev) => ({ ...prev, [row.key]: String(suggested) }));
-      void setBudget(row.key, suggested);
-      applied += 1;
+      pending[row.key] = suggested;
+    }
+
+    const applied = Object.keys(pending).length;
+    if (applied > 0) {
+      setDraftBudgets((prev) => {
+        const next = { ...prev };
+        for (const [key, value] of Object.entries(pending)) next[key] = String(value);
+        return next;
+      });
+      setPendingSuggestions(pending);
     }
     setSuggestMessage(
       applied > 0
-        ? `Filled ${applied} empty ${applied === 1 ? "category" : "categories"} from your last 3 months.`
+        ? `Suggested ${applied} empty ${applied === 1 ? "category" : "categories"} from your last 3 months — review, then save.`
         : "Not enough history yet — add a few months of transactions first."
     );
+  };
+
+  const saveSuggestions = () => {
+    const entries = Object.entries(pendingSuggestions);
+    for (const [key, value] of entries) void setBudget(key, value);
+    setPendingSuggestions({});
+    setSuggestMessage(
+      `Saved ${entries.length} suggested ${entries.length === 1 ? "category" : "categories"}.`
+    );
+  };
+
+  const discardSuggestions = () => {
+    setDraftBudgets((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(pendingSuggestions)) next[key] = "";
+      return next;
+    });
+    setPendingSuggestions({});
+    setSuggestMessage(null);
   };
 
   return (
@@ -265,6 +302,24 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
           <Wand2 className="size-3.5" />
           Suggest from history
         </button>
+        {Object.keys(pendingSuggestions).length > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={saveSuggestions}
+              className="bg-[var(--pp-primary)] text-[var(--pp-on-primary)] font-semibold px-3 py-1 rounded-full hover:opacity-90 transition-opacity"
+            >
+              Save suggested budgets
+            </button>
+            <button
+              type="button"
+              onClick={discardSuggestions}
+              className="text-[var(--pp-on-surface-variant)] underline hover:text-[var(--pp-on-surface)]"
+            >
+              Discard
+            </button>
+          </>
+        )}
         {suggestMessage && (
           <span className="text-[var(--pp-on-surface-variant)]">{suggestMessage}</span>
         )}
@@ -302,9 +357,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
                         inputMode="decimal"
                         className="pp-input w-24 text-right text-xs py-0.5 px-1 mt-1"
                         value={displayBudget(row.key, row.budgetChf)}
-                        onChange={(e) =>
-                          setDraftBudgets((prev) => ({ ...prev, [row.key]: e.target.value }))
-                        }
+                        onChange={(e) => updateDraft(row.key, e.target.value)}
                         onBlur={() => commitBudgetDraft(row.key)}
                         aria-label={t(personalIncomeLabelKey(row.cat))}
                       />
@@ -343,9 +396,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
                   label={t(personalExpenseLabelKey(row.cat))}
                   budgetInput={displayBudget(row.cat, row.budgetChf)}
                   spent={row.spent}
-                  onBudgetInputChange={(v) =>
-                    setDraftBudgets((prev) => ({ ...prev, [row.cat]: v }))
-                  }
+                  onBudgetInputChange={(v) => updateDraft(row.cat, v)}
                   onBudgetCommit={() => commitBudgetDraft(row.cat)}
                   Icon={EXPENSE_ICONS[row.cat]}
                 />
