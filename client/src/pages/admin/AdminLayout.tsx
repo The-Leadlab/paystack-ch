@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "wouter";
 import { BrandLogo } from "@/components/BrandLogo";
+import { LanguageToggleButton } from "@/components/LanguageToggleButton";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -35,12 +36,15 @@ export function AdminLayout({ children, heading, description }: AdminLayoutProps
               <h1 className="font-display text-lg sm:text-xl font-bold truncate">{heading}</h1>
             </div>
           </div>
-          <Link
-            href="/"
-            className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
-          >
-            {t("authBackHome")}
-          </Link>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <LanguageToggleButton />
+            <Link
+              href="/"
+              className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {t("authBackHome")}
+            </Link>
+          </div>
         </div>
       </header>
 

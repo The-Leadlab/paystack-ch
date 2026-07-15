@@ -1,18 +1,19 @@
 # Team / admin sign-in — Super Prompt
 
-Team and operator access must **not** be advertised on public customer auth pages. Staff reach admin tools only via direct URLs.
+Operator and admin tools use `/operator` (password gate) then `/admin`. Customer auth stays separate but staff can reach the gate from sign-in / sign-up.
 
 ---
 
 ## Policy
 
-| Surface | Team sign-in |
-|---------|----------------|
-| `/sign-in`, `/sign-up`, landing nav, pricing CTAs | **Hidden** — no link to `/operator` or `/admin` |
-| `/operator` | Password gate → redirects to `/admin` (or `?next=`) |
-| `/admin` | Firebase sign-in for bypass emails + admin dashboard |
+| Surface | Admin entry |
+|---------|-------------|
+| `/sign-in`, `/sign-up` | **Top-right pill** → `/operator?next=%2Fadmin` (`navSignInExisting`) + **EN/FR toggle** |
+| Landing nav, pricing CTAs | No admin link — customer “Sign in” only |
+| `/operator` | Password gate + language toggle → `/admin` |
+| `/admin` | Dashboard + language toggle in header |
 
-Public `/sign-in` is for **restaurant customers** only (existing accounts / post-checkout linking).
+All auth and admin shells use `LanguageContext` (`t(...)`) — default French, toggle to English via header button.
 
 ---
 
@@ -29,8 +30,8 @@ Public `/sign-in` is for **restaurant customers** only (existing accounts / post
 
 ## Do not add
 
-- “Team sign in”, “Admin login”, or `/operator` links on `/sign-in`, `/sign-up`, `Navbar`, or marketing sections
-- Public nav items using `navSignInExisting` or `authTeamSignIn` toward operator routes
+- Large footer “Team sign in” buttons on auth cards
+- Admin links on marketing navbar or pricing CTAs
 
 ---
 
@@ -38,20 +39,17 @@ Public `/sign-in` is for **restaurant customers** only (existing accounts / post
 
 | Piece | Path |
 |-------|------|
-| Customer sign-in (no team link) | `client/src/pages/SignInPage.tsx` |
+| Auth shell + admin pill + language | `client/src/pages/auth/AuthLayout.tsx` |
+| Language toggle | `client/src/components/LanguageToggleButton.tsx` |
+| Admin panel header | `client/src/pages/admin/AdminLayout.tsx` |
 | Operator password gate | `client/src/pages/OperatorGatePage.tsx` |
-| Admin dashboard + bypass sign-in | `client/src/pages/AdminDashboardPage.tsx` |
-| Gate API | `api/admin/verify`, `api/admin/logout`, `api/admin/session` |
-| Middleware | `middleware.ts` (admin cookie on `/admin`, `/api/admin/*`) |
-
-Legacy `AdminSignInPage.tsx` redirects to `/operator`; route is not mounted in `App.tsx`.
+| Admin dashboard | `client/src/pages/AdminDashboardPage.tsx` |
 
 ---
 
 ## QA
 
-- [ ] `/sign-in` — no “Team sign in” button or `/operator` link
-- [ ] Landing navbar — only customer “Sign in” → `/sign-in?redirect=%2Fapp`
-- [ ] `/operator` — gate works; success lands on `/admin`
-- [ ] `/admin` without cookie — redirect to `/operator`
-- [ ] Bypass email can sign in on `/admin` Operator tab after gate
+- [ ] `/sign-in` and `/sign-up` — admin pill top-right; EN/FR toggle works
+- [ ] `/operator` — language toggle; gate → `/admin`
+- [ ] `/admin` — language toggle in sticky header
+- [ ] Landing navbar — no admin link

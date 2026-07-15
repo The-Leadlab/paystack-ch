@@ -104,7 +104,7 @@ export default function SignUpPage() {
   if (user && checkoutSid) {
     if (checkoutLinkError) {
       return (
-        <AuthLayout heading={t("checkoutLinkErrorTitle")}>
+        <AuthLayout heading={t("checkoutLinkErrorTitle")} showAdminEntry>
           <Card className="border-border shadow-sm max-w-md mx-auto">
             <CardContent className="pt-6 space-y-4">
               <p className="font-editorial text-sm text-destructive">
@@ -157,7 +157,7 @@ export default function SignUpPage() {
 
   if (!signUpAllowed) {
     return (
-      <AuthLayout heading={t("authRegistrationClosedTitle")}>
+      <AuthLayout heading={t("authRegistrationClosedTitle")} showAdminEntry>
         <Card className="border-border shadow-sm max-w-md mx-auto">
           <CardContent className="pt-6 space-y-4">
             <p className="font-editorial text-sm text-muted-foreground leading-relaxed">{t("authRegistrationClosedBody")}</p>
@@ -205,7 +205,7 @@ export default function SignUpPage() {
   const signInHref = preserveCheckoutInAuthHref(`/sign-in?redirect=${encodeURIComponent(nextPath)}`, search);
 
   return (
-    <AuthLayout heading={t("authSignUpTitle")}>
+    <AuthLayout heading={t("authSignUpTitle")} showAdminEntry>
       <Card className="border-border shadow-sm">
         <CardHeader className="pb-2 space-y-3">
           {checkoutSid ? (

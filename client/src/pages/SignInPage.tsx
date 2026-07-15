@@ -93,7 +93,7 @@ export default function SignInPage() {
   if (user && checkoutSid) {
     if (checkoutLinkError) {
       return (
-        <AuthLayout heading={t("checkoutLinkErrorTitle")}>
+        <AuthLayout heading={t("checkoutLinkErrorTitle")} showAdminEntry>
           <Card className="border-border shadow-sm max-w-md mx-auto">
             <CardContent className="pt-6 space-y-4">
               <p className="font-editorial text-sm text-destructive">
@@ -173,7 +173,7 @@ export default function SignInPage() {
   const signUpHref = preserveCheckoutInAuthHref(`/sign-up?redirect=${encodeURIComponent(nextPath)}`, search);
 
   return (
-    <AuthLayout heading={t("authSignInTitle")}>
+    <AuthLayout heading={t("authSignInTitle")} showAdminEntry>
       <Card className="border-border shadow-sm">
         <CardHeader className="pb-2 space-y-3">
           {checkoutSid ? (
