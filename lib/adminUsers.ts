@@ -9,6 +9,8 @@ import { ensureFirebaseAdmin, hasFirebaseAdminCredentials } from "./firebaseAdmi
 import { getStripe, getStripeTest } from "./stripeCore.js";
 import { parsePaystackPlanId, type PaystackPlanId } from "../shared/planCatalog.js";
 import { resolvePlanIdFromStripeSubscription } from "./stripePlanResolve.js";
+import { normalizePhoneToE164 } from "./phoneE164.js";
+import { syncSubscriptionToFirestore } from "./stripeBilling.js";
 
 export type AdminUserSummary = {
   uid: string;
@@ -45,11 +47,20 @@ export type AdminUserDetail = AdminUserSummary & {
     id: string;
     status: string;
     cancelAtPeriodEnd: boolean;
+    startDate: string | null;
+    currentPeriodStart: string | null;
     currentPeriodEnd: string;
+    trialEndsAt: string | null;
     couponId: string | null;
     discountPercentOff: number | null;
     discountAmountOff: number | null;
   } | null;
+  /** Latest paid invoice / charge timestamp from Stripe (null if none). */
+  lastPaymentAt: string | null;
+  /** True when status is past_due/unpaid or an open invoice is overdue. */
+  paymentLate: boolean;
+  /** Stripe customer found by email but not yet written to Firestore. */
+  stripeCustomerMatchPending: boolean;
 };
 
 function tsToIso(value: unknown): string | null {
@@ -188,6 +199,80 @@ async function resolveStripeForCustomer(
   return null;
 }
 
+async function findStripeCustomerByEmail(
+  email: string
+): Promise<{ stripe: Stripe; customerId: string; useTest: boolean } | null> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return null;
+  for (const useTest of [false, true] as const) {
+    const stripe = useTest ? getStripeTest() : getStripe();
+    if (!stripe) continue;
+    try {
+      const list = await stripe.customers.list({ email: normalized, limit: 5 });
+      const active = list.data.find((c) => !c.deleted);
+      if (active) return { stripe, customerId: active.id, useTest };
+    } catch {
+      /* try next mode */
+    }
+  }
+  return null;
+}
+
+async function loadLatestSubscriptionForCustomer(
+  stripe: Stripe,
+  customerId: string
+): Promise<Stripe.Subscription | null> {
+  const subs = await stripe.subscriptions.list({
+    customer: customerId,
+    status: "all",
+    limit: 10,
+  });
+  if (subs.data.length === 0) return null;
+  const preferred =
+    subs.data.find((s) => s.status === "active" || s.status === "trialing") ||
+    subs.data.find((s) => s.status === "past_due") ||
+    subs.data[0];
+  return preferred ?? null;
+}
+
+function mapStripeSubscription(
+  sub: Stripe.Subscription
+): NonNullable<AdminUserDetail["stripeSubscription"]> {
+  const coupon = sub.discount?.coupon;
+  return {
+    id: sub.id,
+    status: sub.status,
+    cancelAtPeriodEnd: sub.cancel_at_period_end,
+    startDate: sub.start_date
+      ? new Date(sub.start_date * 1000).toISOString()
+      : sub.created
+        ? new Date(sub.created * 1000).toISOString()
+        : null,
+    currentPeriodStart: sub.current_period_start
+      ? new Date(sub.current_period_start * 1000).toISOString()
+      : null,
+    currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString(),
+    trialEndsAt: sub.trial_end != null ? new Date(sub.trial_end * 1000).toISOString() : null,
+    couponId: coupon?.id ?? null,
+    discountPercentOff: coupon?.percent_off ?? null,
+    discountAmountOff: coupon?.amount_off ?? null,
+  };
+}
+
+function derivePaymentLate(
+  subscriptionStatus: string | null | undefined,
+  invoices: AdminUserDetail["stripeInvoices"]
+): boolean {
+  const st = subscriptionStatus ?? "";
+  if (st === "past_due" || st === "unpaid") return true;
+  const now = Date.now();
+  return invoices.some((inv) => {
+    if (inv.status !== "open" && inv.status !== "uncollectible") return false;
+    const created = new Date(inv.created).getTime();
+    return Number.isFinite(created) && now - created > 3 * 24 * 60 * 60 * 1000;
+  });
+}
+
 export async function getAdminUserDetail(uid: string): Promise<AdminUserDetail> {
   if (!hasFirebaseAdminCredentials()) {
     throw Object.assign(new Error("Firebase Admin credentials are not configured."), { status: 503 });
@@ -200,52 +285,89 @@ export async function getAdminUserDetail(uid: string): Promise<AdminUserDetail> 
 
   let stripeInvoices: AdminUserDetail["stripeInvoices"] = [];
   let stripeSubscription: AdminUserDetail["stripeSubscription"] = null;
+  let lastPaymentAt: string | null = null;
+  let stripeCustomerMatchPending = false;
+  let customerId = summary.stripeCustomerId;
+  let resolvedStripe: Stripe | null = null;
+  let resolvedUseTest = false;
 
-  if (summary.stripeCustomerId) {
-    const resolved = await resolveStripeForCustomer(summary.stripeCustomerId);
+  if (customerId) {
+    const resolved = await resolveStripeForCustomer(customerId);
     if (resolved) {
-      const { stripe } = resolved;
-      const invoices = await stripe.invoices.list({
-        customer: summary.stripeCustomerId,
-        limit: 12,
-      });
-      stripeInvoices = invoices.data.map((inv) => ({
-        id: inv.id,
-        status: inv.status,
-        amountPaid: inv.amount_paid,
-        currency: inv.currency,
-        created: new Date(inv.created * 1000).toISOString(),
-        hostedInvoiceUrl: inv.hosted_invoice_url ?? null,
-        paymentIntentId:
-          typeof inv.payment_intent === "string"
-            ? inv.payment_intent
-            : inv.payment_intent?.id ?? null,
-      }));
+      resolvedStripe = resolved.stripe;
+      resolvedUseTest = resolved.useTest;
+    }
+  } else if (summary.email) {
+    const found = await findStripeCustomerByEmail(summary.email);
+    if (found) {
+      customerId = found.customerId;
+      resolvedStripe = found.stripe;
+      resolvedUseTest = found.useTest;
+      stripeCustomerMatchPending = true;
+      summary.stripeCustomerId = found.customerId;
     }
   }
 
-  if (summary.subscriptionId) {
-    const resolved = await resolveStripeForSubscription(summary.subscriptionId);
-    if (resolved) {
-      const { stripe, useTest } = resolved;
-      const sub = await stripe.subscriptions.retrieve(summary.subscriptionId, {
-        expand: ["discount", "discount.coupon"],
-      });
-      const coupon = sub.discount?.coupon;
-      stripeSubscription = {
-        id: sub.id,
-        status: sub.status,
-        cancelAtPeriodEnd: sub.cancel_at_period_end,
-        currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString(),
-        couponId: coupon?.id ?? null,
-        discountPercentOff: coupon?.percent_off ?? null,
-        discountAmountOff: coupon?.amount_off ?? null,
-      };
+  if (customerId && resolvedStripe) {
+    const invoices = await resolvedStripe.invoices.list({
+      customer: customerId,
+      limit: 12,
+    });
+    stripeInvoices = invoices.data.map((inv) => ({
+      id: inv.id,
+      status: inv.status,
+      amountPaid: inv.amount_paid,
+      currency: inv.currency,
+      created: new Date(inv.created * 1000).toISOString(),
+      hostedInvoiceUrl: inv.hosted_invoice_url ?? null,
+      paymentIntentId:
+        typeof inv.payment_intent === "string"
+          ? inv.payment_intent
+          : inv.payment_intent?.id ?? null,
+    }));
+    const paid = invoices.data.find((inv) => inv.status === "paid" && inv.amount_paid > 0);
+    if (paid) {
+      lastPaymentAt = new Date((paid.status_transitions?.paid_at ?? paid.created) * 1000).toISOString();
+    }
+  }
+
+  let subId = summary.subscriptionId;
+  if (!subId && customerId && resolvedStripe) {
+    const latest = await loadLatestSubscriptionForCustomer(resolvedStripe, customerId);
+    if (latest) {
+      subId = latest.id;
+      summary.subscriptionId = latest.id;
+      summary.subscriptionStatus = latest.status;
       if (!summary.planId) {
-        summary.planId = resolvePlanIdFromStripeSubscription(sub, useTest);
+        summary.planId = resolvePlanIdFromStripeSubscription(latest, resolvedUseTest);
       }
     }
   }
+
+  if (subId) {
+    const resolved = await resolveStripeForSubscription(subId);
+    if (resolved) {
+      const { stripe, useTest } = resolved;
+      const sub = await stripe.subscriptions.retrieve(subId, {
+        expand: ["discount", "discount.coupon"],
+      });
+      stripeSubscription = mapStripeSubscription(sub);
+      if (!summary.planId) {
+        summary.planId = resolvePlanIdFromStripeSubscription(sub, useTest);
+      }
+      if (!summary.subscriptionStatus) {
+        summary.subscriptionStatus = sub.status;
+      }
+      if (!summary.currentPeriodEnd) {
+        summary.currentPeriodEnd = stripeSubscription.currentPeriodEnd;
+      }
+      if (!summary.trialEndsAt && stripeSubscription.trialEndsAt) {
+        summary.trialEndsAt = stripeSubscription.trialEndsAt;
+      }
+    }
+  }
+
+  const paymentLate = derivePaymentLate(summary.subscriptionStatus ?? stripeSubscription?.status, stripeInvoices);
 
   return {
     ...summary,
@@ -253,6 +375,9 @@ export async function getAdminUserDetail(uid: string): Promise<AdminUserDetail> 
     phoneNumber: record.phoneNumber ?? null,
     stripeInvoices,
     stripeSubscription,
+    lastPaymentAt,
+    paymentLate,
+    stripeCustomerMatchPending,
   };
 }
 
@@ -269,6 +394,7 @@ export type AdminUserAction =
   | { action: "delete_user" }
   | { action: "set_plan"; planId: PaystackPlanId | null; planTestMode?: boolean }
   | { action: "resend_verification" }
+  | { action: "link_stripe_by_email" }
   | {
       action: "update_user";
       displayName?: string;
@@ -513,6 +639,54 @@ export async function runAdminUserAction(
       };
     }
 
+    case "link_stripe_by_email": {
+      const email = record.email?.trim();
+      if (!email) throw Object.assign(new Error("User has no email address."), { status: 400 });
+      const found = await findStripeCustomerByEmail(email);
+      if (!found) {
+        throw Object.assign(
+          new Error(`No Stripe customer found for ${email} in live or test mode.`),
+          { status: 404 }
+        );
+      }
+      const { stripe, customerId, useTest } = found;
+      const sub = await loadLatestSubscriptionForCustomer(stripe, customerId);
+      if (sub) {
+        await stripe.subscriptions.update(sub.id, {
+          metadata: {
+            ...(sub.metadata ?? {}),
+            firebaseUid: uid,
+          },
+        });
+        try {
+          await stripe.customers.update(customerId, {
+            metadata: { firebaseUid: uid },
+          });
+        } catch {
+          /* non-fatal */
+        }
+        const refreshed = await stripe.subscriptions.retrieve(sub.id);
+        await syncSubscriptionToFirestore(uid, refreshed, useTest);
+        return {
+          ok: true,
+          message: `Linked Stripe customer ${customerId} and subscription ${sub.id} (${useTest ? "test" : "live"}).`,
+          data: { stripeCustomerId: customerId, subscriptionId: sub.id },
+        };
+      }
+      await db.collection("users").doc(uid).set(
+        {
+          stripeCustomerId: customerId,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+      return {
+        ok: true,
+        message: `Linked Stripe customer ${customerId} (${useTest ? "test" : "live"}) — no subscription on that customer yet.`,
+        data: { stripeCustomerId: customerId },
+      };
+    }
+
     case "update_user": {
       const updates: Parameters<typeof auth.updateUser>[1] = {};
       if (typeof body.displayName === "string") {
@@ -535,7 +709,12 @@ export async function runAdminUserAction(
         }
       }
       if (typeof body.phoneNumber === "string") {
-        updates.phoneNumber = body.phoneNumber.trim() || undefined;
+        const raw = body.phoneNumber.trim();
+        if (!raw) {
+          updates.phoneNumber = null;
+        } else {
+          updates.phoneNumber = normalizePhoneToE164(raw, "CH");
+        }
       }
       if (typeof body.emailVerified === "boolean") updates.emailVerified = body.emailVerified;
       if (typeof body.disabled === "boolean") updates.disabled = body.disabled;

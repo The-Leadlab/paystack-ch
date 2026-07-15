@@ -272,6 +272,21 @@ const translations = {
     adminUserProviders: 'Sign-in providers',
     adminUserDocsThisMonth: 'Documents this month',
     adminUserPeriodEnd: 'Current period ends',
+    adminUserPeriodStart: 'Current period starts',
+    adminUserSubStart: 'Subscription start',
+    adminUserTrialEnds: 'Trial ends',
+    adminUserLastPayment: 'Last payment',
+    adminUserPaymentLate: 'Payment status',
+    adminUserPaymentOnTime: 'On time',
+    adminUserPaymentLateYes: 'Late / past due',
+    adminUserPaymentNever: 'No paid invoice yet',
+    adminUserLinkStripe: 'Link Stripe by email',
+    adminUserLinkStripeHint:
+      'Finds the Stripe customer for this email (live then test) and saves customer + subscription IDs to Firestore. Use when checkout completed but linking failed.',
+    adminUserStripeMatchPending:
+      'Stripe customer found by email but not saved on this user yet. Click “Link Stripe by email” to repair billing.',
+    adminUserPhoneHint:
+      'Use international format, e.g. +41 78 757 59 93. Swiss local numbers like 078… are converted automatically.',
     adminUserCancelScheduled: 'Cancellation scheduled at period end',
     adminUserActiveCoupon: 'Active coupon',
     adminUserCancelSub: 'Cancel at period end',
@@ -321,7 +336,8 @@ const translations = {
     adminUserInvoicesHint: 'These are real Stripe billing invoices for this customer (subscription charges, trials, etc.). Click View to open the hosted PDF/receipt on Stripe.',
     adminUserViewInvoice: 'View',
     adminUserNoInvoices: 'No Stripe invoices yet for this customer.',
-    adminUserNoStripeCustomer: 'This user has no Stripe customer ID — they have not completed checkout.',
+    adminUserNoStripeCustomer:
+      'No Stripe customer ID on this Paystack account. If they paid in Stripe, use “Link Stripe by email” on the Billing tab.',
     authNeedAccount: "Don't have an account?",
     authSignUpLink: 'Sign up',
     authTeamSignIn: 'Team sign in',
@@ -1160,6 +1176,21 @@ const translations = {
     adminUserProviders: 'Fournisseurs de connexion',
     adminUserDocsThisMonth: 'Documents ce mois',
     adminUserPeriodEnd: 'Fin de periode en cours',
+    adminUserPeriodStart: 'Debut de periode',
+    adminUserSubStart: 'Debut abonnement',
+    adminUserTrialEnds: 'Fin d\'essai',
+    adminUserLastPayment: 'Dernier paiement',
+    adminUserPaymentLate: 'Statut paiement',
+    adminUserPaymentOnTime: 'A jour',
+    adminUserPaymentLateYes: 'En retard / impaye',
+    adminUserPaymentNever: 'Aucune facture payee',
+    adminUserLinkStripe: 'Lier Stripe par e-mail',
+    adminUserLinkStripeHint:
+      'Trouve le client Stripe pour cet e-mail (live puis test) et enregistre customer + abonnement dans Firestore. Utilisez si le checkout a reussi mais le lien a echoue.',
+    adminUserStripeMatchPending:
+      'Client Stripe trouve par e-mail mais pas encore enregistre. Cliquez sur « Lier Stripe par e-mail » pour reparer.',
+    adminUserPhoneHint:
+      'Format international, ex. +41 78 757 59 93. Les numeros suisses locaux (078…) sont convertis automatiquement.',
     adminUserCancelScheduled: 'Resiliation prevue en fin de periode',
     adminUserActiveCoupon: 'Coupon actif',
     adminUserCancelSub: 'Resilier en fin de periode',
@@ -1209,7 +1240,8 @@ const translations = {
     adminUserInvoicesHint: 'Factures Stripe reelles de ce client (abonnements, essais, etc.). Cliquez Voir pour ouvrir le PDF/recu heberge par Stripe.',
     adminUserViewInvoice: 'Voir',
     adminUserNoInvoices: 'Aucune facture Stripe pour ce client.',
-    adminUserNoStripeCustomer: 'Pas d\'ID client Stripe — checkout non termine.',
+    adminUserNoStripeCustomer:
+      'Pas d\'ID client Stripe sur ce compte. S\'ils ont paye dans Stripe, utilisez « Lier Stripe par e-mail » dans Facturation.',
     authNeedAccount: 'Pas encore de compte ?',
     authSignUpLink: 'S\'inscrire',
     authTeamSignIn: 'Connexion equipe',

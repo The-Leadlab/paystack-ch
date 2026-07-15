@@ -35,11 +35,17 @@ export type AdminUserDetail = AdminUserSummary & {
     id: string;
     status: string;
     cancelAtPeriodEnd: boolean;
+    startDate: string | null;
+    currentPeriodStart: string | null;
     currentPeriodEnd: string;
+    trialEndsAt: string | null;
     couponId: string | null;
     discountPercentOff: number | null;
     discountAmountOff: number | null;
   } | null;
+  lastPaymentAt: string | null;
+  paymentLate: boolean;
+  stripeCustomerMatchPending: boolean;
 };
 
 async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -98,6 +104,7 @@ export type AdminUserActionBody =
   | { action: "delete_user" }
   | { action: "set_plan"; planId: string | null; planTestMode?: boolean }
   | { action: "resend_verification" }
+  | { action: "link_stripe_by_email" }
   | {
       action: "update_user";
       displayName?: string;

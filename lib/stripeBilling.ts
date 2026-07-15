@@ -40,7 +40,7 @@ export { getStripe, getStripeTest, publicAppOriginFromHeaders, trialDays } from 
 export { ensureFirebaseAdmin, hasFirebaseAdminCredentials } from "./firebaseAdmin.js";
 export { resolvePlanIdFromStripeSubscription } from "./stripePlanResolve.js";
 
-async function syncSubscriptionToFirestore(
+export async function syncSubscriptionToFirestore(
   uid: string,
   subscription: Stripe.Subscription,
   useTestPrices: boolean

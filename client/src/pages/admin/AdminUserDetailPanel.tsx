@@ -288,7 +288,11 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                     value={editPhone}
                     onChange={(e) => setEditPhone(e.target.value)}
                     className="bg-background"
+                    placeholder="+41 78 757 59 93"
+                    inputMode="tel"
+                    autoComplete="tel"
                   />
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">{t("adminUserPhoneHint")}</p>
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="edit-password" className="font-display text-xs">
@@ -366,29 +370,94 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                   </span>
                 </div>
               </div>
-              {user.stripeSubscription ? (
-                <div className="space-y-2 border-t border-border pt-3">
-                  <div className="flex justify-between gap-2">
-                    <span className="text-muted-foreground">{t("adminUserPeriodEnd")}</span>
-                    <span className="text-foreground">{formatDateTime(user.stripeSubscription.currentPeriodEnd)}</span>
-                  </div>
-                  {user.stripeSubscription.cancelAtPeriodEnd ? (
-                    <p className="text-xs text-amber-600 dark:text-amber-300">{t("adminUserCancelScheduled")}</p>
-                  ) : null}
-                  {user.stripeSubscription.couponId ? (
-                    <div className="flex justify-between gap-2">
-                      <span className="text-muted-foreground">{t("adminUserActiveCoupon")}</span>
-                      <span className="font-mono text-xs">{user.stripeSubscription.couponId}</span>
-                    </div>
-                  ) : null}
+
+              <div className="space-y-2 border-t border-border pt-3">
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">{t("adminUserSubStart")}</span>
+                  <span className="text-foreground text-right">
+                    {formatDateTime(user.stripeSubscription?.startDate ?? user.createdAt)}
+                  </span>
                 </div>
-              ) : null}
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">{t("adminUserPeriodStart")}</span>
+                  <span className="text-foreground text-right">
+                    {formatDateTime(user.stripeSubscription?.currentPeriodStart ?? null)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">{t("adminUserPeriodEnd")}</span>
+                  <span className="text-foreground text-right">
+                    {formatDateTime(
+                      user.stripeSubscription?.currentPeriodEnd ?? user.currentPeriodEnd
+                    )}
+                  </span>
+                </div>
+                {(user.stripeSubscription?.trialEndsAt || user.trialEndsAt) ? (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">{t("adminUserTrialEnds")}</span>
+                    <span className="text-foreground text-right">
+                      {formatDateTime(user.stripeSubscription?.trialEndsAt ?? user.trialEndsAt)}
+                    </span>
+                  </div>
+                ) : null}
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">{t("adminUserLastPayment")}</span>
+                  <span className="text-foreground text-right">
+                    {user.lastPaymentAt ? formatDateTime(user.lastPaymentAt) : t("adminUserPaymentNever")}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2 items-center">
+                  <span className="text-muted-foreground">{t("adminUserPaymentLate")}</span>
+                  <span
+                    className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${
+                      user.paymentLate
+                        ? "border-destructive/40 bg-destructive/15 text-destructive"
+                        : "border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                    }`}
+                  >
+                    {user.paymentLate ? t("adminUserPaymentLateYes") : t("adminUserPaymentOnTime")}
+                  </span>
+                </div>
+                {user.stripeSubscription?.cancelAtPeriodEnd ? (
+                  <p className="text-xs text-amber-600 dark:text-amber-300">{t("adminUserCancelScheduled")}</p>
+                ) : null}
+                {user.stripeSubscription?.couponId ? (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">{t("adminUserActiveCoupon")}</span>
+                    <span className="font-mono text-xs">{user.stripeSubscription.couponId}</span>
+                  </div>
+                ) : null}
+              </div>
+
               {user.stripeCustomerId ? (
                 <p className="text-xs text-muted-foreground break-all border-t border-border pt-3">
                   Stripe customer: {user.stripeCustomerId}
+                  {user.stripeCustomerMatchPending ? " (not saved yet)" : ""}
                 </p>
               ) : null}
             </div>
+
+            {user.stripeCustomerMatchPending || !user.stripeCustomerId ? (
+              <div className={`${adminPanelCardClass} space-y-3`}>
+                {user.stripeCustomerMatchPending ? (
+                  <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
+                    {t("adminUserStripeMatchPending")}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground leading-relaxed">{t("adminUserNoStripeCustomer")}</p>
+                )}
+                <p className="text-xs text-muted-foreground leading-relaxed">{t("adminUserLinkStripeHint")}</p>
+                <Button
+                  type="button"
+                  className="font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2 w-full sm:w-auto min-h-11"
+                  disabled={!user.email || actionBusy !== null}
+                  onClick={() => void runAction("linkStripe", { action: "link_stripe_by_email" })}
+                >
+                  {actionBusy === "linkStripe" ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
+                  {t("adminUserLinkStripe")}
+                </Button>
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Button type="button" variant="outline" size="sm" className={adminOutlineBtnClass} disabled={!user.subscriptionId || actionBusy !== null}
@@ -512,8 +581,35 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
 
           <TabsContent value="invoices" className="mt-0 space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">{t("adminUserInvoicesHint")}</p>
-            {!user.stripeCustomerId ? (
-              <div className={`${adminPanelCardClass} text-sm text-muted-foreground`}>{t("adminUserNoStripeCustomer")}</div>
+            {user.stripeCustomerMatchPending ? (
+              <div className={`${adminPanelCardClass} space-y-3`}>
+                <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
+                  {t("adminUserStripeMatchPending")}
+                </p>
+                <Button
+                  type="button"
+                  className="font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2 w-full sm:w-auto min-h-11"
+                  disabled={!user.email || actionBusy !== null}
+                  onClick={() => void runAction("linkStripe", { action: "link_stripe_by_email" })}
+                >
+                  {actionBusy === "linkStripe" ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
+                  {t("adminUserLinkStripe")}
+                </Button>
+              </div>
+            ) : null}
+            {!user.stripeCustomerId && !user.stripeCustomerMatchPending ? (
+              <div className={`${adminPanelCardClass} space-y-3`}>
+                <p className="text-sm text-muted-foreground">{t("adminUserNoStripeCustomer")}</p>
+                <Button
+                  type="button"
+                  className="font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2 w-full sm:w-auto min-h-11"
+                  disabled={!user.email || actionBusy !== null}
+                  onClick={() => void runAction("linkStripe", { action: "link_stripe_by_email" })}
+                >
+                  {actionBusy === "linkStripe" ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
+                  {t("adminUserLinkStripe")}
+                </Button>
+              </div>
             ) : user.stripeInvoices.length === 0 ? (
               <div className={`${adminPanelCardClass} text-sm text-muted-foreground`}>{t("adminUserNoInvoices")}</div>
             ) : (
