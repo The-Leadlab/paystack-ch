@@ -99,7 +99,7 @@ function OperatorToolsPanel() {
                 key={id}
                 type="button"
                 onClick={() => setTestPlan(id)}
-                className={`rounded border px-2 py-2 text-[10px] font-black uppercase tracking-tight transition-colors ${
+                className={`rounded border px-2 py-3 sm:py-2 text-[11px] sm:text-[10px] font-black uppercase tracking-tight transition-colors min-h-11 touch-manipulation ${
                   testPlan === id
                     ? "border-brand-red bg-brand-red/10 text-foreground"
                     : "border-border text-muted-foreground hover:border-brand-red/40"
@@ -119,7 +119,7 @@ function OperatorToolsPanel() {
             {!sandboxOnly ? (
               <Button
                 type="button"
-                className="flex-1 font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2"
+                className="flex-1 font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2 min-h-11 touch-manipulation"
                 disabled={checkoutBusy !== null || testPlan === "enterprise"}
                 onClick={() => void openGuestCheckout(false)}
               >
@@ -130,7 +130,7 @@ function OperatorToolsPanel() {
             <Button
               type="button"
               variant={sandboxOnly ? "default" : "secondary"}
-              className={`flex-1 font-display gap-2 ${sandboxOnly ? "bg-brand-red text-white hover:bg-brand-red/90" : ""}`}
+              className={`flex-1 font-display gap-2 min-h-11 touch-manipulation ${sandboxOnly ? "bg-brand-red text-white hover:bg-brand-red/90" : ""}`}
               disabled={checkoutBusy !== null || testPlan === "enterprise"}
               onClick={() => void openGuestCheckout(true)}
             >
@@ -346,34 +346,40 @@ export default function AdminDashboardPage() {
         heading={t("adminDashboardTitle")}
         description={t("adminDashboardDescription")}
       >
-        <div className="space-y-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const active = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-display text-sm whitespace-nowrap transition-colors ${
-                      active
-                        ? "bg-brand-red/10 text-brand-red border border-brand-red/30"
-                        : "bg-card text-muted-foreground border border-border hover:border-brand-red/20"
-                    }`}
-                  >
-                    <Icon className="size-4" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-            <Button type="button" variant="outline" size="sm" className="font-display gap-1 shrink-0 self-start lg:self-auto" onClick={() => void lockGate()} disabled={lockBusy}>
-              {lockBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Lock className="size-3.5" />}
-              {t("authAdminGateLock")}
-            </Button>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-2">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-3 sm:py-2.5 rounded-lg font-display text-sm transition-colors touch-manipulation min-h-11 ${
+                    active
+                      ? "bg-brand-red/10 text-brand-red border border-brand-red/30"
+                      : "bg-card text-muted-foreground border border-border hover:border-brand-red/20"
+                  }`}
+                >
+                  <Icon className="size-4 shrink-0" />
+                  <span className="truncate">{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="font-display gap-1.5 w-full sm:w-auto min-h-11 touch-manipulation"
+            onClick={() => void lockGate()}
+            disabled={lockBusy}
+          >
+            {lockBusy ? <Loader2 className="size-4 animate-spin" /> : <Lock className="size-4" />}
+            {t("authAdminGateLock")}
+          </Button>
+        </div>
 
           <p className="text-sm text-muted-foreground -mt-2">
             {activeTab === "users" ? t("adminUsersHint") : t("adminTabOperatorHint")}

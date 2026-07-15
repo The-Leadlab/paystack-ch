@@ -109,6 +109,11 @@ const translations = {
     /** Navbar: one-click toggle to the other language */
     navTranslateEnglish: 'English',
     navTranslateFrench: 'Français',
+    languageToggleLabel: 'Language',
+    languageToggleShortEn: 'EN',
+    languageToggleShortFr: 'FR',
+    authBackHomeShort: 'Home',
+    authAdminEntryShort: 'Admin',
 
     // Landing - Hero
     heroBadge: 'Built for Switzerland',
@@ -992,6 +997,11 @@ const translations = {
     navChangeLanguage: 'Changer la langue',
     navTranslateEnglish: 'English',
     navTranslateFrench: 'Français',
+    languageToggleLabel: 'Langue',
+    languageToggleShortEn: 'EN',
+    languageToggleShortFr: 'FR',
+    authBackHomeShort: 'Accueil',
+    authAdminEntryShort: 'Admin',
 
     // Landing - Hero
     heroBadge: 'Concu pour la Suisse',

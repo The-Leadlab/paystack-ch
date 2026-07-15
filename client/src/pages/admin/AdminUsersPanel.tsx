@@ -83,38 +83,47 @@ export function AdminUsersPanel() {
           <p className="text-sm text-muted-foreground max-w-2xl">{t("adminUsersHint")}</p>
         </div>
 
-        <div className="flex gap-2 w-full lg:w-auto lg:min-w-[360px]">
+        <div className="flex flex-col gap-2 w-full lg:w-auto lg:min-w-[360px]">
           <Button
             type="button"
-            className="font-display bg-brand-red text-white hover:bg-brand-red/90 gap-1 shrink-0"
+            className="font-display bg-brand-red text-white hover:bg-brand-red/90 gap-1.5 w-full sm:w-auto min-h-11 touch-manipulation"
             onClick={() => setCreateOpen(true)}
           >
             <Plus className="size-4" />
             {t("adminCreateUserTitle")}
           </Button>
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && onSearch()}
-              placeholder={t("adminUsersSearchPlaceholder")}
-              className="pl-10 font-editorial"
-            />
+          <div className="flex gap-2 w-full">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && onSearch()}
+                placeholder={t("adminUsersSearchPlaceholder")}
+                className="pl-10 font-editorial min-h-11"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onSearch}
+              disabled={loading}
+              className="shrink-0 font-display min-h-11 px-4 touch-manipulation"
+            >
+              {loading ? <Loader2 className="size-4 animate-spin" /> : t("adminUsersSearch")}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="shrink-0 min-h-11 min-w-11 touch-manipulation"
+              onClick={() => void loadUsers(search)}
+              disabled={loading}
+              aria-label={t("adminUserRefresh")}
+            >
+              <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
           </div>
-          <Button type="button" variant="outline" onClick={onSearch} disabled={loading} className="shrink-0 font-display">
-            {loading ? <Loader2 className="size-4 animate-spin" /> : t("adminUsersSearch")}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => void loadUsers(search)}
-            disabled={loading}
-            aria-label={t("adminUserRefresh")}
-          >
-            <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
         </div>
       </div>
 
@@ -125,7 +134,60 @@ export function AdminUsersPanel() {
         </p>
       ) : null}
 
-      <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+      {/* Mobile: card list (no horizontal scroll) */}
+      <div className="md:hidden rounded-xl border border-border bg-card shadow-sm overflow-hidden divide-y divide-border">
+        {loading && users.length === 0 ? (
+          <div className="py-16 text-center text-muted-foreground">
+            <Loader2 className="size-6 animate-spin mx-auto mb-2" />
+            {t("adminUsersLoading")}
+          </div>
+        ) : users.length === 0 ? (
+          <div className="py-16 text-center text-muted-foreground px-4">{t("adminUsersEmpty")}</div>
+        ) : (
+          users.map((user) => (
+            <button
+              key={user.uid}
+              type="button"
+              className="w-full text-left p-4 space-y-2.5 active:bg-muted/40 transition-colors touch-manipulation"
+              onClick={() => openUser(user.uid)}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-foreground break-all">{user.email ?? "—"}</div>
+                  <div className="text-[10px] text-muted-foreground font-mono mt-1 break-all line-clamp-1">{user.uid}</div>
+                </div>
+                <ChevronRight className="size-4 text-muted-foreground shrink-0 mt-0.5" />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {user.planId ? (
+                  <span className="font-display text-[10px] font-bold uppercase text-muted-foreground">{user.planId}</span>
+                ) : null}
+                <span
+                  className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${subscriptionStatusClass(user.subscriptionStatus)}`}
+                >
+                  {user.subscriptionStatus ?? "none"}
+                </span>
+                {user.disabled ? (
+                  <Badge variant="destructive" className="text-[10px]">
+                    {t("adminUsersDisabled")}
+                  </Badge>
+                ) : null}
+                {user.planTestMode ? (
+                  <Badge variant="outline" className="text-[10px]">
+                    {t("adminUsersTestMode")}
+                  </Badge>
+                ) : null}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {t("adminUsersColLastSignIn")}: {formatDate(user.lastSignInAt)}
+              </p>
+            </button>
+          ))
+        )}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block rounded-xl border border-border bg-card shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[720px]">
             <thead>

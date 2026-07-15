@@ -237,12 +237,12 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
         </div>
       ) : (
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DetailTab)} className="gap-6">
-          <TabsList className="w-full sm:w-auto flex flex-wrap h-auto gap-1 bg-muted/60 p-1.5">
+          <TabsList className="w-full h-auto gap-1.5 bg-muted/60 p-1.5 grid grid-cols-2 sm:flex sm:flex-wrap sm:w-auto">
             {detailTabs.map((tab) => (
               <TabsTrigger
                 key={tab.id}
                 value={tab.id}
-                className="font-display data-[state=active]:bg-card data-[state=active]:text-foreground px-4 py-2"
+                className="font-display data-[state=active]:bg-card data-[state=active]:text-foreground px-3 sm:px-4 py-2.5 min-h-11 text-xs sm:text-sm touch-manipulation"
               >
                 {tab.label}
                 {tab.id === "invoices" && user.stripeInvoices.length > 0 ? (

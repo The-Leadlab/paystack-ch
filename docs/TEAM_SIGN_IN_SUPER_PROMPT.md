@@ -47,9 +47,21 @@ All auth and admin shells use `LanguageContext` (`t(...)`) — default French, t
 
 ---
 
+## Mobile (phones)
+
+| Area | Behavior |
+|------|----------|
+| Language toggle | Globe icon + **EN** / **FR** target code, 44px touch height |
+| Admin header | Two-row layout: actions top, title below; home as icon + short label |
+| User list | Card list on `< md`; table on desktop |
+| Tabs (Users / Operator) | 2-column grid on phone, full-width lock button |
+| User detail tabs | 2×2 grid on phone |
+
+---
+
 ## QA
 
 - [ ] `/sign-in` and `/sign-up` — admin pill top-right; EN/FR toggle works
 - [ ] `/operator` — language toggle; gate → `/admin`
-- [ ] `/admin` — language toggle in sticky header
+- [ ] `/admin` on phone — language toggle readable; user cards tappable; tabs usable
 - [ ] Landing navbar — no admin link
