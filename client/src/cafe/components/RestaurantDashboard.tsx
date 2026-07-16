@@ -34,6 +34,8 @@ import { SwissAccountCodeBadge, SwissAccountCodeField } from './SwissAccountCode
 import { suggestSwissAccountCode } from '@shared/suggestSwissAccountCode';
 import { classifyLineItemAccountCode } from '../services/swissAccountClassifierService';
 import type { FinancialData } from '../types';
+import { loadReportSchedule, saveReportSchedule } from '../lib/reportScheduleClient';
+import type { ReportScheduleCadenceDays } from '@shared/reportSchedule';
 
 type Tab = BusinessTab;
 
@@ -493,7 +495,7 @@ export function RestaurantDashboard() {
         for (const item of data.lineItems) {
           if (item.type === 'INCOME') {
             console.log('âž• Adding income:', item.amount, item.description);
-            // Extract VAT if available (typically 7.7% or 8.1% in Switzerland)
+            // Extract VAT if available (typically 8.1% in Switzerland).
             const vatAmount = data.vatAmount || 0;
             const incCode = resolveDocumentAccountCode(data, {
               kind: 'income',
@@ -1239,7 +1241,7 @@ export function RestaurantDashboard() {
               {enforcementEnabled && entitlements.maxEmployeeSlots != null ? (
                 <p className={`mb-6 text-[10px] font-bold uppercase tracking-tight ${canAddEmployee ? 'text-cdlp-muted' : 'text-red-400'}`}>
                   {t('dashEmployeeSlots').replace('{n}', String(employees.length)).replace('{max}', String(entitlements.maxEmployeeSlots))}
-                  {!canAddEmployee ? ` Â· ${employeeLimitMessage}` : ''}
+                  {!canAddEmployee ? ` · ${employeeLimitMessage}` : ''}
                 </p>
               ) : (
                 <div className="mb-6" />
@@ -1665,9 +1667,7 @@ function useLiveClock(): string {
 
 function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument }: any) {
   const liveClock = useLiveClock();
-  const vatOnSalesRate = totalIncome > 0 ? (vatReceived / totalIncome) * 100 : 0;
-  const expenseBaseForVat = totalExpenses + totalPayroll;
-  const vatOnPurchasesRate = expenseBaseForVat > 0 ? (vatPaid / expenseBaseForVat) * 100 : 0;
+  const vatFlowBase = Math.max(vatReceived, vatPaid, Math.abs(vatBalance), 1);
 
   const handleItemClick = (item: any) => {
     if (item.document_id && onNavigateToDocument) {
@@ -1732,18 +1732,18 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
               <BusinessKpiCard
                 label={t('vatReceivedLabel')}
                 value={fmtKpi(vatReceived)}
-                hint={t('vatFromCustomersHint').replace('{rate}', vatOnSalesRate.toFixed(2))}
+                hint={t('vatFromCustomersHint')}
                 icon={Receipt}
                 tone="blue"
-                progressPct={vatOnSalesRate > 0 ? Math.min(vatOnSalesRate * 10, 100) : 8}
+                progressPct={Math.min((vatReceived / vatFlowBase) * 100, 100)}
               />
               <BusinessKpiCard
                 label={t('vatPaidLabel')}
                 value={fmtKpi(vatPaid)}
-                hint={t('vatOnPurchasesHint').replace('{rate}', vatOnPurchasesRate.toFixed(2))}
+                hint={t('vatOnPurchasesHint')}
                 icon={Receipt}
                 tone="neutral"
-                progressPct={vatOnPurchasesRate > 0 ? Math.min(vatOnPurchasesRate * 10, 100) : 8}
+                progressPct={Math.min((vatPaid / vatFlowBase) * 100, 100)}
               />
               <BusinessKpiCard
                 label={t('vatBalanceLabel')}
@@ -1751,7 +1751,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                 hint={vatBalance >= 0 ? t('vatBalanceToPay') : t('vatBalanceRefund')}
                 icon={Receipt}
                 tone={vatBalance >= 0 ? 'green' : 'red'}
-                progressPct={Math.min((Math.abs(vatBalance) / Math.max(vatReceived, 1)) * 100, 100)}
+                progressPct={Math.min((Math.abs(vatBalance) / vatFlowBase) * 100, 100)}
               />
             </div>
           </>
@@ -1923,6 +1923,40 @@ function ReportsPlaceholder() {
   const [supplierFilter, setSupplierFilter] = React.useState<string>('all');
   const [vatPeriodMode, setVatPeriodMode] = React.useState<'month' | 'semester' | 'year' | 'allYears'>('month');
   const [emailBusy, setEmailBusy] = React.useState<string | null>(null);
+  const [scheduleEnabled, setScheduleEnabled] = React.useState(false);
+  const [scheduleCadenceDays, setScheduleCadenceDays] = React.useState<ReportScheduleCadenceDays>(7);
+  const [scheduleAnchorDate, setScheduleAnchorDate] = React.useState(() => new Date().toISOString().slice(0, 10));
+  const [scheduleLoading, setScheduleLoading] = React.useState(false);
+  const [scheduleSaving, setScheduleSaving] = React.useState(false);
+  const [scheduleMessage, setScheduleMessage] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    if (!advancedReports) return;
+
+    async function loadSchedule() {
+      setScheduleLoading(true);
+      try {
+        const schedule = await loadReportSchedule();
+        if (cancelled || !schedule) return;
+        setScheduleEnabled(schedule.enabled);
+        setScheduleCadenceDays(schedule.cadenceDays);
+        setScheduleAnchorDate(schedule.anchorDate);
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Could not load report schedule:', error);
+          setScheduleMessage(t('repScheduleLoadError'));
+        }
+      } finally {
+        if (!cancelled) setScheduleLoading(false);
+      }
+    }
+
+    void loadSchedule();
+    return () => {
+      cancelled = true;
+    };
+  }, [advancedReports]);
 
   // Filter data by current session
   // For "All Sessions" view, only show data from existing sessions (not orphaned data)
@@ -2100,6 +2134,27 @@ function ReportsPlaceholder() {
     }
   };
 
+  const handleSaveReportSchedule = async () => {
+    setScheduleSaving(true);
+    setScheduleMessage(null);
+    try {
+      const schedule = await saveReportSchedule({
+        enabled: scheduleEnabled,
+        cadenceDays: scheduleCadenceDays,
+        anchorDate: scheduleAnchorDate,
+        locale: language,
+      });
+      setScheduleEnabled(schedule.enabled);
+      setScheduleCadenceDays(schedule.cadenceDays);
+      setScheduleAnchorDate(schedule.anchorDate);
+      setScheduleMessage(t('repScheduleSaved'));
+    } catch (error) {
+      setScheduleMessage(t('repScheduleSaveError').replace('{msg}', error instanceof Error ? error.message : String(error)));
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="ba-page-header">
@@ -2233,14 +2288,14 @@ function ReportsPlaceholder() {
                 <button
                   type="button"
                   onClick={() => handleVatExport('csv')}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold uppercase rounded hover:bg-blue-700 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light transition-colors"
                 >
                   <Download className="w-4 h-4" /> {t('repTvaCsv')}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleVatExport('pdf')}
-                  className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-blue-500 text-blue-400 text-xs font-bold uppercase rounded hover:bg-blue-500/10 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-gold text-cdlp-gold text-xs font-bold uppercase rounded hover:bg-cdlp-gold/10 transition-colors"
                 >
                   <Download className="w-4 h-4" /> {t('repTvaPdf')}
                 </button>
@@ -2278,6 +2333,61 @@ function ReportsPlaceholder() {
                 {emailBusy === cadence ? t('repEmailSending') : t(labelKey)}
               </button>
             ))}
+          </div>
+        </div>
+      ) : null}
+
+      {advancedReports ? (
+        <div className="ba-panel space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-cdlp-gold uppercase mb-1">{t('repScheduleTitle')}</h3>
+            <p className="text-xs text-cdlp-muted">{t('repScheduleDesc')}</p>
+          </div>
+          <label className="flex items-center gap-3 text-sm ba-field-value cursor-pointer">
+            <input
+              type="checkbox"
+              checked={scheduleEnabled}
+              disabled={scheduleLoading || scheduleSaving}
+              onChange={(event) => setScheduleEnabled(event.target.checked)}
+              className="h-4 w-4 accent-cdlp-gold"
+            />
+            {t('repScheduleEnabled')}
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">{t('repScheduleCadence')}</label>
+              <select
+                value={scheduleCadenceDays}
+                disabled={scheduleLoading || scheduleSaving}
+                onChange={(event) => setScheduleCadenceDays(Number(event.target.value) as ReportScheduleCadenceDays)}
+                className="ba-verify-field"
+              >
+                <option value={7}>{t('repScheduleEvery7Days')}</option>
+                <option value={14}>{t('repScheduleEvery14Days')}</option>
+                <option value={30}>{t('repScheduleEvery30Days')}</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">{t('repScheduleAnchorDate')}</label>
+              <input
+                type="date"
+                value={scheduleAnchorDate}
+                disabled={scheduleLoading || scheduleSaving}
+                onChange={(event) => setScheduleAnchorDate(event.target.value)}
+                className="ba-verify-field"
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={scheduleLoading || scheduleSaving || !scheduleAnchorDate}
+              onClick={() => void handleSaveReportSchedule()}
+              className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-gold/50 text-cdlp-gold text-xs font-bold uppercase rounded hover:bg-cdlp-gold/10 transition-colors disabled:opacity-50"
+            >
+              {scheduleSaving ? t('repScheduleSaving') : t('repScheduleSave')}
+            </button>
+            {scheduleMessage ? <p className="text-xs text-cdlp-muted">{scheduleMessage}</p> : null}
           </div>
         </div>
       ) : null}
@@ -2349,6 +2459,70 @@ function ReportsPlaceholder() {
             ))}
           </div>
         )}
+      </div>
+
+      <div className="ba-panel overflow-x-auto">
+        <div className="ba-section-head">
+          <Receipt className="w-5 h-5" />
+          <h2>{t('repLedgerTitle')}</h2>
+        </div>
+        <p className="text-xs text-cdlp-muted mb-3">{t('repLedgerDesc')}</p>
+        <table className="ba-doc-table w-full text-left text-xs">
+          <thead>
+            <tr>
+              <th>{t('repColDate')}</th>
+              <th>{t('repColVendor')}</th>
+              <th>{t('repColCategory')}</th>
+              <th>{t('repColAccount')}</th>
+              <th className="text-right">{t('repColAmount')}</th>
+              <th className="text-right">{t('repColVat')}</th>
+              <th>{t('repColDescription')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ...dateFilteredIncome.map((item) => ({
+                id: `in-${item.id}`,
+                date: item.date,
+                vendor: item.description || '—',
+                category: categoryLabel(item.type),
+                account: item.account_code || '—',
+                amount: item.amount,
+                vat: item.vat_amount || 0,
+                description: item.description || '—',
+                tone: 'income' as const,
+              })),
+              ...dateFilteredExpenses.map((item) => ({
+                id: `ex-${item.id}`,
+                date: item.date,
+                vendor: item.description || '—',
+                category: categoryLabel(item.category),
+                account: item.account_code || '—',
+                amount: -item.amount,
+                vat: item.vat_amount || 0,
+                description: item.description || '—',
+                tone: 'expense' as const,
+              })),
+            ]
+              .sort((a, b) => b.date.localeCompare(a.date))
+              .slice(0, 200)
+              .map((row) => (
+                <tr key={row.id}>
+                  <td>{row.date}</td>
+                  <td className="truncate max-w-[10rem]">{row.vendor}</td>
+                  <td>{row.category}</td>
+                  <td>{row.account}</td>
+                  <td className={`text-right font-bold ${row.tone === 'income' ? 'text-emerald-500' : 'text-red-400'}`}>
+                    {row.amount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td className="text-right">
+                    {row.vat.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td className="truncate max-w-[14rem]">{row.description}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -2501,7 +2675,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                   <h3 className="text-sm font-black uppercase text-cdlp-gold mb-4">{t('docInformation')}</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docIssuerEntity')}</label>
+                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docVendor')}</label>
                       <p className="ba-field-value">{selectedDocument.data?.issuer || t('na')}</p>
                     </div>
                     <div>

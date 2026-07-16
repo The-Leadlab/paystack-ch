@@ -58,46 +58,175 @@ function wrapText(text: string, maxChars: number): string[] {
   return lines;
 }
 
-type PdfCommand = { type: 'text'; x: number; y: number; size: number; bold?: boolean; text: string };
+function wrapTextByParagraph(text: string, maxChars: number): string[] {
+  return text.split(/\r?\n/).flatMap((paragraph) => wrapText(paragraph, maxChars));
+}
 
-function buildPdf(commands: PdfCommand[]): Blob {
-  const contentLines: string[] = ['BT'];
+type PdfCommand = {
+  type: 'text';
+  x: number;
+  y: number;
+  size: number;
+  bold?: boolean;
+  text: string;
+  wordSpacing?: number;
+};
+
+type PdfImage = {
+  data: Uint8Array;
+  pixelWidth: number;
+  pixelHeight: number;
+  displayWidth: number;
+  displayHeight: number;
+  x: number;
+  y: number;
+};
+
+const encoder = new TextEncoder();
+
+function concatBytes(parts: Uint8Array[]): Uint8Array {
+  const length = parts.reduce((sum, part) => sum + part.length, 0);
+  const output = new Uint8Array(length);
+  let offset = 0;
+  for (const part of parts) {
+    output.set(part, offset);
+    offset += part.length;
+  }
+  return output;
+}
+
+function pdfBytes(value: string): Uint8Array {
+  return encoder.encode(value);
+}
+
+function buildPdf(commands: PdfCommand[], logo?: PdfImage): Blob {
+  const contentLines: string[] = [];
+  if (logo) {
+    contentLines.push(
+      `q ${logo.displayWidth.toFixed(2)} 0 0 ${logo.displayHeight.toFixed(2)} ${logo.x.toFixed(2)} ${logo.y.toFixed(2)} cm /Logo Do Q`
+    );
+  }
+  contentLines.push('BT');
   for (const cmd of commands) {
     const font = cmd.bold ? '/F2' : '/F1';
     contentLines.push(`${font} ${cmd.size} Tf`);
     contentLines.push(`1 0 0 1 ${cmd.x.toFixed(2)} ${cmd.y.toFixed(2)} Tm`);
+    contentLines.push(`${(cmd.wordSpacing ?? 0).toFixed(3)} Tw`);
     contentLines.push(`(${escapePdfText(cmd.text)}) Tj`);
   }
   contentLines.push('ET');
   const stream = contentLines.join('\n');
-  const streamLen = new TextEncoder().encode(stream).length;
-
-  const objects = [
-    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
-    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
-    '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>\nendobj\n',
-    `4 0 obj\n<< /Length ${streamLen} >>\nstream\n${stream}\nendstream\nendobj\n`,
-    '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
-    '6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj\n',
+  const streamBytes = pdfBytes(stream);
+  const resources = logo ? ' /XObject << /Logo 7 0 R >>' : '';
+  const objects: Uint8Array[] = [
+    pdfBytes('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n'),
+    pdfBytes('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n'),
+    pdfBytes(
+      `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >>${resources} >> >>\nendobj\n`
+    ),
+    concatBytes([
+      pdfBytes(`4 0 obj\n<< /Length ${streamBytes.length} >>\nstream\n`),
+      streamBytes,
+      pdfBytes('\nendstream\nendobj\n'),
+    ]),
+    pdfBytes('5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n'),
+    pdfBytes('6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj\n'),
   ];
+  if (logo) {
+    objects.push(
+      concatBytes([
+        pdfBytes(
+          `7 0 obj\n<< /Type /XObject /Subtype /Image /Width ${logo.pixelWidth} /Height ${logo.pixelHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.data.length} >>\nstream\n`
+        ),
+        logo.data,
+        pdfBytes('\nendstream\nendobj\n'),
+      ])
+    );
+  }
 
-  let pdf = '%PDF-1.4\n';
+  const header = pdfBytes('%PDF-1.4\n');
+  const parts: Uint8Array[] = [header];
   const offsets: number[] = [0];
-  for (const obj of objects) {
-    offsets.push(pdf.length);
-    pdf += obj;
+  let length = header.length;
+  for (const object of objects) {
+    offsets.push(length);
+    parts.push(object);
+    length += object.length;
   }
 
-  const xrefPos = pdf.length;
-  pdf += `xref\n0 ${objects.length + 1}\n`;
-  pdf += '0000000000 65535 f \n';
-  for (let i = 1; i <= objects.length; i += 1) {
-    pdf += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
-  }
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\n`;
-  pdf += `startxref\n${xrefPos}\n%%EOF`;
+  const xref = [
+    `xref\n0 ${objects.length + 1}\n`,
+    '0000000000 65535 f \n',
+    ...offsets.slice(1).map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`),
+    `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\n`,
+    `startxref\n${length}\n%%EOF`,
+  ].join('');
+  parts.push(pdfBytes(xref));
 
-  return new Blob([pdf], { type: 'application/pdf' });
+  return new Blob([concatBytes(parts)], { type: 'application/pdf' });
+}
+
+async function dataUrlToPdfJpeg(dataUrl: string): Promise<PdfImage | undefined> {
+  if (!/^data:image\/(?:jpeg|png);base64,/i.test(dataUrl)) return undefined;
+
+  const image = new Image();
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error('Unable to decode company logo.'));
+    image.src = dataUrl;
+  });
+
+  const sourceWidth = image.naturalWidth;
+  const sourceHeight = image.naturalHeight;
+  if (!sourceWidth || !sourceHeight) return undefined;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = sourceWidth;
+  canvas.height = sourceHeight;
+  const context = canvas.getContext('2d');
+  if (!context) return undefined;
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, sourceWidth, sourceHeight);
+  context.drawImage(image, 0, 0);
+
+  const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+  const base64 = jpegDataUrl.slice(jpegDataUrl.indexOf(',') + 1);
+  const binary = atob(base64);
+  const data = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  const displayWidth = 80;
+  const displayHeight = Math.min(56, (sourceHeight / sourceWidth) * displayWidth);
+  return {
+    data,
+    pixelWidth: sourceWidth,
+    pixelHeight: sourceHeight,
+    displayWidth,
+    displayHeight,
+    x: MARGIN,
+    y: PAGE_H - MARGIN - displayHeight,
+  };
+}
+
+function estimateTextWidth(text: string, size: number): number {
+  return text.length * size * 0.5;
+}
+
+function addJustifiedLines(
+  cmds: PdfCommand[],
+  lines: string[],
+  x: number,
+  y: number,
+  size: number,
+  width: number,
+  lineHeight: number
+): void {
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const gaps = line.trim().split(/\s+/).length - 1;
+    const isFinalLine = index === lines.length - 1;
+    const wordSpacing = !isFinalLine && gaps > 0 ? Math.max(0, (width - estimateTextWidth(line, size)) / gaps) : 0;
+    cmds.push({ type: 'text', x, y, size, text: line, wordSpacing });
+    y -= lineHeight;
+  }
 }
 
 function addLines(
@@ -110,7 +239,7 @@ function addLines(
   maxChars: number,
   lineHeight: number
 ): number {
-  const lines = text.includes('\n') ? text.split('\n').flatMap((p) => wrapText(p, maxChars)) : wrapText(text, maxChars);
+  const lines = wrapTextByParagraph(text, maxChars);
   for (const line of lines) {
     cmds.push({ type: 'text', x, y, size, bold, text: line });
     y -= lineHeight;
@@ -121,19 +250,23 @@ function addLines(
 export async function downloadInvoicePdf(
   invoice: InvoiceData,
   labels: InvoicePdfLabels,
-  locale: string
+  locale: string,
+  companyLogoDataUrl?: string
 ): Promise<void> {
+  const logoDataUrl = companyLogoDataUrl ?? invoice.companyLogoDataUrl;
+  const logo = logoDataUrl ? await dataUrlToPdfJpeg(logoDataUrl) : undefined;
   const cmds: PdfCommand[] = [];
   let y = PAGE_H - MARGIN;
 
-  cmds.push({ type: 'text', x: MARGIN, y, size: 20, bold: true, text: labels.previewTitle });
+  const titleX = logo ? MARGIN + 96 : MARGIN;
+  cmds.push({ type: 'text', x: titleX, y, size: 20, bold: true, text: labels.previewTitle });
   y -= 28;
-  cmds.push({ type: 'text', x: MARGIN, y, size: 9, bold: false, text: labels.invoiceNumber });
-  cmds.push({ type: 'text', x: MARGIN + 110, y, size: 11, bold: true, text: invoice.invoiceNumber });
+  cmds.push({ type: 'text', x: titleX, y, size: 9, bold: false, text: labels.invoiceNumber });
+  cmds.push({ type: 'text', x: titleX + 110, y, size: 11, bold: true, text: invoice.invoiceNumber });
   y -= 14;
   cmds.push({
     type: 'text',
-    x: MARGIN,
+    x: titleX,
     y,
     size: 8,
     bold: false,
@@ -178,6 +311,10 @@ export async function downloadInvoicePdf(
   cmds.push({ type: 'text', x: 460, y, size: 7, bold: true, text: labels.colTotal });
   y -= 14;
 
+  const termLines = invoice.terms ? wrapTextByParagraph(invoice.terms, 96).slice(0, 7) : [];
+  const termsTitleY = MARGIN + termLines.length * 11 + 12;
+  const contentFloor = invoice.terms ? termsTitleY + 92 : 140;
+
   for (const item of invoice.items) {
     const descLines = wrapText(item.description, 32);
     cmds.push({ type: 'text', x: MARGIN, y, size: 8, bold: false, text: descLines[0] });
@@ -212,7 +349,7 @@ export async function downloadInvoicePdf(
       cmds.push({ type: 'text', x: MARGIN, y, size: 8, bold: false, text: descLines[i] });
       y -= 12;
     }
-    if (y < 140) break;
+    if (y < contentFloor) break;
   }
 
   y -= 10;
@@ -273,17 +410,18 @@ export async function downloadInvoicePdf(
   });
   y -= 24;
 
-  if (invoice.notes) {
+  if (invoice.notes && y > termsTitleY + 24) {
     cmds.push({ type: 'text', x: MARGIN, y, size: 9, bold: true, text: labels.notes });
-    y = addLines(cmds, invoice.notes, MARGIN, y - 12, 9, false, 90, 12);
+    const availableNoteLines = Math.max(0, Math.floor((y - termsTitleY - 24) / 12));
+    y = addLines(cmds, wrapTextByParagraph(invoice.notes, 90).slice(0, availableNoteLines).join('\n'), MARGIN, y - 12, 9, false, 90, 12);
     y -= 6;
   }
-  if (invoice.terms) {
-    cmds.push({ type: 'text', x: MARGIN, y, size: 9, bold: true, text: labels.terms });
-    addLines(cmds, invoice.terms, MARGIN, y - 12, 9, false, 90, 12);
+  if (termLines.length > 0) {
+    cmds.push({ type: 'text', x: MARGIN, y: termsTitleY, size: 9, bold: true, text: labels.terms });
+    addJustifiedLines(cmds, termLines, MARGIN, termsTitleY - 12, 8.5, 595 - MARGIN * 2, 11);
   }
 
-  const blob = buildPdf(cmds);
+  const blob = buildPdf(cmds, logo);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

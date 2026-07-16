@@ -29,12 +29,18 @@ async function ensureUserBillingStub(firebaseUser: FirebaseUser): Promise<void> 
   try {
     const ref = doc(db, 'users', firebaseUser.uid);
     const snap = await getDoc(ref);
-    if (snap.exists()) return;
+    if (snap.exists()) {
+      if (!Object.prototype.hasOwnProperty.call(snap.data(), 'taxRegion')) {
+        await setDoc(ref, { taxRegion: 'ch' }, { merge: true });
+      }
+      return;
+    }
     await setDoc(
       ref,
       {
         subscriptionStatus: 'none',
         email: firebaseUser.email ?? '',
+        taxRegion: 'ch',
       },
       { merge: true }
     );

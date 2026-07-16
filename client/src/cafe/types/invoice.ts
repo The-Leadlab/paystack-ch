@@ -29,6 +29,8 @@ export interface InvoiceData {
   companyPhone: string;
   companyEmail: string;
   companyWebsite: string;
+  /** Optional customer-provided company logo, stored as a resized JPEG data URL. */
+  companyLogoDataUrl?: string;
   clientName: string;
   clientCompany: string;
   clientAddress: string;

@@ -21,8 +21,9 @@ import { applyInvoiceTotals, normalizeInvoice } from '../lib/invoiceTotals';
 import { downloadInvoicePdf } from '../lib/invoicePdf';
 import type { InvoiceData, InvoiceItem, InvoiceStatus } from '../types/invoice';
 import { INVOICE_CURRENCY_SYMBOLS } from '../types/invoice';
-import { DEFAULT_SWISS_VAT_RATE, SWISS_VAT_RATES } from '@shared/swissVatRates';
+import { DEFAULT_SWISS_VAT_RATE } from '@shared/swissVatRates';
 import { BRAND_LOGO_SRC } from '@/const/branding';
+import { useTaxRegionConfig } from '../hooks/useTaxRegion';
 
 function generateInvoiceNumber(): string {
   const now = new Date();
@@ -35,7 +36,7 @@ function generateInvoiceNumber(): string {
   return `INV-${y}${m}${d}-${rand}`;
 }
 
-function createInitialInvoice(t: (k: string) => string): InvoiceData {
+function createInitialInvoice(t: (k: string) => string, taxRate = DEFAULT_SWISS_VAT_RATE): InvoiceData {
   const today = new Date().toISOString().split('T')[0];
   const due = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   return {
@@ -55,7 +56,7 @@ function createInitialInvoice(t: (k: string) => string): InvoiceData {
     clientEmail: '',
     items: [],
     subtotal: 0,
-    taxRate: DEFAULT_SWISS_VAT_RATE,
+    taxRate,
     taxAmount: 0,
     discountAmount: 0,
     total: 0,
@@ -85,20 +86,60 @@ function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?
   );
 }
 
+function resizeLogoAsJpeg(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const width = Math.min(image.naturalWidth, 360);
+      const height = Math.max(1, Math.round((image.naturalHeight / image.naturalWidth) * width));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      if (!context) {
+        reject(new Error('Unable to prepare logo image.'));
+        return;
+      }
+
+      // JPEG has no alpha channel, so preserve transparent source logos on white.
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, width, height);
+      context.drawImage(image, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.9));
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Unable to read logo image.'));
+    };
+    image.src = objectUrl;
+  });
+}
+
 export function InvoiceMakerPanel() {
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
   const { user } = useAuth();
   const { documents } = useDocuments();
+  const { taxConfig, loading: taxRegionLoading } = useTaxRegionConfig();
   const [invoiceData, setInvoiceData] = useState<InvoiceData>(() => createInitialInvoice(t));
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [savedInvoices, setSavedInvoices] = useState<InvoiceData[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState('');
   const invoiceRef = useRef<HTMLDivElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setSavedInvoices(loadSavedInvoices(user?.uid).map(normalizeInvoice));
   }, [user?.uid]);
+
+  useEffect(() => {
+    if (taxRegionLoading) return;
+    setInvoiceData((current) =>
+      current.items.length === 0 ? { ...current, taxRate: taxConfig.defaultRate } : current
+    );
+  }, [taxConfig.defaultRate, taxRegionLoading]);
 
   const supplierOptions = useMemo(() => {
     const names = new Set<string>();
@@ -205,10 +246,33 @@ export function InvoiceMakerPanel() {
       return;
     }
     try {
-      await downloadInvoicePdf(displayInvoice, invoicePdfLabels, chfLocale);
+      await downloadInvoicePdf(displayInvoice, invoicePdfLabels, chfLocale, invoiceData.companyLogoDataUrl);
     } catch {
       alert(t('invPdfFailed'));
     }
+  };
+
+  const handleLogoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      const companyLogoDataUrl = await resizeLogoAsJpeg(file);
+      setInvoiceData((current) => ({ ...current, companyLogoDataUrl }));
+    } catch {
+      alert(t('invPdfFailed'));
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const clearCompanyLogo = () => {
+    setInvoiceData((current) => ({ ...current, companyLogoDataUrl: undefined }));
+    if (logoInputRef.current) logoInputRef.current.value = '';
   };
 
   const sendInvoice = () => {
@@ -238,7 +302,11 @@ export function InvoiceMakerPanel() {
     >
       <div className="flex justify-between items-start mb-8 gap-4">
         <div className="flex items-center gap-6">
-          <img src={BRAND_LOGO_SRC} alt="Paystack.ch" className="h-12 w-auto" />
+          <img
+            src={invoiceData.companyLogoDataUrl || BRAND_LOGO_SRC}
+            alt={invoiceData.companyName || 'Company logo'}
+            className="h-12 w-auto max-w-44 object-contain"
+          />
           <div className="border-l border-gray-200 pl-6">
             <h1 className="text-3xl font-bold mb-2">{t('invPreviewTitle')}</h1>
             <div className="bg-gray-100 px-3 py-2 rounded border">
@@ -367,7 +435,7 @@ export function InvoiceMakerPanel() {
           {invoiceData.terms ? (
             <div>
               <h4 className="font-semibold mb-2">{t('invTerms')}</h4>
-              <p className="text-gray-600 whitespace-pre-line">{invoiceData.terms}</p>
+              <p className="text-gray-600 whitespace-pre-line text-justify">{invoiceData.terms}</p>
             </div>
           ) : null}
         </div>
@@ -528,6 +596,33 @@ export function InvoiceMakerPanel() {
               <FieldLabel>{t('invCompanyAddress')}</FieldLabel>
               <textarea className="ba-verify-field !h-auto min-h-[5rem] py-2 resize-y" rows={3} value={invoiceData.companyAddress} onChange={(e) => setInvoiceData((p) => ({ ...p, companyAddress: e.target.value }))} />
             </div>
+            <div>
+              <FieldLabel htmlFor="inv-company-logo">{t('invCompanyLogo')}</FieldLabel>
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  ref={logoInputRef}
+                  id="inv-company-logo"
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  className="block max-w-full text-sm text-cdlp-muted file:mr-3 file:rounded-md file:border-0 file:bg-cdlp-gold file:px-3 file:py-2 file:text-sm file:font-bold file:text-cdlp-ink hover:file:opacity-90"
+                  onChange={handleLogoChange}
+                />
+                {invoiceData.companyLogoDataUrl ? (
+                  <>
+                    <img
+                      src={invoiceData.companyLogoDataUrl}
+                      alt={t('invCompanyLogo')}
+                      className="h-10 max-w-28 rounded border border-cdlp-border object-contain bg-white p-1"
+                    />
+                    <button type="button" onClick={clearCompanyLogo} className="ba-filter-chip flex items-center gap-1.5">
+                      <X className="h-4 w-4" /> {t('invRemoveLogo')}
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-xs text-cdlp-muted">{t('invUploadLogo')}</span>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="ba-panel space-y-4">
@@ -618,7 +713,7 @@ export function InvoiceMakerPanel() {
                       value={item.taxRate ?? invoiceData.taxRate}
                       onChange={(e) => updateItem(item.id, 'taxRate', Number(e.target.value))}
                     >
-                      {SWISS_VAT_RATES.map((rate) => (
+                      {taxConfig.rates.map((rate) => (
                         <option key={rate} value={rate}>
                           {rate}%
                         </option>
@@ -701,7 +796,7 @@ export function InvoiceMakerPanel() {
                     value={invoiceData.taxRate}
                     onChange={(e) => setInvoiceData((p) => ({ ...p, taxRate: Number(e.target.value) }))}
                   >
-                    {SWISS_VAT_RATES.map((rate) => (
+                    {taxConfig.rates.map((rate) => (
                       <option key={rate} value={rate}>
                         {rate}%
                       </option>

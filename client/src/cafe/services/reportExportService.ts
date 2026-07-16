@@ -217,16 +217,16 @@ export const exportToCSV = (data: ReportData) => {
   }
 
   csvContent += `${L.incomeDetails}\n`;
-  csvContent += `${L.date},${L.type},${L.amountChf},${L.accountCode},${L.description}\n`;
+  csvContent += `${L.date},${L.vendor},${L.type},${L.accountCode},${L.amountChf},${L.vatChf},${L.description}\n`;
   income.forEach((item) => {
-    csvContent += `${item.date},${incType(item.type)},${item.amount.toFixed(2)},${item.account_code || ''},"${item.description || ''}"\n`;
+    csvContent += `${item.date},"${item.description || ''}",${incType(item.type)},${item.account_code || ''},${item.amount.toFixed(2)},${(item.vat_amount || 0).toFixed(2)},"${item.description || ''}"\n`;
   });
   csvContent += `\n`;
 
   csvContent += `${L.expenseDetails}\n`;
-  csvContent += `${L.date},${L.category},${L.amountChf},${L.accountCode},${L.description}\n`;
+  csvContent += `${L.date},${L.vendor},${L.category},${L.accountCode},${L.amountChf},${L.vatChf},${L.description}\n`;
   expenses.forEach((item) => {
-    csvContent += `${item.date},${cat(item.category)},${item.amount.toFixed(2)},${item.account_code || ''},"${item.description}"\n`;
+    csvContent += `${item.date},"${item.description || ''}",${cat(item.category)},${item.account_code || ''},${item.amount.toFixed(2)},${(item.vat_amount || 0).toFixed(2)},"${item.description}"\n`;
   });
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -304,11 +304,11 @@ export const exportToPDF = async (data: ReportData) => {
         .header {
           text-align: center;
           margin-bottom: 30px;
-          border-bottom: 3px solid #d4af37;
+          border-bottom: 3px solid #E8423F;
           padding-bottom: 20px;
         }
         .header h1 {
-          color: #d4af37;
+          color: #2B2B2B;
           margin: 0;
           font-size: 28px;
         }
@@ -341,18 +341,17 @@ export const exportToPDF = async (data: ReportData) => {
           font-size: 24px;
           font-weight: bold;
         }
-        .summary-value.positive { color: #10b981; }
-        .summary-value.negative { color: #ef4444; }
-        .summary-value.neutral { color: #d4af37; }
-        .summary-value.blue { color: #3b82f6; }
-        .summary-value.orange { color: #f97316; }
-        .summary-value.purple { color: #a855f7; }
+        .summary-value.positive { color: #059669; }
+        .summary-value.negative { color: #E8423F; }
+        .summary-value.neutral { color: #2B2B2B; }
+        .summary-value.accent { color: #E8423F; }
         
         .vat-section {
-          background: #e0f2fe;
+          background: #FFF5F4;
           padding: 15px;
           border-radius: 8px;
           margin-bottom: 20px;
+          border: 1px solid #E8E2E0;
         }
         .vat-grid {
           display: grid;
@@ -361,10 +360,11 @@ export const exportToPDF = async (data: ReportData) => {
         }
         
         .expense-breakdown {
-          background: #fef3c7;
+          background: #f7f7f7;
           padding: 15px;
           border-radius: 8px;
           margin-bottom: 20px;
+          border: 1px solid #E8E2E0;
         }
         .expense-grid {
           display: grid;
@@ -377,11 +377,11 @@ export const exportToPDF = async (data: ReportData) => {
           page-break-inside: avoid;
         }
         .section-title {
-          color: #d4af37;
+          color: #2B2B2B;
           font-size: 18px;
           font-weight: bold;
           margin-bottom: 15px;
-          border-bottom: 2px solid #d4af37;
+          border-bottom: 2px solid #E8423F;
           padding-bottom: 5px;
         }
         table {
@@ -390,7 +390,7 @@ export const exportToPDF = async (data: ReportData) => {
           margin-bottom: 20px;
         }
         th {
-          background: #d4af37;
+          background: #2B2B2B;
           color: white;
           padding: 10px;
           text-align: left;
@@ -451,28 +451,28 @@ export const exportToPDF = async (data: ReportData) => {
       </div>
       
       <div class="vat-section">
-        <div class="section-title" style="color: #0284c7; border-color: #0284c7;">${L.vatSummary}</div>
+        <div class="section-title">${L.vatSummary}</div>
         <div class="vat-grid">
           <div class="summary-item">
             <div class="summary-label">${L.vatReceived}</div>
-            <div class="summary-value blue">${formatCHF(vatReceived)} CHF</div>
+            <div class="summary-value accent">${formatCHF(vatReceived)} CHF</div>
             <div class="summary-label">${L.fromCustomers}</div>
           </div>
           <div class="summary-item">
             <div class="summary-label">${L.vatPaid}</div>
-            <div class="summary-value orange">${formatCHF(vatPaid)} CHF</div>
+            <div class="summary-value neutral">${formatCHF(vatPaid)} CHF</div>
             <div class="summary-label">${L.onExpenses}</div>
           </div>
           <div class="summary-item">
             <div class="summary-label">${L.vatBalance}</div>
-            <div class="summary-value ${vatBalance >= 0 ? 'purple' : 'negative'}">${formatCHF(vatBalance)} CHF</div>
+            <div class="summary-value ${vatBalance >= 0 ? 'accent' : 'negative'}">${formatCHF(vatBalance)} CHF</div>
             <div class="summary-label">${vatBalance >= 0 ? L.toPay : L.refund}</div>
           </div>
         </div>
       </div>
       
       <div class="expense-breakdown">
-        <div class="section-title" style="color: #ca8a04; border-color: #ca8a04;">${L.expenseBreakdown}</div>
+        <div class="section-title">${L.expenseBreakdown}</div>
         <div class="expense-grid">
           <div class="summary-item">
             <div class="summary-label">${L.suppliers}</div>
@@ -515,7 +515,7 @@ export const exportToPDF = async (data: ReportData) => {
                   </tr>
                 `;
               }).join('')}
-              <tr style="background: #fef3c7; font-weight: bold;">
+              <tr style="background: #FFF5F4; font-weight: bold;">
                 <td>${L.totalPayroll}</td>
                 <td class="text-right">${formatCHF(payrollTotal)}</td>
                 <td class="text-center">${payrollExpenses.length}</td>
@@ -582,6 +582,7 @@ export const exportToPDF = async (data: ReportData) => {
           <thead>
             <tr>
               <th>${L.date}</th>
+              <th>${L.vendor}</th>
               <th>${L.type}</th>
               <th>${L.accountCode}</th>
               <th class="text-right">${L.amountChf}</th>
@@ -593,6 +594,7 @@ export const exportToPDF = async (data: ReportData) => {
             ${income.map(item => `
               <tr>
                 <td>${item.date}</td>
+                <td>${item.description || '-'}</td>
                 <td>${incType(item.type)}</td>
                 <td>${item.account_code || '-'}</td>
                 <td class="text-right">${formatCHF(item.amount)}</td>
@@ -600,8 +602,8 @@ export const exportToPDF = async (data: ReportData) => {
                 <td>${item.description || '-'}</td>
               </tr>
             `).join('')}
-            <tr style="background: #f0fdf4; font-weight: bold;">
-              <td colspan="3">${L.totalIncomeRow}</td>
+            <tr style="background: #FFF5F4; font-weight: bold;">
+              <td colspan="4">${L.totalIncomeRow}</td>
               <td class="text-right">${formatCHF(totalIncome)}</td>
               <td class="text-right">${formatCHF(vatReceived)}</td>
               <td></td>
@@ -616,6 +618,7 @@ export const exportToPDF = async (data: ReportData) => {
           <thead>
             <tr>
               <th>${L.date}</th>
+              <th>${L.vendor}</th>
               <th>${L.category}</th>
               <th>${L.accountCode}</th>
               <th class="text-right">${L.amountChf}</th>
@@ -627,6 +630,7 @@ export const exportToPDF = async (data: ReportData) => {
             ${expenses.map(item => `
               <tr>
                 <td>${item.date}</td>
+                <td>${item.description || '-'}</td>
                 <td>${cat(item.category)}</td>
                 <td>${item.account_code || '-'}</td>
                 <td class="text-right">${formatCHF(item.amount)}</td>
@@ -634,8 +638,8 @@ export const exportToPDF = async (data: ReportData) => {
                 <td>${item.description || '-'}</td>
               </tr>
             `).join('')}
-            <tr style="background: #fef2f2; font-weight: bold;">
-              <td colspan="3">${L.totalExpensesRow}</td>
+            <tr style="background: #FFF5F4; font-weight: bold;">
+              <td colspan="4">${L.totalExpensesRow}</td>
               <td class="text-right">${formatCHF(totalExpenses)}</td>
               <td class="text-right">${formatCHF(vatPaid)}</td>
               <td></td>

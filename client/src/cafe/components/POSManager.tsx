@@ -1,3 +1,4 @@
+import { DEFAULT_SWISS_VAT_RATE } from '@shared/swissVatRates';
 import React, { useState } from 'react';
 import { Receipt, Plus, Edit2, Trash2, Upload, Save, X, Camera, DollarSign, CreditCard, Banknote, TrendingUp, TrendingDown, Percent, Zap } from 'lucide-react';
 import { usePOS } from '../context/POSContext';
@@ -12,7 +13,7 @@ import '../businessApp.css';
 
 export function POSManager() {
   const { posReadings, addPOSReading, updatePOSReading, deletePOSReading } = usePOS();
-  const { income } = useFinance();
+  const { income, expenses } = useFinance();
   const { currentSession, isAllSessionsView, sessions } = useSession();
   const { t, language } = useLanguage();
   const chfLocale = useChfLocale();
@@ -26,9 +27,15 @@ export function POSManager() {
   const filteredIncome = isAllSessionsView 
     ? income.filter(i => existingSessionIds.includes(i.session_id))
     : income.filter(i => i.session_id === currentSession?.id);
+  const filteredExpenses = isAllSessionsView
+    ? expenses.filter((e) => existingSessionIds.includes(e.session_id))
+    : expenses.filter((e) => e.session_id === currentSession?.id);
   
   // Calculate totals from income (for display when no POS readings exist)
   const totalIncomeAmount = filteredIncome.reduce((sum, i) => sum + i.amount, 0);
+  const totalExpenseAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const dashboardBalance = totalIncomeAmount - totalExpenseAmount;
+  const vatInclusiveFactor = 1 + DEFAULT_SWISS_VAT_RATE / 100;
   
   // Calculate totals from POS readings
   const totalGrossSales = posReadings.reduce((sum, r) => sum + r.gross_sales, 0);
@@ -38,17 +45,44 @@ export function POSManager() {
   
   // Use POS readings if available, otherwise show income data
   const displayGrossSales = posReadings.length > 0 ? totalGrossSales : totalIncomeAmount;
-  const displayNetSales = posReadings.length > 0 ? totalNetSales : totalIncomeAmount * 0.93; // Estimate net (assuming 7% VAT)
+  const displayNetSales =
+    posReadings.length > 0 ? totalNetSales : totalIncomeAmount / vatInclusiveFactor;
   const displayCash = posReadings.length > 0 ? totalCash : totalIncomeAmount * 0.4; // Estimate 40% cash
   const displayCard = posReadings.length > 0 ? totalCard : totalIncomeAmount * 0.6; // Estimate 60% card
 
   const fmt = (n: number) => n.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const flowBase = Math.max(displayGrossSales, displayNetSales, displayCash, displayCard, 1);
+  const flowBase = Math.max(displayGrossSales, displayNetSales, displayCash, displayCard, totalIncomeAmount, 1);
 
   return (
     <div className="space-y-6">
       <div className="ba-page-header">
         <h1>{t('revenue')}</h1>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+        <BusinessKpiCard
+          label={t('income')}
+          value={fmt(totalIncomeAmount)}
+          hint={t('posDashboardIncomeHint')}
+          icon={TrendingUp}
+          tone="green"
+          progressPct={(totalIncomeAmount / flowBase) * 100}
+        />
+        <BusinessKpiCard
+          label={t('expenses')}
+          value={fmt(totalExpenseAmount)}
+          hint={t('posDashboardExpenseHint')}
+          icon={TrendingDown}
+          tone="red"
+          progressPct={(totalExpenseAmount / flowBase) * 100}
+        />
+        <BusinessKpiCard
+          label={t('balance')}
+          value={fmt(dashboardBalance)}
+          icon={DollarSign}
+          tone={dashboardBalance >= 0 ? 'green' : 'red'}
+          progressPct={(Math.abs(dashboardBalance) / flowBase) * 100}
+        />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
@@ -213,8 +247,8 @@ function POSModal({ reading, onClose, onSave }: {
     
     const totalIncome = dayIncome.reduce((sum, i) => sum + i.amount, 0);
     
-    // Assume 7.7% VAT (Swiss standard rate)
-    const vatRate = 0.077;
+    // Swiss standard VAT (2024+): 8.1% inclusive of gross
+    const vatRate = DEFAULT_SWISS_VAT_RATE / 100;
     const gross = totalIncome;
     const vat = gross * (vatRate / (1 + vatRate));
     const net = gross - vat;

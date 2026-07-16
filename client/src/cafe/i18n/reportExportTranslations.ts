@@ -28,6 +28,7 @@ export type ReportExportLabels = {
   category: string;
   description: string;
   accountCode: string;
+  vendor: string;
   vatChf: string;
   totalIncomeRow: string;
   totalExpensesRow: string;
@@ -112,6 +113,7 @@ const en: ReportExportLabels = {
   category: 'Category',
   description: 'Description',
   accountCode: 'Account (Plan comptable CH)',
+  vendor: 'Vendor',
   vatChf: 'VAT (CHF)',
   totalIncomeRow: 'Total income',
   totalExpensesRow: 'Total expenses',
@@ -197,6 +199,7 @@ const fr: ReportExportLabels = {
   category: 'Catégorie',
   description: 'Description',
   accountCode: 'Compte (Plan comptable CH)',
+  vendor: 'Fournisseur',
   vatChf: 'TVA (CHF)',
   totalIncomeRow: 'Total revenus',
   totalExpensesRow: 'Total dépenses',

@@ -82,6 +82,19 @@
     "api/reports/email.ts": {
       "maxDuration": 30,
       "includeFiles": "{lib,shared}/**"
+    },
+    "api/reports/schedule.ts": {
+      "includeFiles": "{lib,shared}/**"
+    },
+    "api/reports/cron.ts": {
+      "maxDuration": 60,
+      "includeFiles": "{lib,shared}/**"
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/reports/cron",
+      "schedule": "0 7 * * *"
+    }
+  ]
 }

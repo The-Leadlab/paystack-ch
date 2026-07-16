@@ -1,11 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CreditCard, KeyRound, Loader2, ArrowUpCircle, XCircle } from 'lucide-react';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { PaystackPlanId } from '@shared/planCatalog';
+import { parseTaxRegion, type TaxRegion } from '@shared/taxRegions';
 import { PlanMarketingFeatureBullets, PlanMarketingPanel, PLAN_ENTERPRISE_SALES_MAILTO } from './PlanMarketingPanel';
 import { GoogleDriveConnectPanel } from './GoogleDriveConnectPanel';
+import { db } from '../lib/firebase';
 
 function planDisplayName(id: PaystackPlanId | null | undefined, t: (k: string) => string): string {
   if (id === 'starter') return t('planStarterName');
@@ -39,6 +42,10 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
   const [passwordBusy, setPasswordBusy] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<string | null>(null);
   const [passwordErr, setPasswordErr] = useState<string | null>(null);
+  const [taxRegion, setTaxRegion] = useState<TaxRegion>('ch');
+  const [taxRegionLoading, setTaxRegionLoading] = useState(Boolean(user?.uid));
+  const [taxRegionSaving, setTaxRegionSaving] = useState(false);
+  const [taxRegionError, setTaxRegionError] = useState<string | null>(null);
 
   const isPasswordUser = useMemo(
     () => user?.providerData?.some((p) => p.providerId === 'password') ?? false,
@@ -64,11 +71,50 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
 
   const rows: { label: string; value: string }[] = [
     { label: t('planSummaryDocuments'), value: formatLimit(entitlements.maxDocumentsPerMonth, t) },
-    { label: t('planSummaryEmployees'), value: formatLimit(entitlements.maxEmployeeSlots, t) },
     { label: t('planSummarySessions'), value: formatLimit(entitlements.maxSessions, t) },
   ];
 
   const planLabel = (id: PaystackPlanId) => planDisplayName(id, t);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTaxRegion() {
+      if (!user?.uid || !db) {
+        if (!cancelled) setTaxRegionLoading(false);
+        return;
+      }
+      setTaxRegionLoading(true);
+      try {
+        const snapshot = await getDoc(doc(db, 'users', user.uid));
+        if (!cancelled) setTaxRegion(parseTaxRegion(snapshot.data()?.taxRegion));
+      } catch (error) {
+        console.warn('Could not load tax region:', error);
+      } finally {
+        if (!cancelled) setTaxRegionLoading(false);
+      }
+    }
+
+    void loadTaxRegion();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid]);
+
+  const saveTaxRegion = async (nextRegion: TaxRegion) => {
+    if (!user?.uid || !db) return;
+    setTaxRegionError(null);
+    setTaxRegionSaving(true);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), { taxRegion: nextRegion });
+      setTaxRegion(nextRegion);
+    } catch (error) {
+      console.error('Could not save tax region:', error);
+      setTaxRegionError(t('billingTaxRegionSaveError'));
+    } finally {
+      setTaxRegionSaving(false);
+    }
+  };
 
   const openPortal = async () => {
     setPortalBusy(true);
@@ -311,6 +357,24 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
           {t('billingAccountEmail')}{' '}
           <span className="font-bold ba-field-value">{user?.email ?? '—'}</span>
         </p>
+        <div className="max-w-md">
+          <label htmlFor="tax-region" className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted mb-2 block">
+            {t('billingTaxRegionLabel')}
+          </label>
+          <select
+            id="tax-region"
+            value={taxRegion}
+            disabled={taxRegionLoading || taxRegionSaving || !user?.uid}
+            onChange={(event) => void saveTaxRegion(event.target.value as TaxRegion)}
+            className="ba-verify-field"
+          >
+            <option value="ch">{t('billingTaxRegionCh')}</option>
+            <option value="uk">{t('billingTaxRegionUk')}</option>
+            <option value="off">{t('billingTaxRegionOff')}</option>
+          </select>
+          <p className="mt-2 text-xs text-cdlp-muted">{t('billingTaxRegionHint')}</p>
+          {taxRegionError ? <p className="mt-2 text-xs text-red-400 font-medium">{taxRegionError}</p> : null}
+        </div>
         {isPasswordUser ? (
           <form onSubmit={handlePasswordChange} className="space-y-3 max-w-md">
             <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted">{t('billingChangePasswordTitle')}</p>

@@ -275,7 +275,7 @@ ${hintSection}
 
 MANDATORY:
 1. Read EVERY page from first to last. Never assume a single invoice.
-2. Return one subDocuments entry per DISTINCT invoice/receipt (different issuer, invoice number, or dated block).
+2. Return one subDocuments entry per DISTINCT invoice/receipt (different issuer, invoice number, or dated block). Do NOT create a subDocuments entry per product line item — line items belong inside an invoice, not as separate invoices.
 3. NEVER stop after the first page or first two invoices.
 4. If one invoice spans multiple pages, merge into ONE entry with pageRange like "3-4".
 5. Extract per-invoice: issuer (supplier name), invoice/reference number if visible (append to issuer as "Name | Ref 12345"), date, pageRange, originalCurrency, netAmount, vatAmount, vatRate, totalAmount (gross including VAT).
@@ -501,49 +501,12 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
   const subDocs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments : [];
   const normalizedLineItems = Array.isArray(parsed.lineItems) ? parsed.lineItems : [];
 
-  // Build stable line items from each detected sub-invoice so analysis table is always populated.
-  const generatedLineItems: BankTransaction[] = subDocs.map((sub: any) =>
-    lineItemFromSubDocument(
-      sub,
-      parsed,
-      normalizedLineItems,
-      `VAT ${Number(sub.vatRate || 0)}% | VAT Amount ${Number(sub.vatAmount || 0)} ${sub.originalCurrency || parsed.originalCurrency || 'CHF'}`
-    )
-  );
-
-  // If model under-fills subDocuments (single-invoice case), derive additional blocks from expense lines.
-  // For true multi-invoice documents, never infer from product-level lines because it inflates totals.
-  const inferredSubDocsFromLineItems = (subDocs.length <= 1 ? normalizedLineItems : [])
-    .filter((item) => item.type === 'EXPENSE' && Number(item.amount || 0) > 0)
-    .map((item) => ({
-      pageRange: '',
-      issuer: item.description || 'Unknown issuer',
-      date: item.date || parsed.date || new Date().toISOString().slice(0, 10),
-      totalAmount: Number(item.amount || 0),
-      originalCurrency: parsed.originalCurrency || 'CHF',
-      documentType: 'TICKET/RECEIPT',
-      expenseCategory: item.category || parsed.expenseCategory || 'OTHER',
-      vatAmount: 0,
-      vatRate: 0,
-      netAmount: Number(item.amount || 0),
-    }));
-
-  const mergedSubDocs = [...subDocs];
-  const seen = new Set(
-    subDocs.map((s: any) => `${s.issuer || ''}|${s.date || ''}|${Number(s.totalAmount || 0).toFixed(2)}`)
-  );
-  for (const inferred of inferredSubDocsFromLineItems) {
-    const signature = `${inferred.issuer}|${inferred.date}|${Number(inferred.totalAmount || 0).toFixed(2)}`;
-    if (!seen.has(signature)) {
-      mergedSubDocs.push(inferred as any);
-      seen.add(signature);
-    }
-  }
-
-  if (mergedSubDocs.length === 0) return parsed;
+  // Never promote product/line items into subDocuments — items stay items; invoices stay invoices.
+  // subDocuments are only distinct invoices/receipts from the model (or empty for a single invoice).
+  if (subDocs.length === 0) return parsed;
 
   // Per-invoice amount consistency + aggregate totals must match SUM(sub-invoices).
-  const repairedSubs = mergedSubDocs.map((sub: any) => {
+  const repairedSubs = subDocs.map((sub: any) => {
     let total = Number(sub.totalAmount ?? 0);
     let net = Number(sub.netAmount ?? 0);
     let vat = Number(sub.vatAmount ?? 0);
@@ -555,8 +518,6 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
   });
 
   let subTotal = repairedSubs.reduce((sum: number, sub: any) => sum + Number(sub.totalAmount || 0), 0);
-  const subVat = repairedSubs.reduce((sum: number, sub: any) => sum + Number(sub.vatAmount || 0), 0);
-  const subNet = repairedSubs.reduce((sum: number, sub: any) => sum + Number(sub.netAmount || 0), 0);
 
   const rebasedItems: BankTransaction[] = repairedSubs.map((sub: any) =>
     lineItemFromSubDocument(
@@ -567,16 +528,11 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
     )
   );
 
-  const sumLineAmounts = (items: BankTransaction[]) =>
-    items.reduce((s, i) => s + Number(i.amount || 0), 0);
-  const lineSumMatch =
-    normalizedLineItems.length === rebasedItems.length &&
-    Math.abs(sumLineAmounts(rebasedItems) - sumLineAmounts(normalizedLineItems)) < 1;
-
+  // Prefer real product line items on a single invoice; only synthesize one row per invoice for multi-invoice PDFs.
   const finalLineItems =
     repairedSubs.length > 1
       ? rebasedItems
-      : normalizedLineItems.length > 0 && lineSumMatch && normalizedLineItems.length >= repairedSubs.length
+      : normalizedLineItems.length > 0
         ? normalizedLineItems
         : rebasedItems;
 
@@ -1149,6 +1105,7 @@ CRITICAL RULES:
 36. PAY SLIPS ONLY: documentType MUST be "Pay Slip". Set subDocuments to an empty array []. Never emit multiple subDocuments for one payslip — it is ONE document, not multiple invoices.
 37. PAY SLIPS ONLY: Put totals in paySlip.grossPay, paySlip.netPay (printed net salary), paySlip.paymentToEmployee (final Payment/Remittance/Virement to employee after any advance), and top-level totalAmount = gross pay for payroll; do not duplicate the same salary as two invoice blocks.
 38. PAY SLIPS ONLY: The business posts two payments for tax-at-source employees: (1) paymentToEmployee to the employee, (2) grossPay minus paymentToEmployee to the state for taxes and social contributions. If an advance on salary is deducted before payment, paymentToEmployee is the final Payment line, not netPay.
+39. ITEMS vs INVOICES: lineItems are products/services ON an invoice. Never create a subDocuments entry per line item. subDocuments are ONLY for distinct invoices/receipts (different supplier, invoice number, or separate receipt). One invoice with 20 products → subDocuments empty or one entry + 20 lineItems. A PDF with 3 separate supplier invoices → 3 subDocuments (label "3 invoices detected"), not "items".
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings
