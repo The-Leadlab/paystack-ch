@@ -379,7 +379,6 @@ export default function AdminDashboardPage() {
             {lockBusy ? <Loader2 className="size-4 animate-spin" /> : <Lock className="size-4" />}
             {t("authAdminGateLock")}
           </Button>
-        </div>
 
           <p className="text-sm text-muted-foreground -mt-2">
             {activeTab === "users" ? t("adminUsersHint") : t("adminTabOperatorHint")}

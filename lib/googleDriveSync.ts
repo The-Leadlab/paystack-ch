@@ -159,6 +159,37 @@ async function listDriveFolderFiles(accessToken: string, folderId: string): Prom
   return data.files ?? [];
 }
 
+/** Lists files directly in `folderId` plus one level into any subfolders (the week-dated
+ * subfolders documents get filed into are exactly one level deep) — folder entries themselves
+ * are excluded from the result, only actual files are returned. */
+async function listDriveFolderFilesRecursive(
+  accessToken: string,
+  folderId: string
+): Promise<DriveListedFile[]> {
+  const topLevel = await listDriveFolderFiles(accessToken, folderId);
+  const files: DriveListedFile[] = [];
+  const subfolders: DriveListedFile[] = [];
+
+  for (const entry of topLevel) {
+    if (entry.mimeType === "application/vnd.google-apps.folder") {
+      subfolders.push(entry);
+    } else {
+      files.push(entry);
+    }
+  }
+
+  for (const subfolder of subfolders) {
+    const nested = await listDriveFolderFiles(accessToken, subfolder.id);
+    for (const entry of nested) {
+      if (entry.mimeType !== "application/vnd.google-apps.folder") {
+        files.push(entry);
+      }
+    }
+  }
+
+  return files;
+}
+
 async function downloadDriveFileBytes(accessToken: string, fileId: string): Promise<{ bytes: Buffer; mimeType: string }> {
   const res = await fetch(`${GOOGLE_DRIVE_FILES_URL}/${fileId}?alt=media`, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -274,11 +305,11 @@ export async function runDriveSyncFromDrive(authorization: string | undefined): 
 
     let files: DriveListedFile[];
     try {
-      files = await listDriveFolderFiles(accessToken, connection.folderId);
+      files = await listDriveFolderFilesRecursive(accessToken, connection.folderId);
     } catch (error) {
       if ((error as { status?: number }).status !== 401) throw error;
       accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
-      files = await listDriveFolderFiles(accessToken, connection.folderId);
+      files = await listDriveFolderFilesRecursive(accessToken, connection.folderId);
     }
 
     const imported: DriveImportedFile[] = [];

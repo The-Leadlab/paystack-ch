@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   completeGoogleDriveOAuth,
+  computeWeekFolderName,
   createOAuthState,
   decodeOAuthState,
   disconnectGoogleDrive,
@@ -31,6 +32,30 @@ vi.mock("../lib/firebaseAdmin.js", () => ({
   ensureFirebaseAdmin: vi.fn(),
   hasFirebaseAdminCredentials: vi.fn(() => true),
 }));
+
+describe("computeWeekFolderName", () => {
+  it("returns the Monday-Sunday range for a date in the middle of the week", () => {
+    // Wed 3 Jan 2024 — week is Mon 1 Jan - Sun 7 Jan 2024.
+    expect(computeWeekFolderName(new Date(Date.UTC(2024, 0, 3)))).toBe("01-07/01/2024");
+  });
+
+  it("maps both the Monday and Sunday of a week to the same folder name", () => {
+    const mondayName = computeWeekFolderName(new Date(Date.UTC(2024, 0, 1)));
+    const sundayName = computeWeekFolderName(new Date(Date.UTC(2024, 0, 7)));
+    expect(mondayName).toBe("01-07/01/2024");
+    expect(sundayName).toBe("01-07/01/2024");
+  });
+
+  it("anchors the month to the week's Monday when the week crosses a month boundary", () => {
+    // Mon 29 Jan 2024 - Sun 4 Feb 2024.
+    expect(computeWeekFolderName(new Date(Date.UTC(2024, 0, 29)))).toBe("29-04/01/2024");
+  });
+
+  it("anchors the year to the week's Monday when the week crosses a year boundary", () => {
+    // Mon 30 Dec 2024 - Sun 5 Jan 2025.
+    expect(computeWeekFolderName(new Date(Date.UTC(2024, 11, 30)))).toBe("30-05/12/2024");
+  });
+});
 
 describe("startGoogleDriveOAuth", () => {
   beforeEach(() => {

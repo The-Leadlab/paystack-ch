@@ -74,6 +74,31 @@ export async function backupDocumentToGoogleDrive(payload: DriveBackupPayload): 
   }
 }
 
+/** Fire-and-forget: once a document's date is known (after AI scanning), files the already-backed-up
+ * Drive copy into a "dd-dd/mm/yyyy" week subfolder. documentDate should be an ISO-ish date string
+ * (e.g. "2026-07-08"); no-ops server-side if the document was never backed up to Drive. */
+export async function fileDocumentInDriveByWeek(params: {
+  sourceId: string;
+  documentDate: string;
+}): Promise<void> {
+  const res = await fetch(apiUrl("/api/drive/file-by-date"), {
+    method: "POST",
+    headers: {
+      Authorization: await authHeader(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(params),
+    cache: "no-store",
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(json?.error || `Drive filing failed (HTTP ${res.status})`);
+  }
+  if (json?.error) {
+    throw new Error(String(json.error));
+  }
+}
+
 export type DriveImportedFile = {
   driveFileId: string;
   fileName: string;

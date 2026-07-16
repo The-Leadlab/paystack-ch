@@ -17,6 +17,27 @@ export type GoogleServicesResult =
   | { status: number; redirectUrl: string }
   | { status: number; json: Record<string, unknown> };
 
+/** Monday-start week containing `date`, formatted "dd-dd/mm/yyyy" (start day-end day/month/year).
+ * When the week crosses a month or year boundary, the month/year are anchored to the Monday
+ * (the week's start), not the Sunday — e.g. the week of Mon 29 Jun–Sun 5 Jul 2026 is "29-05/06/2026". */
+export function computeWeekFolderName(date: Date): string {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const dayOfWeek = d.getUTCDay(); // 0=Sun..6=Sat
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(d);
+  monday.setUTCDate(d.getUTCDate() + diffToMonday);
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const startDay = pad(monday.getUTCDate());
+  const endDay = pad(sunday.getUTCDate());
+  const month = pad(monday.getUTCMonth() + 1);
+  const year = monday.getUTCFullYear();
+
+  return `${startDay}-${endDay}/${month}/${year}`;
+}
+
 function parseTruthyEnv(value: string | undefined): boolean {
   return value?.toLowerCase() === "true" || value === "1";
 }
@@ -167,7 +188,7 @@ async function exchangeGoogleAuthCode(code: string): Promise<GoogleTokenExchange
   };
 }
 
-async function createGoogleDriveFolder(accessToken: string): Promise<string> {
+async function createDriveFolder(accessToken: string, name: string, parentId?: string): Promise<string> {
   const res = await fetch(GOOGLE_DRIVE_FILES_URL, {
     method: "POST",
     headers: {
@@ -175,8 +196,9 @@ async function createGoogleDriveFolder(accessToken: string): Promise<string> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      name: GOOGLE_DRIVE_FOLDER_NAME,
+      name,
       mimeType: "application/vnd.google-apps.folder",
+      ...(parentId ? { parents: [parentId] } : {}),
     }),
   });
 
@@ -192,6 +214,10 @@ async function createGoogleDriveFolder(accessToken: string): Promise<string> {
   }
 
   return data.id;
+}
+
+async function createGoogleDriveFolder(accessToken: string): Promise<string> {
+  return createDriveFolder(accessToken, GOOGLE_DRIVE_FOLDER_NAME);
 }
 
 async function getExistingGoogleDriveFolderId(uid: string): Promise<string | null> {
@@ -467,6 +493,148 @@ export async function saveDocumentToDrive(
     }
     await recordDriveUpload(uid, file.sourceId, fileId);
     return { status: 200, json: { uploaded: true, fileId } };
+  } catch (error) {
+    const status = (error as { status?: number }).status || 400;
+    return { status, json: { error: (error as Error).message } };
+  }
+}
+
+async function findDriveFolderByName(
+  accessToken: string,
+  name: string,
+  parentId: string
+): Promise<string | null> {
+  const escapedName = name.replace(/'/g, "\\'");
+  const q = `'${parentId}' in parents and name = '${escapedName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+  const res = await fetch(
+    `${GOOGLE_DRIVE_FILES_URL}?q=${encodeURIComponent(q)}&fields=${encodeURIComponent("files(id)")}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  const data = (await res.json().catch(() => ({}))) as {
+    files?: { id: string }[];
+    error?: { message?: string };
+  };
+  if (!res.ok) {
+    throw Object.assign(new Error(data.error?.message || "Failed to search Google Drive folders"), {
+      status: res.status === 401 ? 401 : 502,
+    });
+  }
+  return data.files?.[0]?.id ?? null;
+}
+
+async function moveDriveFile(
+  accessToken: string,
+  fileId: string,
+  fromFolderId: string,
+  toFolderId: string
+): Promise<void> {
+  const res = await fetch(
+    `${GOOGLE_DRIVE_FILES_URL}/${encodeURIComponent(fileId)}` +
+      `?addParents=${encodeURIComponent(toFolderId)}&removeParents=${encodeURIComponent(fromFolderId)}`,
+    { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+    throw Object.assign(new Error(data.error?.message || "Failed to move file into week folder"), {
+      status: res.status === 401 ? 401 : 502,
+    });
+  }
+}
+
+async function getWeekFolderId(uid: string, weekName: string): Promise<string | null> {
+  ensureFirebaseAdmin();
+  const snap = await getFirestore().collection("users").doc(uid).get();
+  const weekFolders = (snap.data() as { googleDrive?: { weekFolders?: unknown } } | undefined)?.googleDrive
+    ?.weekFolders;
+  if (weekFolders && typeof weekFolders === "object") {
+    const id = (weekFolders as Record<string, unknown>)[driveUploadKey(weekName)];
+    return typeof id === "string" ? id : null;
+  }
+  return null;
+}
+
+async function recordWeekFolder(uid: string, weekName: string, folderId: string): Promise<void> {
+  ensureFirebaseAdmin();
+  await getFirestore()
+    .collection("users")
+    .doc(uid)
+    .set({ googleDrive: { weekFolders: { [driveUploadKey(weekName)]: folderId } } }, { merge: true });
+}
+
+/** Finds, or creates, the subfolder for a given week under the user's root Drive folder.
+ * Checks Firestore first (fast path, avoids a Drive API round-trip on repeat calls), then
+ * falls back to searching Drive directly (covers a stale/missing Firestore record), and only
+ * creates a new folder if neither turns one up. */
+async function getOrCreateWeekFolder(
+  uid: string,
+  accessToken: string,
+  rootFolderId: string,
+  weekName: string
+): Promise<string> {
+  const cached = await getWeekFolderId(uid, weekName);
+  if (cached) return cached;
+
+  const existing = await findDriveFolderByName(accessToken, weekName, rootFolderId);
+  const folderId = existing ?? (await createDriveFolder(accessToken, weekName, rootFolderId));
+  await recordWeekFolder(uid, weekName, folderId);
+  return folderId;
+}
+
+/** Called once a document's date is known (after AI scanning, since the date is extracted by
+ * that scan, not known at upload time) — moves the already-backed-up Drive file into a
+ * subfolder for the week it's dated, named "dd-dd/mm/yyyy" (Monday-Sunday). A no-op, not an
+ * error, if the user isn't connected or the document was never backed up to Drive to begin with
+ * (e.g. they weren't connected at upload time, or the backup itself failed). */
+export async function fileDocumentByWeek(
+  authorization: string | undefined,
+  params: { sourceId: string; documentDate: string }
+): Promise<GoogleServicesResult> {
+  let uid: string;
+  try {
+    uid = await verifyFirebaseAuthorizationHeader(authorization);
+  } catch (error) {
+    const status = (error as { status?: number }).status || 401;
+    return { status, json: { error: (error as Error).message } };
+  }
+
+  try {
+    if (!hasFirebaseAdminCredentials()) {
+      throw Object.assign(new Error("Server missing Firebase Admin credentials"), { status: 503 });
+    }
+    const connection = await getGoogleDriveConnection(uid);
+    if (!connection) {
+      return { status: 200, json: { skipped: true } };
+    }
+
+    const fileId = connection.uploadedDocuments[driveUploadKey(params.sourceId)];
+    if (!fileId) {
+      return { status: 200, json: { skipped: true } };
+    }
+
+    const parsedDate = new Date(params.documentDate);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return { status: 400, json: { error: "documentDate is not a valid date" } };
+    }
+    const weekName = computeWeekFolderName(parsedDate);
+
+    let accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
+    const fileIntoWeekFolder = async (token: string) => {
+      const weekFolderId = await getOrCreateWeekFolder(uid, token, connection.folderId, weekName);
+      await moveDriveFile(token, fileId, connection.folderId, weekFolderId);
+      return weekFolderId;
+    };
+
+    let weekFolderId: string;
+    try {
+      weekFolderId = await fileIntoWeekFolder(accessToken);
+    } catch (error) {
+      if ((error as { status?: number }).status !== 401) throw error;
+      // Same retry-once-on-401 pattern as saveDocumentToDrive.
+      accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
+      weekFolderId = await fileIntoWeekFolder(accessToken);
+    }
+
+    return { status: 200, json: { filed: true, folderId: weekFolderId, weekName } };
   } catch (error) {
     const status = (error as { status?: number }).status || 400;
     return { status, json: { error: (error as Error).message } };

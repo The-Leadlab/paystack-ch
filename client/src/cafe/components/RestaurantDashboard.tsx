@@ -477,6 +477,21 @@ export function RestaurantDashboard() {
     const date = data.date || new Date().toISOString().split('T')[0];
     const amount = data.amountInCHF || data.totalAmount || 0;
     const docType = data.documentType;
+
+    // Now that the document's own date is known (only available after AI scanning), file the
+    // already-backed-up Drive copy into its "dd-dd/mm/yyyy" week subfolder. No-ops server-side
+    // if the document was never backed up to Drive (not connected, or the backup itself failed).
+    const storagePathForDrive = documents.find((d) => d.id === documentId)?.storagePath;
+    if (storagePathForDrive) {
+      void (async () => {
+        try {
+          const { fileDocumentInDriveByWeek } = await import('../lib/googleDriveClient');
+          await fileDocumentInDriveByWeek({ sourceId: storagePathForDrive, documentDate: date });
+        } catch (driveErr) {
+          console.warn('Google Drive weekly filing skipped:', driveErr);
+        }
+      })();
+    }
     
     console.log('ðŸ“Š Processing document type:', docType, 'Amount:', amount);
     
