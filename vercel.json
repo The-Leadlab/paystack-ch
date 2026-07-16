@@ -79,10 +79,6 @@
       "maxDuration": 60,
       "includeFiles": "lib/**"
     },
-    "api/drive/file-by-date.ts": {
-      "maxDuration": 30,
-      "includeFiles": "lib/**"
-    },
     "api/reports/email.ts": {
       "maxDuration": 30,
       "includeFiles": "{lib,shared}/**"

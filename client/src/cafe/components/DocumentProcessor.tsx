@@ -2259,6 +2259,8 @@ export const DocumentProcessor: React.FC<{
       await updateDocument(firestoreId, { status: 'processing', error: undefined });
     }
 
+    let storageForAi: { fileUrl?: string; storagePath?: string } | undefined;
+
     try {
       console.log(`Processing: ${doc.fileName}`);
 
@@ -2297,7 +2299,7 @@ export const DocumentProcessor: React.FC<{
         }
       }
 
-      let storageForAi =
+      storageForAi =
         doc.fileUrl && doc.storagePath
           ? { fileUrl: doc.fileUrl, storagePath: doc.storagePath }
           : doc.fileUrl
@@ -2383,6 +2385,27 @@ export const DocumentProcessor: React.FC<{
       setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'error', error: err.message } : d));
       if (isFirestoreDoc && firestoreId) {
         await updateDocument(firestoreId, { status: 'error', error: err.message });
+      }
+
+      // Processing failed, so no document date is known — back up to Drive's "Uncategorised"
+      // folder rather than leave the document unfiled entirely.
+      if (storageForAi?.storagePath && storageForAi?.fileUrl) {
+        const driveStoragePath = storageForAi.storagePath;
+        const driveFileUrl = storageForAi.fileUrl;
+        void (async () => {
+          try {
+            const { backupDocumentToGoogleDrive } = await import('../lib/googleDriveClient');
+            const { guessMimeType } = await import('../lib/documentStorageForAi');
+            await backupDocumentToGoogleDrive({
+              storagePath: driveStoragePath,
+              fileUrl: driveFileUrl,
+              filename: doc.fileName,
+              mimeType: guessMimeType(doc.fileName, doc.fileRaw?.type || ''),
+            });
+          } catch (driveErr) {
+            console.warn('Google Drive backup skipped:', driveErr);
+          }
+        })();
       }
     }
   };

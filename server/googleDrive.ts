@@ -3,7 +3,6 @@ import express from "express";
 import {
   completeGoogleDriveOAuth,
   disconnectGoogleDrive,
-  fileDocumentByWeek,
   getGoogleDriveStatus,
   startGoogleDriveOAuth,
 } from "../lib/googleServices";
@@ -69,8 +68,10 @@ export function registerGoogleDriveRoutes(app: Express): void {
 
   app.post("/api/drive/save-document", jsonParser, async (req: Request, res: Response) => {
     res.setHeader("Cache-Control", "no-store");
+    console.log("[googleDrive] /api/drive/save-document hit:", JSON.stringify(req.body));
     const { runDriveSaveDocument } = await import("../lib/googleDriveSync");
     const out = await runDriveSaveDocument(req.headers.authorization, req.body);
+    console.log("[googleDrive] /api/drive/save-document result:", out.status, JSON.stringify(out.json));
     res.status(out.status).json(out.json);
   });
 
@@ -79,19 +80,6 @@ export function registerGoogleDriveRoutes(app: Express): void {
     const { runDriveSyncFromDrive } = await import("../lib/googleDriveSync");
     const out = await runDriveSyncFromDrive(req.headers.authorization);
     res.status(out.status).json(out.json);
-  });
-
-  app.post("/api/drive/file-by-date", jsonParser, async (req: Request, res: Response) => {
-    res.setHeader("Cache-Control", "no-store");
-    const body = (req.body || {}) as { sourceId?: unknown; documentDate?: unknown };
-    const sourceId = typeof body.sourceId === "string" ? body.sourceId : "";
-    const documentDate = typeof body.documentDate === "string" ? body.documentDate : "";
-    if (!sourceId || !documentDate) {
-      res.status(400).json({ error: "sourceId and documentDate are required" });
-      return;
-    }
-    const out = await fileDocumentByWeek(req.headers.authorization, { sourceId, documentDate });
-    res.status(out.status).json("json" in out ? out.json : {});
   });
 
   console.info("[googleDrive] OAuth routes enabled (/api/oauth/google/*).");

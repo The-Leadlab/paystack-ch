@@ -52,9 +52,15 @@ export type DriveBackupPayload = {
   fileUrl: string;
   filename: string;
   mimeType: string;
+  /** The document's own date, extracted by AI processing (ISO or Swiss/European format). When
+   * present, the backup is filed directly into that week's subfolder; otherwise it lands in
+   * "Uncategorised". Omit when processing failed or no date could be determined. */
+  documentDate?: string;
 };
 
-/** Fire-and-forget backup of a platform upload to the user's Drive folder. */
+/** Fire-and-forget backup of a platform upload to the user's Drive folder — called once AI
+ * processing has concluded (success or failure), so the document is placed directly into its
+ * correct week folder in a single upload rather than uploaded then moved. */
 export async function backupDocumentToGoogleDrive(payload: DriveBackupPayload): Promise<void> {
   const res = await fetch(apiUrl("/api/drive/save-document"), {
     method: "POST",
@@ -68,31 +74,6 @@ export async function backupDocumentToGoogleDrive(payload: DriveBackupPayload): 
   const json = await res.json().catch(() => ({}));
   if (!res.ok && res.status !== 200) {
     throw new Error(json?.error || `Drive backup failed (HTTP ${res.status})`);
-  }
-  if (json?.error) {
-    throw new Error(String(json.error));
-  }
-}
-
-/** Fire-and-forget: once a document's date is known (after AI scanning), files the already-backed-up
- * Drive copy into a "dd-dd/mm/yyyy" week subfolder. documentDate should be an ISO-ish date string
- * (e.g. "2026-07-08"); no-ops server-side if the document was never backed up to Drive. */
-export async function fileDocumentInDriveByWeek(params: {
-  sourceId: string;
-  documentDate: string;
-}): Promise<void> {
-  const res = await fetch(apiUrl("/api/drive/file-by-date"), {
-    method: "POST",
-    headers: {
-      Authorization: await authHeader(),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(params),
-    cache: "no-store",
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(json?.error || `Drive filing failed (HTTP ${res.status})`);
   }
   if (json?.error) {
     throw new Error(String(json.error));

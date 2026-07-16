@@ -6,6 +6,7 @@ import {
   createOAuthState,
   decodeOAuthState,
   disconnectGoogleDrive,
+  parseDocumentDate,
   saveDocumentToDrive,
   startGoogleDriveOAuth,
 } from "../lib/googleServices.js";
@@ -54,6 +55,27 @@ describe("computeWeekFolderName", () => {
   it("anchors the year to the week's Monday when the week crosses a year boundary", () => {
     // Mon 30 Dec 2024 - Sun 5 Jan 2025.
     expect(computeWeekFolderName(new Date(Date.UTC(2024, 11, 30)))).toBe("30-05/12/2024");
+  });
+});
+
+describe("parseDocumentDate", () => {
+  it("parses an ISO-formatted date (YYYY-MM-DD)", () => {
+    const date = parseDocumentDate("2026-01-31");
+    expect(date.getUTCFullYear()).toBe(2026);
+    expect(date.getUTCMonth()).toBe(0);
+    expect(date.getUTCDate()).toBe(31);
+  });
+
+  it("parses a Swiss/European-formatted date (DD.MM.YYYY)", () => {
+    const date = parseDocumentDate("31.01.2026");
+    expect(date.getUTCFullYear()).toBe(2026);
+    expect(date.getUTCMonth()).toBe(0);
+    expect(date.getUTCDate()).toBe(31);
+  });
+
+  it("returns an Invalid Date for a value that matches neither format", () => {
+    const date = parseDocumentDate("not-a-date");
+    expect(Number.isNaN(date.getTime())).toBe(true);
   });
 });
 
@@ -395,22 +417,41 @@ describe("saveDocumentToDrive (upload hook)", () => {
     vi.unstubAllGlobals();
   });
 
-  it("uploads the document into the user's Drive folder with matching bytes and filename", async () => {
-    firestoreGetMock.mockResolvedValue({
-      data: () => ({ googleDrive: { refreshToken: "refresh-456", folderId: "folder-abc" } }),
-    });
-    fetchMock.mockImplementation((url: string) => {
+  /** Mocks the token exchange plus the "Uncategorised" folder search/create routes that
+   * `saveDocumentToDrive` now hits before every upload that doesn't have a valid `documentDate` —
+   * this is the fast-path shared by most of these tests, since they aren't testing folder
+   * resolution itself. Returns "uncategorized-folder-id" as the folder to upload into. */
+  function mockGoogleFetchRoutesForUpload(overrides: {
+    uploadResponse?: (init: { headers: Record<string, string>; body: Buffer }) => Promise<unknown> | unknown;
+  } = {}) {
+    fetchMock.mockImplementation((url: string, init?: { method?: string; body?: unknown }) => {
       if (url === "https://oauth2.googleapis.com/token") {
         return Promise.resolve({
           ok: true,
           json: async () => ({ access_token: "access-789", expires_in: 3600 }),
         });
       }
+      if (url.startsWith("https://www.googleapis.com/drive/v3/files?q=")) {
+        return Promise.resolve({ ok: true, json: async () => ({ files: [] }) });
+      }
+      if (url === "https://www.googleapis.com/drive/v3/files" && init?.method === "POST") {
+        return Promise.resolve({ ok: true, json: async () => ({ id: "uncategorized-folder-id" }) });
+      }
       if (url === "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart") {
+        if (overrides.uploadResponse) {
+          return Promise.resolve(overrides.uploadResponse(init as { headers: Record<string, string>; body: Buffer }));
+        }
         return Promise.resolve({ ok: true, json: async () => ({ id: "uploaded-file-id" }) });
       }
       throw new Error(`Unexpected fetch call: ${url}`);
     });
+  }
+
+  it("uploads the document into the user's Drive folder with matching bytes and filename", async () => {
+    firestoreGetMock.mockResolvedValue({
+      data: () => ({ googleDrive: { refreshToken: "refresh-456", folderId: "folder-abc" } }),
+    });
+    mockGoogleFetchRoutesForUpload();
 
     const result = await saveDocumentToDrive("test-uid", {
       bytes: Buffer.from("fake-pdf-bytes"),
@@ -428,8 +469,54 @@ describe("saveDocumentToDrive (upload hook)", () => {
     expect(uploadInit.headers.Authorization).toBe("Bearer access-789");
     const bodyText = Buffer.from(uploadInit.body).toString("utf8");
     expect(bodyText).toContain('"name":"report.pdf"');
-    expect(bodyText).toContain('"parents":["folder-abc"]');
+    // No documentDate given — lands in the "Uncategorised" folder, not the root folder.
+    expect(bodyText).toContain('"parents":["uncategorized-folder-id"]');
     expect(bodyText).toContain("fake-pdf-bytes");
+  });
+
+  it("uploads directly into the document's week folder when a documentDate is provided", async () => {
+    firestoreGetMock.mockResolvedValue({
+      data: () => ({ googleDrive: { refreshToken: "refresh-456", folderId: "folder-abc" } }),
+    });
+    fetchMock.mockImplementation((url: string, init?: { method?: string; body?: unknown }) => {
+      if (url === "https://oauth2.googleapis.com/token") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ access_token: "access-789", expires_in: 3600 }),
+        });
+      }
+      if (url.startsWith("https://www.googleapis.com/drive/v3/files?q=")) {
+        return Promise.resolve({ ok: true, json: async () => ({ files: [] }) });
+      }
+      if (url === "https://www.googleapis.com/drive/v3/files" && init?.method === "POST") {
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        // Sat 31 Jan 2026 — its week is Mon 26 Jan - Sun 1 Feb 2026, anchored to the Monday's month.
+        expect(body.name).toBe("26-01/01/2026");
+        return Promise.resolve({ ok: true, json: async () => ({ id: "week-folder-id" }) });
+      }
+      if (url === "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart") {
+        return Promise.resolve({ ok: true, json: async () => ({ id: "uploaded-file-id" }) });
+      }
+      throw new Error(`Unexpected fetch call: ${url}`);
+    });
+
+    const result = await saveDocumentToDrive("test-uid", {
+      bytes: Buffer.from("fake-pdf-bytes"),
+      filename: "report.pdf",
+      mimeType: "application/pdf",
+      sourceId: "documents/test-uid/report.pdf",
+      documentDate: "2026-01-31",
+    });
+
+    expect(result.status).toBe(200);
+    const uploadCall = fetchMock.mock.calls.find(
+      ([url]) => url === "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
+    );
+    expect(uploadCall).toBeDefined();
+    const uploadInit = uploadCall![1] as { body: Buffer };
+    const bodyText = Buffer.from(uploadInit.body).toString("utf8");
+    // Uploaded straight into the week folder — never into "Uncategorised" or the root folder.
+    expect(bodyText).toContain('"parents":["week-folder-id"]');
   });
 
   it("when the user has no Drive connection, upload/scan completes normally with no Drive call and no surfaced error", async () => {
@@ -454,12 +541,18 @@ describe("saveDocumentToDrive (upload hook)", () => {
     firestoreGetMock.mockResolvedValue({
       data: () => ({ googleDrive: { refreshToken: "refresh-456", folderId: "folder-abc" } }),
     });
-    fetchMock.mockImplementation((url: string) => {
+    fetchMock.mockImplementation((url: string, init?: { method?: string }) => {
       if (url === "https://oauth2.googleapis.com/token") {
         return Promise.resolve({
           ok: true,
           json: async () => ({ access_token: "access-789", expires_in: 3600 }),
         });
+      }
+      if (url.startsWith("https://www.googleapis.com/drive/v3/files?q=")) {
+        return Promise.resolve({ ok: true, json: async () => ({ files: [] }) });
+      }
+      if (url === "https://www.googleapis.com/drive/v3/files" && init?.method === "POST") {
+        return Promise.resolve({ ok: true, json: async () => ({ id: "uncategorized-folder-id" }) });
       }
       if (url === "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart") {
         return Promise.resolve({
@@ -492,13 +585,19 @@ describe("saveDocumentToDrive (upload hook)", () => {
     });
     let tokenAttempts = 0;
     let uploadAttempts = 0;
-    fetchMock.mockImplementation((url: string) => {
+    fetchMock.mockImplementation((url: string, init?: { method?: string }) => {
       if (url === "https://oauth2.googleapis.com/token") {
         tokenAttempts += 1;
         return Promise.resolve({
           ok: true,
           json: async () => ({ access_token: `access-token-${tokenAttempts}`, expires_in: 3600 }),
         });
+      }
+      if (url.startsWith("https://www.googleapis.com/drive/v3/files?q=")) {
+        return Promise.resolve({ ok: true, json: async () => ({ files: [] }) });
+      }
+      if (url === "https://www.googleapis.com/drive/v3/files" && init?.method === "POST") {
+        return Promise.resolve({ ok: true, json: async () => ({ id: "uncategorized-folder-id" }) });
       }
       if (url === "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart") {
         uploadAttempts += 1;
@@ -569,12 +668,18 @@ describe("saveDocumentToDrive (upload hook)", () => {
     firestoreGetMock.mockResolvedValue({
       data: () => ({ googleDrive: { refreshToken: "refresh-456", folderId: "folder-abc" } }),
     });
-    fetchMock.mockImplementation((url: string, init?: { body?: string | Buffer }) => {
+    fetchMock.mockImplementation((url: string, init?: { method?: string; body?: string | Buffer }) => {
       if (url === "https://oauth2.googleapis.com/token") {
         return Promise.resolve({
           ok: true,
           json: async () => ({ access_token: "access-789", expires_in: 3600 }),
         });
+      }
+      if (url.startsWith("https://www.googleapis.com/drive/v3/files?q=")) {
+        return Promise.resolve({ ok: true, json: async () => ({ files: [] }) });
+      }
+      if (url === "https://www.googleapis.com/drive/v3/files" && init?.method === "POST") {
+        return Promise.resolve({ ok: true, json: async () => ({ id: "uncategorized-folder-id" }) });
       }
       if (url === "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart") {
         const body = Buffer.from(init?.body ?? "").toString("utf8");
@@ -645,6 +750,78 @@ describe("saveDocumentToDrive (upload hook)", () => {
     }
     expect(result.json).toMatchObject({ fileId: "already-uploaded-file-id", alreadyUploaded: true });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("moves a previously-uncategorized upload into its week folder once a documentDate becomes known, instead of skipping it as a duplicate", async () => {
+    firestoreGetMock.mockResolvedValue({
+      data: () => ({
+        googleDrive: {
+          refreshToken: "refresh-456",
+          folderId: "folder-abc",
+          uncategorizedFolderId: "uncategorized-folder-id",
+          uploadedDocuments: {
+            [Buffer.from("documents/test-uid/report.pdf").toString("base64url")]: {
+              fileId: "already-uploaded-file-id",
+              categorized: false,
+            },
+          },
+        },
+      }),
+    });
+    fetchMock.mockImplementation((url: string, init?: { method?: string }) => {
+      if (url === "https://oauth2.googleapis.com/token") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ access_token: "access-789", expires_in: 3600 }),
+        });
+      }
+      if (url.startsWith("https://www.googleapis.com/drive/v3/files?q=")) {
+        return Promise.resolve({ ok: true, json: async () => ({ files: [] }) });
+      }
+      if (url === "https://www.googleapis.com/drive/v3/files" && init?.method === "POST") {
+        return Promise.resolve({ ok: true, json: async () => ({ id: "week-folder-id" }) });
+      }
+      if (
+        url.startsWith("https://www.googleapis.com/drive/v3/files/already-uploaded-file-id") &&
+        init?.method === "PATCH"
+      ) {
+        expect(url).toContain("addParents=week-folder-id");
+        expect(url).toContain("removeParents=uncategorized-folder-id");
+        return Promise.resolve({ ok: true, json: async () => ({ id: "already-uploaded-file-id" }) });
+      }
+      throw new Error(`Unexpected fetch call: ${url} ${init?.method}`);
+    });
+
+    const result = await saveDocumentToDrive("test-uid", {
+      bytes: Buffer.from("fake-pdf-bytes"),
+      filename: "report.pdf",
+      mimeType: "application/pdf",
+      sourceId: "documents/test-uid/report.pdf",
+      documentDate: "2026-01-31",
+    });
+
+    expect(result.status).toBe(200);
+    if (!("json" in result)) {
+      throw new Error("Expected a json result");
+    }
+    expect(result.json).toMatchObject({ fileId: "already-uploaded-file-id", moved: true });
+    // No re-upload — the existing file was moved, not duplicated.
+    expect(
+      fetchMock.mock.calls.some(([url]) => url === "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart")
+    ).toBe(false);
+    expect(firestoreSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        googleDrive: expect.objectContaining({
+          uploadedDocuments: {
+            [Buffer.from("documents/test-uid/report.pdf").toString("base64url")]: {
+              fileId: "already-uploaded-file-id",
+              categorized: true,
+            },
+          },
+        }),
+      }),
+      { merge: true }
+    );
   });
 });
 

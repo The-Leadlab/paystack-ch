@@ -369,20 +369,9 @@ export function RestaurantDashboard() {
           const { downloadURL, storagePath } = await uploadDocument(fileRaw, user.uid, fileName);
           await updateDocumentData(createdId, { fileUrl: downloadURL, storagePath });
           console.log('✅ File stored for processing:', createdId);
-          void (async () => {
-            try {
-              const { backupDocumentToGoogleDrive } = await import('../lib/googleDriveClient');
-              await backupDocumentToGoogleDrive({
-                storagePath,
-                fileUrl: downloadURL,
-                filename: fileName,
-                mimeType: fileRaw.type || 'application/octet-stream',
-              });
-              console.log('☁️ Backed up to Google Drive:', createdId);
-            } catch (driveErr) {
-              console.warn('Google Drive backup skipped:', driveErr);
-            }
-          })();
+          // Google Drive backup happens once AI processing concludes (see handleDocumentData /
+          // DocumentProcessor's failure path), so the file can be filed directly into its correct
+          // week folder in one upload instead of uploaded now and moved later.
         } catch (uploadError: any) {
           console.error('⚠️ Storage upload failed:', uploadError);
           if (uploadError?.code === 'storage/unauthorized') {
@@ -478,17 +467,25 @@ export function RestaurantDashboard() {
     const amount = data.amountInCHF || data.totalAmount || 0;
     const docType = data.documentType;
 
-    // Now that the document's own date is known (only available after AI scanning), file the
-    // already-backed-up Drive copy into its "dd-dd/mm/yyyy" week subfolder. No-ops server-side
-    // if the document was never backed up to Drive (not connected, or the backup itself failed).
-    const storagePathForDrive = documents.find((d) => d.id === documentId)?.storagePath;
-    if (storagePathForDrive) {
+    // AI processing has now concluded successfully and the document's own date is known — back
+    // up to Google Drive directly into that week's subfolder in a single upload.
+    const docForDrive = documents.find((d) => d.id === documentId);
+    if (docForDrive?.storagePath && docForDrive?.fileUrl) {
+      const driveStoragePath = docForDrive.storagePath;
+      const driveFileUrl = docForDrive.fileUrl;
       void (async () => {
         try {
-          const { fileDocumentInDriveByWeek } = await import('../lib/googleDriveClient');
-          await fileDocumentInDriveByWeek({ sourceId: storagePathForDrive, documentDate: date });
+          const { backupDocumentToGoogleDrive } = await import('../lib/googleDriveClient');
+          const { guessMimeType } = await import('../lib/documentStorageForAi');
+          await backupDocumentToGoogleDrive({
+            storagePath: driveStoragePath,
+            fileUrl: driveFileUrl,
+            filename: fileName,
+            mimeType: guessMimeType(fileName, fileRaw?.type || ''),
+            documentDate: data.date || undefined,
+          });
         } catch (driveErr) {
-          console.warn('Google Drive weekly filing skipped:', driveErr);
+          console.warn('Google Drive backup skipped:', driveErr);
         }
       })();
     }

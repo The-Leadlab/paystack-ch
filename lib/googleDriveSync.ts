@@ -224,6 +224,7 @@ export type DriveSaveDocumentRequest = {
   fileUrl?: unknown;
   filename?: unknown;
   mimeType?: unknown;
+  documentDate?: unknown;
 };
 
 /** Platform → Drive: fetch from Firebase Storage and upload to the user's Drive folder. */
@@ -247,6 +248,7 @@ export async function runDriveSaveDocument(
     const fileUrl = typeof body.fileUrl === "string" ? body.fileUrl.trim() : "";
     const filename = typeof body.filename === "string" ? body.filename.trim() : "";
     const mimeTypeHint = typeof body.mimeType === "string" ? body.mimeType.trim() : "";
+    const documentDate = typeof body.documentDate === "string" ? body.documentDate.trim() : "";
 
     if (!storagePath || !fileUrl || !filename) {
       return { status: 400, json: { error: "storagePath, fileUrl, and filename are required" } };
@@ -263,6 +265,7 @@ export async function runDriveSaveDocument(
       filename,
       mimeType: mimeTypeHint || fetchedMime || "application/octet-stream",
       sourceId: storagePath,
+      ...(documentDate ? { documentDate } : {}),
     };
 
     const out = await saveDocumentToDrive(uid, file);
