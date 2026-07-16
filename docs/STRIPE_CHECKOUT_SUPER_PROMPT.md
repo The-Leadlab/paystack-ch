@@ -115,9 +115,9 @@ Checkout response includes `stripeMode: "live" | "test"` and `sessionId` for Das
 - [ ] Use Stripe test card `4242 4242 4242 4242` — **not** a real card
 - [ ] `STRIPE_TEST_SECRET_KEY` + `STRIPE_TEST_PRICE_*`
 
-### Joshua plan test (no Stripe)
+### Joshua / Ali (full bypass)
 
-- [ ] `joshua@the-leadlab.com` → plan picker bypass — see `docs/PLAN_TEST_SUPER_PROMPT.md`
+- [ ] `joshua@the-leadlab.com` / `ali@the-leadlab.com` → unlimited entitlements, no plan-test banner; Admin panel link in `/app` — see `docs/PLAN_TEST_SUPER_PROMPT.md`
 
 ---
 

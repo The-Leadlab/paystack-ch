@@ -36,11 +36,18 @@ export type AdminUserDetail = AdminUserSummary & {
   phoneNumber: string | null;
   stripeInvoices: Array<{
     id: string;
+    number: string | null;
     status: string | null;
+    /** Display amount in cents: paid if > 0, else total, else amount due. */
     amountPaid: number;
+    amountDue: number;
+    total: number;
     currency: string;
     created: string;
+    periodStart: string | null;
+    periodEnd: string | null;
     hostedInvoiceUrl: string | null;
+    invoicePdf: string | null;
     paymentIntentId: string | null;
   }>;
   stripeSubscription: {
@@ -311,21 +318,35 @@ export async function getAdminUserDetail(uid: string): Promise<AdminUserDetail> 
   if (customerId && resolvedStripe) {
     const invoices = await resolvedStripe.invoices.list({
       customer: customerId,
-      limit: 12,
+      limit: 24,
     });
-    stripeInvoices = invoices.data.map((inv) => ({
-      id: inv.id,
-      status: inv.status,
-      amountPaid: inv.amount_paid,
-      currency: inv.currency,
-      created: new Date(inv.created * 1000).toISOString(),
-      hostedInvoiceUrl: inv.hosted_invoice_url ?? null,
-      paymentIntentId:
-        typeof inv.payment_intent === "string"
-          ? inv.payment_intent
-          : inv.payment_intent?.id ?? null,
-    }));
-    const paid = invoices.data.find((inv) => inv.status === "paid" && inv.amount_paid > 0);
+    stripeInvoices = invoices.data.map((inv) => {
+      const amountPaid = inv.amount_paid ?? 0;
+      const amountDue = inv.amount_due ?? 0;
+      const total = inv.total ?? 0;
+      const displayAmount = amountPaid > 0 ? amountPaid : total > 0 ? total : amountDue;
+      return {
+        id: inv.id,
+        number: inv.number ?? null,
+        status: inv.status,
+        amountPaid: displayAmount,
+        amountDue,
+        total,
+        currency: inv.currency || "chf",
+        created: new Date(inv.created * 1000).toISOString(),
+        periodStart: inv.period_start
+          ? new Date(inv.period_start * 1000).toISOString()
+          : null,
+        periodEnd: inv.period_end ? new Date(inv.period_end * 1000).toISOString() : null,
+        hostedInvoiceUrl: inv.hosted_invoice_url ?? null,
+        invoicePdf: inv.invoice_pdf ?? null,
+        paymentIntentId:
+          typeof inv.payment_intent === "string"
+            ? inv.payment_intent
+            : inv.payment_intent?.id ?? null,
+      };
+    });
+    const paid = invoices.data.find((inv) => inv.status === "paid" && (inv.amount_paid ?? 0) > 0);
     if (paid) {
       lastPaymentAt = new Date((paid.status_transitions?.paid_at ?? paid.created) * 1000).toISOString();
     }

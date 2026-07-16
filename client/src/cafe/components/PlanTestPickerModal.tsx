@@ -122,14 +122,14 @@ export function PlanTestBanner({ onSwitch }: { onSwitch: () => void }) {
       : String(entitlements.maxDocumentsPerMonth);
 
   return (
-    <div className="bg-cdlp-gold/10 border-b border-cdlp-gold/30 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-      <span className="text-cdlp-gold font-bold uppercase tracking-wide">
+    <div className="w-full max-w-full shrink-0 bg-cdlp-gold/10 border-b border-cdlp-gold/30 px-3 sm:px-4 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[11px] overflow-hidden">
+      <span className="text-cdlp-gold font-bold uppercase tracking-wide leading-snug break-words min-w-0">
         {t("planTestBanner").replace("{plan}", planName).replace("{docs}", docCap)}
       </span>
       <button
         type="button"
         onClick={onSwitch}
-        className="text-cdlp-gold underline font-black uppercase text-[10px] hover:text-white"
+        className="text-cdlp-gold underline font-black uppercase text-[10px] hover:text-white shrink-0 self-start sm:self-auto min-h-9 px-1"
       >
         {t("planTestSwitch")}
       </button>

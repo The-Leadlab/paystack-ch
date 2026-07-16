@@ -1,6 +1,6 @@
 ﻿import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'wouter';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings, Wallet, FilePenLine, Mail } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings, Wallet, FilePenLine, Mail, Shield } from 'lucide-react';
 import { BillingPlanPanel } from './BillingPlanPanel';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
@@ -17,6 +17,7 @@ import { BusinessSidebarNav, type BusinessTab } from './BusinessSidebarNav';
 import '../businessApp.css';
 import { UpgradePromptModal } from './UpgradePromptModal';
 import { PlanTestBanner, PlanTestPickerModal } from './PlanTestPickerModal';
+import { isAdminAppAccessUser } from '../lib/subscriptionBypass';
 import { getSessionDisplayName } from '../lib/formatLocalDateTime';
 import { POSManager } from './POSManager';
 import { InvoiceMakerPanel } from './InvoiceMakerPanel';
@@ -724,7 +725,7 @@ export function RestaurantDashboard() {
   }));
 
   return (
-    <div className="ba-v3 min-h-[100dvh] min-h-screen bg-cdlp-dark flex flex-col md:flex-row touch-manipulation overscroll-y-contain">
+    <div className="ba-v3 min-h-[100dvh] min-h-screen bg-cdlp-dark flex flex-col touch-manipulation overscroll-y-contain">
       {showUpgradePrompt && entitlements.maxDocumentsPerMonth != null && (
         <UpgradePromptModal
           documentCap={entitlements.maxDocumentsPerMonth}
@@ -742,6 +743,7 @@ export function RestaurantDashboard() {
           />
         </>
       ) : null}
+      <div className="flex-1 flex flex-col md:flex-row min-h-0 min-w-0">
       {/* Mobile Header */}
       <div className="md:hidden bg-cdlp-black border-b border-cdlp-border px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -966,6 +968,15 @@ export function RestaurantDashboard() {
 
         {/* Pinned bottom: billing + logout (sessions scroll above) */}
         <div className="ba-sidebar-foot shrink-0 border-t border-cdlp-border bg-cdlp-black space-y-1.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
+          {isAdminAppAccessUser(user) ? (
+            <Link
+              href="/admin"
+              className="ba-sidebar-link-btn ba-sidebar-link-btn--accent"
+            >
+              <Shield className="w-3 h-3 shrink-0" />
+              {t("appAdminPanelLink")}
+            </Link>
+          ) : null}
           <Link
             href="/app/personal/overview"
             className="ba-sidebar-link-btn ba-sidebar-link-btn--accent"
@@ -1319,6 +1330,7 @@ export function RestaurantDashboard() {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }

@@ -3,12 +3,19 @@ import type { User } from "firebase/auth";
 const BUILT_IN_BYPASS_EMAILS = [
   "admin@test.com",
   "ali@the-leadlab.com",
+  "joshua@the-leadlab.com",
   "kara@the-leadlab.com",
   "kldavies2016@gmail.com",
 ];
 
-/** Team accounts that skip Stripe paywall but must pick a plan to simulate real entitlements. */
-const BUILT_IN_PLAN_TEST_EMAILS = ["joshua@the-leadlab.com"];
+/**
+ * Plan-test sandbox emails (must pick Starter/Business/Unlimited without Stripe).
+ * Joshua is full bypass with unlimited entitlements — not in this list.
+ */
+const BUILT_IN_PLAN_TEST_EMAILS: string[] = [];
+
+/** Ops who see an Admin panel shortcut inside `/app`. */
+const BUILT_IN_ADMIN_APP_ACCESS_EMAILS = ["joshua@the-leadlab.com", "ali@the-leadlab.com"];
 
 export function planTestEmails(): string[] {
   const configured = String(import.meta.env.VITE_PLAN_TEST_EMAILS || "")
@@ -25,6 +32,23 @@ export function isPlanTestEmail(email: string | null | undefined): boolean {
 
 export function isPlanTestUser(user: User | null): boolean {
   return isPlanTestEmail(user?.email);
+}
+
+export function adminAppAccessEmails(): string[] {
+  const configured = String(import.meta.env.VITE_ADMIN_APP_ACCESS_EMAILS || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return Array.from(new Set([...BUILT_IN_ADMIN_APP_ACCESS_EMAILS, ...configured]));
+}
+
+export function isAdminAppAccessEmail(email: string | null | undefined): boolean {
+  const normalized = email?.toLowerCase().trim();
+  return Boolean(normalized && adminAppAccessEmails().includes(normalized));
+}
+
+export function isAdminAppAccessUser(user: User | null): boolean {
+  return isAdminAppAccessEmail(user?.email);
 }
 
 export function subscriptionBypassEmails(): string[] {

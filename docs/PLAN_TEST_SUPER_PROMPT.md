@@ -1,29 +1,40 @@
 # Plan test sandbox — Super Prompt
 
-Let **Joshua** (and other QA emails) sign in to Paystack.ch and **switch between Starter, Business, and Unlimited** without Stripe checkout, while enforcing **real plan entitlements** (document cap, sessions, modules).
+Let QA emails sign in to Paystack.ch and **switch between Starter, Business, and Unlimited** without Stripe checkout, while enforcing **real plan entitlements** (document cap, sessions, modules).
 
 ---
 
-## Account: joshua@the-leadlab.com
+## Joshua & Ali (not plan-test)
 
-| Item | Detail |
-|------|--------|
-| **Sign in** | https://www.paystack.ch/sign-in — Google or email/password |
-| **Account creation** | Not done in code — use Firebase Console or first Google sign-in if the account does not exist yet |
-| **Paywall** | Skipped (team bypass) |
-| **Email verification** | Skipped (team bypass) |
-| **Entitlements** | **Not** unlimited — driven by selected `planId` on `users/{uid}` |
+| Email | Role |
+|-------|------|
+| `joshua@the-leadlab.com` | Full subscription bypass → **unlimited** entitlements. No plan-test banner. **Admin panel** shortcut in `/app` sidebar. |
+| `ali@the-leadlab.com` | Same: full bypass + **Admin panel** shortcut in `/app`. |
 
-Joshua is in **plan test mode**, not unrestricted bypass. Ali/Kara remain full bypass (unlimited entitlements).
+Configured in `client/src/cafe/lib/subscriptionBypass.ts` (`BUILT_IN_BYPASS_EMAILS`, `BUILT_IN_ADMIN_APP_ACCESS_EMAILS`). Optional env: `VITE_ADMIN_APP_ACCESS_EMAILS`.
+
+If Joshua still sees “Mode test” in production, remove him from `VITE_PLAN_TEST_EMAILS` in Vercel and clear `planTestMode` on his Firestore `users/{uid}` doc (banner is email-list driven; Firestore flag is admin metadata only).
 
 ---
 
-## UX flow
+## Plan-test accounts (optional)
 
-1. Joshua signs in → redirected to `/app`
+Add emails via:
+
+```env
+VITE_PLAN_TEST_EMAILS=qa@example.com
+```
+
+Built-in list is empty by default (Joshua was removed).
+
+---
+
+## UX flow (plan-test emails only)
+
+1. Sign in → redirected to `/app`
 2. If no `planId` on Firestore user doc → **modal**: choose Starter / Business / Unlimited
 3. After selection → dashboard runs with that plan’s limits
-4. **Gold banner** at top: current plan + **Switch plan**
+4. **Banner** at top (full width, stacks on phone): current plan + **Switch plan**
 5. **Billing tab** → same three buttons to change plan instantly
 
 ---
@@ -32,14 +43,14 @@ Joshua is in **plan test mode**, not unrestricted bypass. Ali/Kara remain full b
 
 | Piece | Location |
 |-------|----------|
-| Plan test email list | `client/src/cafe/lib/subscriptionBypass.ts` — `isPlanTestUser()` |
+| Plan test / bypass / admin app access | `client/src/cafe/lib/subscriptionBypass.ts` |
 | Apply plan (Firestore) | `client/src/cafe/lib/planTestSelection.ts` |
 | Entitlements logic | `client/src/cafe/context/SubscriptionContext.tsx` |
 | Modal + banner | `client/src/cafe/components/PlanTestPickerModal.tsx` |
 | Dashboard wiring | `RestaurantDashboard.tsx` |
 | Billing switches | `BillingPlanPanel.tsx` |
 
-Firestore write (client, merge):
+Firestore write (client, merge) for plan-test users:
 
 ```json
 {
@@ -51,30 +62,8 @@ Firestore write (client, merge):
 
 ---
 
-## Env (optional)
-
-```env
-VITE_PLAN_TEST_EMAILS=joshua@the-leadlab.com,other@example.com
-```
-
-Built-in default includes `joshua@the-leadlab.com` even without env.
-
----
-
 ## QA checklist
 
-- [ ] Sign in as Joshua → plan picker appears
-- [ ] Select **Starter** → max 50 docs/mo, 2 sessions, no Revenue tab
-- [ ] Switch to **Business** → 120 docs, advanced modules
-- [ ] Switch to **Unlimited** → no doc cap
-- [ ] Document usage counter still account-wide (payment-plan-fix)
-- [ ] At Starter cap → upgrade modal still appears
-
----
-
-## Verify account exists (Firebase Console)
-
-1. Firebase → Authentication → Users → search `joshua@the-leadlab.com`
-2. If missing: **Add user** with that email or have Joshua use **Continue with Google** on `/sign-in`
-
-No server-side account creation in this repo without Admin SDK credentials.
+- [ ] Joshua / Ali: no plan-test banner; unlimited docs; **Admin panel** in `/app` sidebar → `/admin`
+- [ ] Plan-test email: picker appears; Starter / Business / Unlimited caps apply
+- [ ] Banner does not collapse into the left sidebar column on desktop or overflow on phone

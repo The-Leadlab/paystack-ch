@@ -19,6 +19,7 @@ Voice QA (Joshua, 2026-07-15) on Amy Barker’s account: missing Stripe customer
 |------|----------|
 | Phone save | Normalize CH local → `+41…` via `lib/phoneE164.ts` before `auth.updateUser` |
 | Admin detail | If no customer ID, **search Stripe by email** (live then test); show invoices + subscription |
+| Invoices tab | Invoice #, period, display amount (paid / total / due), PDF or hosted URL |
 | Repair | Billing / Invoices: **Link Stripe by email** → writes customer + subscription to Firestore |
 | Billing panel | Start date, period start/end, trial end, last payment, late badge |
 | Mobile header | Mark-only logo (`showWordmark={false}`); title on its own row |

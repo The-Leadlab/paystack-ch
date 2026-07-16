@@ -24,11 +24,17 @@ export type AdminUserDetail = AdminUserSummary & {
   phoneNumber: string | null;
   stripeInvoices: Array<{
     id: string;
+    number: string | null;
     status: string | null;
     amountPaid: number;
+    amountDue: number;
+    total: number;
     currency: string;
     created: string;
+    periodStart: string | null;
+    periodEnd: string | null;
     hostedInvoiceUrl: string | null;
+    invoicePdf: string | null;
     paymentIntentId: string | null;
   }>;
   stripeSubscription: {

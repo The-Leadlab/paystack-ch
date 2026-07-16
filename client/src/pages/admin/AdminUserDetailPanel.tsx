@@ -614,22 +614,37 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
               <div className={`${adminPanelCardClass} text-sm text-muted-foreground`}>{t("adminUserNoInvoices")}</div>
             ) : (
               <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
-                {user.stripeInvoices.map((inv) => (
+                {user.stripeInvoices.map((inv) => {
+                  const viewUrl = inv.hostedInvoiceUrl || inv.invoicePdf;
+                  return (
                   <div key={inv.id} className="px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="min-w-0 space-y-1">
-                      <div className="font-mono text-sm text-foreground truncate">{inv.id}</div>
+                      <div className="font-medium text-foreground truncate">
+                        {inv.number ? `#${inv.number}` : inv.id}
+                      </div>
+                      <div className="font-mono text-[10px] text-muted-foreground truncate">{inv.id}</div>
                       <div className="text-xs text-muted-foreground">{formatDateTime(inv.created)}</div>
+                      {inv.periodStart || inv.periodEnd ? (
+                        <div className="text-[10px] text-muted-foreground">
+                          {t("adminUserInvoicePeriod")}: {formatDateTime(inv.periodStart)} → {formatDateTime(inv.periodEnd)}
+                        </div>
+                      ) : null}
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
                         <div className="font-medium text-foreground">{formatMoney(inv.amountPaid, inv.currency)}</div>
+                        {inv.amountDue > 0 && inv.amountDue !== inv.amountPaid ? (
+                          <div className="text-[10px] text-muted-foreground">
+                            {t("adminUserInvoiceDue")}: {formatMoney(inv.amountDue, inv.currency)}
+                          </div>
+                        ) : null}
                         <span className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-medium mt-1 ${subscriptionStatusClass(inv.status === "paid" ? "active" : inv.status)}`}>
-                          {inv.status}
+                          {inv.status ?? "—"}
                         </span>
                       </div>
-                      {inv.hostedInvoiceUrl ? (
+                      {viewUrl ? (
                         <Button type="button" variant="outline" size="sm" className={adminOutlineBtnClass} asChild>
-                          <a href={inv.hostedInvoiceUrl} target="_blank" rel="noopener noreferrer">
+                          <a href={viewUrl} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="size-3.5" />
                             {t("adminUserViewInvoice")}
                           </a>
@@ -637,7 +652,8 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                       ) : null}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </TabsContent>
