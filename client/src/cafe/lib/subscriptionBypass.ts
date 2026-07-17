@@ -17,6 +17,14 @@ const BUILT_IN_PLAN_TEST_EMAILS: string[] = [];
 /** Ops who see an Admin panel shortcut inside `/app`. */
 const BUILT_IN_ADMIN_APP_ACCESS_EMAILS = ["joshua@the-leadlab.com", "ali@the-leadlab.com"];
 
+/** Team who can open Personal finances from `/app` (hidden for everyone else). */
+const BUILT_IN_PERSONAL_FINANCES_EMAILS = [
+  "ali@the-leadlab.com",
+  "joshua@the-leadlab.com",
+  "kara@the-leadlab.com",
+  "william@the-leadlab.com",
+];
+
 export function planTestEmails(): string[] {
   const configured = String(import.meta.env.VITE_PLAN_TEST_EMAILS || "")
     .split(",")
@@ -49,6 +57,23 @@ export function isAdminAppAccessEmail(email: string | null | undefined): boolean
 
 export function isAdminAppAccessUser(user: User | null): boolean {
   return isAdminAppAccessEmail(user?.email);
+}
+
+export function personalFinancesAccessEmails(): string[] {
+  const configured = String(import.meta.env.VITE_PERSONAL_FINANCES_EMAILS || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return Array.from(new Set([...BUILT_IN_PERSONAL_FINANCES_EMAILS, ...configured]));
+}
+
+export function isPersonalFinancesAccessEmail(email: string | null | undefined): boolean {
+  const normalized = email?.toLowerCase().trim();
+  return Boolean(normalized && personalFinancesAccessEmails().includes(normalized));
+}
+
+export function isPersonalFinancesAccessUser(user: User | null): boolean {
+  return isPersonalFinancesAccessEmail(user?.email);
 }
 
 export function subscriptionBypassEmails(): string[] {

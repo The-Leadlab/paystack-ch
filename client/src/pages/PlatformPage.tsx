@@ -12,7 +12,10 @@ import { DashboardLoadingShell } from "@/cafe/components/DashboardLoadingShell";
 import { SubscriptionProvider } from "@/cafe/context/SubscriptionContext";
 import { SubscriptionGate } from "@/cafe/components/SubscriptionGate";
 import { firebaseReady } from "@/cafe/lib/firebase";
-import { isSubscriptionOrVerificationBypassUser } from "@/cafe/lib/subscriptionBypass";
+import {
+  isPersonalFinancesAccessUser,
+  isSubscriptionOrVerificationBypassUser,
+} from "@/cafe/lib/subscriptionBypass";
 import { isSelfServePlan, parsePaystackPlanId, SELECTED_PLAN_STORAGE_KEY } from "@shared/planCatalog";
 
 const RestaurantDashboard = lazy(() =>
@@ -63,6 +66,10 @@ function PlatformContent() {
   const isPasswordUser = user.providerData?.some((p) => p.providerId === "password");
   if (isPasswordUser && !user.emailVerified && !bypassOps) {
     return <EmailVerificationGate />;
+  }
+
+  if (personal && !isPersonalFinancesAccessUser(user)) {
+    return <Redirect to="/app" />;
   }
 
   if (location === "/app/personal") {

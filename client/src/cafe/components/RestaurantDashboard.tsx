@@ -17,7 +17,7 @@ import { BusinessSidebarNav, type BusinessTab } from './BusinessSidebarNav';
 import '../businessApp.css';
 import { UpgradePromptModal } from './UpgradePromptModal';
 import { PlanTestBanner, PlanTestPickerModal } from './PlanTestPickerModal';
-import { isAdminAppAccessUser } from '../lib/subscriptionBypass';
+import { isAdminAppAccessUser, isPersonalFinancesAccessUser } from '../lib/subscriptionBypass';
 import { getSessionDisplayName } from '../lib/formatLocalDateTime';
 import { POSManager } from './POSManager';
 import { InvoiceMakerPanel } from './InvoiceMakerPanel';
@@ -992,13 +992,15 @@ export function RestaurantDashboard() {
               {t("appAdminPanelLink")}
             </Link>
           ) : null}
-          <Link
-            href="/app/personal/overview"
-            className="ba-sidebar-link-btn ba-sidebar-link-btn--accent"
-          >
-            <Wallet className="w-3 h-3 shrink-0" />
-            Personal finances
-          </Link>
+          {isPersonalFinancesAccessUser(user) ? (
+            <Link
+              href="/app/personal/overview"
+              className="ba-sidebar-link-btn ba-sidebar-link-btn--accent"
+            >
+              <Wallet className="w-3 h-3 shrink-0" />
+              Personal finances
+            </Link>
+          ) : null}
           <button
             type="button"
             onClick={() => void signOut()}
