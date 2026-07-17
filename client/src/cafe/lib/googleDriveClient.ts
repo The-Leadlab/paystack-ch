@@ -37,6 +37,26 @@ export async function connectGoogleDrive(): Promise<void> {
   window.location.href = json.redirectUrl;
 }
 
+/** Best-effort: fire-and-forget from callers — see saveDocumentToDrive in lib/googleServices.ts
+ * for why a failure here must never surface as an upload/scan error to the user. */
+export async function saveUploadedDocumentToDrive(params: {
+  storagePath: string;
+  fileUrl: string;
+  filename: string;
+  mimeType: string;
+}): Promise<void> {
+  const res = await fetch(apiUrl("/api/drive/save"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: await authHeader() },
+    body: JSON.stringify(params),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json?.error || `Drive save failed (HTTP ${res.status})`);
+  }
+}
+
 export async function disconnectGoogleDriveAccount(): Promise<void> {
   const res = await fetch(apiUrl("/api/oauth/google/disconnect"), {
     method: "POST",

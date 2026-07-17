@@ -19,6 +19,7 @@ import { UpgradePromptModal } from './UpgradePromptModal';
 import { PlanTestBanner, PlanTestPickerModal } from './PlanTestPickerModal';
 import { isAdminAppAccessUser } from '../lib/subscriptionBypass';
 import { getSessionDisplayName } from '../lib/formatLocalDateTime';
+import { saveUploadedDocumentToDrive } from '../lib/googleDriveClient';
 import { POSManager } from './POSManager';
 import { InvoiceMakerPanel } from './InvoiceMakerPanel';
 import type { ProcessedDocument, POSReading } from '../types';
@@ -373,20 +374,17 @@ export function RestaurantDashboard() {
           const { downloadURL, storagePath } = await uploadDocument(fileRaw, user.uid, fileName);
           await updateDocumentData(createdId, { fileUrl: downloadURL, storagePath });
           console.log('✅ File stored for processing:', createdId);
-          void (async () => {
-            try {
-              const { backupDocumentToGoogleDrive } = await import('../lib/googleDriveClient');
-              await backupDocumentToGoogleDrive({
-                storagePath,
-                fileUrl: downloadURL,
-                filename: fileName,
-                mimeType: fileRaw.type || 'application/octet-stream',
-              });
-              console.log('☁️ Backed up to Google Drive:', createdId);
-            } catch (driveErr) {
-              console.warn('Google Drive backup skipped:', driveErr);
-            }
-          })();
+
+          // Fire-and-forget: save to the user's connected Google Drive, independent of whether
+          // AI processing ever runs or succeeds. A failure here must never block queuing the doc.
+          void saveUploadedDocumentToDrive({
+            storagePath,
+            fileUrl: downloadURL,
+            filename: fileName,
+            mimeType: fileRaw.type || 'application/octet-stream',
+          }).catch((driveError) => {
+            console.warn('⚠️ Could not save document to Google Drive:', driveError);
+          });
         } catch (uploadError: any) {
           console.error('⚠️ Storage upload failed:', uploadError);
           if (uploadError?.code === 'storage/unauthorized') {

@@ -60,16 +60,16 @@
       "includeFiles": "{lib,shared}/**"
     },
     "api/oauth/google/status.ts": {
-      "includeFiles": "lib/**"
+      "includeFiles": "{lib,shared}/**"
     },
     "api/oauth/google/start.ts": {
-      "includeFiles": "lib/**"
+      "includeFiles": "{lib,shared}/**"
     },
     "api/oauth/google/callback.ts": {
-      "includeFiles": "lib/**"
+      "includeFiles": "{lib,shared}/**"
     },
     "api/oauth/google/disconnect.ts": {
-      "includeFiles": "lib/**"
+      "includeFiles": "{lib,shared}/**"
     },
     "api/drive/save-document.ts": {
       "maxDuration": 60,
@@ -78,6 +78,10 @@
     "api/drive/sync-from-drive.ts": {
       "maxDuration": 60,
       "includeFiles": "lib/**"
+    },
+    "api/drive/save.ts": {
+      "maxDuration": 60,
+      "includeFiles": "{lib,shared}/**"
     },
     "api/reports/email.ts": {
       "maxDuration": 30,
