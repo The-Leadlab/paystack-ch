@@ -163,8 +163,12 @@ describe("startGoogleDriveOAuth", () => {
 describe("completeGoogleDriveOAuth (callback)", () => {
   const fetchMock = vi.fn();
 
-  function mockGoogleFetchRoutes(overrides: { tokenBody?: object; folderBody?: object } = {}) {
-    fetchMock.mockImplementation((url: string) => {
+  function mockGoogleFetchRoutes(overrides: {
+    tokenBody?: object;
+    folderBody?: object;
+    existingFolderExists?: boolean;
+  } = {}) {
+    fetchMock.mockImplementation((url: string, init?: { method?: string }) => {
       if (url === "https://oauth2.googleapis.com/token") {
         return Promise.resolve({
           ok: true,
@@ -176,7 +180,22 @@ describe("completeGoogleDriveOAuth (callback)", () => {
           }),
         });
       }
-      if (url === "https://www.googleapis.com/drive/v3/files") {
+      if (
+        typeof url === "string" &&
+        url.startsWith("https://www.googleapis.com/drive/v3/files/") &&
+        url.includes("fields=")
+      ) {
+        const exists = overrides.existingFolderExists !== false;
+        if (!exists) {
+          return Promise.resolve({ ok: false, status: 404, json: async () => ({ error: { message: "File not found" } }) });
+        }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ id: "existing-folder-id", trashed: false }),
+        });
+      }
+      if (url === "https://www.googleapis.com/drive/v3/files" && (!init?.method || init.method === "POST")) {
         return Promise.resolve({
           ok: true,
           json: async () => ({ id: "folder-abc", ...overrides.folderBody }),
@@ -250,7 +269,7 @@ describe("completeGoogleDriveOAuth (callback)", () => {
   });
 
   it("reconnecting an already-connected user overwrites the stored token without creating a duplicate folder", async () => {
-    mockGoogleFetchRoutes();
+    mockGoogleFetchRoutes({ existingFolderExists: true });
     firestoreGetMock.mockResolvedValueOnce({
       data: () => ({ googleDrive: { folderId: "existing-folder-id", refreshToken: "old-refresh" } }),
     });
@@ -261,12 +280,37 @@ describe("completeGoogleDriveOAuth (callback)", () => {
     expect(result.status).toBe(200);
     expect(fetchMock).not.toHaveBeenCalledWith(
       "https://www.googleapis.com/drive/v3/files",
-      expect.anything()
+      expect.objectContaining({ method: "POST" })
     );
     expect(firestoreSetMock).toHaveBeenCalledWith(
       expect.objectContaining({
         googleDrive: expect.objectContaining({
           folderId: "existing-folder-id",
+          refreshToken: "refresh-456",
+        }),
+      }),
+      { merge: true }
+    );
+  });
+
+  it("reconnecting recreates the root folder when the cached Drive folder was deleted", async () => {
+    mockGoogleFetchRoutes({ existingFolderExists: false });
+    firestoreGetMock.mockResolvedValueOnce({
+      data: () => ({ googleDrive: { folderId: "deleted-folder-id", refreshToken: "old-refresh" } }),
+    });
+    const state = createOAuthState("test-uid");
+
+    const result = await completeGoogleDriveOAuth("valid-code", state);
+
+    expect(result.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://www.googleapis.com/drive/v3/files",
+      expect.objectContaining({ method: "POST" })
+    );
+    expect(firestoreSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        googleDrive: expect.objectContaining({
+          folderId: "folder-abc",
           refreshToken: "refresh-456",
         }),
       }),
@@ -423,6 +467,7 @@ describe("saveDocumentToDrive (upload hook)", () => {
    * resolution itself. Returns "uncategorized-folder-id" as the folder to upload into. */
   function mockGoogleFetchRoutesForUpload(overrides: {
     uploadResponse?: (init: { headers: Record<string, string>; body: Buffer }) => Promise<unknown> | unknown;
+    rootFolderExists?: boolean;
   } = {}) {
     fetchMock.mockImplementation((url: string, init?: { method?: string; body?: unknown }) => {
       if (url === "https://oauth2.googleapis.com/token") {
@@ -431,10 +476,33 @@ describe("saveDocumentToDrive (upload hook)", () => {
           json: async () => ({ access_token: "access-789", expires_in: 3600 }),
         });
       }
+      if (
+        typeof url === "string" &&
+        url.startsWith("https://www.googleapis.com/drive/v3/files/") &&
+        url.includes("fields=")
+      ) {
+        const exists = overrides.rootFolderExists !== false;
+        if (!exists) {
+          return Promise.resolve({
+            ok: false,
+            status: 404,
+            json: async () => ({ error: { message: "File not found" } }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ id: "folder-abc", trashed: false }),
+        });
+      }
       if (url.startsWith("https://www.googleapis.com/drive/v3/files?q=")) {
         return Promise.resolve({ ok: true, json: async () => ({ files: [] }) });
       }
       if (url === "https://www.googleapis.com/drive/v3/files" && init?.method === "POST") {
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        if (body.name === "Paystack Documents") {
+          return Promise.resolve({ ok: true, json: async () => ({ id: "folder-abc-new" }) });
+        }
         return Promise.resolve({ ok: true, json: async () => ({ id: "uncategorized-folder-id" }) });
       }
       if (url === "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart") {
@@ -446,6 +514,30 @@ describe("saveDocumentToDrive (upload hook)", () => {
       throw new Error(`Unexpected fetch call: ${url}`);
     });
   }
+
+  it("recreates the root Drive folder when the cached folder was deleted, then uploads", async () => {
+    firestoreGetMock.mockResolvedValue({
+      data: () => ({ googleDrive: { refreshToken: "refresh-456", folderId: "deleted-folder-id" } }),
+    });
+    mockGoogleFetchRoutesForUpload({ rootFolderExists: false });
+
+    const result = await saveDocumentToDrive("test-uid", {
+      bytes: Buffer.from("fake-pdf-bytes"),
+      filename: "report.pdf",
+      mimeType: "application/pdf",
+      sourceId: "documents/test-uid/report.pdf",
+    });
+
+    expect(result.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://www.googleapis.com/drive/v3/files",
+      expect.objectContaining({ method: "POST" })
+    );
+    const uploadCall = fetchMock.mock.calls.find(
+      ([url]) => url === "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
+    );
+    expect(uploadCall).toBeDefined();
+  });
 
   it("uploads the document into the user's Drive folder with matching bytes and filename", async () => {
     firestoreGetMock.mockResolvedValue({
@@ -483,6 +575,17 @@ describe("saveDocumentToDrive (upload hook)", () => {
         return Promise.resolve({
           ok: true,
           json: async () => ({ access_token: "access-789", expires_in: 3600 }),
+        });
+      }
+      if (
+        typeof url === "string" &&
+        url.startsWith("https://www.googleapis.com/drive/v3/files/") &&
+        url.includes("fields=")
+      ) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ id: "folder-abc", trashed: false }),
         });
       }
       if (url.startsWith("https://www.googleapis.com/drive/v3/files?q=")) {
@@ -548,6 +651,17 @@ describe("saveDocumentToDrive (upload hook)", () => {
           json: async () => ({ access_token: "access-789", expires_in: 3600 }),
         });
       }
+      if (
+        typeof url === "string" &&
+        url.startsWith("https://www.googleapis.com/drive/v3/files/") &&
+        url.includes("fields=")
+      ) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ id: "folder-abc", trashed: false }),
+        });
+      }
       if (url.startsWith("https://www.googleapis.com/drive/v3/files?q=")) {
         return Promise.resolve({ ok: true, json: async () => ({ files: [] }) });
       }
@@ -591,6 +705,17 @@ describe("saveDocumentToDrive (upload hook)", () => {
         return Promise.resolve({
           ok: true,
           json: async () => ({ access_token: `access-token-${tokenAttempts}`, expires_in: 3600 }),
+        });
+      }
+      if (
+        typeof url === "string" &&
+        url.startsWith("https://www.googleapis.com/drive/v3/files/") &&
+        url.includes("fields=")
+      ) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ id: "folder-abc", trashed: false }),
         });
       }
       if (url.startsWith("https://www.googleapis.com/drive/v3/files?q=")) {
@@ -673,6 +798,17 @@ describe("saveDocumentToDrive (upload hook)", () => {
         return Promise.resolve({
           ok: true,
           json: async () => ({ access_token: "access-789", expires_in: 3600 }),
+        });
+      }
+      if (
+        typeof url === "string" &&
+        url.startsWith("https://www.googleapis.com/drive/v3/files/") &&
+        url.includes("fields=")
+      ) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ id: "folder-abc", trashed: false }),
         });
       }
       if (url.startsWith("https://www.googleapis.com/drive/v3/files?q=")) {
@@ -773,6 +909,17 @@ describe("saveDocumentToDrive (upload hook)", () => {
         return Promise.resolve({
           ok: true,
           json: async () => ({ access_token: "access-789", expires_in: 3600 }),
+        });
+      }
+      if (
+        typeof url === "string" &&
+        url.startsWith("https://www.googleapis.com/drive/v3/files/") &&
+        url.includes("fields=")
+      ) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ id: "folder-abc", trashed: false }),
         });
       }
       if (url.startsWith("https://www.googleapis.com/drive/v3/files?q=")) {

@@ -7,7 +7,7 @@ import {
   readStorageFileForUser,
   resolveFirebaseStorageBucket,
 } from "./firebaseStorageAdmin.js";
-import { saveDocumentToDrive, type DriveUploadFile } from "./googleServices.js";
+import { saveDocumentToDrive, ensureValidRootFolder, type DriveUploadFile } from "./googleServices.js";
 import { verifyFirebaseAuthorizationHeader } from "./verifyFirebaseIdToken.js";
 
 const GOOGLE_DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
@@ -46,7 +46,7 @@ async function uploadBytesToFirebaseStorage(
 
 type DriveConnection = {
   refreshToken: string;
-  folderId: string;
+  folderId: string | null;
   uploadedDocuments: Record<string, string>;
   importedDriveFiles: Record<string, { storagePath: string; fileName: string }>;
 };
@@ -66,7 +66,7 @@ async function getDriveConnection(uid: string): Promise<DriveConnection | null> 
         }
       | undefined
   )?.googleDrive;
-  if (typeof googleDrive?.refreshToken !== "string" || typeof googleDrive?.folderId !== "string") {
+  if (typeof googleDrive?.refreshToken !== "string") {
     return null;
   }
   const uploadedDocuments =
@@ -79,7 +79,7 @@ async function getDriveConnection(uid: string): Promise<DriveConnection | null> 
       : {};
   return {
     refreshToken: googleDrive.refreshToken,
-    folderId: googleDrive.folderId,
+    folderId: typeof googleDrive.folderId === "string" ? googleDrive.folderId : null,
     uploadedDocuments,
     importedDriveFiles,
   };
@@ -305,14 +305,28 @@ export async function runDriveSyncFromDrive(authorization: string | undefined): 
 
     const uploadedDriveIds = new Set(Object.values(connection.uploadedDocuments));
     let accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
+    let rootFolderId = await ensureValidRootFolder(uid, accessToken, connection.folderId);
 
     let files: DriveListedFile[];
     try {
-      files = await listDriveFolderFilesRecursive(accessToken, connection.folderId);
+      files = await listDriveFolderFilesRecursive(accessToken, rootFolderId);
     } catch (error) {
-      if ((error as { status?: number }).status !== 401) throw error;
-      accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
-      files = await listDriveFolderFilesRecursive(accessToken, connection.folderId);
+      if ((error as { status?: number }).status === 401) {
+        accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
+        rootFolderId = await ensureValidRootFolder(uid, accessToken, rootFolderId);
+        files = await listDriveFolderFilesRecursive(accessToken, rootFolderId);
+      } else if (
+        (error as { status?: number }).status === 404 ||
+        String((error as Error)?.message || "")
+          .toLowerCase()
+          .includes("not found")
+      ) {
+        accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
+        rootFolderId = await ensureValidRootFolder(uid, accessToken, null);
+        files = await listDriveFolderFilesRecursive(accessToken, rootFolderId);
+      } else {
+        throw error;
+      }
     }
 
     const imported: DriveImportedFile[] = [];

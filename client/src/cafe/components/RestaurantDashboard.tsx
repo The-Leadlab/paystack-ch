@@ -285,6 +285,21 @@ export function RestaurantDashboard() {
       ];
 
       const deleteCount = await commitDeletesInChunks(db, allRefs);
+
+      // Keep Google Drive OAuth, but clear stale folder/file maps so the next upload recreates
+      // "Paystack Documents" (and week folders) if the user also deleted them in Drive.
+      try {
+        const { doc, updateDoc, deleteField } = await import('firebase/firestore');
+        await updateDoc(doc(db, 'users', uid), {
+          'googleDrive.weekFolders': deleteField(),
+          'googleDrive.uncategorizedFolderId': deleteField(),
+          'googleDrive.uploadedDocuments': deleteField(),
+          'googleDrive.importedDriveFiles': deleteField(),
+          'googleDrive.folderId': deleteField(),
+        });
+      } catch (driveResetError) {
+        console.warn('Drive folder cache clear skipped:', driveResetError);
+      }
       
       alert(t('alertMasterResetComplete').replace('{count}', String(deleteCount)));
       

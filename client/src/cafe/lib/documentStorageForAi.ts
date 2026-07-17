@@ -1,6 +1,5 @@
 import { auth } from "./firebase";
 import { uploadDocument, type UploadedDocumentMeta } from "../services/storageService";
-import { saveUploadedDocumentToDrive } from "./googleDriveClient";
 
 export type DocumentStorageRef = UploadedDocumentMeta & {
   mimeType: string;
@@ -19,6 +18,8 @@ export function guessMimeType(fileName: string, fileType: string): string {
 /**
  * Upload (or reuse) a document in Firebase Storage so the server can fetch it for Gemini
  * without sending multi-megabyte base64 through the Vercel request body limit.
+ * Google Drive backup happens once after AI processing (see backupDocumentToGoogleDrive),
+ * so we do not dual-upload here.
  */
 export async function ensureDocumentStorageForAi(
   file: File,
@@ -37,17 +38,6 @@ export async function ensureDocumentStorageForAi(
 
   const uploaded = await uploadDocument(file, user.uid, file.name);
   const mimeType = guessMimeType(file.name, file.type);
-
-  // Fire-and-forget: a Drive save failure (not connected, quota, revoked access, etc.) must
-  // never block or fail the upload/scan flow itself — see saveDocumentToDrive's own contract.
-  void saveUploadedDocumentToDrive({
-    storagePath: uploaded.storagePath,
-    fileUrl: uploaded.downloadURL,
-    filename: file.name,
-    mimeType,
-  }).catch((error) => {
-    console.warn("⚠️ Could not save document to Google Drive:", error);
-  });
 
   return {
     ...uploaded,
