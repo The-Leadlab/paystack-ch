@@ -79,15 +79,116 @@ function resolveIncomeDateRange(
 
 export function POSManager() {
   const { posReadings, addPOSReading, updatePOSReading, deletePOSReading } = usePOS();
+  const { income, expenses } = useFinance();
+  const { currentSession, isAllSessionsView, sessions } = useSession();
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
   const [editingReading, setEditingReading] = useState<POSReading | null>(null);
+
+  const existingSessionIds = sessions.map((s) => s.id);
+  const filteredIncome = isAllSessionsView
+    ? income.filter((i) => existingSessionIds.includes(i.session_id))
+    : income.filter((i) => i.session_id === currentSession?.id);
+  const filteredExpenses = isAllSessionsView
+    ? expenses.filter((e) => existingSessionIds.includes(e.session_id))
+    : expenses.filter((e) => e.session_id === currentSession?.id);
+
+  const totalIncomeAmount = filteredIncome.reduce((sum, i) => sum + i.amount, 0);
+  const totalExpenseAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const dashboardBalance = totalIncomeAmount - totalExpenseAmount;
+  const vatInclusiveFactor = 1 + DEFAULT_SWISS_VAT_RATE / 100;
+
+  const totalGrossSales = posReadings.reduce((sum, r) => sum + r.gross_sales, 0);
+  const totalNetSales = posReadings.reduce((sum, r) => sum + r.net_sales, 0);
+  const totalCash = posReadings.reduce((sum, r) => sum + r.cash, 0);
+  const totalCard = posReadings.reduce((sum, r) => sum + r.card, 0);
+
+  const displayGrossSales = posReadings.length > 0 ? totalGrossSales : totalIncomeAmount;
+  const displayNetSales =
+    posReadings.length > 0 ? totalNetSales : totalIncomeAmount / vatInclusiveFactor;
+  const displayCash = posReadings.length > 0 ? totalCash : totalIncomeAmount * 0.4;
+  const displayCard = posReadings.length > 0 ? totalCard : totalIncomeAmount * 0.6;
+
+  const fmt = (n: number) =>
+    n.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const flowBase = Math.max(
+    displayGrossSales,
+    displayNetSales,
+    displayCash,
+    displayCard,
+    totalIncomeAmount,
+    1
+  );
 
   return (
     <div className="space-y-6">
       <div className="ba-page-header">
         <h1>{t('revenue')}</h1>
       </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+        <BusinessKpiCard
+          label={t('income')}
+          value={fmt(totalIncomeAmount)}
+          hint={t('posDashboardIncomeHint')}
+          icon={TrendingUp}
+          tone="green"
+          progressPct={(totalIncomeAmount / flowBase) * 100}
+        />
+        <BusinessKpiCard
+          label={t('expenses')}
+          value={fmt(totalExpenseAmount)}
+          hint={t('posDashboardExpenseHint')}
+          icon={TrendingDown}
+          tone="red"
+          progressPct={(totalExpenseAmount / flowBase) * 100}
+        />
+        <BusinessKpiCard
+          label={t('balance')}
+          value={fmt(dashboardBalance)}
+          icon={DollarSign}
+          tone={dashboardBalance >= 0 ? 'green' : 'red'}
+          progressPct={(Math.abs(dashboardBalance) / flowBase) * 100}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <BusinessKpiCard
+          label={t('posGrossSales')}
+          value={fmt(displayGrossSales)}
+          icon={TrendingUp}
+          tone="green"
+          progressPct={(displayGrossSales / flowBase) * 100}
+        />
+        <BusinessKpiCard
+          label={t('posNetSales')}
+          value={fmt(displayNetSales)}
+          icon={DollarSign}
+          tone="green"
+          progressPct={(displayNetSales / flowBase) * 100}
+        />
+        <BusinessKpiCard
+          label={t('posCash')}
+          value={fmt(displayCash)}
+          icon={Banknote}
+          tone="gold"
+          progressPct={(displayCash / flowBase) * 100}
+        />
+        <BusinessKpiCard
+          label={t('posCard')}
+          value={fmt(displayCard)}
+          icon={CreditCard}
+          tone="blue"
+          progressPct={(displayCard / flowBase) * 100}
+        />
+      </div>
+      {posReadings.length === 0 ? (
+        <p className="text-[10px] text-cdlp-muted uppercase tracking-wide">
+          {t('posFromIncome')} · {t('posEstimated')}
+        </p>
+      ) : null}
+
+      <RevenueLedgerTable income={filteredIncome} expenses={filteredExpenses} />
 
       <POSModal
         inline
