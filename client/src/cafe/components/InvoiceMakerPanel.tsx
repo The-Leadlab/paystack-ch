@@ -497,6 +497,62 @@ export function InvoiceMakerPanel() {
         <div className="lg:col-span-2 space-y-6">
           <div className="ba-panel space-y-4">
             <div className="ba-section-head">
+              <Building2 className="w-5 h-5" />
+              <span>{t('invCompanyInfo')}</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <FieldLabel>{t('invCompanyName')}</FieldLabel>
+                <input className="ba-verify-field" value={invoiceData.companyName} onChange={(e) => setInvoiceData((p) => ({ ...p, companyName: e.target.value }))} />
+              </div>
+              <div>
+                <FieldLabel>{t('invCompanyEmail')}</FieldLabel>
+                <input type="email" className="ba-verify-field" value={invoiceData.companyEmail} onChange={(e) => setInvoiceData((p) => ({ ...p, companyEmail: e.target.value }))} />
+              </div>
+              <div>
+                <FieldLabel>{t('invCompanyPhone')}</FieldLabel>
+                <input className="ba-verify-field" value={invoiceData.companyPhone} onChange={(e) => setInvoiceData((p) => ({ ...p, companyPhone: e.target.value }))} />
+              </div>
+              <div>
+                <FieldLabel>{t('invCompanyWebsite')}</FieldLabel>
+                <input className="ba-verify-field" value={invoiceData.companyWebsite} onChange={(e) => setInvoiceData((p) => ({ ...p, companyWebsite: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <FieldLabel>{t('invCompanyAddress')}</FieldLabel>
+              <textarea className="ba-verify-field !h-auto min-h-[5rem] py-2 resize-y" rows={3} value={invoiceData.companyAddress} onChange={(e) => setInvoiceData((p) => ({ ...p, companyAddress: e.target.value }))} />
+            </div>
+            <div>
+              <FieldLabel htmlFor="inv-company-logo">{t('invCompanyLogo')}</FieldLabel>
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  ref={logoInputRef}
+                  id="inv-company-logo"
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  className="block max-w-full text-sm text-cdlp-muted file:mr-3 file:rounded-md file:border-0 file:bg-cdlp-gold file:px-3 file:py-2 file:text-sm file:font-bold file:text-cdlp-ink hover:file:opacity-90"
+                  onChange={handleLogoChange}
+                />
+                {invoiceData.companyLogoDataUrl ? (
+                  <>
+                    <img
+                      src={invoiceData.companyLogoDataUrl}
+                      alt={t('invCompanyLogo')}
+                      className="h-10 max-w-28 rounded border border-cdlp-border object-contain bg-white p-1"
+                    />
+                    <button type="button" onClick={clearCompanyLogo} className="ba-filter-chip flex items-center gap-1.5">
+                      <X className="h-4 w-4" /> {t('invRemoveLogo')}
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-xs text-cdlp-muted">{t('invUploadLogo')}</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="ba-panel space-y-4">
+            <div className="ba-section-head">
               <Calendar className="w-5 h-5" />
               <span>{t('invDetails')}</span>
             </div>
@@ -570,62 +626,6 @@ export function InvoiceMakerPanel() {
                   <option value="Net 60">Net 60</option>
                   <option value="Due on Receipt">{t('invDueOnReceipt')}</option>
                 </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="ba-panel space-y-4">
-            <div className="ba-section-head">
-              <Building2 className="w-5 h-5" />
-              <span>{t('invCompanyInfo')}</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <FieldLabel>{t('invCompanyName')}</FieldLabel>
-                <input className="ba-verify-field" value={invoiceData.companyName} onChange={(e) => setInvoiceData((p) => ({ ...p, companyName: e.target.value }))} />
-              </div>
-              <div>
-                <FieldLabel>{t('invCompanyEmail')}</FieldLabel>
-                <input type="email" className="ba-verify-field" value={invoiceData.companyEmail} onChange={(e) => setInvoiceData((p) => ({ ...p, companyEmail: e.target.value }))} />
-              </div>
-              <div>
-                <FieldLabel>{t('invCompanyPhone')}</FieldLabel>
-                <input className="ba-verify-field" value={invoiceData.companyPhone} onChange={(e) => setInvoiceData((p) => ({ ...p, companyPhone: e.target.value }))} />
-              </div>
-              <div>
-                <FieldLabel>{t('invCompanyWebsite')}</FieldLabel>
-                <input className="ba-verify-field" value={invoiceData.companyWebsite} onChange={(e) => setInvoiceData((p) => ({ ...p, companyWebsite: e.target.value }))} />
-              </div>
-            </div>
-            <div>
-              <FieldLabel>{t('invCompanyAddress')}</FieldLabel>
-              <textarea className="ba-verify-field !h-auto min-h-[5rem] py-2 resize-y" rows={3} value={invoiceData.companyAddress} onChange={(e) => setInvoiceData((p) => ({ ...p, companyAddress: e.target.value }))} />
-            </div>
-            <div>
-              <FieldLabel htmlFor="inv-company-logo">{t('invCompanyLogo')}</FieldLabel>
-              <div className="flex flex-wrap items-center gap-3">
-                <input
-                  ref={logoInputRef}
-                  id="inv-company-logo"
-                  type="file"
-                  accept="image/png,image/jpeg"
-                  className="block max-w-full text-sm text-cdlp-muted file:mr-3 file:rounded-md file:border-0 file:bg-cdlp-gold file:px-3 file:py-2 file:text-sm file:font-bold file:text-cdlp-ink hover:file:opacity-90"
-                  onChange={handleLogoChange}
-                />
-                {invoiceData.companyLogoDataUrl ? (
-                  <>
-                    <img
-                      src={invoiceData.companyLogoDataUrl}
-                      alt={t('invCompanyLogo')}
-                      className="h-10 max-w-28 rounded border border-cdlp-border object-contain bg-white p-1"
-                    />
-                    <button type="button" onClick={clearCompanyLogo} className="ba-filter-chip flex items-center gap-1.5">
-                      <X className="h-4 w-4" /> {t('invRemoveLogo')}
-                    </button>
-                  </>
-                ) : (
-                  <span className="text-xs text-cdlp-muted">{t('invUploadLogo')}</span>
-                )}
               </div>
             </div>
           </div>

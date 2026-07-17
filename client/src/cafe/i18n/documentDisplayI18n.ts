@@ -14,6 +14,38 @@ export function documentDisplayName(fileName: string | undefined, fallback = '')
   return fileName.replace(/\.[^.]+$/, '').trim() || fileName.trim();
 }
 
+/** Normalize supplier/employee names for stable Documents-tab grouping. */
+export function normalizeEntityKey(name: string | undefined): string {
+  return (name || '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*\|\s*.*$/, '') // drop " | Ref 123" suffixes for grouping
+    .trim();
+}
+
+/**
+ * Supplier keys for Documents tab grouping.
+ * Multi-invoice PDFs must not collapse under "N invoices detected" — fan out by each
+ * distinct sub-document issuer (or fall back to a real top-level issuer / Unknown).
+ */
+export function supplierGroupKeysForDocument(doc: {
+  data?: {
+    issuer?: string;
+    subDocuments?: Array<{ issuer?: string }>;
+  };
+}): string[] {
+  const subs = Array.isArray(doc.data?.subDocuments) ? doc.data!.subDocuments! : [];
+  const subIssuers = subs
+    .map((s) => normalizeEntityKey(s.issuer))
+    .filter((name) => name && parseInvoicesDetectedCount(name) == null);
+
+  const uniqueSubs = Array.from(new Set(subIssuers));
+  if (uniqueSubs.length > 0) return uniqueSubs;
+
+  const top = normalizeEntityKey(doc.data?.issuer);
+  if (top && parseInvoicesDetectedCount(top) == null) return [top];
+  return ['Unknown Supplier'];
+}
+
 /**
  * Primary label for entity cards / headers.
  * Multi-invoice PDFs used to show "N invoices detected" — prefer the file name instead.

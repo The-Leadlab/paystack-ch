@@ -890,7 +890,7 @@ function rollUpMultiInvoiceTotals(data: FinancialData): FinancialData {
   const amountInCHF = rate !== 1 ? totalAmount * rate : totalAmount;
 
   const issuer =
-    subs.length > 1 ? `${subs.length} invoices detected` : subs[0]?.issuer || data.issuer;
+    String(subs[0]?.issuer || data.issuer || 'Unknown').trim() || 'Unknown';
 
   return {
     ...data,

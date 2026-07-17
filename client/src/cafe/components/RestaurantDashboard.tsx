@@ -8,7 +8,7 @@ import { useSession } from '../context/SessionContext';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useChfLocale, useFormatChf, useLanguage } from '../context/LanguageContext';
-import { formatIssuerForDisplay, formatMonthYearLabel, parseMonthKey, parseInvoicesDetectedCount, documentDisplayName, conjoinedInvoicesLabel } from '../i18n/documentDisplayI18n';
+import { formatIssuerForDisplay, formatMonthYearLabel, parseMonthKey, parseInvoicesDetectedCount, documentDisplayName, conjoinedInvoicesLabel, supplierGroupKeysForDocument, normalizeEntityKey } from '../i18n/documentDisplayI18n';
 import { useDocuments } from '../context/DocumentContext';
 import { usePOS } from '../context/POSContext';
 import { DocumentProcessor } from './DocumentProcessor';
@@ -103,16 +103,15 @@ export function RestaurantDashboard() {
   const chfLocale = useChfLocale();
   const errMsg = (error: unknown) => (error instanceof Error ? error.message : t('errorUnknown'));
 
-  const openBillingTab = () => {
-    setActiveTab('billing');
-    setShowSidebar(false);
-  };
-  
-  const [activeTab, setActiveTab] = useState<Tab>(() =>
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const params = new URLSearchParams(window.location.search);
     // Land on the billing tab when returning from the Google Drive OAuth redirect
-    // (see server/googleDrive.ts's callback route and GoogleDriveConnectPanel.tsx).
-    new URLSearchParams(window.location.search).has('googleDrive') ? 'billing' : 'dashboard'
-  );
+    if (params.has('googleDrive')) return 'billing';
+    const tab = params.get('tab');
+    const allowed: Tab[] = ['dashboard', 'revenue', 'invoices', 'reports', 'documents', 'billing'];
+    if (tab && (allowed as string[]).includes(tab)) return tab as Tab;
+    return 'dashboard';
+  });
   const showRevenueTab = !enforcementEnabled || entitlements.allCoreModules;
   const showAllSessionsView = !enforcementEnabled || entitlements.allCoreModules;
   const canAddSession =
@@ -710,6 +709,20 @@ export function RestaurantDashboard() {
   const switchTab = (tab: Tab) => {
     setActiveTab(tab);
     setShowSidebar(false);
+    try {
+      const url = new URL(window.location.href);
+      if (tab === 'dashboard') url.searchParams.delete('tab');
+      else url.searchParams.set('tab', tab);
+      // Keep googleDrive param only briefly; clear after landing on billing
+      if (tab !== 'billing') url.searchParams.delete('googleDrive');
+      window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    } catch {
+      /* ignore URL sync failures */
+    }
+  };
+
+  const openBillingTab = () => {
+    switchTab('billing');
   };
 
   const syncFromGoogleDrive = useCallback(async (): Promise<{ count: number }> => {
@@ -2145,7 +2158,7 @@ function ReportsPlaceholder() {
     }
   };
 
-  const handleEmailReport = async (cadence: 'weekly' | 'biweekly' | 'monthly' | 'annual') => {
+  const handleEmailReport = async (cadence: 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'annual') => {
     if (!advancedReports) return;
     setEmailBusy(cadence);
     try {
@@ -2347,11 +2360,12 @@ function ReportsPlaceholder() {
             <p className="text-xs text-cdlp-muted">{t('repEmailReportDesc')}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {(
+              {(
               [
                 ['weekly', 'repEmailWeekly'],
                 ['biweekly', 'repEmailBiweekly'],
                 ['monthly', 'repEmailMonthly'],
+                ['quarterly', 'repEmailQuarterly'],
                 ['annual', 'repEmailAnnual'],
               ] as const
             ).map(([cadence, labelKey]) => (
@@ -2398,6 +2412,7 @@ function ReportsPlaceholder() {
                 <option value={7}>{t('repScheduleEvery7Days')}</option>
                 <option value={14}>{t('repScheduleEvery14Days')}</option>
                 <option value={30}>{t('repScheduleEvery30Days')}</option>
+                <option value={90}>{t('repScheduleEvery90Days')}</option>
               </select>
             </div>
             <div>
@@ -2546,9 +2561,14 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
         // POS reports include: Tickets/Receipts, Z2 reports, and Bank Deposits
         posReports.push(doc);
       } else {
-        const supplierName = doc.data.issuer || 'Unknown Supplier';
-        if (!suppliers[supplierName]) suppliers[supplierName] = [];
-        suppliers[supplierName].push(doc);
+        const keys = supplierGroupKeysForDocument(doc);
+        for (const key of keys) {
+          const supplierName = normalizeEntityKey(key) || 'Unknown Supplier';
+          if (!suppliers[supplierName]) suppliers[supplierName] = [];
+          if (!suppliers[supplierName].some((d) => d.id === doc.id)) {
+            suppliers[supplierName].push(doc);
+          }
+        }
       }
     });
 

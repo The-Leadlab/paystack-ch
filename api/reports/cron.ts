@@ -8,8 +8,12 @@ import { buildReportEmailHtml } from "../../lib/reportEmailTemplate.js";
 import { sendReportEmail } from "../../lib/resendReports.js";
 import {
   isIsoDate,
+  isScheduleDue,
   parseReportScheduleCadenceDays,
   parseReportScheduleLocale,
+  schedulePeriodEnd,
+  schedulePeriodLabel,
+  schedulePeriodStart,
   type ReportScheduleCadenceDays,
 } from "../../shared/reportSchedule.js";
 import type { ReportEmailCadence } from "../../shared/reportPeriod.js";
@@ -57,9 +61,14 @@ function periodStart(
   end: string,
   cadenceDays: ReportScheduleCadenceDays
 ): string {
-  const date = dayStart(end);
-  date.setUTCDate(date.getUTCDate() - (cadenceDays - 1));
-  return isoDate(date);
+  return schedulePeriodStart(end, cadenceDays);
+}
+
+function periodEndForCadence(
+  end: string,
+  cadenceDays: ReportScheduleCadenceDays
+): string {
+  return schedulePeriodEnd(end, cadenceDays);
 }
 
 function scheduleLastSentDate(lastSentAt: unknown): string | null {
@@ -90,9 +99,13 @@ function isDue(
     !isIsoDate(schedule.anchorDate)
   )
     return false;
-  const lastSent = scheduleLastSentDate(schedule.lastSentAt);
-  if (lastSent) return daysBetween(lastSent, end) >= cadenceDays;
-  return daysBetween(schedule.anchorDate, end) >= cadenceDays - 1;
+  return isScheduleDue({
+    enabled: true,
+    cadenceDays,
+    anchorDate: schedule.anchorDate as string,
+    lastSentAt: scheduleLastSentDate(schedule.lastSentAt),
+    end,
+  });
 }
 
 function cronIsAuthorized(req: VercelRequest): boolean {
@@ -128,6 +141,7 @@ function reportCadence(
 ): ReportEmailCadence {
   if (cadenceDays === 7) return "weekly";
   if (cadenceDays === 14) return "biweekly";
+  if (cadenceDays === 90) return "quarterly";
   return "monthly";
 }
 
@@ -140,11 +154,9 @@ async function sendScheduledReport(
   const cadenceDays = parseReportScheduleCadenceDays(schedule.cadenceDays);
   if (!cadenceDays || !isIsoDate(schedule.anchorDate)) return;
   const from = periodStart(end, cadenceDays);
+  const to = periodEndForCadence(end, cadenceDays);
   const locale = parseReportScheduleLocale(schedule.locale);
-  const periodLabel =
-    locale === "fr"
-      ? `Rapport des ${cadenceDays} derniers jours`
-      : `Report for the last ${cadenceDays} days`;
+  const periodLabel = schedulePeriodLabel(cadenceDays, locale);
   const db = getFirestore();
   const [incomeSnapshot, expenseSnapshot] = await Promise.all([
     db.collection("income").where("restaurantId", "==", uid).get(),
@@ -154,12 +166,12 @@ async function sendScheduledReport(
   const income = incomeSnapshot.docs
     .map(entry => entry.data() as ReportRow)
     .filter(
-      row => typeof row.date === "string" && row.date >= from && row.date <= end
+      row => typeof row.date === "string" && row.date >= from && row.date <= to
     );
   const expenses = expenseSnapshot.docs
     .map(entry => entry.data() as ReportRow)
     .filter(
-      row => typeof row.date === "string" && row.date >= from && row.date <= end
+      row => typeof row.date === "string" && row.date >= from && row.date <= to
     );
   const totalIncome = income.reduce(
     (sum, row) => sum + valueAsNumber(row.amount),
@@ -190,7 +202,7 @@ async function sendScheduledReport(
       account_code: valueAsString(row.accountCode),
     })),
     dateFrom: from,
-    dateTo: end,
+    dateTo: to,
     sessionName: locale === "fr" ? "Toutes les sessions" : "All sessions",
     locale,
     includeLedger,
@@ -200,17 +212,17 @@ async function sendScheduledReport(
     periodLabel,
     sessionName: locale === "fr" ? "Toutes les sessions" : "All sessions",
     dateFrom: from,
-    dateTo: end,
+    dateTo: to,
     totalIncome,
     totalExpenses,
     balance: totalIncome - totalExpenses,
   });
   await sendReportEmail({
     to: email,
-    subject: `Paystack — ${periodLabel} (${from} → ${end})`,
+    subject: `Paystack — ${periodLabel} (${from} → ${to})`,
     html,
     reportHtml,
-    reportFilename: `paystack-financial-report-${cadenceDays}-days-${end}.html`,
+    reportFilename: `paystack-financial-report-${cadence}-${to}.html`,
   });
   await db.collection("users").doc(uid).update({
     "reportSchedule.lastSentAt": new Date().toISOString(),

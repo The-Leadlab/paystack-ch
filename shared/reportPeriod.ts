@@ -1,4 +1,4 @@
-export type ReportEmailCadence = "weekly" | "biweekly" | "monthly" | "annual";
+export type ReportEmailCadence = "weekly" | "biweekly" | "monthly" | "quarterly" | "annual";
 
 export type ReportPeriodRange = {
   cadence: ReportEmailCadence;
@@ -16,6 +16,7 @@ function toIso(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** One-shot email periods. Monthly/quarterly use the *previous* completed calendar period. */
 export function resolveReportPeriod(cadence: ReportEmailCadence, ref = new Date()): ReportPeriodRange {
   const end = new Date(ref);
   const start = new Date(ref);
@@ -43,13 +44,34 @@ export function resolveReportPeriod(cadence: ReportEmailCadence, ref = new Date(
   }
 
   if (cadence === "monthly") {
-    start.setDate(1);
+    // Previous calendar month
+    const firstOfThisMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+    const lastOfPrev = new Date(firstOfThisMonth);
+    lastOfPrev.setDate(0);
+    const firstOfPrev = new Date(lastOfPrev.getFullYear(), lastOfPrev.getMonth(), 1);
     return {
       cadence,
-      from: toIso(start),
-      to: toIso(end),
-      labelEn: "Monthly report",
-      labelFr: "Rapport mensuel",
+      from: toIso(firstOfPrev),
+      to: toIso(lastOfPrev),
+      labelEn: "Monthly report (previous month)",
+      labelFr: "Rapport mensuel (mois précédent)",
+    };
+  }
+
+  if (cadence === "quarterly") {
+    const month = end.getMonth();
+    const currentQuarterStart = Math.floor(month / 3) * 3;
+    const firstOfCurrentQuarter = new Date(end.getFullYear(), currentQuarterStart, 1);
+    const lastOfPrevQuarter = new Date(firstOfCurrentQuarter);
+    lastOfPrevQuarter.setDate(0);
+    const prevQuarterStartMonth = lastOfPrevQuarter.getMonth() - (lastOfPrevQuarter.getMonth() % 3);
+    const firstOfPrevQuarter = new Date(lastOfPrevQuarter.getFullYear(), prevQuarterStartMonth, 1);
+    return {
+      cadence,
+      from: toIso(firstOfPrevQuarter),
+      to: toIso(lastOfPrevQuarter),
+      labelEn: "Quarterly report (previous quarter)",
+      labelFr: "Rapport trimestriel (trimestre précédent)",
     };
   }
 

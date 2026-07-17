@@ -557,7 +557,9 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
     vatAmount: aggregatedVat,
     netAmount: aggregatedNet,
     issuer:
-      repairedSubs.length > 1 ? `${repairedSubs.length} invoices detected` : parsed.issuer || repairedSubs[0]?.issuer || 'Unknown',
+      repairedSubs.length > 1
+        ? String(repairedSubs[0]?.issuer || parsed.issuer || 'Unknown').trim() || 'Unknown'
+        : parsed.issuer || repairedSubs[0]?.issuer || 'Unknown',
     lineItems: finalLineItems,
     date: (sortedDates[0] as string) || parsed.date,
     aiInterpretation: parsed.aiInterpretation || `Detected ${repairedSubs.length} invoice blocks across all pages.`,
@@ -1197,7 +1199,7 @@ Return JSON only.`;
             lineItems: (Array.isArray(exhaustive.lineItems) && exhaustive.lineItems.length > 0)
               ? exhaustive.lineItems
               : normalized.lineItems,
-            issuer: `${exhaustiveSubCount} invoices detected`
+            issuer: String(exhaustive.subDocuments[0]?.issuer || normalized.issuer || 'Unknown').trim() || 'Unknown',
           });
           console.log(`📚 Exhaustive pass increased invoice blocks: ${currentSubCount} -> ${exhaustiveSubCount}`);
         } else if (exhaustiveSubCount > 0 && exhaustiveSubCount === currentSubCount) {
