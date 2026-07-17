@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { analyzeFinancialDocument, syncSwissVatDerivedFields } from '../services/geminiService';
 import { enrichFinancialDataWithSwissAccount } from '../services/swissAccountClassifierService';
-import { formatSwissAccountRef } from '@shared/swissChartOfAccounts';
 import {
   buildPayrollExpenseLines,
   resolvePayrollAmounts,
@@ -1592,39 +1591,6 @@ const VerificationHub: React.FC<{
                       </button>
                     </div>
                  </div>
-                 {editedData.swissAccountClassification && (
-                   <div
-                     className={`p-3 rounded-sm border text-[10px] ${
-                       editedData.swissAccountClassification.requires_human_review
-                         ? 'border-amber-500/40 bg-amber-500/10'
-                         : 'border-emerald-500/30 bg-emerald-500/5'
-                     }`}
-                   >
-                     <p className="font-black uppercase tracking-wider text-cdlp-gold flex items-center gap-1.5">
-                       <Landmark className="w-3.5 h-3.5" />
-                       {t('swissAccountAiTitle')}
-                       {editedData.swissAccountClassification.requires_human_review && (
-                         <AlertTriangle className="w-3.5 h-3.5 text-amber-400" title={t('swissAccountNeedsReview')} />
-                       )}
-                     </p>
-                     <p className="font-mono font-bold text-white mt-1">
-                       {editedData.swissAccountClassification.account_code} —{' '}
-                       {formatSwissAccountRef(
-                         editedData.swissAccountClassification.account_code,
-                         language === 'fr' ? 'fr' : 'en'
-                       )}
-                     </p>
-                     <p className="text-cdlp-muted mt-1">
-                       {t('swissAccountConfidence').replace(
-                         '{pct}',
-                         String(Math.round((editedData.swissAccountClassification.confidence || 0) * 100))
-                       )}
-                     </p>
-                     <p className="text-cdlp-muted/90 mt-2 leading-relaxed">
-                       {editedData.swissAccountClassification.reasoning}
-                     </p>
-                   </div>
-                 )}
               </div>
            </div>
 
