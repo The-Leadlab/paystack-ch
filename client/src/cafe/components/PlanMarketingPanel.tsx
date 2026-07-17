@@ -36,13 +36,17 @@ export function planMarketingPriceLine(t: (k: string) => string, planId: Paystac
 
 type BulletVariant = 'cdlp' | 'card';
 
+/** Body copy on dark grey panels — keep AA contrast vs #252a31 / nested washes. */
+const CDLP_PANEL_BODY = 'text-[#d5dae0]';
+const CDLP_PANEL_LABEL = 'text-[#c2c8d0]';
+
 const bulletPresets: Record<
   BulletVariant,
   { ul: string; li: string; span: string }
 > = {
   cdlp: {
-    ul: 'list-disc pl-4 space-y-1.5 text-[11px] text-cdlp-muted leading-snug marker:text-cdlp-gold/80',
-    li: 'pl-0.5 text-cdlp-muted',
+    ul: `list-disc pl-4 space-y-1.5 text-[11px] ${CDLP_PANEL_BODY} leading-snug marker:text-cdlp-gold`,
+    li: `pl-0.5 ${CDLP_PANEL_BODY}`,
     span: 'text-inherit',
   },
   card: {
@@ -133,7 +137,9 @@ export function PlanMarketingPanel({
   }
 
   return (
-    <div className={`rounded-sm border border-cdlp-border bg-cdlp-black/30 px-3 py-3 text-left space-y-2 ${className ?? ''}`}>
+    <div
+      className={`plan-marketing-panel rounded-sm border border-cdlp-border bg-[#2a2f37] px-3 py-3 text-left space-y-2 text-[#e8eaed] ${className ?? ''}`}
+    >
       <div className="flex flex-wrap items-start justify-between gap-2 gap-y-1">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -144,12 +150,14 @@ export function PlanMarketingPanel({
               </span>
             ) : null}
           </div>
-          <p className="text-[11px] text-cdlp-muted leading-snug">{desc}</p>
+          <p className={`text-[11px] ${CDLP_PANEL_BODY} leading-snug`}>{desc}</p>
         </div>
         <p className="shrink-0 text-sm font-black tabular-nums text-cdlp-gold">{price}</p>
       </div>
       <div>
-        <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted mb-1.5">{t('planSummaryIncludedTitle')}</p>
+        <p className={`text-[10px] font-black uppercase tracking-widest ${CDLP_PANEL_LABEL} mb-1.5`}>
+          {t('planSummaryIncludedTitle')}
+        </p>
         <PlanMarketingFeatureBullets planId={planId} variant="cdlp" />
       </div>
     </div>

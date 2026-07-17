@@ -96,20 +96,20 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   const showPlanPicker = !needsPaymentMethodFix;
 
   return (
-    <div className="min-h-[100dvh] min-h-screen bg-cdlp-dark flex items-center justify-center px-4 py-8 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] touch-manipulation">
-      <div className="max-w-xl w-full border border-cdlp-border rounded-xl bg-cdlp-card p-6 sm:p-8 shadow-card text-center space-y-6">
+    <div className="subscription-gate cafe-theme-dark min-h-[100dvh] min-h-screen bg-[#1a1d23] flex items-center justify-center px-4 py-8 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] touch-manipulation text-[#e8eaed]">
+      <div className="max-w-xl w-full border border-[#3a4048] rounded-xl bg-[#252a31] p-6 sm:p-8 shadow-card text-center space-y-6 text-[#e8eaed]">
         <div className="mx-auto w-14 h-14 rounded-full bg-cdlp-gold/15 flex items-center justify-center border border-cdlp-gold/40">
           <CreditCard className="w-7 h-7 text-cdlp-gold" />
         </div>
         <div>
           <h1 className="text-lg font-black uppercase tracking-wider text-white mb-2">{t('subscriptionTitle')}</h1>
-          <p className="text-xs text-cdlp-muted leading-relaxed">{t('subscriptionBody')}</p>
+          <p className="text-xs text-[#c5cad1] leading-relaxed">{t('subscriptionBody')}</p>
           {trialHint ? <p className="text-[10px] text-cdlp-gold/90 mt-3 font-bold uppercase tracking-tight">{trialHint}</p> : null}
         </div>
 
         {showPlanPicker ? (
           <div className="text-left space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted">{t('subscriptionPickPlan')}</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-[#c5cad1]">{t('subscriptionPickPlan')}</p>
             <div className="grid grid-cols-2 gap-2">
               {(['starter', 'business', 'unlimited', 'enterprise'] as const).map((id) => (
                 <button
@@ -119,7 +119,7 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
                   className={`rounded border px-2 py-3 text-[10px] font-black uppercase tracking-tight transition-colors ${
                     chosenPlan === id
                       ? 'border-cdlp-gold bg-cdlp-gold/15 text-white'
-                      : 'border-cdlp-border text-cdlp-muted hover:border-cdlp-gold/50 hover:text-white'
+                      : 'border-[#3a4048] text-[#c5cad1] hover:border-cdlp-gold/50 hover:text-white'
                   }`}
                 >
                   {planLabel(id)}
@@ -175,14 +175,14 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => void signOut()}
-            className="w-full h-10 rounded-sm border border-cdlp-border text-[10px] font-bold uppercase text-cdlp-muted hover:text-white flex items-center justify-center gap-2"
+            className="w-full h-10 rounded-sm border border-[#3a4048] text-[10px] font-bold uppercase text-[#c5cad1] hover:text-white flex items-center justify-center gap-2"
           >
             <LogOut className="w-3.5 h-3.5" />
             {t('logout')}
           </button>
           <a
             href={productionSiteHomeUrl()}
-            className="w-full h-10 rounded-sm border border-cdlp-border text-[10px] font-bold uppercase text-cdlp-muted hover:text-white flex items-center justify-center gap-2"
+            className="w-full h-10 rounded-sm border border-[#3a4048] text-[10px] font-bold uppercase text-[#c5cad1] hover:text-white flex items-center justify-center gap-2"
           >
             <Home className="w-3.5 h-3.5" />
             {t('authActionGoHome')}

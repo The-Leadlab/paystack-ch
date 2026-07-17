@@ -145,7 +145,7 @@
   --color-cdlp-gold-light: #f26a67;
   --color-cdlp-gold-pale: #f6a3a1;
   --color-cdlp-cream: #24191d;
-  --color-cdlp-muted: #c6aeb0;
+  --color-cdlp-muted: #c5cad1;
   --color-cdlp-red: #ffd730;
 }
 
@@ -173,7 +173,7 @@
   --color-cdlp-gold-light: #f87171;
   --color-cdlp-gold-pale: #fca5a5;
   --color-cdlp-cream: #2d3238;
-  --color-cdlp-muted: #9aa0a6;
+  --color-cdlp-muted: #c5cad1;
   --color-cdlp-red: #ef4444;
   font-family: var(--font-app);
   -webkit-font-smoothing: antialiased;
@@ -194,13 +194,84 @@
   border-color: #3a4048 !important;
 }
 .cafe-shell.cafe-theme-dark .text-cdlp-muted {
-  color: #9aa0a6 !important;
+  color: #c5cad1 !important;
 }
 .cafe-shell.cafe-theme-dark .text-cdlp-gold {
   color: #f87171 !important;
 }
 .cafe-shell.cafe-theme-dark .bg-cdlp-gold {
   background-color: #ef4444 !important;
+}
+
+/*
+ * Grey elevated surfaces (nested panels, translucent washes): keep body copy light.
+ * Light-theme rules that force .text-white → charcoal must not win here.
+ */
+.cafe-shell.cafe-theme-dark .ba-panel,
+.cafe-shell.cafe-theme-dark .ba-subpanel,
+.cafe-shell.cafe-theme-dark .plan-marketing-panel,
+.cafe-shell.cafe-theme-dark .subscription-gate,
+.cafe-shell.cafe-theme-dark [class*='bg-cdlp-black\/'],
+.cafe-shell.cafe-theme-dark [class*='bg-cdlp-cream\/'],
+.cafe-shell.cafe-theme-dark [class*='bg-cdlp-dark\/'] {
+  color: #e8eaed;
+}
+
+.cafe-shell.cafe-theme-dark .ba-panel .text-cdlp-muted,
+.cafe-shell.cafe-theme-dark .ba-subpanel .text-cdlp-muted,
+.cafe-shell.cafe-theme-dark .plan-marketing-panel .text-cdlp-muted,
+.cafe-shell.cafe-theme-dark .subscription-gate .text-cdlp-muted,
+.cafe-shell.cafe-theme-dark [class*='bg-cdlp-black\/'] .text-cdlp-muted,
+.cafe-shell.cafe-theme-dark [class*='bg-cdlp-cream\/'] .text-cdlp-muted,
+.cafe-shell.cafe-theme-dark [class*='bg-cdlp-dark\/'] .text-cdlp-muted {
+  color: #c5cad1 !important;
+}
+
+.cafe-shell.cafe-theme-dark .ba-panel .text-white,
+.cafe-shell.cafe-theme-dark .ba-subpanel .text-white,
+.cafe-shell.cafe-theme-dark .plan-marketing-panel .text-white,
+.cafe-shell.cafe-theme-dark .subscription-gate .text-white,
+.cafe-shell.cafe-theme-dark [class*='bg-cdlp-black\/'] .text-white,
+.cafe-shell.cafe-theme-dark [class*='bg-cdlp-cream\/'] .text-white,
+.cafe-shell.cafe-theme-dark [class*='bg-cdlp-dark\/'] .text-white {
+  color: #ffffff !important;
+}
+
+/* Subscription gate is always a dark card — keep contrast even if parent shell is light */
+.subscription-gate,
+.subscription-gate.cafe-theme-dark {
+  --color-cdlp-muted: #c5cad1;
+  --color-cdlp-border: #3a4048;
+  --color-cdlp-card: #252a31;
+  --color-cdlp-dark: #1a1d23;
+  --color-cdlp-black: #111111;
+  color: #e8eaed;
+}
+
+.subscription-gate .text-cdlp-muted {
+  color: #c5cad1 !important;
+}
+
+.subscription-gate .text-white {
+  color: #ffffff !important;
+}
+
+.plan-marketing-panel .text-white {
+  color: #ffffff !important;
+}
+
+/* Plan marketing cards stay dark-surface + light text in both themes (readable nested grey). */
+.cafe-shell .plan-marketing-panel {
+  color: #e8eaed !important;
+  background-color: #2a2f37 !important;
+  border-color: #3a4048 !important;
+}
+
+.cafe-shell.cafe-theme-light .bg-cdlp-card .plan-marketing-panel .text-white,
+.cafe-shell.cafe-theme-light .bg-cdlp-black .plan-marketing-panel .text-white,
+.cafe-shell.cafe-theme-light .bg-cdlp-dark .plan-marketing-panel .text-white,
+.cafe-shell.cafe-theme-light .plan-marketing-panel .text-white {
+  color: #ffffff !important;
 }
 
 .cafe-shell.cafe-theme-light .bg-cdlp-dark {

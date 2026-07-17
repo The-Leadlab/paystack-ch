@@ -9,7 +9,7 @@
   --ba-border: #3a4048;
   --ba-text: #ffffff;
   --ba-canvas-text: #ffffff;
-  --ba-muted: #9aa0a6;
+  --ba-muted: #c5cad1;
   --ba-accent-blue: #60a5fa;
   --ba-accent-green: #34d399;
   --ba-accent-red: #f87171;
@@ -266,6 +266,13 @@
 .cafe-shell.cafe-theme-light .ba-v3 .ba-panel .text-cdlp-muted,
 .cafe-shell.cafe-theme-light .ba-v3 .ba-subpanel .text-cdlp-muted {
   color: var(--ba-muted) !important;
+}
+
+.cafe-shell.cafe-theme-dark .ba-v3 .ba-panel .text-cdlp-muted,
+.cafe-shell.cafe-theme-dark .ba-v3 .ba-subpanel .text-cdlp-muted,
+.ba-v3 .ba-panel .text-cdlp-muted,
+.ba-v3 .ba-subpanel .text-cdlp-muted {
+  color: #c5cad1 !important;
 }
 
 @media (min-width: 768px) {
