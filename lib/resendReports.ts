@@ -7,8 +7,8 @@ export async function sendReportEmail(opts: {
   to: string;
   subject: string;
   html: string;
-  pdfBuffer: Buffer;
-  pdfFilename: string;
+  reportHtml: string;
+  reportFilename: string;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
@@ -31,8 +31,8 @@ export async function sendReportEmail(opts: {
       html: opts.html,
       attachments: [
         {
-          filename: opts.pdfFilename,
-          content: opts.pdfBuffer.toString("base64"),
+          filename: opts.reportFilename,
+          content: Buffer.from(opts.reportHtml, "utf8").toString("base64"),
         } satisfies ResendAttachment,
       ],
     }),

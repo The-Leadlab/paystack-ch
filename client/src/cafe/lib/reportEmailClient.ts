@@ -6,6 +6,7 @@ export async function emailFinancialReport(opts: {
   cadence: ReportEmailCadence;
   sessionName: string;
   locale: "en" | "fr";
+  includeLedger?: boolean;
   income: Income[];
   expenses: Expense[];
 }): Promise<{ sentTo: string }> {
@@ -23,12 +24,14 @@ export async function emailFinancialReport(opts: {
       cadence: opts.cadence,
       sessionName: opts.sessionName,
       locale: opts.locale,
+      includeLedger: opts.includeLedger,
       income: opts.income.map((i) => ({
         date: i.date,
         amount: i.amount,
         vat_amount: i.vat_amount,
         description: i.description,
         type: i.type,
+        account_code: i.account_code,
       })),
       expenses: opts.expenses.map((e) => ({
         date: e.date,
@@ -36,6 +39,7 @@ export async function emailFinancialReport(opts: {
         vat_amount: e.vat_amount,
         description: e.description,
         category: e.category,
+        account_code: e.account_code,
       })),
     }),
   });

@@ -3,10 +3,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { ensureFirebaseAdmin } from "../../lib/firebaseAdmin.js";
-import {
-  buildReportPdfBuffer,
-  type ReportPdfLine,
-} from "../../lib/reportEmailPdf.js";
+import { buildServerFinancialReportHtml } from "../../lib/buildServerFinancialReport.js";
 import { buildReportEmailHtml } from "../../lib/reportEmailTemplate.js";
 import { sendReportEmail } from "../../lib/resendReports.js";
 import {
@@ -24,6 +21,7 @@ type ReportRow = {
   description?: unknown;
   type?: unknown;
   category?: unknown;
+  accountCode?: unknown;
 };
 
 type StoredSchedule = {
@@ -171,45 +169,31 @@ async function sendScheduledReport(
     (sum, row) => sum + valueAsNumber(row.amount),
     0
   );
-  const vatReceived = income.reduce(
-    (sum, row) => sum + valueAsNumber(row.vatAmount),
-    0
-  );
-  const vatPaid = expenses.reduce(
-    (sum, row) => sum + valueAsNumber(row.vatAmount),
-    0
-  );
-  const lines: ReportPdfLine[] = [
-    ...income.map(row => ({
-      date: row.date as string,
-      label:
-        valueAsString(row.description) || valueAsString(row.type) || "Income",
-      amount: valueAsNumber(row.amount),
-      kind: "income" as const,
-    })),
-    ...expenses.map(row => ({
-      date: row.date as string,
-      label:
-        valueAsString(row.description) ||
-        valueAsString(row.category) ||
-        "Expense",
-      amount: valueAsNumber(row.amount),
-      kind: "expense" as const,
-    })),
-  ].sort((a, b) => a.date.localeCompare(b.date));
+  const userDoc = await db.collection("users").doc(uid).get();
+  const includeLedger = userDoc.data()?.revenueLedgerEnabled === true;
   const cadence = reportCadence(cadenceDays);
-  const pdfBuffer = buildReportPdfBuffer({
-    cadence,
-    periodLabel,
-    sessionName: locale === "fr" ? "Toutes les sessions" : "All sessions",
+  const reportHtml = buildServerFinancialReportHtml({
+    income: income.map((row) => ({
+      date: row.date as string,
+      amount: valueAsNumber(row.amount),
+      vat_amount: valueAsNumber(row.vatAmount),
+      description: valueAsString(row.description),
+      type: valueAsString(row.type),
+      account_code: valueAsString(row.accountCode),
+    })),
+    expenses: expenses.map((row) => ({
+      date: row.date as string,
+      amount: valueAsNumber(row.amount),
+      vat_amount: valueAsNumber(row.vatAmount),
+      description: valueAsString(row.description),
+      category: valueAsString(row.category),
+      account_code: valueAsString(row.accountCode),
+    })),
     dateFrom: from,
     dateTo: end,
-    totalIncome,
-    totalExpenses,
-    balance: totalIncome - totalExpenses,
-    vatReceived,
-    vatPaid,
-    lines,
+    sessionName: locale === "fr" ? "Toutes les sessions" : "All sessions",
+    locale,
+    includeLedger,
   });
   const html = buildReportEmailHtml({
     locale,
@@ -225,8 +209,8 @@ async function sendScheduledReport(
     to: email,
     subject: `Paystack — ${periodLabel} (${from} → ${end})`,
     html,
-    pdfBuffer,
-    pdfFilename: `paystack-report-${cadenceDays}-days-${end}.pdf`,
+    reportHtml,
+    reportFilename: `paystack-financial-report-${cadenceDays}-days-${end}.html`,
   });
   await db.collection("users").doc(uid).update({
     "reportSchedule.lastSentAt": new Date().toISOString(),

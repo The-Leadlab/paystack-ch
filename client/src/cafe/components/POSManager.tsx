@@ -1,25 +1,46 @@
 import { DEFAULT_SWISS_VAT_RATE } from '@shared/swissVatRates';
-import React, { useState } from 'react';
-import { Receipt, Plus, Edit2, Trash2, Upload, Save, X, Camera, DollarSign, CreditCard, Banknote, TrendingUp, TrendingDown, Percent, Zap } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { Receipt, Edit2, Trash2, Upload, Save, X, Camera, DollarSign, CreditCard, Banknote, TrendingUp, TrendingDown, Zap, BarChart3 } from 'lucide-react';
 import { usePOS } from '../context/POSContext';
 import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import type { POSReading } from '../types';
 import { analyzeFinancialDocument } from '../services/geminiService';
+import { Z_READING_AI_HINT, parseZReadingFromFinancialData } from '../lib/posZReading';
+import { useRevenueLedgerPrefs } from '../hooks/useRevenueLedgerPrefs';
+import { RevenueLedgerTable } from './RevenueLedgerTable';
 
 import { BusinessKpiCard } from './BusinessKpiCard';
 import '../businessApp.css';
+
+const CHART_COLORS = ['#E8423F', '#34d399', '#60a5fa', '#fbbf24'];
 
 export function POSManager() {
   const { posReadings, addPOSReading, updatePOSReading, deletePOSReading } = usePOS();
   const { income, expenses } = useFinance();
   const { currentSession, isAllSessionsView, sessions } = useSession();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const chfLocale = useChfLocale();
-  const [showAddModal, setShowAddModal] = useState(false);
+  const {
+    enabled: ledgerEnabled,
+    setEnabled: setLedgerEnabled,
+    loading: ledgerPrefsLoading,
+  } = useRevenueLedgerPrefs();
+  const [ledgerToggleBusy, setLedgerToggleBusy] = useState(false);
   const [editingReading, setEditingReading] = useState<POSReading | null>(null);
-  const [uploadMode, setUploadMode] = useState<'manual' | 'upload'>('manual');
 
   // Filter income by session
   // For "All Sessions" view, only show data from existing sessions (not orphaned data)
@@ -53,10 +74,69 @@ export function POSManager() {
   const fmt = (n: number) => n.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const flowBase = Math.max(displayGrossSales, displayNetSales, displayCash, displayCard, totalIncomeAmount, 1);
 
+  const monthlyChartData = useMemo(() => {
+    const months: Record<string, number> = {};
+    for (const item of filteredIncome) {
+      const key = item.date.slice(0, 7);
+      months[key] = (months[key] || 0) + item.amount;
+    }
+    return Object.entries(months)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(-8)
+      .map(([month, value]) => ({
+        month: new Date(`${month}-01`).toLocaleDateString(chfLocale, { month: 'short', year: '2-digit' }),
+        revenue: Math.round(value * 100) / 100,
+      }));
+  }, [filteredIncome, chfLocale]);
+
+  const paymentChartData = useMemo(() => {
+    if (posReadings.length > 0) {
+      const cash = posReadings.reduce((s, r) => s + r.cash, 0);
+      const card = posReadings.reduce((s, r) => s + r.card, 0);
+      const other = posReadings.reduce((s, r) => s + r.other_payment, 0);
+      return [
+        { name: t('posCash'), value: cash },
+        { name: t('posCard'), value: card },
+        ...(other > 0 ? [{ name: t('posOther'), value: other }] : []),
+      ].filter((d) => d.value > 0);
+    }
+    return [
+      { name: t('posCash'), value: displayCash },
+      { name: t('posCard'), value: displayCard },
+    ];
+  }, [posReadings, displayCash, displayCard, t]);
+
+  const typeChartData = useMemo(() => {
+    const types: Record<string, number> = {};
+    for (const item of filteredIncome) {
+      const key = item.type === 'RESERVATION' ? t('RESERVATION') : t('SALES');
+      types[key] = (types[key] || 0) + item.amount;
+    }
+    return Object.entries(types).map(([name, value]) => ({ name, value }));
+  }, [filteredIncome, t]);
+
   return (
     <div className="space-y-6">
-      <div className="ba-page-header">
+      <div className="ba-page-header flex flex-wrap items-start justify-between gap-3">
         <h1>{t('revenue')}</h1>
+        <button
+          type="button"
+          disabled={ledgerPrefsLoading || ledgerToggleBusy}
+          onClick={() => {
+            void (async () => {
+              setLedgerToggleBusy(true);
+              try {
+                await setLedgerEnabled(!ledgerEnabled);
+              } finally {
+                setLedgerToggleBusy(false);
+              }
+            })();
+          }}
+          className={`ba-filter-chip ${ledgerEnabled ? 'ba-filter-chip--active' : ''}`}
+          title={t('repLedgerToggleRevenue')}
+        >
+          {ledgerEnabled ? t('repLedgerOnRevenue') : t('repLedgerOffRevenue')}
+        </button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
@@ -92,34 +172,86 @@ export function POSManager() {
         <BusinessKpiCard label={t('posCard')} value={fmt(displayCard)} icon={CreditCard} tone="blue" progressPct={(displayCard / flowBase) * 100} />
       </div>
       {posReadings.length === 0 ? (
-        <p className="text-[10px] text-cdlp-muted uppercase tracking-wide">{t('posFromIncome')} · {t('posEstimated')}</p>
+        <p className="text-[10px] text-cdlp-muted uppercase tracking-wide">{t('posFromIncome')} ? {t('posEstimated')}</p>
       ) : null}
 
-      <div className="ba-panel flex flex-wrap justify-between items-center gap-3">
-        <h2 className="text-sm font-black uppercase text-cdlp-gold">{t('posDailyZReadings').replace('{n}', String(posReadings.length))}</h2>
-        <button
-          type="button"
-          onClick={() => setShowAddModal(true)}
-          className="ba-btn-start flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" /> {t('posAddZReading')}
-        </button>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="ba-panel lg:col-span-2">
+          <div className="ba-section-head mb-2">
+            <BarChart3 className="w-5 h-5" />
+            <h2>{t('posChartsMonthly')}</h2>
+          </div>
+          <div className="h-56">
+            {monthlyChartData.length === 0 ? (
+              <p className="text-xs text-cdlp-muted text-center py-10">{t('repNoData')}</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={monthlyChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 10 }} />
+                  <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} />
+                  <Tooltip formatter={(v: number) => [`${fmt(v)} CHF`, t('income')]} />
+                  <Bar dataKey="revenue" fill="#E8423F" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+        <div className="ba-panel">
+          <div className="ba-section-head mb-2">
+            <CreditCard className="w-5 h-5" />
+            <h2>{t('posChartsPayments')}</h2>
+          </div>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={paymentChartData} dataKey="value" nameKey="name" innerRadius={45} outerRadius={70}>
+                  {paymentChartData.map((_, i) => (
+                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v: number) => `${fmt(v)} CHF`} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="ba-panel lg:col-span-3">
+          <div className="ba-section-head mb-2">
+            <TrendingUp className="w-5 h-5" />
+            <h2>{t('posChartsByType')}</h2>
+          </div>
+          <div className="h-48">
+            {typeChartData.length === 0 ? (
+              <p className="text-xs text-cdlp-muted text-center py-8">{t('repNoData')}</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={typeChartData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis type="number" tick={{ fill: '#9ca3af', fontSize: 10 }} />
+                  <YAxis type="category" dataKey="name" width={90} tick={{ fill: '#9ca3af', fontSize: 10 }} />
+                  <Tooltip formatter={(v: number) => `${fmt(v)} CHF`} />
+                  <Bar dataKey="value" fill="#34d399" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Readings List */}
-      {posReadings.length === 0 ? (
-        <div className="ba-panel p-12 text-center">
-          <Receipt className="w-16 h-16 text-cdlp-gold/30 mx-auto mb-4" />
-          <h3 className="text-lg font-black text-cdlp-gold uppercase mb-2">{t('posNoZReadings')}</h3>
-          <p className="text-cdlp-muted text-sm mb-4">{t('posNoZReadingsHint')}</p>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light"
-          >
-            <Plus className="w-4 h-4" /> {t('posAddZReading')}
-          </button>
-        </div>
-      ) : (
+      <POSModal
+        inline
+        reading={null}
+        onClose={() => undefined}
+        onSave={addPOSReading}
+      />
+
+      <div className="ba-panel">
+        <h2 className="text-sm font-black uppercase text-cdlp-gold mb-4">
+          {t('posDailyZReadings').replace('{n}', String(posReadings.length))}
+        </h2>
+        {posReadings.length === 0 ? (
+          <p className="text-cdlp-muted text-sm">{t('posNoZReadingsHint')}</p>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {posReadings.map((reading) => (
             <div key={reading.id} className="ba-panel hover:border-cdlp-gold transition-colors">
@@ -187,43 +319,40 @@ export function POSManager() {
             </div>
           ))}
         </div>
-      )}
+        )}
+      </div>
 
-      {/* Add/Edit Modal */}
-      {(showAddModal || editingReading) && (
+      {ledgerEnabled ? (
+        <RevenueLedgerTable income={filteredIncome} expenses={filteredExpenses} />
+      ) : null}
+
+      {editingReading ? (
         <POSModal
           reading={editingReading}
-          onClose={() => {
-            setShowAddModal(false);
-            setEditingReading(null);
-          }}
+          onClose={() => setEditingReading(null)}
           onSave={async (data) => {
-            if (editingReading) {
-              await updatePOSReading(editingReading.id, data);
-            } else {
-              await addPOSReading(data);
-            }
-            setShowAddModal(false);
+            await updatePOSReading(editingReading.id, data);
             setEditingReading(null);
           }}
         />
-      )}
+      ) : null}
     </div>
   );
 }
 
-// Modal Component
-function POSModal({ reading, onClose, onSave }: {
+function POSModal({ reading, onClose, onSave, inline = false }: {
   reading: POSReading | null;
   onClose: () => void;
   onSave: (data: Omit<POSReading, 'id' | 'restaurant_id' | 'session_id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  inline?: boolean;
 }) {
   const { income } = useFinance();
   const { currentSession } = useSession();
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
-  const [mode, setMode] = useState<'manual' | 'upload' | 'auto'>('auto');
+  const [mode, setMode] = useState<'manual' | 'upload' | 'auto'>(reading ? 'manual' : 'auto');
   const [uploading, setUploading] = useState(false);
+  const [showEntryForm, setShowEntryForm] = useState(Boolean(reading));
   
   const [date, setDate] = useState(reading?.date || new Date().toISOString().split('T')[0]);
   const [grossSales, setGrossSales] = useState(reading?.gross_sales.toString() || '');
@@ -263,32 +392,31 @@ function POSModal({ reading, onClose, onSave }: {
     setCard(estimatedCard.toFixed(2));
     setCash(estimatedCash.toFixed(2));
     setNotes(t('posAutoNotes').replace('{n}', String(dayIncome.length)));
-    
-    // Switch to manual mode for editing
+    setShowEntryForm(true);
+    setMode('manual');
+  };
+
+  const applyDraft = (draft: ReturnType<typeof parseZReadingFromFinancialData>) => {
+    setDate(draft.date);
+    setGrossSales(draft.gross_sales.toString());
+    setNetSales(draft.net_sales.toString());
+    setVatAmount(draft.vat_amount.toString());
+    setCash(draft.cash.toString());
+    setCard(draft.card.toString());
+    setOtherPayment(draft.other_payment.toString());
+    setTips(draft.tips.toString());
+    setDiscounts(draft.discounts.toString());
+    setRefunds(draft.refunds.toString());
+    setNotes(draft.notes);
+    setShowEntryForm(true);
     setMode('manual');
   };
 
   const handleFileUpload = async (file: File) => {
     setUploading(true);
     try {
-      const result = await analyzeFinancialDocument(file, 'CHF');
-      
-      // Extract data from AI analysis
-      setGrossSales(result.totalAmount.toString());
-      setNetSales(result.netAmount.toString());
-      setVatAmount(result.vatAmount.toString());
-      
-      // Try to extract payment methods from line items
-      if (result.lineItems) {
-        const cashItem = result.lineItems.find(item => item.description?.toLowerCase().includes('cash'));
-        const cardItem = result.lineItems.find(item => item.description?.toLowerCase().includes('card'));
-        
-        if (cashItem) setCash(cashItem.amount.toString());
-        if (cardItem) setCard(cardItem.amount.toString());
-      }
-      
-      setNotes(result.notes || '');
-      setMode('manual'); // Switch to manual mode for editing
+      const result = await analyzeFinancialDocument(file, 'CHF', Z_READING_AI_HINT);
+      applyDraft(parseZReadingFromFinancialData(result, date));
     } catch (error) {
       alert(
         t('posAlertAnalyzeError').replace(
@@ -317,20 +445,49 @@ function POSModal({ reading, onClose, onSave }: {
       refunds: parseFloat(refunds) || 0,
       notes,
     });
-    
+
+    if (inline && !reading) {
+      setGrossSales('');
+      setNetSales('');
+      setVatAmount('');
+      setCash('');
+      setCard('');
+      setOtherPayment('0');
+      setTips('0');
+      setDiscounts('0');
+      setRefunds('0');
+      setNotes('');
+      setShowEntryForm(false);
+      setMode('auto');
+      return;
+    }
+
     onClose();
   };
 
+  const shellClass = inline
+    ? 'ba-panel w-full'
+    : 'fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 overflow-y-auto';
+
+  const panelClass = inline ? 'w-full' : 'ba-panel w-full max-w-2xl max-h-[90vh] overflow-y-auto';
+
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="ba-panel w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className={shellClass}>
+      <div className={panelClass}>
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-black text-cdlp-gold uppercase">
-            {reading ? t('posEditZReading') : t('posAddZReadingTitle')}
-          </h3>
-          <button onClick={onClose} className="text-cdlp-muted hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
+          <div>
+            <h3 className="text-lg font-black text-cdlp-gold uppercase">
+              {reading ? t('posEditZReading') : inline ? t('posZWorkspace') : t('posAddZReadingTitle')}
+            </h3>
+            {inline && !reading ? (
+              <p className="text-xs text-cdlp-muted mt-1">{t('posZWorkspaceDesc')}</p>
+            ) : null}
+          </div>
+          {!inline ? (
+            <button onClick={onClose} className="text-cdlp-muted hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+          ) : null}
         </div>
 
         {/* Mode Toggle */}
@@ -422,7 +579,7 @@ function POSModal({ reading, onClose, onSave }: {
         )}
 
         {/* Manual Entry Form */}
-        {mode === 'manual' && (
+        {(showEntryForm || reading) && mode === 'manual' && (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">{t('date')}</label>
@@ -575,3 +732,4 @@ function POSModal({ reading, onClose, onSave }: {
     </div>
   );
 }
+

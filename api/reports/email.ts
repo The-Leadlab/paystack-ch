@@ -2,9 +2,11 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { stripeCorsApplyHeaders } from "../lib/stripeCors.js";
 import { verifyFirebaseUser } from "../../lib/verifyFirebaseIdToken.js";
 import { resolveReportPeriod, type ReportEmailCadence } from "../../shared/reportPeriod.js";
-import { buildReportPdfBuffer, type ReportPdfLine } from "../../lib/reportEmailPdf.js";
+import { buildServerFinancialReportHtml } from "../../lib/buildServerFinancialReport.js";
 import { buildReportEmailHtml } from "../../lib/reportEmailTemplate.js";
 import { sendReportEmail } from "../../lib/resendReports.js";
+import { ensureFirebaseAdmin } from "../../lib/firebaseAdmin.js";
+import { getFirestore } from "firebase-admin/firestore";
 
 type IncomeRow = {
   date: string;
@@ -12,6 +14,7 @@ type IncomeRow = {
   vat_amount?: number;
   description?: string;
   type?: string;
+  account_code?: string;
 };
 
 type ExpenseRow = {
@@ -20,12 +23,14 @@ type ExpenseRow = {
   vat_amount?: number;
   description?: string;
   category?: string;
+  account_code?: string;
 };
 
 type Body = {
   cadence?: ReportEmailCadence;
   sessionName?: string;
   locale?: "en" | "fr";
+  includeLedger?: boolean;
   income?: IncomeRow[];
   expenses?: ExpenseRow[];
 };
@@ -57,6 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     const auth = await verifyFirebaseUser(token);
+    ensureFirebaseAdmin();
     const email = auth.email?.trim();
     if (!email) {
       res.status(400).json({ error: "No email on Firebase account." });
@@ -80,36 +86,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     const totalIncome = income.reduce((s, r) => s + Number(r.amount || 0), 0);
     const totalExpenses = expenses.reduce((s, r) => s + Number(r.amount || 0), 0);
-    const vatReceived = income.reduce((s, r) => s + Number(r.vat_amount || 0), 0);
-    const vatPaid = expenses.reduce((s, r) => s + Number(r.vat_amount || 0), 0);
 
-    const lines: ReportPdfLine[] = [
-      ...income.map((r) => ({
-        date: r.date,
-        label: r.description || r.type || "Income",
-        amount: Number(r.amount || 0),
-        kind: "income" as const,
-      })),
-      ...expenses.map((r) => ({
-        date: r.date,
-        label: r.description || r.category || "Expense",
-        amount: Number(r.amount || 0),
-        kind: "expense" as const,
-      })),
-    ].sort((a, b) => a.date.localeCompare(b.date));
+    let includeLedger = body.includeLedger === true;
+    if (body.includeLedger === undefined) {
+      const userDoc = await getFirestore().collection("users").doc(auth.uid).get();
+      includeLedger = userDoc.data()?.revenueLedgerEnabled === true;
+    }
 
-    const pdfBuffer = buildReportPdfBuffer({
-      cadence,
-      periodLabel,
-      sessionName,
+    const reportHtml = buildServerFinancialReportHtml({
+      income: income.map((r) => ({
+        date: r.date,
+        amount: Number(r.amount || 0),
+        vat_amount: Number(r.vat_amount || 0),
+        description: r.description,
+        type: r.type,
+        account_code: r.account_code,
+      })),
+      expenses: expenses.map((r) => ({
+        date: r.date,
+        amount: Number(r.amount || 0),
+        vat_amount: Number(r.vat_amount || 0),
+        description: r.description,
+        category: r.category,
+        account_code: r.account_code,
+      })),
       dateFrom: period.from,
       dateTo: period.to,
-      totalIncome,
-      totalExpenses,
-      balance: totalIncome - totalExpenses,
-      vatReceived,
-      vatPaid,
-      lines,
+      sessionName,
+      locale,
+      includeLedger,
     });
 
     const subject =
@@ -128,9 +133,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       balance: totalIncome - totalExpenses,
     });
 
-    const pdfFilename = `paystack-report-${cadence}-${period.to}.pdf`;
+    const reportFilename = `paystack-financial-report-${cadence}-${period.to}.html`;
 
-    await sendReportEmail({ to: email, subject, html, pdfBuffer, pdfFilename });
+    await sendReportEmail({ to: email, subject, html, reportHtml, reportFilename });
 
     res.status(200).json({ ok: true, sentTo: email, cadence, period });
   } catch (error) {

@@ -36,6 +36,8 @@ import { classifyLineItemAccountCode } from '../services/swissAccountClassifierS
 import type { FinancialData } from '../types';
 import { loadReportSchedule, saveReportSchedule } from '../lib/reportScheduleClient';
 import type { ReportScheduleCadenceDays } from '@shared/reportSchedule';
+import { useRevenueLedgerPrefs } from '../hooks/useRevenueLedgerPrefs';
+import { RevenueLedgerTable } from './RevenueLedgerTable';
 
 type Tab = BusinessTab;
 
@@ -1929,6 +1931,12 @@ function ReportsPlaceholder() {
   const [scheduleLoading, setScheduleLoading] = React.useState(false);
   const [scheduleSaving, setScheduleSaving] = React.useState(false);
   const [scheduleMessage, setScheduleMessage] = React.useState<string | null>(null);
+  const {
+    enabled: ledgerEnabled,
+    setEnabled: setLedgerEnabled,
+    loading: ledgerPrefsLoading,
+  } = useRevenueLedgerPrefs();
+  const [ledgerToggleBusy, setLedgerToggleBusy] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -2090,6 +2098,7 @@ function ReportsPlaceholder() {
     labelCategory: categoryLabel,
     labelIncomeType: (type: string) =>
       type === 'SALES' || type === 'RESERVATION' ? t(type) : type,
+    includeLedger: ledgerEnabled,
   });
 
   const handleExport = async (format: 'csv' | 'pdf') => {
@@ -2119,12 +2128,14 @@ function ReportsPlaceholder() {
     setEmailBusy(cadence);
     try {
       const { emailFinancialReport } = await import('../lib/reportEmailClient');
+      const payload = reportPayload();
       const { sentTo } = await emailFinancialReport({
         cadence,
-        sessionName: reportPayload().sessionName || t('allSessions'),
+        sessionName: payload.sessionName || t('allSessions'),
         locale: language,
-        income: filteredIncome,
-        expenses: filteredExpenses,
+        includeLedger: payload.includeLedger,
+        income: dateFilteredIncome,
+        expenses: dateFilteredExpenses,
       });
       alert(t('repEmailSent').replace('{email}', sentTo));
     } catch (e) {
@@ -2461,69 +2472,23 @@ function ReportsPlaceholder() {
         )}
       </div>
 
-      <div className="ba-panel overflow-x-auto">
-        <div className="ba-section-head">
-          <Receipt className="w-5 h-5" />
-          <h2>{t('repLedgerTitle')}</h2>
-        </div>
-        <p className="text-xs text-cdlp-muted mb-3">{t('repLedgerDesc')}</p>
-        <table className="ba-doc-table w-full text-left text-xs">
-          <thead>
-            <tr>
-              <th>{t('repColDate')}</th>
-              <th>{t('repColVendor')}</th>
-              <th>{t('repColCategory')}</th>
-              <th>{t('repColAccount')}</th>
-              <th className="text-right">{t('repColAmount')}</th>
-              <th className="text-right">{t('repColVat')}</th>
-              <th>{t('repColDescription')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              ...dateFilteredIncome.map((item) => ({
-                id: `in-${item.id}`,
-                date: item.date,
-                vendor: item.description || '—',
-                category: categoryLabel(item.type),
-                account: item.account_code || '—',
-                amount: item.amount,
-                vat: item.vat_amount || 0,
-                description: item.description || '—',
-                tone: 'income' as const,
-              })),
-              ...dateFilteredExpenses.map((item) => ({
-                id: `ex-${item.id}`,
-                date: item.date,
-                vendor: item.description || '—',
-                category: categoryLabel(item.category),
-                account: item.account_code || '—',
-                amount: -item.amount,
-                vat: item.vat_amount || 0,
-                description: item.description || '—',
-                tone: 'expense' as const,
-              })),
-            ]
-              .sort((a, b) => b.date.localeCompare(a.date))
-              .slice(0, 200)
-              .map((row) => (
-                <tr key={row.id}>
-                  <td>{row.date}</td>
-                  <td className="truncate max-w-[10rem]">{row.vendor}</td>
-                  <td>{row.category}</td>
-                  <td>{row.account}</td>
-                  <td className={`text-right font-bold ${row.tone === 'income' ? 'text-emerald-500' : 'text-red-400'}`}>
-                    {row.amount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                  <td className="text-right">
-                    {row.vat.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                  <td className="truncate max-w-[14rem]">{row.description}</td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
+      <RevenueLedgerTable
+        income={dateFilteredIncome}
+        expenses={dateFilteredExpenses}
+        showToggle
+        enabled={ledgerEnabled}
+        toggleBusy={ledgerPrefsLoading || ledgerToggleBusy}
+        onToggle={() => {
+          void (async () => {
+            setLedgerToggleBusy(true);
+            try {
+              await setLedgerEnabled(!ledgerEnabled);
+            } finally {
+              setLedgerToggleBusy(false);
+            }
+          })();
+        }}
+      />
     </div>
   );
 }
