@@ -247,12 +247,12 @@ function addLines(
   return y;
 }
 
-export async function downloadInvoicePdf(
+export async function buildInvoicePdfBlob(
   invoice: InvoiceData,
   labels: InvoicePdfLabels,
   locale: string,
   companyLogoDataUrl?: string
-): Promise<void> {
+): Promise<Blob> {
   const logoDataUrl = companyLogoDataUrl ?? invoice.companyLogoDataUrl;
   const logo = logoDataUrl ? await dataUrlToPdfJpeg(logoDataUrl) : undefined;
   const cmds: PdfCommand[] = [];
@@ -421,7 +421,16 @@ export async function downloadInvoicePdf(
     addJustifiedLines(cmds, termLines, MARGIN, termsTitleY - 12, 8.5, 595 - MARGIN * 2, 11);
   }
 
-  const blob = buildPdf(cmds, logo);
+  return buildPdf(cmds, logo);
+}
+
+export async function downloadInvoicePdf(
+  invoice: InvoiceData,
+  labels: InvoicePdfLabels,
+  locale: string,
+  companyLogoDataUrl?: string
+): Promise<void> {
+  const blob = await buildInvoicePdfBlob(invoice, labels, locale, companyLogoDataUrl);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

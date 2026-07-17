@@ -6,7 +6,7 @@ export type DocumentStorageRef = UploadedDocumentMeta & {
   mimeType: string;
 };
 
-function guessMimeType(fileName: string, fileType: string): string {
+export function guessMimeType(fileName: string, fileType: string): string {
   if (fileType) return fileType;
   const lower = fileName.toLowerCase();
   if (lower.endsWith(".pdf")) return "application/pdf";

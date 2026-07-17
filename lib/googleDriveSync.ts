@@ -159,6 +159,37 @@ async function listDriveFolderFiles(accessToken: string, folderId: string): Prom
   return data.files ?? [];
 }
 
+/** Lists files directly in `folderId` plus one level into any subfolders (the week-dated
+ * subfolders documents get filed into are exactly one level deep) — folder entries themselves
+ * are excluded from the result, only actual files are returned. */
+async function listDriveFolderFilesRecursive(
+  accessToken: string,
+  folderId: string
+): Promise<DriveListedFile[]> {
+  const topLevel = await listDriveFolderFiles(accessToken, folderId);
+  const files: DriveListedFile[] = [];
+  const subfolders: DriveListedFile[] = [];
+
+  for (const entry of topLevel) {
+    if (entry.mimeType === "application/vnd.google-apps.folder") {
+      subfolders.push(entry);
+    } else {
+      files.push(entry);
+    }
+  }
+
+  for (const subfolder of subfolders) {
+    const nested = await listDriveFolderFiles(accessToken, subfolder.id);
+    for (const entry of nested) {
+      if (entry.mimeType !== "application/vnd.google-apps.folder") {
+        files.push(entry);
+      }
+    }
+  }
+
+  return files;
+}
+
 async function downloadDriveFileBytes(accessToken: string, fileId: string): Promise<{ bytes: Buffer; mimeType: string }> {
   const res = await fetch(`${GOOGLE_DRIVE_FILES_URL}/${fileId}?alt=media`, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -193,6 +224,7 @@ export type DriveSaveDocumentRequest = {
   fileUrl?: unknown;
   filename?: unknown;
   mimeType?: unknown;
+  documentDate?: unknown;
 };
 
 /** Platform → Drive: fetch from Firebase Storage and upload to the user's Drive folder. */
@@ -216,6 +248,7 @@ export async function runDriveSaveDocument(
     const fileUrl = typeof body.fileUrl === "string" ? body.fileUrl.trim() : "";
     const filename = typeof body.filename === "string" ? body.filename.trim() : "";
     const mimeTypeHint = typeof body.mimeType === "string" ? body.mimeType.trim() : "";
+    const documentDate = typeof body.documentDate === "string" ? body.documentDate.trim() : "";
 
     if (!storagePath || !fileUrl || !filename) {
       return { status: 400, json: { error: "storagePath, fileUrl, and filename are required" } };
@@ -232,6 +265,7 @@ export async function runDriveSaveDocument(
       filename,
       mimeType: mimeTypeHint || fetchedMime || "application/octet-stream",
       sourceId: storagePath,
+      ...(documentDate ? { documentDate } : {}),
     };
 
     const out = await saveDocumentToDrive(uid, file);
@@ -274,11 +308,11 @@ export async function runDriveSyncFromDrive(authorization: string | undefined): 
 
     let files: DriveListedFile[];
     try {
-      files = await listDriveFolderFiles(accessToken, connection.folderId);
+      files = await listDriveFolderFilesRecursive(accessToken, connection.folderId);
     } catch (error) {
       if ((error as { status?: number }).status !== 401) throw error;
       accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
-      files = await listDriveFolderFiles(accessToken, connection.folderId);
+      files = await listDriveFolderFilesRecursive(accessToken, connection.folderId);
     }
 
     const imported: DriveImportedFile[] = [];

@@ -67,10 +67,12 @@ export function registerGoogleDriveRoutes(app: Express): void {
     res.status(out.status).json("json" in out ? out.json : {});
   });
 
-  app.post("/api/drive/save-document", async (req: Request, res: Response) => {
+  app.post("/api/drive/save-document", jsonParser, async (req: Request, res: Response) => {
     res.setHeader("Cache-Control", "no-store");
+    console.log("[googleDrive] /api/drive/save-document hit:", JSON.stringify(req.body));
     const { runDriveSaveDocument } = await import("../lib/googleDriveSync");
     const out = await runDriveSaveDocument(req.headers.authorization, req.body);
+    console.log("[googleDrive] /api/drive/save-document result:", out.status, JSON.stringify(out.json));
     res.status(out.status).json(out.json);
   });
 

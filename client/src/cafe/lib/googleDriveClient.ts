@@ -72,9 +72,15 @@ export type DriveBackupPayload = {
   fileUrl: string;
   filename: string;
   mimeType: string;
+  /** The document's own date, extracted by AI processing (ISO or Swiss/European format). When
+   * present, the backup is filed directly into that week's subfolder; otherwise it lands in
+   * "Uncategorised". Omit when processing failed or no date could be determined. */
+  documentDate?: string;
 };
 
-/** Fire-and-forget backup of a platform upload to the user's Drive folder. */
+/** Fire-and-forget backup of a platform upload to the user's Drive folder — called once AI
+ * processing has concluded (success or failure), so the document is placed directly into its
+ * correct week folder in a single upload rather than uploaded then moved. */
 export async function backupDocumentToGoogleDrive(payload: DriveBackupPayload): Promise<void> {
   const res = await fetch(apiUrl("/api/drive/save-document"), {
     method: "POST",

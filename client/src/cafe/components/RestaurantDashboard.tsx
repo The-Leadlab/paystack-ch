@@ -19,7 +19,6 @@ import { UpgradePromptModal } from './UpgradePromptModal';
 import { PlanTestBanner, PlanTestPickerModal } from './PlanTestPickerModal';
 import { isAdminAppAccessUser } from '../lib/subscriptionBypass';
 import { getSessionDisplayName } from '../lib/formatLocalDateTime';
-import { saveUploadedDocumentToDrive } from '../lib/googleDriveClient';
 import { POSManager } from './POSManager';
 import { InvoiceMakerPanel } from './InvoiceMakerPanel';
 import type { ProcessedDocument, POSReading } from '../types';
@@ -374,17 +373,9 @@ export function RestaurantDashboard() {
           const { downloadURL, storagePath } = await uploadDocument(fileRaw, user.uid, fileName);
           await updateDocumentData(createdId, { fileUrl: downloadURL, storagePath });
           console.log('✅ File stored for processing:', createdId);
-
-          // Fire-and-forget: save to the user's connected Google Drive, independent of whether
-          // AI processing ever runs or succeeds. A failure here must never block queuing the doc.
-          void saveUploadedDocumentToDrive({
-            storagePath,
-            fileUrl: downloadURL,
-            filename: fileName,
-            mimeType: fileRaw.type || 'application/octet-stream',
-          }).catch((driveError) => {
-            console.warn('⚠️ Could not save document to Google Drive:', driveError);
-          });
+          // Google Drive backup happens once AI processing concludes (see handleDocumentData /
+          // DocumentProcessor's failure path), so the file can be filed directly into its correct
+          // week folder in one upload instead of uploaded now and moved later.
         } catch (uploadError: any) {
           console.error('⚠️ Storage upload failed:', uploadError);
           if (uploadError?.code === 'storage/unauthorized') {
@@ -479,6 +470,29 @@ export function RestaurantDashboard() {
     const date = data.date || new Date().toISOString().split('T')[0];
     const amount = data.amountInCHF || data.totalAmount || 0;
     const docType = data.documentType;
+
+    // AI processing has now concluded successfully and the document's own date is known — back
+    // up to Google Drive directly into that week's subfolder in a single upload.
+    const docForDrive = documents.find((d) => d.id === documentId);
+    if (docForDrive?.storagePath && docForDrive?.fileUrl) {
+      const driveStoragePath = docForDrive.storagePath;
+      const driveFileUrl = docForDrive.fileUrl;
+      void (async () => {
+        try {
+          const { backupDocumentToGoogleDrive } = await import('../lib/googleDriveClient');
+          const { guessMimeType } = await import('../lib/documentStorageForAi');
+          await backupDocumentToGoogleDrive({
+            storagePath: driveStoragePath,
+            fileUrl: driveFileUrl,
+            filename: fileName,
+            mimeType: guessMimeType(fileName, fileRaw?.type || ''),
+            documentDate: data.date || undefined,
+          });
+        } catch (driveErr) {
+          console.warn('Google Drive backup skipped:', driveErr);
+        }
+      })();
+    }
     
     console.log('ðŸ“Š Processing document type:', docType, 'Amount:', amount);
     
