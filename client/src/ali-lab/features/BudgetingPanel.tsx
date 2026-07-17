@@ -8,6 +8,8 @@ import {
   Banknote,
   TrendingUp,
   Gift,
+  Wand2,
+  CopyPlus,
 } from "lucide-react";
 import type { AliLabFeature } from "../featureRegistry";
 import { useLabFeatureText } from "../hooks/useLabFeatureText";
@@ -25,6 +27,7 @@ import {
   type PersonalExpenseCategory,
   type PersonalIncomeCategory,
 } from "../personalCategories";
+import { shiftMonth, suggestExpenseBudgets, suggestIncomeBudgets } from "../utils/budgetSuggestions";
 import { GlassCard } from "../personal-plan/components/GlassCard";
 import { PersonalRecentLedger } from "../personal-plan/components/PersonalRecentLedger";
 import { usePersonalPlan } from "../personal-plan/context/PersonalPlanContext";
@@ -121,6 +124,8 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   const { loading: finLoading, currentSession } = ledger;
   const [mode, setMode] = useState<LabBudgetMode>("traditional");
   const [draftBudgets, setDraftBudgets] = useState<Record<string, string>>({});
+  const [suggestMessage, setSuggestMessage] = useState<string | null>(null);
+  const [pendingSuggestions, setPendingSuggestions] = useState<Record<string, number>>({});
 
   const { items: saved, update, add, uid } = useAliLabPersist<BudgetRow>(
     labCollections.budgets,
@@ -213,6 +218,91 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   const displayBudget = (category: string, fallback: number) =>
     draftBudgets[category] ?? (fallback > 0 ? String(fallback) : "");
 
+  /** Manual edits take priority — drop any pending (unsaved) suggestion for that field. */
+  const updateDraft = (category: string, value: string) => {
+    setDraftBudgets((prev) => ({ ...prev, [category]: value }));
+    setPendingSuggestions((prev) => {
+      if (!(category in prev)) return prev;
+      const next = { ...prev };
+      delete next[category];
+      return next;
+    });
+  };
+
+  const stagePending = (pending: Record<string, number>, verb: string, emptyMessage: string) => {
+    const applied = Object.keys(pending).length;
+    if (applied > 0) {
+      setDraftBudgets((prev) => {
+        const next = { ...prev };
+        for (const [key, value] of Object.entries(pending)) next[key] = String(value);
+        return next;
+      });
+      setPendingSuggestions(pending);
+    }
+    setSuggestMessage(
+      applied > 0
+        ? `${verb} ${applied} empty ${applied === 1 ? "category" : "categories"} — review, then save.`
+        : emptyMessage
+    );
+  };
+
+  const applySuggestions = () => {
+    const expenseSuggestions = suggestExpenseBudgets(ledger.filteredExpenses, month);
+    const incomeSuggestions = suggestIncomeBudgets(ledger.filteredIncome, month);
+
+    const pending: Record<string, number> = {};
+    for (const row of expenseRows) {
+      if (row.budgetChf > 0) continue;
+      const suggested = expenseSuggestions[row.cat];
+      if (!suggested) continue;
+      pending[row.cat] = suggested;
+    }
+    for (const row of incomeRows) {
+      if (row.budgetChf > 0) continue;
+      const suggested = incomeSuggestions[row.cat];
+      if (!suggested) continue;
+      pending[row.key] = suggested;
+    }
+    stagePending(pending, "Suggested", "Not enough history yet — add a few months of transactions first.");
+  };
+
+  const carryForwardBudgets = () => {
+    const prevMonth = shiftMonth(month, -1);
+    const pending: Record<string, number> = {};
+    for (const row of expenseRows) {
+      if (row.budgetChf > 0) continue;
+      const prior = saved.find((b) => b.month === prevMonth && b.category === row.cat);
+      if (!prior || prior.budgetChf <= 0) continue;
+      pending[row.cat] = prior.budgetChf;
+    }
+    for (const row of incomeRows) {
+      if (row.budgetChf > 0) continue;
+      const prior = saved.find((b) => b.month === prevMonth && b.category === row.key);
+      if (!prior || prior.budgetChf <= 0) continue;
+      pending[row.key] = prior.budgetChf;
+    }
+    stagePending(pending, "Copied", "No budget set last month to copy.");
+  };
+
+  const saveSuggestions = () => {
+    const entries = Object.entries(pendingSuggestions);
+    for (const [key, value] of entries) void setBudget(key, value);
+    setPendingSuggestions({});
+    setSuggestMessage(
+      `Saved ${entries.length} suggested ${entries.length === 1 ? "category" : "categories"}.`
+    );
+  };
+
+  const discardSuggestions = () => {
+    setDraftBudgets((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(pendingSuggestions)) next[key] = "";
+      return next;
+    });
+    setPendingSuggestions({});
+    setSuggestMessage(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-3 items-center text-xs">
@@ -226,6 +316,43 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
         </select>
         {finLoading && <span className="text-[var(--pp-on-surface-variant)]">{t("loadingLedger")}</span>}
         {!uid && <span className="text-[var(--pp-primary)]">{t("localBudgetCache")}</span>}
+        <button
+          type="button"
+          onClick={applySuggestions}
+          className="flex items-center gap-1.5 bg-[var(--pp-primary)]/10 text-[var(--pp-primary)] font-semibold px-3 py-1 rounded-full hover:bg-[var(--pp-primary)]/20 transition-colors"
+        >
+          <Wand2 className="size-3.5" />
+          Suggest from history
+        </button>
+        <button
+          type="button"
+          onClick={carryForwardBudgets}
+          className="flex items-center gap-1.5 bg-[var(--pp-primary)]/10 text-[var(--pp-primary)] font-semibold px-3 py-1 rounded-full hover:bg-[var(--pp-primary)]/20 transition-colors"
+        >
+          <CopyPlus className="size-3.5" />
+          Copy last month
+        </button>
+        {Object.keys(pendingSuggestions).length > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={saveSuggestions}
+              className="bg-[var(--pp-primary)] text-[var(--pp-on-primary)] font-semibold px-3 py-1 rounded-full hover:opacity-90 transition-opacity"
+            >
+              Save suggested budgets
+            </button>
+            <button
+              type="button"
+              onClick={discardSuggestions}
+              className="text-[var(--pp-on-surface-variant)] underline hover:text-[var(--pp-on-surface)]"
+            >
+              Discard
+            </button>
+          </>
+        )}
+        {suggestMessage && (
+          <span className="text-[var(--pp-on-surface-variant)]">{suggestMessage}</span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -260,9 +387,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
                         inputMode="decimal"
                         className="pp-input w-24 text-right text-xs py-0.5 px-1 mt-1"
                         value={displayBudget(row.key, row.budgetChf)}
-                        onChange={(e) =>
-                          setDraftBudgets((prev) => ({ ...prev, [row.key]: e.target.value }))
-                        }
+                        onChange={(e) => updateDraft(row.key, e.target.value)}
                         onBlur={() => commitBudgetDraft(row.key)}
                         aria-label={t(personalIncomeLabelKey(row.cat))}
                       />
@@ -301,9 +426,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
                   label={t(personalExpenseLabelKey(row.cat))}
                   budgetInput={displayBudget(row.cat, row.budgetChf)}
                   spent={row.spent}
-                  onBudgetInputChange={(v) =>
-                    setDraftBudgets((prev) => ({ ...prev, [row.cat]: v }))
-                  }
+                  onBudgetInputChange={(v) => updateDraft(row.cat, v)}
                   onBudgetCommit={() => commitBudgetDraft(row.cat)}
                   Icon={EXPENSE_ICONS[row.cat]}
                 />

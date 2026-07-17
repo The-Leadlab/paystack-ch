@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/cafe/context/AuthContext";
 import { db } from "@/cafe/lib/firebase";
 import {
@@ -17,6 +17,11 @@ export function useAliLabPersist<T extends { id: string }>(
   const uid = user?.uid;
   const [items, setItems] = useState<T[]>(seed);
   const [loading, setLoading] = useState(true);
+
+  /** Callers often pass an inline `seed` literal (new reference every render); read via ref
+   * so it doesn't sit in `refresh`'s deps and destabilize its identity. */
+  const seedRef = useRef(seed);
+  seedRef.current = seed;
 
   const localKey = `ali-lab-${localSuffix}-${uid || "anon"}`;
 
@@ -40,13 +45,13 @@ export function useAliLabPersist<T extends { id: string }>(
     } else {
       try {
         const local = JSON.parse(localStorage.getItem(localKey) || "[]") as T[];
-        setItems(local.length > 0 ? local : seed);
+        setItems(local.length > 0 ? local : seedRef.current);
       } catch {
-        setItems(seed);
+        setItems(seedRef.current);
       }
     }
     setLoading(false);
-  }, [uid, collectionName, localSuffix, localKey, seed]);
+  }, [uid, collectionName, localSuffix, localKey]);
 
   useEffect(() => {
     void refresh();
