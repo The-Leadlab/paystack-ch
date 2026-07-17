@@ -1,6 +1,19 @@
 import { DEFAULT_SWISS_VAT_RATE } from '@shared/swissVatRates';
 import React, { useMemo, useState } from 'react';
-import { Edit2, Trash2, Upload, Save, X, Camera, Zap } from 'lucide-react';
+import {
+  Edit2,
+  Trash2,
+  Upload,
+  Save,
+  X,
+  Camera,
+  Zap,
+  DollarSign,
+  CreditCard,
+  Banknote,
+  TrendingUp,
+  TrendingDown,
+} from 'lucide-react';
 import { usePOS } from '../context/POSContext';
 import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
@@ -8,6 +21,8 @@ import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import type { POSReading } from '../types';
 import { analyzeFinancialDocument } from '../services/geminiService';
 import { Z_READING_AI_HINT, parseZReadingFromFinancialData } from '../lib/posZReading';
+import { BusinessKpiCard } from './BusinessKpiCard';
+import { RevenueLedgerTable } from './RevenueLedgerTable';
 import '../businessApp.css';
 
 type DatePeriod = 'day' | '7d' | '14d' | 'month' | 'custom';
