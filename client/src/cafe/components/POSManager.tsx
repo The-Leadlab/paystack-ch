@@ -1,18 +1,6 @@
 import { DEFAULT_SWISS_VAT_RATE } from '@shared/swissVatRates';
-import React, { useMemo, useState } from 'react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import { Receipt, Edit2, Trash2, Upload, Save, X, Camera, DollarSign, CreditCard, Banknote, TrendingUp, TrendingDown, Zap, BarChart3 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Edit2, Trash2, Upload, Save, X, Camera, Zap } from 'lucide-react';
 import { usePOS } from '../context/POSContext';
 import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
@@ -20,222 +8,18 @@ import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import type { POSReading } from '../types';
 import { analyzeFinancialDocument } from '../services/geminiService';
 import { Z_READING_AI_HINT, parseZReadingFromFinancialData } from '../lib/posZReading';
-import { useRevenueLedgerPrefs } from '../hooks/useRevenueLedgerPrefs';
-import { RevenueLedgerTable } from './RevenueLedgerTable';
-
-import { BusinessKpiCard } from './BusinessKpiCard';
 import '../businessApp.css';
-
-const CHART_COLORS = ['#E8423F', '#34d399', '#60a5fa', '#fbbf24'];
 
 export function POSManager() {
   const { posReadings, addPOSReading, updatePOSReading, deletePOSReading } = usePOS();
-  const { income, expenses } = useFinance();
-  const { currentSession, isAllSessionsView, sessions } = useSession();
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
-  const {
-    enabled: ledgerEnabled,
-    setEnabled: setLedgerEnabled,
-    loading: ledgerPrefsLoading,
-  } = useRevenueLedgerPrefs();
-  const [ledgerToggleBusy, setLedgerToggleBusy] = useState(false);
   const [editingReading, setEditingReading] = useState<POSReading | null>(null);
-
-  // Filter income by session
-  // For "All Sessions" view, only show data from existing sessions (not orphaned data)
-  const existingSessionIds = sessions.map(s => s.id);
-  const filteredIncome = isAllSessionsView 
-    ? income.filter(i => existingSessionIds.includes(i.session_id))
-    : income.filter(i => i.session_id === currentSession?.id);
-  const filteredExpenses = isAllSessionsView
-    ? expenses.filter((e) => existingSessionIds.includes(e.session_id))
-    : expenses.filter((e) => e.session_id === currentSession?.id);
-  
-  // Calculate totals from income (for display when no POS readings exist)
-  const totalIncomeAmount = filteredIncome.reduce((sum, i) => sum + i.amount, 0);
-  const totalExpenseAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const dashboardBalance = totalIncomeAmount - totalExpenseAmount;
-  const vatInclusiveFactor = 1 + DEFAULT_SWISS_VAT_RATE / 100;
-  
-  // Calculate totals from POS readings
-  const totalGrossSales = posReadings.reduce((sum, r) => sum + r.gross_sales, 0);
-  const totalNetSales = posReadings.reduce((sum, r) => sum + r.net_sales, 0);
-  const totalCash = posReadings.reduce((sum, r) => sum + r.cash, 0);
-  const totalCard = posReadings.reduce((sum, r) => sum + r.card, 0);
-  
-  // Use POS readings if available, otherwise show income data
-  const displayGrossSales = posReadings.length > 0 ? totalGrossSales : totalIncomeAmount;
-  const displayNetSales =
-    posReadings.length > 0 ? totalNetSales : totalIncomeAmount / vatInclusiveFactor;
-  const displayCash = posReadings.length > 0 ? totalCash : totalIncomeAmount * 0.4; // Estimate 40% cash
-  const displayCard = posReadings.length > 0 ? totalCard : totalIncomeAmount * 0.6; // Estimate 60% card
-
-  const fmt = (n: number) => n.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const flowBase = Math.max(displayGrossSales, displayNetSales, displayCash, displayCard, totalIncomeAmount, 1);
-
-  const monthlyChartData = useMemo(() => {
-    const months: Record<string, number> = {};
-    for (const item of filteredIncome) {
-      const key = item.date.slice(0, 7);
-      months[key] = (months[key] || 0) + item.amount;
-    }
-    return Object.entries(months)
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .slice(-8)
-      .map(([month, value]) => ({
-        month: new Date(`${month}-01`).toLocaleDateString(chfLocale, { month: 'short', year: '2-digit' }),
-        revenue: Math.round(value * 100) / 100,
-      }));
-  }, [filteredIncome, chfLocale]);
-
-  const paymentChartData = useMemo(() => {
-    if (posReadings.length > 0) {
-      const cash = posReadings.reduce((s, r) => s + r.cash, 0);
-      const card = posReadings.reduce((s, r) => s + r.card, 0);
-      const other = posReadings.reduce((s, r) => s + r.other_payment, 0);
-      return [
-        { name: t('posCash'), value: cash },
-        { name: t('posCard'), value: card },
-        ...(other > 0 ? [{ name: t('posOther'), value: other }] : []),
-      ].filter((d) => d.value > 0);
-    }
-    return [
-      { name: t('posCash'), value: displayCash },
-      { name: t('posCard'), value: displayCard },
-    ];
-  }, [posReadings, displayCash, displayCard, t]);
-
-  const typeChartData = useMemo(() => {
-    const types: Record<string, number> = {};
-    for (const item of filteredIncome) {
-      const key = item.type === 'RESERVATION' ? t('RESERVATION') : t('SALES');
-      types[key] = (types[key] || 0) + item.amount;
-    }
-    return Object.entries(types).map(([name, value]) => ({ name, value }));
-  }, [filteredIncome, t]);
 
   return (
     <div className="space-y-6">
-      <div className="ba-page-header flex flex-wrap items-start justify-between gap-3">
+      <div className="ba-page-header">
         <h1>{t('revenue')}</h1>
-        <button
-          type="button"
-          disabled={ledgerPrefsLoading || ledgerToggleBusy}
-          onClick={() => {
-            void (async () => {
-              setLedgerToggleBusy(true);
-              try {
-                await setLedgerEnabled(!ledgerEnabled);
-              } finally {
-                setLedgerToggleBusy(false);
-              }
-            })();
-          }}
-          className={`ba-filter-chip ${ledgerEnabled ? 'ba-filter-chip--active' : ''}`}
-          title={t('repLedgerToggleRevenue')}
-        >
-          {ledgerEnabled ? t('repLedgerOnRevenue') : t('repLedgerOffRevenue')}
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-        <BusinessKpiCard
-          label={t('income')}
-          value={fmt(totalIncomeAmount)}
-          hint={t('posDashboardIncomeHint')}
-          icon={TrendingUp}
-          tone="green"
-          progressPct={(totalIncomeAmount / flowBase) * 100}
-        />
-        <BusinessKpiCard
-          label={t('expenses')}
-          value={fmt(totalExpenseAmount)}
-          hint={t('posDashboardExpenseHint')}
-          icon={TrendingDown}
-          tone="red"
-          progressPct={(totalExpenseAmount / flowBase) * 100}
-        />
-        <BusinessKpiCard
-          label={t('balance')}
-          value={fmt(dashboardBalance)}
-          icon={DollarSign}
-          tone={dashboardBalance >= 0 ? 'green' : 'red'}
-          progressPct={(Math.abs(dashboardBalance) / flowBase) * 100}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <BusinessKpiCard label={t('posGrossSales')} value={fmt(displayGrossSales)} icon={TrendingUp} tone="green" progressPct={(displayGrossSales / flowBase) * 100} />
-        <BusinessKpiCard label={t('posNetSales')} value={fmt(displayNetSales)} icon={DollarSign} tone="green" progressPct={(displayNetSales / flowBase) * 100} />
-        <BusinessKpiCard label={t('posCash')} value={fmt(displayCash)} icon={Banknote} tone="gold" progressPct={(displayCash / flowBase) * 100} />
-        <BusinessKpiCard label={t('posCard')} value={fmt(displayCard)} icon={CreditCard} tone="blue" progressPct={(displayCard / flowBase) * 100} />
-      </div>
-      {posReadings.length === 0 ? (
-        <p className="text-[10px] text-cdlp-muted uppercase tracking-wide">{t('posFromIncome')} ? {t('posEstimated')}</p>
-      ) : null}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="ba-panel lg:col-span-2">
-          <div className="ba-section-head mb-2">
-            <BarChart3 className="w-5 h-5" />
-            <h2>{t('posChartsMonthly')}</h2>
-          </div>
-          <div className="h-56">
-            {monthlyChartData.length === 0 ? (
-              <p className="text-xs text-cdlp-muted text-center py-10">{t('repNoData')}</p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 10 }} />
-                  <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} />
-                  <Tooltip formatter={(v: number) => [`${fmt(v)} CHF`, t('income')]} />
-                  <Bar dataKey="revenue" fill="#E8423F" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-        <div className="ba-panel">
-          <div className="ba-section-head mb-2">
-            <CreditCard className="w-5 h-5" />
-            <h2>{t('posChartsPayments')}</h2>
-          </div>
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={paymentChartData} dataKey="value" nameKey="name" innerRadius={45} outerRadius={70}>
-                  {paymentChartData.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v: number) => `${fmt(v)} CHF`} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-        <div className="ba-panel lg:col-span-3">
-          <div className="ba-section-head mb-2">
-            <TrendingUp className="w-5 h-5" />
-            <h2>{t('posChartsByType')}</h2>
-          </div>
-          <div className="h-48">
-            {typeChartData.length === 0 ? (
-              <p className="text-xs text-cdlp-muted text-center py-8">{t('repNoData')}</p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={typeChartData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis type="number" tick={{ fill: '#9ca3af', fontSize: 10 }} />
-                  <YAxis type="category" dataKey="name" width={90} tick={{ fill: '#9ca3af', fontSize: 10 }} />
-                  <Tooltip formatter={(v: number) => `${fmt(v)} CHF`} />
-                  <Bar dataKey="value" fill="#34d399" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
       </div>
 
       <POSModal
@@ -252,79 +36,123 @@ export function POSManager() {
         {posReadings.length === 0 ? (
           <p className="text-cdlp-muted text-sm">{t('posNoZReadingsHint')}</p>
         ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {posReadings.map((reading) => (
-            <div key={reading.id} className="ba-panel hover:border-cdlp-gold transition-colors">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <p className="text-sm font-bold text-cdlp-gold">{new Date(reading.date).toLocaleDateString(chfLocale, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</p>
-                  <p className="text-xs text-cdlp-muted mt-1">{reading.notes || t('posNoNotes')}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {posReadings.map((reading) => (
+              <div key={reading.id} className="ba-panel hover:border-cdlp-gold transition-colors">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="text-sm font-bold text-cdlp-gold">
+                      {new Date(reading.date).toLocaleDateString(chfLocale, {
+                        weekday: 'short',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </p>
+                    <p className="text-xs text-cdlp-muted mt-1">{reading.notes || t('posNoNotes')}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditingReading(reading)}
+                      className="p-1.5 hover:bg-cdlp-card rounded text-cdlp-muted hover:text-cdlp-gold"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(t('posDeleteZConfirm'))) {
+                          void deletePOSReading(reading.id);
+                        }
+                      }}
+                      className="p-1.5 hover:bg-cdlp-card rounded text-cdlp-muted hover:text-red-400"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => setEditingReading(reading)}
-                    className="p-1.5 hover:bg-cdlp-card rounded text-cdlp-muted hover:text-cdlp-gold"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm(t('posDeleteZConfirm'))) {
-                        deletePOSReading(reading.id);
-                      }
-                    }}
-                    className="p-1.5 hover:bg-cdlp-card rounded text-cdlp-muted hover:text-red-400"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
 
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-cdlp-muted">{t('posGrossSales')}:</span>
-                  <span className="font-bold text-emerald-500">{reading.gross_sales.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-cdlp-muted">{t('posNetSales')}:</span>
-                  <span className="font-bold ba-field-value">{reading.net_sales.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-cdlp-muted">{t('vatBalanceLabel')}:</span>
-                  <span className="font-bold text-cdlp-gold">{reading.vat_amount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
-                </div>
-                <div className="border-t border-cdlp-border pt-2 mt-2">
-                  <div className="flex justify-between mb-1">
-                    <span className="text-cdlp-muted">{t('posCash')}:</span>
-                    <span className="font-bold text-cdlp-gold">{reading.cash.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-cdlp-muted">{t('posGrossSales')}:</span>
+                    <span className="font-bold text-emerald-500">
+                      {reading.gross_sales.toLocaleString(chfLocale, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}{' '}
+                      CHF
+                    </span>
                   </div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-cdlp-muted">{t('posCard')}:</span>
-                    <span className="font-bold text-blue-400">{reading.card.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <div className="flex justify-between">
+                    <span className="text-cdlp-muted">{t('posNetSales')}:</span>
+                    <span className="font-bold ba-field-value">
+                      {reading.net_sales.toLocaleString(chfLocale, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}{' '}
+                      CHF
+                    </span>
                   </div>
-                  {reading.other_payment > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-cdlp-muted">{t('posOther')}:</span>
-                      <span className="font-bold ba-field-value">{reading.other_payment.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <div className="flex justify-between">
+                    <span className="text-cdlp-muted">{t('vatBalanceLabel')}:</span>
+                    <span className="font-bold text-cdlp-gold">
+                      {reading.vat_amount.toLocaleString(chfLocale, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}{' '}
+                      CHF
+                    </span>
+                  </div>
+                  <div className="border-t border-cdlp-border pt-2 mt-2">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-cdlp-muted">{t('posCash')}:</span>
+                      <span className="font-bold text-cdlp-gold">
+                        {reading.cash.toLocaleString(chfLocale, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-cdlp-muted">{t('posCard')}:</span>
+                      <span className="font-bold text-blue-400">
+                        {reading.card.toLocaleString(chfLocale, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
+                    </div>
+                    {reading.other_payment > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-cdlp-muted">{t('posOther')}:</span>
+                        <span className="font-bold ba-field-value">
+                          {reading.other_payment.toLocaleString(chfLocale, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {reading.tips > 0 && (
+                    <div className="flex justify-between text-emerald-400">
+                      <span>{t('posTips')}:</span>
+                      <span className="font-bold">
+                        +
+                        {reading.tips.toLocaleString(chfLocale, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
                     </div>
                   )}
                 </div>
-                {reading.tips > 0 && (
-                  <div className="flex justify-between text-emerald-400">
-                    <span>{t('posTips')}:</span>
-                    <span className="font-bold">+{reading.tips.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </div>
-                )}
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
         )}
       </div>
-
-      {ledgerEnabled ? (
-        <RevenueLedgerTable income={filteredIncome} expenses={filteredExpenses} />
-      ) : null}
 
       {editingReading ? (
         <POSModal
@@ -340,20 +168,26 @@ export function POSManager() {
   );
 }
 
-function POSModal({ reading, onClose, onSave, inline = false }: {
+function POSModal({
+  reading,
+  onClose,
+  onSave,
+  inline = false,
+}: {
   reading: POSReading | null;
   onClose: () => void;
-  onSave: (data: Omit<POSReading, 'id' | 'restaurant_id' | 'session_id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  onSave: (
+    data: Omit<POSReading, 'id' | 'restaurant_id' | 'session_id' | 'created_at' | 'updated_at'>
+  ) => Promise<void>;
   inline?: boolean;
 }) {
   const { income } = useFinance();
   const { currentSession } = useSession();
   const { t } = useLanguage();
-  const chfLocale = useChfLocale();
   const [mode, setMode] = useState<'manual' | 'upload' | 'auto'>(reading ? 'manual' : 'auto');
   const [uploading, setUploading] = useState(false);
   const [showEntryForm, setShowEntryForm] = useState(Boolean(reading));
-  
+
   const [date, setDate] = useState(reading?.date || new Date().toISOString().split('T')[0]);
   const [grossSales, setGrossSales] = useState(reading?.gross_sales.toString() || '');
   const [netSales, setNetSales] = useState(reading?.net_sales.toString() || '');
@@ -366,31 +200,21 @@ function POSModal({ reading, onClose, onSave, inline = false }: {
   const [refunds, setRefunds] = useState(reading?.refunds.toString() || '0');
   const [notes, setNotes] = useState(reading?.notes || '');
 
-  // Auto-generate from income data
   const handleAutoGenerate = () => {
-    // Filter income for selected date and current session
-    const dayIncome = income.filter(i => 
-      i.date === date && 
-      i.session_id === currentSession?.id
+    const dayIncome = income.filter(
+      (i) => i.date === date && i.session_id === currentSession?.id
     );
-    
     const totalIncome = dayIncome.reduce((sum, i) => sum + i.amount, 0);
-    
-    // Swiss standard VAT (2024+): 8.1% inclusive of gross
     const vatRate = DEFAULT_SWISS_VAT_RATE / 100;
     const gross = totalIncome;
     const vat = gross * (vatRate / (1 + vatRate));
     const net = gross - vat;
-    
-    // Estimate payment split (60% card, 40% cash - user can adjust)
-    const estimatedCard = gross * 0.6;
-    const estimatedCash = gross * 0.4;
-    
+
     setGrossSales(gross.toFixed(2));
     setVatAmount(vat.toFixed(2));
     setNetSales(net.toFixed(2));
-    setCard(estimatedCard.toFixed(2));
-    setCash(estimatedCash.toFixed(2));
+    setCard((gross * 0.6).toFixed(2));
+    setCash((gross * 0.4).toFixed(2));
     setNotes(t('posAutoNotes').replace('{n}', String(dayIncome.length)));
     setShowEntryForm(true);
     setMode('manual');
@@ -431,7 +255,7 @@ function POSModal({ reading, onClose, onSave, inline = false }: {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     await onSave({
       date,
       gross_sales: parseFloat(grossSales) || 0,
@@ -484,28 +308,33 @@ function POSModal({ reading, onClose, onSave, inline = false }: {
             ) : null}
           </div>
           {!inline ? (
-            <button onClick={onClose} className="text-cdlp-muted hover:text-white">
+            <button type="button" onClick={onClose} className="text-cdlp-muted hover:text-white">
               <X className="w-5 h-5" />
             </button>
           ) : null}
         </div>
 
-        {/* Mode Toggle */}
         {!reading && (
           <div className="flex gap-2 mb-6">
             <button
+              type="button"
               onClick={() => setMode('auto')}
               className={`flex-1 flex items-center justify-center gap-2 py-2 ba-filter-chip ${mode === 'auto' ? 'ba-filter-chip--active' : ''}`}
             >
               <Zap className="w-4 h-4" /> {t('posAutoGenerate')}
             </button>
             <button
-              onClick={() => setMode('manual')}
+              type="button"
+              onClick={() => {
+                setMode('manual');
+                setShowEntryForm(true);
+              }}
               className={`flex-1 flex items-center justify-center gap-2 py-2 ba-filter-chip ${mode === 'manual' ? 'ba-filter-chip--active' : ''}`}
             >
               <Edit2 className="w-4 h-4" /> {t('posManualEntry')}
             </button>
             <button
+              type="button"
               onClick={() => setMode('upload')}
               className={`flex-1 flex items-center justify-center gap-2 py-2 ba-filter-chip ${mode === 'upload' ? 'ba-filter-chip--active' : ''}`}
             >
@@ -514,7 +343,6 @@ function POSModal({ reading, onClose, onSave, inline = false }: {
           </div>
         )}
 
-        {/* Auto-Generate Mode */}
         {mode === 'auto' && !reading && (
           <div className="mb-6">
             <div className="ba-subpanel">
@@ -523,7 +351,7 @@ function POSModal({ reading, onClose, onSave, inline = false }: {
                 <h4 className="text-sm font-bold text-cdlp-gold uppercase mb-2">{t('posAutoGenerateTitle')}</h4>
                 <p className="text-xs text-cdlp-muted mb-4">{t('posAutoGenerateDesc')}</p>
               </div>
-              
+
               <div className="mb-4">
                 <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">{t('posSelectDate')}</label>
                 <input
@@ -535,6 +363,7 @@ function POSModal({ reading, onClose, onSave, inline = false }: {
               </div>
 
               <button
+                type="button"
                 onClick={handleAutoGenerate}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-cdlp-gold text-cdlp-black text-sm font-bold uppercase rounded hover:bg-cdlp-gold-light"
               >
@@ -554,7 +383,6 @@ function POSModal({ reading, onClose, onSave, inline = false }: {
           </div>
         )}
 
-        {/* Upload Mode */}
         {mode === 'upload' && !reading && (
           <div className="mb-6">
             <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-cdlp-border rounded cursor-pointer hover:bg-cdlp-card transition-colors">
@@ -567,7 +395,7 @@ function POSModal({ reading, onClose, onSave, inline = false }: {
                 accept="application/pdf,image/jpeg,image/jpg,image/png"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) handleFileUpload(file);
+                  if (file) void handleFileUpload(file);
                 }}
                 disabled={uploading}
               />
@@ -578,7 +406,6 @@ function POSModal({ reading, onClose, onSave, inline = false }: {
           </div>
         )}
 
-        {/* Manual Entry Form */}
         {(showEntryForm || reading) && mode === 'manual' && (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -718,13 +545,15 @@ function POSModal({ reading, onClose, onSave, inline = false }: {
               >
                 <Save className="w-4 h-4" /> {reading ? t('posEditZReading') : t('posAddZReading')}
               </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-2.5 border border-cdlp-border text-xs font-bold uppercase rounded hover:bg-cdlp-border/50 text-white"
-              >
-                {t('cancel')}
-              </button>
+              {!inline ? (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-6 py-2.5 border border-cdlp-border text-xs font-bold uppercase rounded hover:bg-cdlp-border/50 text-white"
+                >
+                  {t('cancel')}
+                </button>
+              ) : null}
             </div>
           </form>
         )}
@@ -732,4 +561,3 @@ function POSModal({ reading, onClose, onSave, inline = false }: {
     </div>
   );
 }
-

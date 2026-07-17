@@ -83,6 +83,7 @@ export function buildFinancialReportHtml(data: FinancialReportInput): string {
     ? buildLedgerRows(income, expenses, cat, incType)
     : [];
 
+  const ledgerHtml =
     includeLedger && ledgerRows.length > 0
       ? `
       <div class="section">
