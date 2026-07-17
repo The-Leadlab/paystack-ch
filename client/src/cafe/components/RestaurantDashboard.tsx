@@ -8,7 +8,7 @@ import { useSession } from '../context/SessionContext';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useChfLocale, useFormatChf, useLanguage } from '../context/LanguageContext';
-import { formatIssuerForDisplay, formatMonthYearLabel, parseMonthKey } from '../i18n/documentDisplayI18n';
+import { formatIssuerForDisplay, formatMonthYearLabel, parseMonthKey, parseInvoicesDetectedCount, documentDisplayName, conjoinedInvoicesLabel } from '../i18n/documentDisplayI18n';
 import { useDocuments } from '../context/DocumentContext';
 import { usePOS } from '../context/POSContext';
 import { DocumentProcessor } from './DocumentProcessor';
@@ -36,7 +36,6 @@ import { classifyLineItemAccountCode } from '../services/swissAccountClassifierS
 import type { FinancialData } from '../types';
 import { loadReportSchedule, saveReportSchedule } from '../lib/reportScheduleClient';
 import type { ReportScheduleCadenceDays } from '@shared/reportSchedule';
-import { useRevenueLedgerPrefs } from '../hooks/useRevenueLedgerPrefs';
 import { RevenueLedgerTable } from './RevenueLedgerTable';
 
 type Tab = BusinessTab;
@@ -1931,12 +1930,6 @@ function ReportsPlaceholder() {
   const [scheduleLoading, setScheduleLoading] = React.useState(false);
   const [scheduleSaving, setScheduleSaving] = React.useState(false);
   const [scheduleMessage, setScheduleMessage] = React.useState<string | null>(null);
-  const {
-    enabled: ledgerEnabled,
-    setEnabled: setLedgerEnabled,
-    loading: ledgerPrefsLoading,
-  } = useRevenueLedgerPrefs();
-  const [ledgerToggleBusy, setLedgerToggleBusy] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -2098,7 +2091,7 @@ function ReportsPlaceholder() {
     labelCategory: categoryLabel,
     labelIncomeType: (type: string) =>
       type === 'SALES' || type === 'RESERVATION' ? t(type) : type,
-    includeLedger: ledgerEnabled,
+    includeLedger: true,
   });
 
   const handleExport = async (format: 'csv' | 'pdf') => {
@@ -2475,19 +2468,6 @@ function ReportsPlaceholder() {
       <RevenueLedgerTable
         income={dateFilteredIncome}
         expenses={dateFilteredExpenses}
-        showToggle
-        enabled={ledgerEnabled}
-        toggleBusy={ledgerPrefsLoading || ledgerToggleBusy}
-        onToggle={() => {
-          void (async () => {
-            setLedgerToggleBusy(true);
-            try {
-              await setLedgerEnabled(!ledgerEnabled);
-            } finally {
-              setLedgerToggleBusy(false);
-            }
-          })();
-        }}
       />
     </div>
   );
@@ -2876,14 +2856,34 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
 
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 min-w-0">
           <button
             onClick={() => setSelectedEntity(null)}
-            className="flex items-center gap-2 text-cdlp-gold hover:text-cdlp-gold-light text-sm font-bold uppercase"
+            className="flex items-center gap-2 text-cdlp-gold hover:text-cdlp-gold-light text-sm font-bold uppercase shrink-0"
           >
             <ChevronRight className="w-4 h-4 rotate-180" /> {t('docBack')}
           </button>
-          <h2 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase">{formatIssuerForDisplay(selectedEntity, t)}</h2>
+          <div className="min-w-0">
+            <h2 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase truncate">
+              {(() => {
+                const count =
+                  parseInvoicesDetectedCount(selectedEntity) ??
+                  (entityDocs || []).reduce((max, d) => Math.max(max, d.data?.subDocuments?.length || 0), 0);
+                if (count > 1) {
+                  return documentDisplayName(entityDocs?.[0]?.fileName, t('dpMultiInvoiceDocument'));
+                }
+                return formatIssuerForDisplay(selectedEntity, t, { fileName: entityDocs?.[0]?.fileName });
+              })()}
+            </h2>
+            {(() => {
+              const count =
+                parseInvoicesDetectedCount(selectedEntity) ??
+                (entityDocs || []).reduce((max, d) => Math.max(max, d.data?.subDocuments?.length || 0), 0);
+              return count > 1 ? (
+                <p className="text-xs text-cdlp-muted">{conjoinedInvoicesLabel(count, t)}</p>
+              ) : null;
+            })()}
+          </div>
         </div>
 
         {monthlyGroups.length === 0 ? (
@@ -2997,6 +2997,13 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
             const totalAmount = docs.reduce((sum, d) => sum + (d.data?.totalAmount || 0), 0);
             const docCount = docs.length;
             const isEmployee = filter === 'employees' || groupedDocs.employees[entityName];
+            const conjoinedCount =
+              parseInvoicesDetectedCount(entityName) ??
+              docs.reduce((max, d) => Math.max(max, d.data?.subDocuments?.length || 0), 0);
+            const primaryTitle =
+              conjoinedCount > 1
+                ? documentDisplayName(docs[0]?.fileName, t('dpMultiInvoiceDocument'))
+                : formatIssuerForDisplay(entityName, t, { fileName: docs[0]?.fileName });
 
             return (
               <button
@@ -3006,10 +3013,11 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 className="ba-entity-card group"
               >
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-base mb-1">
-                      {formatIssuerForDisplay(entityName, t)}
-                    </h3>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base mb-1 truncate">{primaryTitle}</h3>
+                    {conjoinedCount > 1 ? (
+                      <p className="text-xs text-cdlp-muted mb-1">{conjoinedInvoicesLabel(conjoinedCount, t)}</p>
+                    ) : null}
                     <p className="text-xs text-cdlp-muted uppercase">
                       {isEmployee ? t('docEntityEmployee') : t('docEntitySupplier')}
                     </p>

@@ -37,7 +37,7 @@ import {
 import { useSubscription } from '../context/SubscriptionContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useExpenseCategoryMeta } from '../i18n/expenseCategoryI18n';
-import { formatIssuerForDisplay, invoicesDetectedIssuer } from '../i18n/documentDisplayI18n';
+import { formatIssuerForDisplay, invoicesDetectedIssuer, documentDisplayName, conjoinedInvoicesLabel } from '../i18n/documentDisplayI18n';
 import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
 
 // Neural Log Component (from Ypsom)
@@ -1441,7 +1441,11 @@ const VerificationHub: React.FC<{
                       )}
                     </label>
                     <input
-                      value={hasMultipleSubs ? formatIssuerForDisplay(editedData.issuer, t) : editedData.issuer}
+                      value={
+                        hasMultipleSubs
+                          ? documentDisplayName(doc.fileName, formatIssuerForDisplay(editedData.issuer, t))
+                          : editedData.issuer
+                      }
                       onChange={(e) => handleFieldChange('issuer', e.target.value)}
                       readOnly={hasMultipleSubs}
                       className={`ba-verify-field ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`}
@@ -1454,7 +1458,7 @@ const VerificationHub: React.FC<{
                       onClick={() => setShowSubInvoiceModal(true)}
                       className="h-11 px-4 bg-cdlp-gold/15 border border-cdlp-gold/40 rounded-sm text-xs font-black text-cdlp-gold uppercase tracking-wider hover:bg-cdlp-gold/25 transition-colors"
                     >
-                      {invoicesDetectedIssuer(subDocuments.length, t)}
+                      {conjoinedInvoicesLabel(subDocuments.length, t)}
                     </button>
                     <button
                       type="button"
