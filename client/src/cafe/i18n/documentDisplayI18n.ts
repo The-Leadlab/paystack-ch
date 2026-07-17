@@ -41,10 +41,40 @@ export function invoicesDetectedIssuer(count: number, t: (key: string) => string
   return conjoinedInvoicesLabel(count, t);
 }
 
+export const UNDATED_MONTH_KEY = 'undated';
+
+/**
+ * Normalize common Gemini / Swiss date strings to a YYYY-MM month key.
+ * Accepts ISO (YYYY-MM-DD), Swiss (DD.MM.YYYY), and slash forms.
+ */
 export function parseMonthKey(dateStr: string | undefined): string | null {
-  if (!dateStr || dateStr.length < 7) return null;
-  const month = dateStr.substring(0, 7);
-  return MONTH_KEY_RE.test(month) ? month : null;
+  if (!dateStr?.trim()) return null;
+  const raw = dateStr.trim();
+
+  if (raw.length >= 7) {
+    const isoPrefix = raw.substring(0, 7);
+    if (MONTH_KEY_RE.test(isoPrefix) && /^\d{4}-\d{2}/.test(raw)) return isoPrefix;
+  }
+
+  const swiss = raw.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+  if (swiss) {
+    const month = Number(swiss[2]);
+    const year = Number(swiss[3]);
+    if (month >= 1 && month <= 12 && year >= 1990 && year <= 2100) {
+      return `${year}-${String(month).padStart(2, '0')}`;
+    }
+  }
+
+  const ymdSlash = raw.match(/^(\d{4})[./](\d{1,2})[./](\d{1,2})/);
+  if (ymdSlash) {
+    const year = Number(ymdSlash[1]);
+    const month = Number(ymdSlash[2]);
+    if (month >= 1 && month <= 12 && year >= 1990 && year <= 2100) {
+      return `${year}-${String(month).padStart(2, '0')}`;
+    }
+  }
+
+  return null;
 }
 
 export function formatMonthYearLabel(

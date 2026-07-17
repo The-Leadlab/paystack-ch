@@ -330,7 +330,7 @@ Return JSON only matching schema.`;
         temperature: 0.05,
         topP: 0.9,
         topK: 20,
-        maxOutputTokens: resolveMaxOutputTokens(24576),
+        maxOutputTokens: resolveMaxOutputTokens(32768),
       };
 
   try {
@@ -771,6 +771,17 @@ function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
   };
 }
 
+function maxPageMentionedInSubDocs(parsed: FinancialData): number {
+  const subs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments : [];
+  let max = 0;
+  for (const sub of subs) {
+    const nums = String((sub as { pageRange?: string }).pageRange || '').match(/\d+/g);
+    if (!nums) continue;
+    for (const n of nums) max = Math.max(max, Number(n) || 0);
+  }
+  return max;
+}
+
 function shouldRunExhaustivePdfPass(file: File, parsed: FinancialData, userHint?: string): boolean {
   if (isPaySlipFinancialData(parsed, file)) return false;
 
@@ -790,18 +801,26 @@ function shouldRunExhaustivePdfPass(file: File, parsed: FinancialData, userHint?
   if (hasMultiHint) return true;
 
   const extractedSubDocs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments.length : 0;
-
-  // First pass already found multiple sub-documents — no need for exhaustive re-scan
-  if (extractedSubDocs >= 2) return false;
-
   const lineCount = Array.isArray(parsed.lineItems) ? parsed.lineItems.length : 0;
-  // Raise thresholds: only trigger for genuinely suspicious under-splits on large PDFs
-  const largePdf = file.size > 800_000;
-  const suspiciousUnderSplit = extractedSubDocs <= 1 && lineCount >= 6;
+  const maxPage = maxPageMentionedInSubDocs(parsed);
+  // Multi-page binders are often 200KB–few MB; Gemini frequently stops after 2–3 invoices.
+  const likelyMultiPagePdf = file.size > 120_000;
+  const pageCoverageGap = maxPage > 0 && maxPage > extractedSubDocs + 1;
 
+  // Do NOT skip when first pass already found 2+ invoices — that was under-extracting
+  // 7-page binders down to 2 invoices. Re-scan whenever pages or size suggest more.
+  if (extractedSubDocs >= 2 && (likelyMultiPagePdf || pageCoverageGap)) {
+    return true;
+  }
+
+  if (extractedSubDocs >= 1 && pageCoverageGap) {
+    return true;
+  }
+
+  const suspiciousUnderSplit = extractedSubDocs <= 1 && lineCount >= 6;
   return (
-    (suspiciousUnderSplit && largePdf) ||
-    (extractedSubDocs === 0 && largePdf && lineCount >= 3)
+    (suspiciousUnderSplit && likelyMultiPagePdf) ||
+    (extractedSubDocs === 0 && likelyMultiPagePdf && lineCount >= 3)
   );
 }
 
@@ -1027,7 +1046,10 @@ export const analyzeFinancialDocument = async (
               date: { type: Type.STRING },
               totalAmount: { type: Type.NUMBER },
               originalCurrency: { type: Type.STRING },
-              documentType: { type: Type.STRING, enum: ["VOUCHER", "TICKET/RECEIPT", "BANK_DEPOSIT"] },
+              documentType: {
+                type: Type.STRING,
+                enum: ["Invoice", "VOUCHER", "TICKET/RECEIPT", "BANK_DEPOSIT", "OTHER"],
+              },
               expenseCategory: { type: Type.STRING },
               vatAmount: { type: Type.NUMBER },
               vatRate: { type: Type.NUMBER },
@@ -1055,7 +1077,7 @@ export const analyzeFinancialDocument = async (
                 },
               },
             },
-            required: ["pageRange", "issuer", "date", "totalAmount", "originalCurrency", "expenseCategory", "vatAmount", "vatRate", "netAmount"]
+            required: ["issuer", "totalAmount", "originalCurrency", "expenseCategory"]
           }
         }
       },
@@ -1081,9 +1103,9 @@ CRITICAL RULES:
 12. If VAT is missing for a sub-document, set vatAmount=0 and vatRate=0 (never omit fields).
 13. If one invoice spans multiple pages, merge those pages into ONE subDocuments entry with a combined pageRange (e.g. "2-3"), do not duplicate it.
 14. For multi-invoice files, include lineItems with ONE row per invoice (gross total per invoice), not per product/ticket line.
-15. NEVER cap extracted invoices to 2; include every invoice found across all pages.
+15. NEVER cap extracted invoices to 2 or 3; include EVERY distinct invoice found across ALL pages (a 7-page binder may have 5–7 invoices).
 16. Extract only values visible in the document. Never invent issuer names, dates, VAT, or totals.
-17. If a required field is not visible, use safe defaults (empty string for text, 0 for numbers) and continue.
+17. If a required field is not visible, use safe defaults (empty string for text, 0 for numbers, pageRange="" if unknown) and continue — never drop an invoice because one field is hard to read.
 18. Prefer exact numeric copying from document totals over inferred arithmetic when both are present.
 19. Keep sign consistency: INCOME amounts positive, EXPENSE amounts positive (classification carries direction).
 20. Always return valid JSON that strictly matches the schema and contains no markdown/comments.
@@ -1187,6 +1209,16 @@ Return JSON only.`;
               : normalized.lineItems,
           });
           console.log(`📚 Exhaustive pass refreshed ${exhaustiveSubCount} invoice blocks`);
+        }
+
+        const claimed = Number(exhaustive.detectedInvoiceCount || 0);
+        const got = Array.isArray(normalized.subDocuments) ? normalized.subDocuments.length : 0;
+        if (claimed > got) {
+          const alerts = new Set(Array.isArray(normalized.forensicAlerts) ? normalized.forensicAlerts : []);
+          alerts.add(
+            `Invoice count mismatch: model reported ${claimed} invoices but only ${got} were extracted. Re-process or review pages manually.`
+          );
+          normalized = { ...normalized, forensicAlerts: Array.from(alerts) };
         }
       }
     } else if (isPdf) {

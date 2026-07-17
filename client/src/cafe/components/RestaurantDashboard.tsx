@@ -2553,16 +2553,19 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
     ];
   }, [filter, groupedDocs, posReportsLabel]);
 
-  // Group documents by month within an entity
+  // Group documents by month within an entity (keep undated docs visible)
   const groupByMonth = (docs: ProcessedDocument[]) => {
     const byMonth: Record<string, ProcessedDocument[]> = {};
     docs.forEach(doc => {
-      const monthKey = parseMonthKey(doc.data?.date);
-      if (!monthKey) return;
+      const monthKey = parseMonthKey(doc.data?.date) || 'undated';
       if (!byMonth[monthKey]) byMonth[monthKey] = [];
       byMonth[monthKey].push(doc);
     });
-    return Object.entries(byMonth).sort((a, b) => b[0].localeCompare(a[0]));
+    return Object.entries(byMonth).sort((a, b) => {
+      if (a[0] === 'undated') return 1;
+      if (b[0] === 'undated') return -1;
+      return b[0].localeCompare(a[0]);
+    });
   };
 
   // If viewing a specific document
@@ -2909,7 +2912,10 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
         ) : (
           monthlyGroups.map(([month, docs]) => {
           const totalAmount = docs.reduce((sum, d) => sum + (d.data?.totalAmount || 0), 0);
-          const monthName = formatMonthYearLabel(month, chfLocale, t('repInvalidMonth'));
+          const monthName =
+            month === 'undated'
+              ? t('docUndated')
+              : formatMonthYearLabel(month, chfLocale, t('repInvalidMonth'));
 
           return (
             <div key={month} className="ba-panel ba-panel--flat overflow-hidden">
