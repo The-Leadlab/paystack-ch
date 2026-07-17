@@ -225,6 +225,11 @@ export function InvoiceMakerPanel() {
     setInvoiceData(sent);
     upsertInvoice(user?.uid, sent);
     setSavedInvoices(loadSavedInvoices(user?.uid));
+
+    void (async () => {
+      const { backupInvoiceToGoogleDrive } = await import('../lib/invoiceDriveBackup');
+      await backupInvoiceToGoogleDrive(sent, invoicePdfLabels, chfLocale, user?.uid);
+    })();
   };
 
   const fmtMoney = (n: number) =>

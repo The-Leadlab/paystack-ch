@@ -118,11 +118,11 @@ function addLines(
   return y;
 }
 
-export async function downloadInvoicePdf(
+export function buildInvoicePdfBlob(
   invoice: InvoiceData,
   labels: InvoicePdfLabels,
   locale: string
-): Promise<void> {
+): Blob {
   const cmds: PdfCommand[] = [];
   let y = PAGE_H - MARGIN;
 
@@ -283,7 +283,15 @@ export async function downloadInvoicePdf(
     addLines(cmds, invoice.terms, MARGIN, y - 12, 9, false, 90, 12);
   }
 
-  const blob = buildPdf(cmds);
+  return buildPdf(cmds);
+}
+
+export async function downloadInvoicePdf(
+  invoice: InvoiceData,
+  labels: InvoicePdfLabels,
+  locale: string
+): Promise<void> {
+  const blob = buildInvoicePdfBlob(invoice, labels, locale);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

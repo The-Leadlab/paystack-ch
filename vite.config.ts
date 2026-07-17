@@ -242,11 +242,11 @@ export default defineConfig({
       "/api/admin": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/api/oauth": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/api/drive": { target: "http://127.0.0.1:8787", changeOrigin: true },
+      "/api/gemini": { target: "http://127.0.0.1:8787", changeOrigin: true },
       ...(stripeDevProxy
         ? {
             "/api/stripe": { target: "http://127.0.0.1:8787", changeOrigin: true },
             "/api/stripe-test": { target: "http://127.0.0.1:8787", changeOrigin: true },
-            "/api/gemini": { target: "http://127.0.0.1:8787", changeOrigin: true },
           }
         : {}),
     },
