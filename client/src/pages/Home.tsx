@@ -3,6 +3,7 @@
  * Home: Full landing page assembling all sections in editorial order.
  */
 
+import { useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import TrustedBySection from "@/components/TrustedBySection";
@@ -19,6 +20,16 @@ import CTASection from "@/components/CTASection";
 import Footer from "@/components/Footer";
 
 export default function Home() {
+  useEffect(() => {
+    const id = window.location.hash.replace(/^#/, "");
+    if (!id) return;
+    // Defer until sections paint (fonts/images can shift layout).
+    const t = window.setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, []);
+
   return (
     <div className="min-h-[100dvh] min-h-screen flex flex-col bg-background text-foreground touch-manipulation overscroll-y-contain">
       <Navbar />

@@ -12,7 +12,6 @@ import {
   CreditCard,
   Banknote,
   TrendingUp,
-  TrendingDown,
 } from 'lucide-react';
 import { usePOS } from '../context/POSContext';
 import { useFinance } from '../context/FinanceContext';
@@ -79,7 +78,7 @@ function resolveIncomeDateRange(
 
 export function POSManager() {
   const { posReadings, addPOSReading, updatePOSReading, deletePOSReading } = usePOS();
-  const { income, expenses } = useFinance();
+  const { income } = useFinance();
   const { currentSession, isAllSessionsView, sessions } = useSession();
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
@@ -89,13 +88,15 @@ export function POSManager() {
   const filteredIncome = isAllSessionsView
     ? income.filter((i) => existingSessionIds.includes(i.session_id))
     : income.filter((i) => i.session_id === currentSession?.id);
-  const filteredExpenses = isAllSessionsView
-    ? expenses.filter((e) => existingSessionIds.includes(e.session_id))
-    : expenses.filter((e) => e.session_id === currentSession?.id);
 
   const totalIncomeAmount = filteredIncome.reduce((sum, i) => sum + i.amount, 0);
-  const totalExpenseAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const dashboardBalance = totalIncomeAmount - totalExpenseAmount;
+  const salesIncome = filteredIncome
+    .filter((i) => (i.type || 'SALES') === 'SALES')
+    .reduce((sum, i) => sum + i.amount, 0);
+  const reservationIncome = filteredIncome
+    .filter((i) => i.type === 'RESERVATION')
+    .reduce((sum, i) => sum + i.amount, 0);
+  const otherIncome = Math.max(0, totalIncomeAmount - salesIncome - reservationIncome);
   const vatInclusiveFactor = 1 + DEFAULT_SWISS_VAT_RATE / 100;
 
   const totalGrossSales = posReadings.reduce((sum, r) => sum + r.gross_sales, 0);
@@ -117,6 +118,8 @@ export function POSManager() {
     displayCash,
     displayCard,
     totalIncomeAmount,
+    salesIncome,
+    reservationIncome,
     1
   );
 
@@ -126,7 +129,7 @@ export function POSManager() {
         <h1>{t('revenue')}</h1>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <BusinessKpiCard
           label={t('income')}
           value={fmt(totalIncomeAmount)}
@@ -136,19 +139,28 @@ export function POSManager() {
           progressPct={(totalIncomeAmount / flowBase) * 100}
         />
         <BusinessKpiCard
-          label={t('expenses')}
-          value={fmt(totalExpenseAmount)}
-          hint={t('posDashboardExpenseHint')}
-          icon={TrendingDown}
-          tone="red"
-          progressPct={(totalExpenseAmount / flowBase) * 100}
+          label={t('SALES')}
+          value={fmt(salesIncome)}
+          hint={t('revSalesHint')}
+          icon={DollarSign}
+          tone="green"
+          progressPct={(salesIncome / flowBase) * 100}
         />
         <BusinessKpiCard
-          label={t('balance')}
-          value={fmt(dashboardBalance)}
+          label={t('RESERVATION')}
+          value={fmt(reservationIncome)}
+          hint={t('revReservationHint')}
+          icon={TrendingUp}
+          tone="blue"
+          progressPct={(reservationIncome / flowBase) * 100}
+        />
+        <BusinessKpiCard
+          label={t('revOtherIncome')}
+          value={fmt(otherIncome)}
+          hint={t('revOtherIncomeHint')}
           icon={DollarSign}
-          tone={dashboardBalance >= 0 ? 'green' : 'red'}
-          progressPct={(Math.abs(dashboardBalance) / flowBase) * 100}
+          tone="gold"
+          progressPct={(otherIncome / flowBase) * 100}
         />
       </div>
 
@@ -188,7 +200,7 @@ export function POSManager() {
         </p>
       ) : null}
 
-      <RevenueLedgerTable income={filteredIncome} expenses={filteredExpenses} />
+      <RevenueLedgerTable income={filteredIncome} expenses={[]} incomeOnly />
 
       <POSModal
         inline

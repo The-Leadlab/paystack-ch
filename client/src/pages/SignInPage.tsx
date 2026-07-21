@@ -258,7 +258,7 @@ export default function SignInPage() {
             <p className="font-display text-xs text-muted-foreground text-center leading-relaxed">
               {t("authSubscribeFirst")}{" "}
               <a href="/#pricing" className="text-brand-red hover:underline font-medium">
-                {t("navPricing")}
+                {t("authSignUpLink")}
               </a>
             </p>
           ) : (
