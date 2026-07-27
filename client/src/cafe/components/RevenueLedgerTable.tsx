@@ -1,6 +1,9 @@
+import { useEffect, useState } from "react";
 import type { Expense, Income } from "../types";
 import { buildLedgerRows } from "@shared/financialReportAggregates";
 import { useChfLocale, useLanguage } from "../context/LanguageContext";
+
+const PAGE_SIZE = 10;
 
 type RevenueLedgerTableProps = {
   income: Income[];
@@ -24,6 +27,7 @@ export function RevenueLedgerTable({
 }: RevenueLedgerTableProps) {
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
+  const [visible, setVisible] = useState(PAGE_SIZE);
 
   const categoryLabel = (cat: string) => {
     const known = ["BILLS", "SUPPLIERS", "PAYROLL", "PAYROLL_TAXES", "OTHER"] as const;
@@ -31,12 +35,19 @@ export function RevenueLedgerTable({
     return cat;
   };
 
-  const rows = buildLedgerRows(
+  const allRows = buildLedgerRows(
     income,
     incomeOnly ? [] : expenses,
     categoryLabel,
     (type) => (type === "SALES" || type === "RESERVATION" ? t(type) : type)
-  ).slice(0, 200);
+  );
+
+  useEffect(() => {
+    setVisible(PAGE_SIZE);
+  }, [income.length, expenses.length, incomeOnly]);
+
+  const rows = allRows.slice(0, visible);
+  const remaining = Math.max(0, allRows.length - visible);
 
   const title = incomeOnly ? t("revBreakdownTitle") : t("repLedgerTitle");
   const desc = incomeOnly ? t("revBreakdownDesc") : t("repLedgerDesc");
@@ -105,6 +116,26 @@ export function RevenueLedgerTable({
           )}
         </tbody>
       </table>
+      {allRows.length > PAGE_SIZE ? (
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          {remaining > 0 ? (
+            <button
+              type="button"
+              className="ba-filter-chip"
+              onClick={() => setVisible((n) => Math.min(allRows.length, n + PAGE_SIZE))}
+            >
+              {t("rhLoadMore").replace("{n}", String(remaining))}
+            </button>
+          ) : (
+            <button type="button" className="ba-filter-chip" onClick={() => setVisible(PAGE_SIZE)}>
+              {t("rhShowLess")}
+            </button>
+          )}
+          <span className="text-[10px] text-cdlp-muted uppercase tracking-wide">
+            {Math.min(visible, allRows.length)} / {allRows.length}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }

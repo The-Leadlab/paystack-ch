@@ -1,5 +1,5 @@
 import { DEFAULT_SWISS_VAT_RATE } from '@shared/swissVatRates';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Edit2,
   Trash2,
@@ -128,6 +128,7 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
   const [showSectorPicker, setShowSectorPicker] = useState(false);
   const [sectorLog, setSectorLog] = useState<string[]>([]);
   const [demoLoading, setDemoLoading] = useState(false);
+  const [zVisible, setZVisible] = useState(10);
   const uploadRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
 
@@ -135,6 +136,13 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
   const filteredIncome = isAllSessionsView
     ? income.filter((i) => existingSessionIds.includes(i.session_id))
     : income.filter((i) => i.session_id === currentSession?.id);
+
+  useEffect(() => {
+    setZVisible(10);
+  }, [posReadings.length]);
+
+  const visibleZReadings = posReadings.slice(0, zVisible);
+  const zRemaining = Math.max(0, posReadings.length - zVisible);
 
   const filteredExpenses = isAllSessionsView
     ? expenses.filter((e) => existingSessionIds.includes(e.session_id))
@@ -738,59 +746,81 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
         {posReadings.length === 0 ? (
           <p className="text-cdlp-muted text-sm">{t('posNoZReadingsHint')}</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {posReadings.map((reading) => (
-              <div key={reading.id} className="ba-panel hover:border-cdlp-gold transition-colors">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <p className="text-sm font-bold text-cdlp-gold">
-                      {new Date(reading.date).toLocaleDateString(chfLocale, {
-                        weekday: 'short',
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </p>
-                    <p className="text-xs text-cdlp-muted mt-1">{reading.notes || t('posNoNotes')}</p>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {visibleZReadings.map((reading) => (
+                <div key={reading.id} className="ba-panel hover:border-cdlp-gold transition-colors">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-sm font-bold text-cdlp-gold">
+                        {new Date(reading.date).toLocaleDateString(chfLocale, {
+                          weekday: 'short',
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </p>
+                      <p className="text-xs text-cdlp-muted mt-1">{reading.notes || t('posNoNotes')}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditingReading(reading)}
+                        className="p-1.5 hover:bg-cdlp-card rounded text-cdlp-muted hover:text-cdlp-gold"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(t('posDeleteZConfirm'))) void deletePOSReading(reading.id);
+                        }}
+                        className="p-1.5 hover:bg-cdlp-card rounded text-cdlp-muted hover:text-red-400"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setEditingReading(reading)}
-                      className="p-1.5 hover:bg-cdlp-card rounded text-cdlp-muted hover:text-cdlp-gold"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (confirm(t('posDeleteZConfirm'))) void deletePOSReading(reading.id);
-                      }}
-                      className="p-1.5 hover:bg-cdlp-card rounded text-cdlp-muted hover:text-red-400"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-cdlp-muted">{t('posGrossSales')}:</span>
+                      <span className="font-bold text-emerald-500">{fmtChf(reading.gross_sales)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-cdlp-muted">{t('posNetSales')}:</span>
+                      <span className="font-bold ba-field-value">{fmtChf(reading.net_sales)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-cdlp-muted">{t('posCash')} / {t('posCard')}:</span>
+                      <span className="font-bold tabular-nums">
+                        {fmt(reading.cash)} / {fmt(reading.card)}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-cdlp-muted">{t('posGrossSales')}:</span>
-                    <span className="font-bold text-emerald-500">{fmtChf(reading.gross_sales)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-cdlp-muted">{t('posNetSales')}:</span>
-                    <span className="font-bold ba-field-value">{fmtChf(reading.net_sales)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-cdlp-muted">{t('posCash')} / {t('posCard')}:</span>
-                    <span className="font-bold tabular-nums">
-                      {fmt(reading.cash)} / {fmt(reading.card)}
-                    </span>
-                  </div>
-                </div>
+              ))}
+            </div>
+            {posReadings.length > 10 ? (
+              <div className="flex flex-wrap items-center gap-2 mt-4">
+                {zRemaining > 0 ? (
+                  <button
+                    type="button"
+                    className="ba-filter-chip"
+                    onClick={() => setZVisible((n) => Math.min(posReadings.length, n + 10))}
+                  >
+                    {t('rhLoadMore').replace('{n}', String(zRemaining))}
+                  </button>
+                ) : (
+                  <button type="button" className="ba-filter-chip" onClick={() => setZVisible(10)}>
+                    {t('rhShowLess')}
+                  </button>
+                )}
+                <span className="text-[10px] text-cdlp-muted uppercase tracking-wide">
+                  {Math.min(zVisible, posReadings.length)} / {posReadings.length}
+                </span>
               </div>
-            ))}
-          </div>
+            ) : null}
+          </>
         )}
       </div>
 
