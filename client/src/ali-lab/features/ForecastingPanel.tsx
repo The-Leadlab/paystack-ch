@@ -3,7 +3,7 @@ import { TrendingUp } from "lucide-react";
 import type { AliLabFeature } from "../featureRegistry";
 import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import { useLabLanguage } from "../context/LabLanguageContext";
-import { useAliLabLedger } from "../hooks/useAliLabLedger";
+import { usePersonalBudgetLedger } from "../hooks/usePersonalBudgetLedger";
 import { buildCashForecast } from "../utils/forecastFromLedger";
 import { GlassCard } from "../personal-plan/components/GlassCard";
 import { formatChfDisplay } from "../personal-plan/formatChfDisplay";
@@ -11,7 +11,7 @@ import { formatChfDisplay } from "../personal-plan/formatChfDisplay";
 export function ForecastingPanel({ feature }: { feature: AliLabFeature }) {
   const { t } = useLabLanguage();
   const { summary: featureSummary } = useLabFeatureText(feature);
-  const ledger = useAliLabLedger();
+  const ledger = usePersonalBudgetLedger();
   const [startBalance, setStartBalance] = useState(0);
   const [useLedgerStart, setUseLedgerStart] = useState(true);
   const [horizon, setHorizon] = useState<"90d" | "12m">("90d");
@@ -99,7 +99,7 @@ export function ForecastingPanel({ feature }: { feature: AliLabFeature }) {
                       <TrendingUp className="size-4" />
                       {formatChfDisplay(summary.avgDailyNet)}/day avg
                     </span>
-                    <span className="text-[var(--pp-on-surface-variant)]">from ledger history</span>
+                    <span className="text-[var(--pp-on-surface-variant)]">from personal statement history</span>
                   </p>
                 )}
               </div>
@@ -149,13 +149,13 @@ export function ForecastingPanel({ feature }: { feature: AliLabFeature }) {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <GlassCard panel className="p-4">
-              <p className="text-xs text-[var(--pp-on-surface-variant)] mb-2 uppercase tracking-wider">Inflow (session)</p>
+                  <p className="text-xs text-[var(--pp-on-surface-variant)] mb-2 uppercase tracking-wider">Inflow (personal)</p>
               <h4 className="text-lg font-semibold text-[var(--pp-secondary)] pp-tabular">
                 {summary ? formatChfDisplay(summary.inflow) : "—"}
               </h4>
             </GlassCard>
             <GlassCard panel className="p-4">
-              <p className="text-xs text-[var(--pp-on-surface-variant)] mb-2 uppercase tracking-wider">Outflow (session)</p>
+                  <p className="text-xs text-[var(--pp-on-surface-variant)] mb-2 uppercase tracking-wider">Outflow (personal)</p>
               <h4 className="text-lg font-semibold text-[var(--pp-primary)] pp-tabular">
                 {summary ? formatChfDisplay(summary.outflow) : "—"}
               </h4>

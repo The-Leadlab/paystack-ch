@@ -5,7 +5,7 @@ import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import type { LabBill } from "../types";
 import { labCollections } from "../aliLabFirestore";
 import { useAliLabPersist } from "../hooks/useAliLabPersist";
-import { useAliLabLedger } from "../hooks/useAliLabLedger";
+import { usePersonalBudgetLedger } from "../hooks/usePersonalBudgetLedger";
 import { usePersonalPlan } from "../personal-plan/context/PersonalPlanContext";
 import { GlassCard } from "../personal-plan/components/GlassCard";
 import { formatChfDisplay } from "../personal-plan/formatChfDisplay";
@@ -32,7 +32,7 @@ function recurrenceLabel(recurrence: LabBill["recurrence"], t: (k: string) => st
 export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
   const { t, summary } = useLabFeatureText(feature);
   const { month, openTransaction } = usePersonalPlan();
-  const ledger = useAliLabLedger(month);
+  const ledger = usePersonalBudgetLedger(month);
   const { items, add, remove, update, uid } = useAliLabPersist<LabBill>(labCollections.bills, "bills", [
     { id: "seed-1", name: "Serafe", dueDate: "2026-06-01", amountChf: 335, recurrence: "yearly", remindDaysBefore: 14 },
     { id: "seed-2", name: "RC insurance", dueDate: "2026-07-15", amountChf: 1200, recurrence: "yearly", remindDaysBefore: 30 },
@@ -44,7 +44,6 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
   const [recurrence, setRecurrence] = useState<LabBill["recurrence"]>("yearly");
 
   const today = new Date().toISOString().slice(0, 10);
-  const monthPrefix = month;
 
   const upcoming = useMemo(() => {
     return [...items]
@@ -53,14 +52,14 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
         const due = new Date(b.dueDate);
         const now = new Date(today);
         const days = Math.ceil((due.getTime() - now.getTime()) / 86400000);
-        const paidInLedger = ledger.filteredExpenses.some(
+        const paidInLedger = ledger.monthRows.some(
           (e) =>
-            e.date.startsWith(monthPrefix) &&
+            e.kind === "expense" &&
             e.description?.toLowerCase().includes(b.name.toLowerCase().slice(0, 4))
         );
         return { ...b, days, overdue: days < 0, paidInLedger, annualChf: annualizedChf(b) };
       });
-  }, [items, today, monthPrefix, ledger.filteredExpenses]);
+  }, [items, today, ledger.monthRows]);
 
   const logPayment = (bill: LabBill) => {
     openTransaction({

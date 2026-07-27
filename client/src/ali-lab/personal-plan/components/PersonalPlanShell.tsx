@@ -9,7 +9,8 @@ import { PersonalSessionBar } from "./PersonalSessionBar";
 import { PersonalTransactionModal } from "./PersonalTransactionModal";
 import { AliLabAuthBanner } from "../../components/AliLabAuthBanner";
 import type { PersonalPlanSurface } from "../personalPlanNav";
-import { useLinkedLedger } from "@/cafe/hooks/useLinkedLedger";
+import { useLabLanguage } from "../../context/LabLanguageContext";
+import { usePersonalBudgetLedger } from "../../hooks/usePersonalBudgetLedger";
 
 function PersonalPlanShellInner({
   featureId,
@@ -25,7 +26,8 @@ function PersonalPlanShellInner({
   children: ReactNode;
 }) {
   const { month } = usePersonalPlan();
-  const ledger = useLinkedLedger(month);
+  const { t } = useLabLanguage();
+  const ledger = usePersonalBudgetLedger(month);
 
   return (
     <div className="personal-plan-shell">
@@ -37,21 +39,21 @@ function PersonalPlanShellInner({
             signInRedirect={surface === "app" ? "/app/personal/overview" : "/ali/overview"}
           />
         ) : null}
-        {surface === "app" ? null : (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--pp-outline-variant)] bg-[var(--pp-surface-container)] px-4 md:px-16 py-2 text-[11px] text-[var(--pp-on-surface-variant)]">
-            <span>
-              Linked to your business ledger — same Firebase data as{" "}
-              <Link href="/app" className="text-[var(--pp-primary)] font-semibold underline-offset-2 hover:underline">
-                Business
-              </Link>
-              {ledger.sessionLabel ? ` · ${ledger.sessionLabel}` : ""}
-            </span>
-            {!ledger.hasFirebaseData && !ledger.loading ? (
-              <span>Use Add transaction below or enter data in Business.</span>
-            ) : null}
-          </div>
-        )}
-        {surface !== "app" ? <PersonalSessionBar month={month} /> : null}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--pp-outline-variant)] bg-[var(--pp-surface-container)] px-4 md:px-16 py-2 text-[11px] text-[var(--pp-on-surface-variant)]">
+          <span>
+            {t("personalTabsBanner")}{" "}
+            <Link
+              href={surface === "app" ? "/app/personal/overview" : "/ali/overview"}
+              className="text-[var(--pp-primary)] font-semibold underline-offset-2 hover:underline"
+            >
+              {t("stmtUploadCta")}
+            </Link>
+          </span>
+          {!ledger.hasData && !ledger.loading ? (
+            <span>{t("personalTabsEmptyHint")}</span>
+          ) : null}
+        </div>
+        <PersonalSessionBar month={month} />
         <PersonalPlanHeader title={title} />
         <div className="p-4 md:p-16 space-y-6 max-w-[1400px]">
           {showKpi ? <PersonalPlanKpiStrip month={month} /> : null}

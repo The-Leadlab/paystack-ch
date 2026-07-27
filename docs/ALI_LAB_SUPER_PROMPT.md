@@ -4,7 +4,9 @@ Use this document when implementing competitor-gap features for Paystack.ch. All
 
 ## Out of scope (do not implement)
 
-**Bank connections** — no CSV import, no Open Banking, no bLink, no live bank sync. Paystack.ch stays on **document upload + AI extraction** (and manual ledger entry). IDs in `ALI_LAB_EXCLUDED_FEATURE_IDS` (`bank-sync`).
+**Live bank connections** — no Open Banking, no bLink, no live bank sync. Feature id `bank-sync` stays excluded.
+
+**Allowed carve-out:** manual **personal** bank-statement upload (CSV/PDF) into the personal IndexedDB ledger on overview — see `docs/PERSONAL_FINANCE_STATEMENT_SUPER_PROMPT.md`. Must not feed restaurant Revenue / Z-reading math.
 
 ---
 

@@ -68,3 +68,22 @@ export function suggestIncomeBudgets(
 ): Partial<Record<PersonalIncomeCategory, number>> {
   return averageByCategory(income, priorMonths(currentMonth, lookback), classifyPersonalIncome);
 }
+
+/** Suggest budgets from personal IndexedDB rows (statement upload / personal txs). */
+export function suggestExpenseBudgetsFromPersonal(
+  rows: { date: string; amount: number; kind: string; expenseCat: PersonalExpenseCategory }[],
+  currentMonth: string,
+  lookback = DEFAULT_LOOKBACK_MONTHS
+): Partial<Record<PersonalExpenseCategory, number>> {
+  const expenses = rows.filter((r) => r.kind === "expense");
+  return averageByCategory(expenses, priorMonths(currentMonth, lookback), (r) => r.expenseCat);
+}
+
+export function suggestIncomeBudgetsFromPersonal(
+  rows: { date: string; amount: number; kind: string; incomeCat: PersonalIncomeCategory }[],
+  currentMonth: string,
+  lookback = DEFAULT_LOOKBACK_MONTHS
+): Partial<Record<PersonalIncomeCategory, number>> {
+  const income = rows.filter((r) => r.kind === "income");
+  return averageByCategory(income, priorMonths(currentMonth, lookback), (r) => r.incomeCat);
+}

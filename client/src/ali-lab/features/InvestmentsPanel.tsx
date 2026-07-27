@@ -5,13 +5,13 @@ import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import type { LabHolding } from "../types";
 import { labCollections } from "../aliLabFirestore";
 import { useAliLabPersist } from "../hooks/useAliLabPersist";
-import { useAliLabLedger } from "../hooks/useAliLabLedger";
+import { usePersonalBudgetLedger } from "../hooks/usePersonalBudgetLedger";
 import { GlassCard } from "../personal-plan/components/GlassCard";
 import { formatChfDisplay } from "../personal-plan/formatChfDisplay";
 
 export function InvestmentsPanel({ feature }: { feature: AliLabFeature }) {
   const { t, summary } = useLabFeatureText(feature);
-  const ledger = useAliLabLedger();
+  const ledger = usePersonalBudgetLedger();
   const { items, add, remove, update } = useAliLabPersist<LabHolding>(labCollections.holdings, "holdings", []);
   const [symbol, setSymbol] = useState("");
   const [name, setName] = useState("");

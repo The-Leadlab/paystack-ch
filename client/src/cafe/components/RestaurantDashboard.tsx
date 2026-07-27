@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'wouter';
 import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings, Wallet, FilePenLine, Mail, Shield } from 'lucide-react';
 import { BillingPlanPanel } from './BillingPlanPanel';
@@ -1090,7 +1090,7 @@ export function RestaurantDashboard() {
               user={user}
             />
           )}
-          {activeTab === 'revenue' && showRevenueTab ? <POSManager /> : null}
+          {activeTab === 'revenue' && showRevenueTab ? <POSManager onNavigateTab={setActiveTab} /> : null}
           {activeTab === 'invoices' && <InvoiceMakerPanel />}
           {activeTab === 'reports' && <ReportsPlaceholder />}
           {activeTab === 'documents' && <DocumentsTab selectedDocument={selectedDocumentFromFinance} onClearSelection={() => setSelectedDocumentFromFinance(null)} />}

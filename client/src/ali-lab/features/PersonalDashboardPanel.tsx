@@ -2,10 +2,13 @@ import { Link } from "wouter";
 import { ArrowRight, Plus } from "lucide-react";
 import type { AliLabFeature } from "../featureRegistry";
 import { useLabFeatureText } from "../hooks/useLabFeatureText";
-import { useAliLabLedger } from "../hooks/useAliLabLedger";
+import { useLabLanguage } from "../context/LabLanguageContext";
+import { usePersonalBudgetLedger } from "../hooks/usePersonalBudgetLedger";
 import { usePersonalPlan } from "../personal-plan/context/PersonalPlanContext";
 import { GlassCard } from "../personal-plan/components/GlassCard";
 import { PersonalRecentLedger } from "../personal-plan/components/PersonalRecentLedger";
+import { PersonalStatementUpload } from "../personal-plan/components/PersonalStatementUpload";
+import { PersonalSavingsCoach } from "../personal-plan/components/PersonalSavingsCoach";
 import {
   PERSONAL_PLAN_NAV,
   personalPlanNavHref,
@@ -49,9 +52,10 @@ function QuickLinkCard({
 
 export function PersonalDashboardPanel({ feature }: { feature: AliLabFeature }) {
   const { summary } = useLabFeatureText(feature);
+  const { t } = useLabLanguage();
   const { month, surface, openTransaction } = usePersonalPlan();
-  const ledger = useAliLabLedger(month);
-  const h = ledger.householdMonth;
+  const budget = usePersonalBudgetLedger(month);
+  const h = budget.totals;
 
   const sections = PERSONAL_PLAN_NAV.filter((item) => item.featureId !== "overview");
 
@@ -59,23 +63,24 @@ export function PersonalDashboardPanel({ feature }: { feature: AliLabFeature }) 
     <div className="space-y-6">
       <section>
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--pp-primary)]">Overview</p>
-        <h2 className="text-2xl md:text-3xl font-bold mt-2">Your month at a glance</h2>
+        <h2 className="text-2xl md:text-3xl font-bold mt-2">{t("stmtOverviewTitle")}</h2>
         <p className="text-sm text-[var(--pp-on-surface-variant)] mt-2 max-w-2xl">{summary}</p>
+        <p className="text-[11px] text-[var(--pp-on-surface-variant)] mt-2">{t("stmtIsolatedNote")}</p>
       </section>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <GlassCard className="p-4">
-          <p className="text-[11px] uppercase text-[var(--pp-on-surface-variant)]">Income</p>
+          <p className="text-[11px] uppercase text-[var(--pp-on-surface-variant)]">{t("income")}</p>
           <p className="text-lg font-semibold text-[var(--pp-secondary)] pp-tabular mt-1">
             {formatChfDisplay(h.totalIncome)}
           </p>
         </GlassCard>
         <GlassCard className="p-4">
-          <p className="text-[11px] uppercase text-[var(--pp-on-surface-variant)]">Expenses</p>
+          <p className="text-[11px] uppercase text-[var(--pp-on-surface-variant)]">{t("expenses")}</p>
           <p className="text-lg font-semibold pp-tabular mt-1">{formatChfDisplay(h.totalExpenses)}</p>
         </GlassCard>
         <GlassCard className="p-4">
-          <p className="text-[11px] uppercase text-[var(--pp-on-surface-variant)]">Savings</p>
+          <p className="text-[11px] uppercase text-[var(--pp-on-surface-variant)]">{t("savings")}</p>
           <p
             className={`text-lg font-semibold pp-tabular mt-1 ${h.savings >= 0 ? "text-[var(--pp-tertiary)]" : "text-[var(--pp-error)]"}`}
           >
@@ -83,10 +88,14 @@ export function PersonalDashboardPanel({ feature }: { feature: AliLabFeature }) 
           </p>
         </GlassCard>
         <GlassCard className="p-4">
-          <p className="text-[11px] uppercase text-[var(--pp-on-surface-variant)]">Savings rate</p>
+          <p className="text-[11px] uppercase text-[var(--pp-on-surface-variant)]">{t("savingsRate")}</p>
           <p className="text-lg font-semibold pp-tabular mt-1">{formatPct(h.savingsRatePct)}</p>
         </GlassCard>
       </div>
+
+      <PersonalStatementUpload onImported={() => void budget.refresh()} />
+
+      <PersonalSavingsCoach month={month} totals={h} rows={budget.rows} />
 
       <GlassCard className="p-4 flex flex-wrap items-center gap-3">
         <button
@@ -95,22 +104,16 @@ export function PersonalDashboardPanel({ feature }: { feature: AliLabFeature }) 
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] text-xs font-bold hover:opacity-90"
         >
           <Plus className="size-4" />
-          Add transaction
+          {t("stmtAddTx")}
         </button>
-        {!ledger.sessionReady && (
-          <p className="text-xs text-[var(--pp-error)]">
-            Select a session in the bar above, or create one in Business first.
-          </p>
+        {!budget.hasData && !budget.loading && (
+          <p className="text-xs text-[var(--pp-on-surface-variant)]">{t("stmtEmptyHint")}</p>
         )}
-        {!ledger.hasFirebaseData && ledger.sessionReady && !ledger.loading && (
-          <p className="text-xs text-[var(--pp-on-surface-variant)]">
-            No transactions yet — add your first income or expense to populate the dashboard.
-          </p>
-        )}
+        {budget.error && <p className="text-xs text-[var(--pp-error)]">{budget.error}</p>}
       </GlassCard>
 
       <div>
-        <h3 className="text-sm font-semibold mb-3">Explore</h3>
+        <h3 className="text-sm font-semibold mb-3">{t("stmtExplore")}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {sections.map((item) => (
             <QuickLinkCard
@@ -123,7 +126,7 @@ export function PersonalDashboardPanel({ feature }: { feature: AliLabFeature }) 
         </div>
       </div>
 
-      <PersonalRecentLedger month={month} />
+      <PersonalRecentLedger month={month} onChanged={() => void budget.refresh()} />
     </div>
   );
 }

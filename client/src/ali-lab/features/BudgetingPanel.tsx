@@ -13,21 +13,23 @@ import {
 } from "lucide-react";
 import type { AliLabFeature } from "../featureRegistry";
 import { useLabFeatureText } from "../hooks/useLabFeatureText";
-import { useAliLabLedger } from "../hooks/useAliLabLedger";
+import { useAliLabPersist } from "../hooks/useAliLabPersist";
+import { usePersonalBudgetLedger } from "../hooks/usePersonalBudgetLedger";
 import type { LabBudgetMode } from "../types";
 import { labCollections } from "../aliLabFirestore";
-import { useAliLabPersist } from "../hooks/useAliLabPersist";
 import {
   PERSONAL_EXPENSE_CATEGORIES,
   PERSONAL_INCOME_CATEGORIES,
-  classifyPersonalExpense,
-  classifyPersonalIncome,
   personalExpenseLabelKey,
   personalIncomeLabelKey,
   type PersonalExpenseCategory,
   type PersonalIncomeCategory,
 } from "../personalCategories";
-import { shiftMonth, suggestExpenseBudgets, suggestIncomeBudgets } from "../utils/budgetSuggestions";
+import {
+  shiftMonth,
+  suggestExpenseBudgetsFromPersonal,
+  suggestIncomeBudgetsFromPersonal,
+} from "../utils/budgetSuggestions";
 import { GlassCard } from "../personal-plan/components/GlassCard";
 import { PersonalRecentLedger } from "../personal-plan/components/PersonalRecentLedger";
 import { usePersonalPlan } from "../personal-plan/context/PersonalPlanContext";
@@ -120,8 +122,8 @@ function ExpenseRow({
 export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   const { t } = useLabFeatureText(feature);
   const { month } = usePersonalPlan();
-  const ledger = useAliLabLedger(month);
-  const { loading: finLoading, currentSession } = ledger;
+  const ledger = usePersonalBudgetLedger(month);
+  const { loading: finLoading } = ledger;
   const [mode, setMode] = useState<LabBudgetMode>("traditional");
   const [draftBudgets, setDraftBudgets] = useState<Record<string, string>>({});
   const [suggestMessage, setSuggestMessage] = useState<string | null>(null);
@@ -164,31 +166,28 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
     else await add(payload);
   };
 
-  const inSession = (sessionId: string) =>
-    ledger.isAllSessionsView || !currentSession?.id || sessionId === currentSession.id;
-
   const expenseRows = useMemo(() => {
     return PERSONAL_EXPENSE_CATEGORIES.map((cat) => {
       const savedRow = saved.find((b) => b.month === month && b.category === cat);
       const budgetChf = savedRow?.budgetChf ?? 0;
-      const spent = ledger.monthExpenses
-        .filter((e) => inSession(e.session_id) && classifyPersonalExpense(e) === cat)
+      const spent = ledger.monthRows
+        .filter((e) => e.kind === "expense" && e.expenseCat === cat)
         .reduce((s, e) => s + e.amount, 0);
       return { cat, budgetChf, spent, id: savedRow?.id };
     });
-  }, [saved, month, ledger.monthExpenses, currentSession?.id, ledger.isAllSessionsView]);
+  }, [saved, month, ledger.monthRows]);
 
   const incomeRows = useMemo(() => {
     return PERSONAL_INCOME_CATEGORIES.map((cat) => {
       const key = `income:${cat}`;
       const savedRow = saved.find((b) => b.month === month && b.category === key);
       const budgetChf = savedRow?.budgetChf ?? 0;
-      const received = ledger.monthIncome
-        .filter((i) => inSession(i.session_id) && classifyPersonalIncome(i) === cat)
+      const received = ledger.monthRows
+        .filter((i) => i.kind === "income" && i.incomeCat === cat)
         .reduce((s, i) => s + i.amount, 0);
       return { cat, key, budgetChf, received, id: savedRow?.id };
     });
-  }, [saved, month, ledger.monthIncome, currentSession?.id, ledger.isAllSessionsView]);
+  }, [saved, month, ledger.monthRows]);
 
   const totalExpenseBudget = expenseRows.reduce((s, r) => s + r.budgetChf, 0);
   const totalSpent = expenseRows.reduce((s, r) => s + r.spent, 0);
@@ -247,8 +246,8 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   };
 
   const applySuggestions = () => {
-    const expenseSuggestions = suggestExpenseBudgets(ledger.filteredExpenses, month);
-    const incomeSuggestions = suggestIncomeBudgets(ledger.filteredIncome, month);
+    const expenseSuggestions = suggestExpenseBudgetsFromPersonal(ledger.rows, month);
+    const incomeSuggestions = suggestIncomeBudgetsFromPersonal(ledger.rows, month);
 
     const pending: Record<string, number> = {};
     for (const row of expenseRows) {

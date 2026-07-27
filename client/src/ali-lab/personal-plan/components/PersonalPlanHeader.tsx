@@ -3,16 +3,16 @@ import { Moon, RefreshCw, Sun } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import { useLabLanguage } from "../../context/LabLanguageContext";
-import { useLinkedLedger } from "@/cafe/hooks/useLinkedLedger";
+import { usePersonalBudgetLedger } from "../../hooks/usePersonalBudgetLedger";
 import { usePersonalPlan } from "../context/PersonalPlanContext";
 import type { LabLang } from "../../i18n/labStrings";
 
 const LANGS: LabLang[] = ["en", "fr", "de", "it"];
 
 export function PersonalPlanHeader({ title }: { title?: string }) {
-  const { lang, setLang } = useLabLanguage();
+  const { lang, setLang, t: labT } = useLabLanguage();
   const { month, setMonth } = usePersonalPlan();
-  const ledger = useLinkedLedger(month);
+  const ledger = usePersonalBudgetLedger(month);
   const { theme, toggleTheme, switchable } = useTheme();
   const { t } = useLanguage();
 
@@ -32,7 +32,7 @@ export function PersonalPlanHeader({ title }: { title?: string }) {
         ) : null}
         <div className="flex items-center gap-3">
           <label className="text-[11px] text-[var(--pp-on-surface-variant)]">
-            Month{" "}
+            {labT("month")}{" "}
             <input
               type="month"
               className="pp-input px-2 py-1 text-xs font-bold text-[var(--pp-primary)] border-b-2 border-[var(--pp-primary)] bg-transparent rounded-none ml-1"
@@ -77,9 +77,9 @@ export function PersonalPlanHeader({ title }: { title?: string }) {
         <button
           type="button"
           className="p-2 rounded-full hover:bg-[var(--pp-surface-high)] transition-colors text-[var(--pp-on-surface-variant)]"
-          onClick={() => void ledger.refreshFinances()}
+          onClick={() => void ledger.refresh()}
           disabled={ledger.loading}
-          aria-label="Refresh ledger"
+          aria-label="Refresh personal budget"
         >
           <RefreshCw className={`size-4 ${ledger.loading ? "animate-spin" : ""}`} />
         </button>

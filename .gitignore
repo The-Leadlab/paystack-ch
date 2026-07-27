@@ -133,3 +133,4 @@ client/public/__manus__/version.json
 firebase-debug.log
 firebase-debug.*.log
 .vercel
+.env*

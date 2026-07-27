@@ -5,7 +5,7 @@ import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import type { LabGoal } from "../types";
 import { labCollections } from "../aliLabFirestore";
 import { useAliLabPersist } from "../hooks/useAliLabPersist";
-import { useAliLabLedger } from "../hooks/useAliLabLedger";
+import { usePersonalBudgetLedger } from "../hooks/usePersonalBudgetLedger";
 import { usePersonalPlan } from "../personal-plan/context/PersonalPlanContext";
 import { GlassCard } from "../personal-plan/components/GlassCard";
 import { formatChfDisplay } from "../personal-plan/formatChfDisplay";
@@ -14,7 +14,7 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
   const { t } = useLabFeatureText(feature);
   const { month } = usePersonalPlan();
   const { items, add, update, remove } = useAliLabPersist<LabGoal>(labCollections.goals, "goals", []);
-  const ledger = useAliLabLedger(month);
+  const ledger = usePersonalBudgetLedger(month);
   const monthSurplus = Math.max(0, ledger.householdMonth.savings);
   const [allocatedFromSurplus, setAllocatedFromSurplus] = useState(0);
   const surplus = Math.max(0, monthSurplus - allocatedFromSurplus);
@@ -70,7 +70,7 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
           </span>
           <h2 className="text-2xl md:text-4xl font-bold mt-2">Financial goals</h2>
           <p className="text-[var(--pp-on-surface-variant)] text-sm mt-2 max-w-xl">
-            Track savings and debt payoff with live ledger surplus.
+            Track savings and debt payoff with surplus from your personal statement ledger.
           </p>
         </div>
         <GlassCard className="px-4 py-2 text-xs text-[var(--pp-on-surface-variant)]">
