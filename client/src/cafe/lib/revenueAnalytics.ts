@@ -491,9 +491,9 @@ export function trendAxisTickDates(dates: string[], maxTicks = 6): string[] {
   return out;
 }
 
-export type RevenueIntervalId = 'all' | '1m' | '2m' | '3m' | '6m' | '1y';
+export type RevenueIntervalId = 'all' | '1m' | '2m' | '3m' | '6m' | '1y' | 'custom';
 
-export const REVENUE_INTERVALS: { id: RevenueIntervalId; labelKey: string }[] = [
+export const REVENUE_INTERVALS: { id: Exclude<RevenueIntervalId, 'custom'>; labelKey: string }[] = [
   { id: 'all', labelKey: 'rhIntervalAll' },
   { id: '1m', labelKey: 'rhInterval1m' },
   { id: '2m', labelKey: 'rhInterval2m' },
@@ -523,12 +523,27 @@ export function dataDateSpan(income: IncomeRow[]): { first: string; last: string
 export function resolveRevenueInterval(
   interval: RevenueIntervalId,
   today: string,
-  income: IncomeRow[]
+  income: IncomeRow[],
+  customRange?: { start: string; end: string } | null
 ): { start: string; end: string; firstDoc: string | null; lastDoc: string | null } {
   const span = dataDateSpan(income);
+  if (interval === 'custom' && customRange?.start && customRange?.end) {
+    const a = customRange.start;
+    const b = customRange.end;
+    const start = a <= b ? a : b;
+    const end = a <= b ? b : a;
+    return { start, end, firstDoc: span?.first ?? null, lastDoc: span?.last ?? null };
+  }
   const end = today;
   if (interval === 'all') {
-    if (span) return { start: span.first, end: span.last > today ? span.last : today, firstDoc: span.first, lastDoc: span.last };
+    if (span) {
+      return {
+        start: span.first,
+        end: span.last,
+        firstDoc: span.first,
+        lastDoc: span.last,
+      };
+    }
     const { start } = monthBounds(today);
     return { start, end, firstDoc: null, lastDoc: null };
   }

@@ -2533,8 +2533,10 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
   React.useEffect(() => {
     if (initialSelectedDocument) {
       setSelectedDocument(initialSelectedDocument);
+      setFilter('all');
+      setSelectedEntity(null);
     }
-  }, [initialSelectedDocument]);
+  }, [initialSelectedDocument?.id]);
 
   React.useEffect(() => {
     setInvoiceBreakdownTab(0);

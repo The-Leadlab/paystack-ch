@@ -261,13 +261,45 @@ export function setSectorKeywords(sector: string, keywords: string[]) {
   saveKeywordOverrides(next);
 }
 
+const SECTOR_TAG_RE = /\[sector:([^\]]+)\]/i;
+
+/** Explicit category assignment written into the income description (manual, no AI). */
+export function extractSectorTag(description?: string): string | null {
+  const m = (description || '').match(SECTOR_TAG_RE);
+  return m?.[1]?.trim() || null;
+}
+
+export function assignSectorTag(description: string | undefined, sectorId: string): string {
+  const cleaned = (description || '').replace(SECTOR_TAG_RE, '').replace(/\s+/g, ' ').trim();
+  return `[sector:${sectorId}] ${cleaned}`.trim();
+}
+
 /** True if description matches any of the selected sector recipes. */
 export function rowMatchesAnySector(description: string, sectors: string[]): boolean {
   if (!sectors.length) return false;
+  const tagged = extractSectorTag(description);
+  if (tagged) return sectors.includes(tagged);
   const lower = (description || '').toLowerCase();
   // Manual Z-readings sync to income without sector tags — count under restaurants.
   if (lower.includes('z-reading') && sectors.includes('restaurants')) return true;
   return sectors.some((s) => matchSector(description, s));
+}
+
+/** Best-effort sector for an income/document line (tag first, then keyword recipes). */
+export function resolveRowSector(description: string | undefined, preferred: string[]): string | null {
+  const tagged = extractSectorTag(description);
+  if (tagged) return tagged;
+  const desc = description || '';
+  for (const id of preferred) {
+    if (matchSector(desc, id)) return id;
+  }
+  for (const id of ALL_SECTORS) {
+    if (matchSector(desc, id)) return id;
+  }
+  for (const c of loadCustomSectors()) {
+    if (matchSector(desc, c.id)) return c.id;
+  }
+  return preferred[0] || null;
 }
 
 /** Scale untagged supplier COGS by sector income share so margins stay realistic. */
@@ -302,6 +334,8 @@ export type SectorModuleData = {
 };
 
 export function matchSector(description: string, sector: string): boolean {
+  const tagged = extractSectorTag(description);
+  if (tagged) return tagged === sector;
   const lower = description.toLowerCase();
   const meta = getSectorMeta(sector);
   if (sector === 'general') {

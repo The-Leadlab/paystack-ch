@@ -82,10 +82,12 @@ import type { BusinessTab } from './BusinessSidebarNav';
 import {
   addCustomSector,
   ALL_SECTORS,
+  assignSectorTag,
   filterExpensesForSectors,
   getSectorMeta,
   loadCustomSectors,
   loadStoredSectors,
+  resolveRowSector,
   rowMatchesAnySector,
   saveStoredSectors,
   SECTOR_CATALOG,
@@ -137,14 +139,14 @@ const CHART_BLUE = '#60a5fa';
 const CHART_GOLD = '#fbbf24';
 
 export function POSManager({
-  onNavigateTab: _onNavigateTab,
+  onNavigateTab,
   onNavigateToDocument,
 }: {
   onNavigateTab?: (tab: BusinessTab) => void;
   onNavigateToDocument?: (doc: ProcessedDocument) => void;
 }) {
   const { posReadings, addPOSReading, updatePOSReading, deletePOSReading } = usePOS();
-  const { income, expenses, addIncome, addExpense, deleteIncome, deleteExpense } = useFinance();
+  const { income, expenses, addIncome, addExpense, deleteIncome, deleteExpense, updateIncome } = useFinance();
   const { documents } = useDocuments();
   const { currentSession, isAllSessionsView, sessions } = useSession();
   const { t } = useLanguage();
@@ -158,7 +160,9 @@ export function POSManager({
   const [customKeywords, setCustomKeywords] = useState('');
   const [customIcon, setCustomIcon] = useState('📌');
   const [demoLoading, setDemoLoading] = useState(false);
-  const [intervalId, setIntervalId] = useState<RevenueIntervalId>('1m');
+  const [intervalId, setIntervalId] = useState<RevenueIntervalId>('all');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
   const [hubTab, setHubTab] = useState<'trend' | 'documents' | 'reconciliation'>('trend');
   const [docVisible, setDocVisible] = useState(10);
   const [demoHold, setDemoHold] = useState<{
@@ -272,10 +276,23 @@ export function POSManager({
 
   const today = toIsoDate(new Date());
   const range = useMemo(
-    () => resolveRevenueInterval(intervalId, today, sectorIncomeRows),
-    [intervalId, today, sectorIncomeRows]
+    () =>
+      resolveRevenueInterval(
+        intervalId,
+        today,
+        sectorIncomeRows,
+        intervalId === 'custom' ? { start: customStart || today, end: customEnd || today } : null
+      ),
+    [intervalId, today, sectorIncomeRows, customStart, customEnd]
   );
   const { start: rangeStart, end: rangeEnd } = range;
+
+  useEffect(() => {
+    if (intervalId === 'custom') return;
+    setCustomStart(rangeStart);
+    setCustomEnd(rangeEnd);
+  }, [intervalId, rangeStart, rangeEnd]);
+
   const prior = useMemo(() => priorPeriodBounds(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
 
   const periodIncomeRows = useMemo(
@@ -332,6 +349,109 @@ export function POSManager({
       month: 'short',
       year: 'numeric',
     });
+  const fmtDateLong = (iso: string) =>
+    new Date(iso + 'T12:00:00').toLocaleDateString(chfLocale, {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+
+  const findDocument = (documentId?: string | null): ProcessedDocument | undefined => {
+    if (!documentId) return undefined;
+    return documents.find((d) => d.id === documentId || d.persistedDocumentId === documentId);
+  };
+
+  const openDocument = (doc: ProcessedDocument) => {
+    onNavigateToDocument?.(doc);
+    onNavigateTab?.('documents');
+  };
+
+  const periodDocs = useMemo(() => {
+    type Row = {
+      key: string;
+      date: string;
+      amount: number;
+      description: string;
+      incomeId?: string;
+      sectorId: string | null;
+      doc?: ProcessedDocument;
+    };
+    const byKey = new Map<string, Row>();
+
+    for (const row of filteredIncome) {
+      if (row.date < rangeStart || row.date > rangeEnd) continue;
+      if (!rowMatchesAnySector(row.description || '', activeSectors)) continue;
+      const doc = findDocument(row.document_id);
+      const sectorId = resolveRowSector(row.description, activeSectors);
+      byKey.set(`income:${row.id}`, {
+        key: `income:${row.id}`,
+        date: row.date,
+        amount: row.amount,
+        description: row.description || '',
+        incomeId: row.id,
+        sectorId,
+        doc,
+      });
+    }
+
+    const sessionDocs = isAllSessionsView
+      ? documents.filter((d) => !d.session_id || existingSessionIds.includes(d.session_id))
+      : documents.filter((d) => !d.session_id || d.session_id === currentSession?.id);
+
+    for (const doc of sessionDocs) {
+      const date = (doc.data?.date || doc.created_at || '').slice(0, 10);
+      if (!date || date < rangeStart || date > rangeEnd) continue;
+      const blob = [doc.fileName, doc.data?.issuer, doc.data?.documentType, ...(doc.data?.lineItems?.map((l) => l.description) || [])]
+        .filter(Boolean)
+        .join(' ');
+      const amount = doc.data?.amountInCHF || doc.data?.totalAmount || 0;
+      const docType = doc.data?.documentType || '';
+      const isPosLike =
+        docType === 'Ticket/Receipt' ||
+        docType === 'Z2 Multi-Ticket Sheet' ||
+        docType === 'Bank Deposit' ||
+        docType === 'Bank Statement';
+      const matchesSector = rowMatchesAnySector(blob, activeSectors);
+      const linked = filteredIncome.some(
+        (i) => i.document_id === doc.id || i.document_id === doc.persistedDocumentId
+      );
+      if (!matchesSector && !(isPosLike && activeSectors.includes('restaurants')) && !linked) {
+        continue;
+      }
+      const already = [...byKey.values()].some((r) => r.doc?.id === doc.id);
+      if (already) continue;
+      byKey.set(`doc:${doc.id}`, {
+        key: `doc:${doc.id}`,
+        date,
+        amount,
+        description: doc.fileName || doc.data?.issuer || t('rhDocSource'),
+        sectorId: resolveRowSector(blob, activeSectors),
+        doc,
+      });
+    }
+
+    return [...byKey.values()].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  }, [
+    filteredIncome,
+    rangeStart,
+    rangeEnd,
+    activeSectors,
+    documents,
+    recipeTick,
+    isAllSessionsView,
+    existingSessionIds,
+    currentSession?.id,
+    t,
+  ]);
+
+  const handleCategoryChange = async (incomeId: string, sectorId: string) => {
+    const row = filteredIncome.find((i) => i.id === incomeId);
+    if (!row) return;
+    const nextDesc = assignSectorTag(row.description, sectorId);
+    await updateIncome(incomeId, { description: nextDesc });
+    setRecipeTick((n) => n + 1);
+  };
 
   const trendData = useMemo(
     () => trendForRange(sectorIncomeRows, rangeStart, rangeEnd, chfLocale),
@@ -342,30 +462,20 @@ export function POSManager({
     [trendData]
   );
   const trendRangeLabel =
-    trendData.length > 0 ? `${fmtDate(rangeStart)} – ${fmtDate(rangeEnd)}` : '';
-
-  const periodDocs = useMemo(() => {
-    const rows = filteredIncome
-      .filter(
-        (i) =>
-          i.date >= rangeStart &&
-          i.date <= rangeEnd &&
-          rowMatchesAnySector(i.description || '', activeSectors)
-      )
-      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-    return rows.map((row) => {
-      const doc = row.document_id ? documents.find((d) => d.id === row.document_id) : undefined;
-      return { row, doc };
-    });
-  }, [filteredIncome, rangeStart, rangeEnd, activeSectors, documents, recipeTick]);
+    rangeStart && rangeEnd ? `${fmtDateLong(rangeStart)} → ${fmtDateLong(rangeEnd)}` : '';
 
   useEffect(() => {
     setDocVisible(10);
-  }, [intervalId, activeSectors.join('|'), hubTab]);
+  }, [intervalId, activeSectors.join('|'), hubTab, customStart, customEnd]);
 
   const visibleDocs = periodDocs.slice(0, docVisible);
   const docsRemaining = Math.max(0, periodDocs.length - docVisible);
   const docsWithFile = periodDocs.filter((d) => d.doc).length;
+
+  const categoryOptions = useMemo(() => {
+    const ids = [...activeSectors, ...SECTOR_CATALOG.map((s) => s.id), ...customSectors.map((c) => c.id)];
+    return Array.from(new Set(ids));
+  }, [activeSectors, customSectors]);
 
   const paymentMethods = useMemo(() => {
     const items = [
@@ -749,15 +859,50 @@ export function POSManager({
               {t(iv.labelKey)}
             </button>
           ))}
+          <button
+            type="button"
+            className={`ba-filter-chip ${intervalId === 'custom' ? 'ba-filter-chip--active' : ''}`}
+            onClick={() => setIntervalId('custom')}
+          >
+            {t('rhIntervalCustom')}
+          </button>
+        </div>
+        <div className="ba-interval-bar__dates">
+          <label className="ba-interval-bar__date-field">
+            <span>{t('rhFromDate')}</span>
+            <input
+              type="date"
+              className="ba-verify-field"
+              value={customStart || rangeStart}
+              onChange={(e) => {
+                setCustomStart(e.target.value);
+                setIntervalId('custom');
+              }}
+            />
+          </label>
+          <label className="ba-interval-bar__date-field">
+            <span>{t('rhToDate')}</span>
+            <input
+              type="date"
+              className="ba-verify-field"
+              value={customEnd || rangeEnd}
+              onChange={(e) => {
+                setCustomEnd(e.target.value);
+                setIntervalId('custom');
+              }}
+            />
+          </label>
         </div>
         <p className="ba-interval-bar__span">
-          {t('rhDataSpan')
-            .replace('{first}', range.firstDoc ? fmtDate(range.firstDoc) : '—')
-            .replace('{last}', range.lastDoc ? fmtDate(range.lastDoc) : '—')}
-          <span className="ba-interval-bar__sep">·</span>
-          {t('rhFilterSpan')
-            .replace('{first}', fmtDate(rangeStart))
-            .replace('{last}', fmtDate(rangeEnd))}
+          <strong>{t('rhActiveFilter')}:</strong> {fmtDateLong(rangeStart)} → {fmtDateLong(rangeEnd)}
+          {range.firstDoc && range.lastDoc ? (
+            <>
+              <span className="ba-interval-bar__sep">·</span>
+              {t('rhDataSpan')
+                .replace('{first}', fmtDateLong(range.firstDoc))
+                .replace('{last}', fmtDateLong(range.lastDoc))}
+            </>
+          ) : null}
         </p>
       </div>
 
@@ -1041,31 +1186,55 @@ export function POSManager({
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleDocs.map(({ row, doc }) => {
-                      const meta = activeSectors
-                        .map((id) => getSectorMeta(id))
-                        .find((m) => rowMatchesAnySector(row.description || '', [m.id]));
+                    {visibleDocs.map((entry) => {
+                      const sectorId = entry.sectorId;
+                      const meta = sectorId ? getSectorMeta(sectorId) : null;
                       return (
-                        <tr key={row.id}>
-                          <td className="whitespace-nowrap">{fmtDate(row.date)}</td>
-                          <td className="whitespace-nowrap">
-                            {meta ? `${meta.icon} ${sectorDisplayTitle(meta, t)}` : '—'}
+                        <tr key={entry.key}>
+                          <td className="whitespace-nowrap">{fmtDate(entry.date)}</td>
+                          <td>
+                            {entry.incomeId ? (
+                              <select
+                                className="ba-verify-field ba-revenue-docs__category"
+                                value={sectorId || ''}
+                                onChange={(e) => {
+                                  const next = e.target.value;
+                                  if (next && entry.incomeId) void handleCategoryChange(entry.incomeId, next);
+                                }}
+                              >
+                                <option value="" disabled>
+                                  {t('rhChooseCategory')}
+                                </option>
+                                {categoryOptions.map((id) => {
+                                  const m = getSectorMeta(id);
+                                  return (
+                                    <option key={id} value={id}>
+                                      {m.icon} {sectorDisplayTitle(m, t)}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                            ) : (
+                              <span className="whitespace-nowrap">
+                                {meta ? `${meta.icon} ${sectorDisplayTitle(meta, t)}` : '—'}
+                              </span>
+                            )}
                           </td>
-                          <td className="max-w-[14rem] truncate" title={row.description || ''}>
-                            {row.description || '—'}
+                          <td className="max-w-[14rem] truncate" title={entry.description}>
+                            {entry.description || '—'}
                           </td>
-                          <td className="text-right tabular-nums font-bold">{fmtChf(row.amount)}</td>
+                          <td className="text-right tabular-nums font-bold">{fmtChf(entry.amount)}</td>
                           <td className="max-w-[10rem] truncate text-cdlp-muted">
-                            {doc?.fileName || (row.document_id ? t('rhDocMissing') : t('rhLedgerOnly'))}
+                            {entry.doc?.fileName || (entry.doc ? entry.doc.id : t('rhLedgerOnly'))}
                           </td>
                           <td className="text-right">
                             <button
                               type="button"
                               className="ba-revenue-link-btn"
-                              disabled={!doc || !onNavigateToDocument}
-                              title={doc ? t('rhOpenDocument') : t('rhLedgerOnly')}
+                              disabled={!entry.doc}
+                              title={entry.doc ? t('rhOpenDocument') : t('rhLedgerOnly')}
                               onClick={() => {
-                                if (doc && onNavigateToDocument) onNavigateToDocument(doc);
+                                if (entry.doc) openDocument(entry.doc);
                               }}
                             >
                               <FileText className="w-3.5 h-3.5" />

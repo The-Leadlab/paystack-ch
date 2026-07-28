@@ -1178,6 +1178,44 @@
   border: 1px solid color-mix(in srgb, #f87171 35%, transparent);
 }
 
+.ba-v3 .ba-interval-bar__dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.ba-v3 .ba-interval-bar__date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ba-muted);
+}
+
+.ba-v3 .ba-interval-bar__date-field .ba-verify-field {
+  min-width: 10.5rem;
+  text-transform: none;
+  font-weight: 600;
+  letter-spacing: 0;
+  font-size: 0.8125rem;
+  color: var(--ba-text);
+}
+
+.ba-v3 .ba-interval-bar__span strong {
+  color: var(--ba-text);
+  font-weight: 700;
+}
+
+.ba-v3 .ba-revenue-docs__category {
+  min-width: 9rem;
+  max-width: 14rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.75rem;
+}
+
 .ba-v3 .ba-interval-bar {
   display: flex;
   flex-direction: column;
