@@ -15,6 +15,10 @@ export type LabBill = {
   amountChf: number;
   recurrence: "once" | "weekly" | "biweekly" | "monthly" | "yearly";
   remindDaysBefore: number;
+  /** Compressed JPEG data URL of a receipt/bill photo (optional). */
+  receiptDataUrl?: string;
+  receiptFileName?: string;
+  notes?: string;
 };
 
 export type LabGoal = {

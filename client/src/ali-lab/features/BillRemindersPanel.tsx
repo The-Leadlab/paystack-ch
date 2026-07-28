@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Calendar, Receipt, AlertTriangle, Banknote } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Calendar, Receipt, AlertTriangle, Banknote, Camera, Loader2, Sparkles, X } from "lucide-react";
 import type { AliLabFeature } from "../featureRegistry";
 import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import type { LabBill } from "../types";
@@ -9,6 +9,9 @@ import { usePersonalBudgetLedger } from "../hooks/usePersonalBudgetLedger";
 import { usePersonalPlan } from "../personal-plan/context/PersonalPlanContext";
 import { GlassCard } from "../personal-plan/components/GlassCard";
 import { formatChfDisplay } from "../personal-plan/formatChfDisplay";
+import { fileToCompressedDataUrl } from "../lib/personalImageCompress";
+import { PERSONAL_RECEIPT_AI_HINT } from "../lib/personalSwissTaxAi";
+import { analyzeFinancialDocument } from "@/cafe/services/geminiService";
 
 function annualizedChf(b: LabBill): number {
   if (b.recurrence === "weekly") return b.amountChf * 52;
@@ -29,24 +32,45 @@ function recurrenceLabel(recurrence: LabBill["recurrence"], t: (k: string) => st
   return map[recurrence];
 }
 
+const DEMO_BILL_IDS = new Set(["seed-1", "seed-2"]);
+
 export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
   const { t, summary } = useLabFeatureText(feature);
   const { month, openTransaction } = usePersonalPlan();
   const ledger = usePersonalBudgetLedger(month);
-  const { items, add, remove, update, uid } = useAliLabPersist<LabBill>(labCollections.bills, "bills", [
-    { id: "seed-1", name: "Serafe", dueDate: "2026-06-01", amountChf: 335, recurrence: "yearly", remindDaysBefore: 14 },
-    { id: "seed-2", name: "RC insurance", dueDate: "2026-07-15", amountChf: 1200, recurrence: "yearly", remindDaysBefore: 30 },
-  ]);
+  const { items, add, remove, update, setItems, uid, loading } = useAliLabPersist<LabBill>(
+    labCollections.bills,
+    "bills",
+    []
+  );
 
+  const photoRef = useRef<HTMLInputElement>(null);
+  const cleanedDemos = useRef(false);
   const [name, setName] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [amountInput, setAmountInput] = useState("");
-  const [recurrence, setRecurrence] = useState<LabBill["recurrence"]>("yearly");
+  const [recurrence, setRecurrence] = useState<LabBill["recurrence"]>("monthly");
+  const [receiptDataUrl, setReceiptDataUrl] = useState<string | undefined>();
+  const [receiptFileName, setReceiptFileName] = useState<string | undefined>();
+  const [formError, setFormError] = useState<string | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiMsg, setAiMsg] = useState<string | null>(null);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+
+  /** Drop hardcoded demo bills from older builds. */
+  useEffect(() => {
+    if (loading || cleanedDemos.current) return;
+    const demos = items.filter((b) => DEMO_BILL_IDS.has(b.id));
+    cleanedDemos.current = true;
+    if (!demos.length) return;
+    setItems(items.filter((b) => !DEMO_BILL_IDS.has(b.id)));
+  }, [items, loading, setItems]);
 
   const today = new Date().toISOString().slice(0, 10);
 
   const upcoming = useMemo(() => {
     return [...items]
+      .filter((b) => !DEMO_BILL_IDS.has(b.id))
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
       .map((b) => {
         const due = new Date(b.dueDate);
@@ -71,8 +95,92 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
     });
   };
 
+  const clearReceipt = () => {
+    setReceiptDataUrl(undefined);
+    setReceiptFileName(undefined);
+    setPendingPhotoFile(null);
+    if (photoRef.current) photoRef.current.value = "";
+  };
+
+  const onPickPhoto = async (file: File | undefined) => {
+    if (!file) return;
+    setFormError(null);
+    setAiMsg(null);
+    try {
+      const { dataUrl, fileName } = await fileToCompressedDataUrl(file);
+      setReceiptDataUrl(dataUrl);
+      setReceiptFileName(fileName);
+      setPendingPhotoFile(file);
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const fillFromPhotoAi = async () => {
+    if (!pendingPhotoFile && !receiptDataUrl) {
+      setFormError(t("billNeedPhoto"));
+      return;
+    }
+    setAiBusy(true);
+    setAiMsg(null);
+    setFormError(null);
+    try {
+      let file = pendingPhotoFile;
+      if (!file && receiptDataUrl) {
+        const res = await fetch(receiptDataUrl);
+        const blob = await res.blob();
+        file = new File([blob], receiptFileName || "receipt.jpg", { type: blob.type || "image/jpeg" });
+      }
+      if (!file) throw new Error(t("billNeedPhoto"));
+      const data = await analyzeFinancialDocument(file, "CHF", PERSONAL_RECEIPT_AI_HINT);
+      const issuer = (data.issuer || "").trim();
+      const amount = data.amountInCHF || data.totalAmount || 0;
+      const date = (data.date || "").trim();
+      if (issuer) setName(issuer);
+      if (amount > 0) setAmountInput(String(Math.round(amount * 100) / 100));
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) setDueDate(date);
+      else if (!dueDate) setDueDate(today);
+      setAiMsg(t("billAiFilled"));
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const submitBill = () => {
+    setFormError(null);
+    if (!name.trim()) {
+      setFormError(t("billNeedName"));
+      return;
+    }
+    if (!dueDate) {
+      setFormError(t("billNeedDue"));
+      return;
+    }
+    const amountChf = Number(amountInput.replace(",", "."));
+    if (!Number.isFinite(amountChf) || amountChf <= 0) {
+      setFormError(t("billNeedAmount"));
+      return;
+    }
+    void add({
+      name: name.trim(),
+      dueDate,
+      amountChf,
+      recurrence,
+      remindDaysBefore: 14,
+      ...(receiptDataUrl ? { receiptDataUrl, receiptFileName } : {}),
+    });
+    setName("");
+    setDueDate("");
+    setAmountInput("");
+    setRecurrence("monthly");
+    clearReceipt();
+    setAiMsg(null);
+  };
+
   const editBill = (bill: LabBill) => {
-    const nextName = prompt("Bill name", bill.name);
+    const nextName = prompt(t("billPlaceholder"), bill.name);
     if (nextName == null || !nextName.trim()) return;
     const nextAmount = prompt(t("billAmountPrompt"), String(bill.amountChf));
     if (nextAmount == null) return;
@@ -101,7 +209,7 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
   return (
     <div className="space-y-6">
       <section>
-        <h2 className="text-2xl font-bold">Bill reminders</h2>
+        <h2 className="text-2xl font-bold">{t("billsTitle")}</h2>
         <p className="text-sm text-[var(--pp-on-surface-variant)] mt-2">{summary}</p>
       </section>
 
@@ -113,7 +221,7 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
         </p>
       </GlassCard>
 
-      <GlassCard className="p-4">
+      <GlassCard className="p-4 space-y-3">
         <div className="flex flex-wrap gap-2">
           <input
             className="pp-input px-3 py-2 flex-1 min-w-[120px] text-sm"
@@ -151,31 +259,63 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
           <button
             type="button"
             className="bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] px-4 py-2 rounded-lg text-xs font-bold"
-            onClick={() => {
-              if (!name.trim() || !dueDate) return;
-              const amountChf = Number(amountInput);
-              if (!Number.isFinite(amountChf) || amountChf <= 0) return;
-              void add({
-                name: name.trim(),
-                dueDate,
-                amountChf,
-                recurrence,
-                remindDaysBefore: 14,
-              });
-              setName("");
-              setDueDate("");
-              setAmountInput("");
-              setRecurrence("yearly");
-            }}
+            onClick={submitBill}
           >
             {t("addBill")}
           </button>
         </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--pp-outline-variant)] text-[11px] font-semibold"
+            onClick={() => photoRef.current?.click()}
+          >
+            <Camera className="size-3.5" />
+            {t("billAttachPhoto")}
+          </button>
+          <input
+            ref={photoRef}
+            type="file"
+            accept="image/*,.jpg,.jpeg,.png,.webp,.heic"
+            className="hidden"
+            onChange={(e) => void onPickPhoto(e.target.files?.[0])}
+          />
+          <button
+            type="button"
+            disabled={aiBusy || (!pendingPhotoFile && !receiptDataUrl)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--pp-primary)]/10 text-[var(--pp-primary)] text-[11px] font-bold disabled:opacity-40"
+            onClick={() => void fillFromPhotoAi()}
+          >
+            {aiBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+            {t("billAiFromPhoto")}
+          </button>
+          {receiptDataUrl ? (
+            <div className="relative inline-flex items-center gap-2">
+              <img
+                src={receiptDataUrl}
+                alt=""
+                className="h-12 w-12 rounded object-cover border border-[var(--pp-outline-variant)]"
+              />
+              <span className="text-[10px] text-[var(--pp-on-surface-variant)] max-w-[120px] truncate">
+                {receiptFileName}
+              </span>
+              <button type="button" className="p-1 text-[var(--pp-on-surface-variant)]" onClick={clearReceipt} aria-label={t("delete")}>
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ) : (
+            <p className="text-[11px] text-[var(--pp-on-surface-variant)]">{t("billPhotoHint")}</p>
+          )}
+        </div>
+
+        {formError && <p className="text-xs text-[var(--pp-error)]">{formError}</p>}
+        {aiMsg && <p className="text-xs text-[var(--pp-tertiary)]">{aiMsg}</p>}
       </GlassCard>
 
       <div className="space-y-3">
         {upcoming.length === 0 && (
-          <p className="text-sm text-[var(--pp-on-surface-variant)]">{t("noData")}</p>
+          <p className="text-sm text-[var(--pp-on-surface-variant)]">{t("billsEmpty")}</p>
         )}
         {upcoming.map((b) => (
           <GlassCard
@@ -189,7 +329,13 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
             }`}
           >
             <div className="flex items-start gap-3 min-w-0">
-              {b.overdue ? (
+              {b.receiptDataUrl ? (
+                <img
+                  src={b.receiptDataUrl}
+                  alt=""
+                  className="size-12 rounded object-cover shrink-0 border border-[var(--pp-outline-variant)]"
+                />
+              ) : b.overdue ? (
                 <AlertTriangle className="size-5 text-[var(--pp-error)] shrink-0 mt-0.5" />
               ) : (
                 <Calendar className="size-5 text-[var(--pp-tertiary)] shrink-0 mt-0.5" />
@@ -230,7 +376,7 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
                   onClick={() => logPayment(b)}
                 >
                   <Banknote className="size-3" />
-                  Log payment
+                  {t("billLogPayment")}
                 </button>
               ) : null}
               <button
@@ -238,13 +384,13 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
                 className="text-[11px] text-[var(--pp-on-surface-variant)] underline"
                 onClick={() => editBill(b)}
               >
-                Edit
+                {t("edit")}
               </button>
               <button
                 type="button"
                 className="text-[11px] text-[var(--pp-error)] underline"
                 onClick={() => {
-                  if (confirm(`Delete bill "${b.name}"?`)) void remove(b.id);
+                  if (confirm(t("billDeleteConfirm").replace("{name}", b.name))) void remove(b.id);
                 }}
               >
                 {t("delete")}
@@ -253,7 +399,7 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
           </GlassCard>
         ))}
       </div>
-      {!uid && <p className="text-xs text-[var(--pp-on-surface-variant)]">{t("swissPresetsLocal")}</p>}
+      {!uid && <p className="text-xs text-[var(--pp-on-surface-variant)]">{t("localOnly")}</p>}
     </div>
   );
 }

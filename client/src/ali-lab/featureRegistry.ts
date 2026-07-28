@@ -41,7 +41,7 @@ export const ALI_LAB_FEATURES: AliLabFeature[] = [
     priority: "medium",
     status: "ready",
     promoteTo: "Notifications + recurring bills collection",
-    summary: "Serafe, insurance, rent — due dates, overdue highlight, Firestore/local sync",
+    summary: "Household bills with due dates, photos, AI fill, overdue highlight — your data only",
   },
   {
     id: "goals",
@@ -50,7 +50,7 @@ export const ALI_LAB_FEATURES: AliLabFeature[] = [
     priority: "medium",
     status: "ready",
     promoteTo: "Dashboard widget + Firestore goals collection",
-    summary: "Savings & debt goals with progress bars",
+    summary: "Create savings & debt goals, contribute any CHF amount, apply monthly surplus",
   },
   {
     id: "de-it-i18n",

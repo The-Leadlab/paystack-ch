@@ -100,7 +100,7 @@ export function PersonalStatementUpload({ onImported }: Props) {
           <input
             ref={inputRef}
             type="file"
-            accept=".csv,text/csv,.pdf,application/pdf"
+            accept=".csv,text/csv,.pdf,application/pdf,image/*,.jpg,.jpeg,.png,.webp,.heic"
             className="hidden"
             onChange={(e) => void onFile(e.target.files?.[0])}
           />

@@ -10,6 +10,7 @@ import {
 } from "../personalCategories";
 import type { PersonalBudgetTx } from "./personalBudgetStore";
 import type { PersonalStatementDraft } from "./personalStatementImport";
+import { SWISS_PERSONAL_FINANCE_AI_CONTEXT } from "./personalSwissTaxAi";
 
 const MODEL = import.meta.env.VITE_GEMINI_MODEL?.trim() || "gemini-2.5-flash";
 
@@ -87,10 +88,12 @@ export async function refinePersonalDraftsWithAi(
           role: "user",
           parts: [
             {
-              text: `You classify Swiss household bank transactions for a personal budget app (CHF).
+              text: `${SWISS_PERSONAL_FINANCE_AI_CONTEXT}
+
+You classify Swiss household bank transactions for a personal budget app (CHF).
 Return ONLY JSON:
 {"rows":[{"index":0,"kind":"income"|"expense","expenseCat":"BILLS"|"RENT"|"GROCERIES"|"GOING_OUT"|"SHOPPING_OTHER"|"SAVINGS_INVEST","incomeCat":"SALARY"|"ASSET_REVENUE"|"CONTRIBUTIONS"}]}
-Use expenseCat for expenses and incomeCat for income. Prefer Swiss context (Migros, Coop, Serafe, Swisscom, rent/loyer).
+Use expenseCat for expenses and incomeCat for income. Prefer Swiss household context (Migros, Coop, Serafe, Swisscom, rent/loyer, Krankenversicherung, pillar 3a).
 Transactions:
 ${JSON.stringify(payload)}`,
             },
@@ -218,7 +221,10 @@ export async function suggestPersonalSavingsAdvice(snap: MonthSnapshot): Promise
           role: "user",
           parts: [
             {
-              text: `You are a practical Swiss personal-finance coach (CHF, household budget — not a restaurant business).
+              text: `${SWISS_PERSONAL_FINANCE_AI_CONTEXT}
+
+You are a practical Swiss personal-finance coach for families (CHF household budget — not a restaurant business).
+Consider Swiss realities: health insurance premiums, rent/Nebenkosten, pillar 3a room if relevant, and realistic discretionary cuts.
 Given this month snapshot, suggest how MUCH to save and HOW to save.
 Return ONLY JSON:
 {

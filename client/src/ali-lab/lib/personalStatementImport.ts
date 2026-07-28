@@ -1,13 +1,14 @@
 /** Personal bank-statement CSV/PDF → draft rows (not restaurant Revenue). */
 
 import { parseCsvText } from "@/cafe/lib/revenueImport";
-import { analyzeBankStatement } from "@/cafe/services/geminiService";
+import { analyzeBankStatement, analyzeFinancialDocument } from "@/cafe/services/geminiService";
 import {
   PERSONAL_EXPENSE_CATEGORIES,
   PERSONAL_INCOME_CATEGORIES,
   type PersonalExpenseCategory,
   type PersonalIncomeCategory,
 } from "../personalCategories";
+import { PERSONAL_STATEMENT_IMAGE_HINT } from "./personalSwissTaxAi";
 
 export type PersonalStatementDraft = {
   id: string;
@@ -22,7 +23,7 @@ export type PersonalStatementDraft = {
 
 export type PersonalStatementPreview = {
   fileName: string;
-  source: "csv" | "pdf";
+  source: "csv" | "pdf" | "image";
   rows: PersonalStatementDraft[];
   issues: string[];
   totals: { income: number; expense: number };
@@ -231,11 +232,66 @@ export async function parsePersonalStatementFile(file: File): Promise<PersonalSt
     }
   }
 
+  if (
+    file.type.startsWith("image/") ||
+    /\.(jpe?g|png|webp|gif|heic)$/i.test(lower)
+  ) {
+    try {
+      const data = await analyzeFinancialDocument(file, "CHF", PERSONAL_STATEMENT_IMAGE_HINT);
+      const rows: PersonalStatementDraft[] = [];
+      if (data.lineItems?.length) {
+        for (const item of data.lineItems) {
+          const kind = item.type === "INCOME" ? "income" : "expense";
+          const signed = kind === "expense" ? -Math.abs(item.amount) : Math.abs(item.amount);
+          const draft = draftFromParts(item.date || data.date || "", item.description || data.issuer || "", signed, kind);
+          if (draft) rows.push(draft);
+        }
+      } else if ((data.amountInCHF || data.totalAmount || 0) > 0) {
+        const amount = data.amountInCHF || data.totalAmount || 0;
+        const isIncome =
+          data.documentType === "Pay Slip" ||
+          (data.expenseCategory || "").toUpperCase().includes("REVENUE") ||
+          (data.expenseCategory || "").toUpperCase().includes("SALARY");
+        const signed = isIncome ? Math.abs(amount) : -Math.abs(amount);
+        const draft = draftFromParts(
+          data.date || "",
+          data.issuer || data.notes || name,
+          signed,
+          isIncome ? "income" : "expense"
+        );
+        if (draft) rows.push(draft);
+      }
+      const totals = rows.reduce(
+        (acc, row) => {
+          if (row.kind === "income") acc.income += row.amount;
+          else acc.expense += row.amount;
+          return acc;
+        },
+        { income: 0, expense: 0 }
+      );
+      return {
+        fileName: name,
+        source: "image",
+        rows,
+        issues: rows.length ? [] : ["No amounts found in this photo. Try a clearer shot or a CSV export."],
+        totals,
+      };
+    } catch (e) {
+      return {
+        fileName: name,
+        source: "image",
+        rows: [],
+        issues: [e instanceof Error ? e.message : String(e)],
+        totals: { income: 0, expense: 0 },
+      };
+    }
+  }
+
   return {
     fileName: name,
     source: "csv",
     rows: [],
-    issues: ["Supported formats: CSV or PDF bank statement."],
+    issues: ["Supported formats: CSV, PDF, or a photo of your statement/receipt."],
     totals: { income: 0, expense: 0 },
   };
 }

@@ -61,44 +61,44 @@ const REGISTRY: Record<string, RegistryEntry> = {
   "bill-reminders": {
     en: {
       title: "Bill reminders",
-      summary: "Serafe, insurance, rent — due dates, overdue highlight, Firestore/local sync",
+      summary: "Your household bills — due dates, receipt photos, AI fill, overdue highlight",
       promoteTo: "Notifications + recurring bills collection",
     },
     fr: {
       title: "Rappels de factures",
-      summary: "Serafe, assurance, loyer — échéances, retard, sync Firestore/local",
+      summary: "Vos factures ménage — échéances, photos, IA, retard",
       promoteTo: "Notifications + collection factures récurrentes",
     },
     de: {
       title: "Rechnungserinnerungen",
-      summary: "Serafe, Versicherung, Miete — Fälligkeit, Überfällig, Firestore/lokal",
+      summary: "Ihre Haushaltsrechnungen — Fälligkeit, Fotos, KI, Überfällig",
       promoteTo: "Benachrichtigungen + wiederkehrende Rechnungen",
     },
     it: {
       title: "Promemoria bollette",
-      summary: "Serafe, assicurazione, affitto — scadenze, ritardi, sync Firestore/locale",
+      summary: "Le tue bollette — scadenze, foto, IA, ritardi",
       promoteTo: "Notifiche + raccolta bollette ricorrenti",
     },
   },
   goals: {
     en: {
       title: "Goal tracking",
-      summary: "Savings & debt goals with progress bars",
+      summary: "Create savings & debt goals, contribute any CHF amount, apply monthly surplus",
       promoteTo: "Dashboard widget + Firestore goals collection",
     },
     fr: {
       title: "Suivi d'objectifs",
-      summary: "Objectifs épargne et dette avec barres de progression",
+      summary: "Créez épargne/dette, contribuez un montant libre, appliquez l'excédent",
       promoteTo: "Widget tableau de bord + collection objectifs Firestore",
     },
     de: {
       title: "Zielverfolgung",
-      summary: "Spar- und Schuldenziele mit Fortschrittsbalken",
+      summary: "Spar- und Schuldenziele anlegen, beliebigen CHF-Betrag einzahlen",
       promoteTo: "Dashboard-Widget + Firestore-Ziele",
     },
     it: {
       title: "Tracciamento obiettivi",
-      summary: "Obiettivi risparmio e debito con barre di avanzamento",
+      summary: "Crea obiettivi risparmio/debito, versa qualsiasi importo CHF",
       promoteTo: "Widget dashboard + raccolta obiettivi Firestore",
     },
   },

@@ -19,14 +19,18 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
   const [allocatedFromSurplus, setAllocatedFromSurplus] = useState(0);
   const surplus = Math.max(0, monthSurplus - allocatedFromSurplus);
   const formRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
   const [menuGoalId, setMenuGoalId] = useState<string | null>(null);
+  const [formHighlight, setFormHighlight] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [contributeDrafts, setContributeDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setAllocatedFromSurplus(0);
   }, [month]);
 
   const [name, setName] = useState("");
-  const [targetChf, setTargetChf] = useState(5000);
+  const [targetInput, setTargetInput] = useState("5000");
   const [type, setType] = useState<LabGoal["type"]>("savings");
   const [deadline, setDeadline] = useState("");
 
@@ -40,11 +44,24 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
     }
   };
 
+  const contributeCustom = (goal: LabGoal) => {
+    const raw = contributeDrafts[goal.id] ?? "";
+    const amount = Number(raw.replace(",", "."));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setFormError(t("goalNeedContribute"));
+      return;
+    }
+    setFormError(null);
+    const next = Math.min(goal.targetChf, Math.max(0, goal.currentChf + amount));
+    void update(goal.id, { currentChf: next });
+    setContributeDrafts((prev) => ({ ...prev, [goal.id]: "" }));
+  };
+
   const editGoal = (goal: LabGoal) => {
     setMenuGoalId(null);
-    const nextName = prompt("Goal name", goal.name);
+    const nextName = prompt(t("goalName"), goal.name);
     if (nextName == null || !nextName.trim()) return;
-    const nextTarget = prompt("Target (CHF)", String(goal.targetChf));
+    const nextTarget = prompt(t("target"), String(goal.targetChf));
     if (nextTarget == null) return;
     const parsed = Number(nextTarget);
     if (!Number.isFinite(parsed) || parsed <= 0) return;
@@ -53,12 +70,44 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
 
   const deleteGoal = (goal: LabGoal) => {
     setMenuGoalId(null);
-    if (!confirm(`Delete goal "${goal.name}"?`)) return;
+    if (!confirm(t("goalDeleteConfirm").replace("{name}", goal.name))) return;
     void remove(goal.id);
   };
 
-  const scrollToForm = () => {
+  const focusNewGoalForm = () => {
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setFormHighlight(true);
+    setFormError(null);
+    window.setTimeout(() => {
+      nameRef.current?.focus();
+      nameRef.current?.select();
+    }, 280);
+    window.setTimeout(() => setFormHighlight(false), 2200);
+  };
+
+  const submitGoal = () => {
+    setFormError(null);
+    if (!name.trim()) {
+      setFormError(t("goalNeedName"));
+      focusNewGoalForm();
+      return;
+    }
+    const targetChf = Number(targetInput.replace(",", "."));
+    if (!Number.isFinite(targetChf) || targetChf <= 0) {
+      setFormError(t("goalNeedTarget"));
+      return;
+    }
+    void add({
+      name: name.trim(),
+      targetChf,
+      currentChf: 0,
+      type,
+      deadline: deadline || undefined,
+    });
+    setName("");
+    setDeadline("");
+    setTargetInput("5000");
+    setFormError(null);
   };
 
   return (
@@ -66,68 +115,69 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
       <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <span className="text-[var(--pp-primary)] text-xs font-semibold uppercase tracking-[0.2em]">
-            Growth strategy
+            {t("goalsEyebrow")}
           </span>
-          <h2 className="text-2xl md:text-4xl font-bold mt-2">Financial goals</h2>
-          <p className="text-[var(--pp-on-surface-variant)] text-sm mt-2 max-w-xl">
-            Track savings and debt payoff with surplus from your personal statement ledger.
-          </p>
+          <h2 className="text-2xl md:text-4xl font-bold mt-2">{t("goalsTitle")}</h2>
+          <p className="text-[var(--pp-on-surface-variant)] text-sm mt-2 max-w-xl">{t("goalsIntro")}</p>
         </div>
         <GlassCard className="px-4 py-2 text-xs text-[var(--pp-on-surface-variant)]">
-          Available surplus ({month}):{" "}
+          {t("goalsSurplusLabel")} ({month}):{" "}
           <strong className="text-[var(--pp-secondary)]">{formatChfDisplay(surplus)}</strong>
         </GlassCard>
       </section>
 
-      <GlassCard className="p-4" id="goal-form">
+      <GlassCard
+        className={`p-4 transition-shadow ${formHighlight ? "ring-2 ring-[var(--pp-primary)] shadow-lg" : ""}`}
+        id="goal-form"
+      >
         <div ref={formRef}>
-        <div className="flex flex-wrap gap-2">
-          <input
-            className="pp-input px-3 py-2 flex-1 min-w-[140px] text-sm"
-            placeholder={t("goalName")}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <input
-            type="number"
-            className="pp-input px-3 py-2 w-28 text-sm"
-            value={targetChf}
-            onChange={(e) => setTargetChf(Number(e.target.value))}
-          />
-          <input
-            type="date"
-            className="pp-input px-3 py-2 text-sm"
-            value={deadline}
-            onChange={(e) => setDeadline(e.target.value)}
-          />
-          <select
-            className="pp-input px-3 py-2 text-sm"
-            value={type}
-            onChange={(e) => setType(e.target.value as LabGoal["type"])}
-          >
-            <option value="savings">Savings</option>
-            <option value="debt">Debt payoff</option>
-          </select>
-          <button
-            type="button"
-            className="flex items-center gap-2 bg-[var(--pp-primary)] text-[var(--pp-on-primary)] px-4 py-2 rounded-lg text-xs font-bold hover:opacity-90"
-            onClick={() => {
-              if (!name.trim()) return;
-              void add({
-                name: name.trim(),
-                targetChf,
-                currentChf: 0,
-                type,
-                deadline: deadline || undefined,
-              });
-              setName("");
-              setDeadline("");
-            }}
-          >
-            <Plus className="size-4" />
-            {t("addGoal")}
-          </button>
-        </div>
+          <p className="text-xs font-semibold text-[var(--pp-primary)] uppercase tracking-wide mb-2">
+            {t("goalFormLabel")}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={nameRef}
+              className="pp-input px-3 py-2 flex-1 min-w-[140px] text-sm"
+              placeholder={t("goalName")}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitGoal();
+              }}
+            />
+            <input
+              type="text"
+              inputMode="decimal"
+              className="pp-input px-3 py-2 w-28 text-sm pp-tabular"
+              placeholder={t("target")}
+              value={targetInput}
+              onChange={(e) => setTargetInput(e.target.value)}
+              aria-label={t("target")}
+            />
+            <input
+              type="date"
+              className="pp-input px-3 py-2 text-sm"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+            />
+            <select
+              className="pp-input px-3 py-2 text-sm"
+              value={type}
+              onChange={(e) => setType(e.target.value as LabGoal["type"])}
+            >
+              <option value="savings">{t("goalTypeSavings")}</option>
+              <option value="debt">{t("goalTypeDebt")}</option>
+            </select>
+            <button
+              type="button"
+              className="flex items-center gap-2 bg-[var(--pp-primary)] text-[var(--pp-on-primary)] px-4 py-2 rounded-lg text-xs font-bold hover:opacity-90"
+              onClick={submitGoal}
+            >
+              <Plus className="size-4" />
+              {t("addGoal")}
+            </button>
+          </div>
+          {formError && <p className="text-xs text-[var(--pp-error)] mt-2">{formError}</p>}
         </div>
       </GlassCard>
 
@@ -153,7 +203,7 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
                     type="button"
                     className="text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] p-1"
                     onClick={() => setMenuGoalId(menuOpen ? null : g.id)}
-                    aria-label="Goal options"
+                    aria-label={t("goalOptions")}
                   >
                     <MoreVertical className="size-4" />
                   </button>
@@ -165,7 +215,7 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
                         onClick={() => editGoal(g)}
                       >
                         <Pencil className="size-3.5" />
-                        Edit
+                        {t("edit")}
                       </button>
                       <button
                         type="button"
@@ -173,7 +223,7 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
                         onClick={() => deleteGoal(g)}
                       >
                         <Trash2 className="size-3.5" />
-                        Delete
+                        {t("delete")}
                       </button>
                     </div>
                   ) : null}
@@ -181,12 +231,14 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
               </div>
               <div>
                 <h3 className="text-lg font-semibold">{g.name}</h3>
-                <p className="text-[11px] text-[var(--pp-on-surface-variant)] uppercase">{g.type}</p>
+                <p className="text-[11px] text-[var(--pp-on-surface-variant)] uppercase">
+                  {g.type === "debt" ? t("goalTypeDebt") : t("goalTypeSavings")}
+                </p>
               </div>
               {complete ? (
                 <div className="flex items-center gap-2 text-[var(--pp-secondary)] font-bold text-sm py-4">
                   <CheckCircle2 className="size-4" />
-                  Goal achieved
+                  {t("goalAchieved")}
                 </div>
               ) : (
                 <div className="flex items-center justify-center py-2">
@@ -219,24 +271,47 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
               )}
               <div className="grid grid-cols-2 gap-2 border-t border-[var(--pp-border)] pt-3 text-sm pp-tabular">
                 <div>
-                  <p className="text-[11px] text-[var(--pp-on-surface-variant)]">Current</p>
+                  <p className="text-[11px] text-[var(--pp-on-surface-variant)]">{t("goalCurrent")}</p>
                   <p className="font-semibold text-[var(--pp-primary)]">{formatChfDisplay(g.currentChf)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[11px] text-[var(--pp-on-surface-variant)]">Target</p>
+                  <p className="text-[11px] text-[var(--pp-on-surface-variant)]">{t("goalTargetLabel")}</p>
                   <p className="font-semibold">{formatChfDisplay(g.targetChf)}</p>
                 </div>
               </div>
               {g.deadline && (
                 <p className="text-[11px] text-[var(--pp-on-surface-variant)]">
-                  {daysLeft != null && daysLeft >= 0 ? `${daysLeft} days left` : "Overdue"} · {g.deadline}
+                  {daysLeft != null && daysLeft >= 0
+                    ? t("goalDaysLeft").replace("{n}", String(daysLeft))
+                    : t("overdue")}{" "}
+                  · {g.deadline}
                 </p>
               )}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 items-center">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className="pp-input px-2 py-1 w-24 text-[11px] pp-tabular"
+                  placeholder={t("goalContributePh")}
+                  value={contributeDrafts[g.id] ?? ""}
+                  onChange={(e) =>
+                    setContributeDrafts((prev) => ({ ...prev, [g.id]: e.target.value }))
+                  }
+                  disabled={complete}
+                />
                 <button
                   type="button"
-                  className="text-[11px] underline text-[var(--pp-on-surface-variant)]"
-                  onClick={() => void update(g.id, { currentChf: g.currentChf + 500 })}
+                  className="text-[11px] font-bold text-[var(--pp-on-surface)] px-2 py-1 rounded bg-[var(--pp-surface-highest)] disabled:opacity-40"
+                  disabled={complete}
+                  onClick={() => contributeCustom(g)}
+                >
+                  {t("goalContribute")}
+                </button>
+                <button
+                  type="button"
+                  className="text-[11px] underline text-[var(--pp-on-surface-variant)] disabled:opacity-40"
+                  disabled={complete}
+                  onClick={() => void update(g.id, { currentChf: Math.min(g.targetChf, g.currentChf + 500) })}
                 >
                   +500 CHF
                 </button>
@@ -253,16 +328,13 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
           );
         })}
 
-        <button
-          type="button"
-          onClick={scrollToForm}
-          className="text-left w-full"
-        >
+        <button type="button" onClick={focusNewGoalForm} className="text-left w-full">
           <GlassCard className="p-5 border-dashed border-2 border-[var(--pp-outline-variant)] bg-transparent flex flex-col items-center justify-center gap-3 min-h-[280px] opacity-80 hover:opacity-100 hover:border-[var(--pp-primary)]/40 transition-all cursor-pointer">
             <div className="w-14 h-14 rounded-full border border-[var(--pp-outline-variant)] flex items-center justify-center">
               <Plus className="size-6 text-[var(--pp-on-surface-variant)]" />
             </div>
-            <p className="text-sm font-semibold">New goal</p>
+            <p className="text-sm font-semibold">{t("newGoal")}</p>
+            <p className="text-[11px] text-[var(--pp-on-surface-variant)] text-center px-4">{t("newGoalHint")}</p>
           </GlassCard>
         </button>
 
@@ -270,12 +342,14 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="size-4 text-[var(--pp-primary)]" />
-              <h4 className="text-xs font-semibold text-[var(--pp-primary)] uppercase">Wealth insight</h4>
+              <h4 className="text-xs font-semibold text-[var(--pp-primary)] uppercase">{t("goalsInsightTitle")}</h4>
             </div>
             <p className="text-sm font-semibold leading-snug mb-2">
               {items.length > 0
-                ? `${items.filter((g) => g.currentChf >= g.targetChf).length} of ${items.length} goals complete.`
-                : "Add your first savings or debt goal."}
+                ? t("goalsInsightProgress")
+                    .replace("{done}", String(items.filter((g) => g.currentChf >= g.targetChf).length))
+                    .replace("{total}", String(items.length))
+                : t("goalsInsightEmpty")}
             </p>
           </div>
         </GlassCard>

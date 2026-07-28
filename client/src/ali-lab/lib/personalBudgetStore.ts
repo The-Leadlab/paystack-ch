@@ -31,7 +31,7 @@ export type PersonalBudgetTx = {
 export type PersonalImportRecord = {
   id: string;
   fileName: string;
-  source: "csv" | "pdf";
+  source: "csv" | "pdf" | "image";
   importedAt: string;
   rowCount: number;
   incomeTotal: number;
@@ -129,7 +129,7 @@ export async function deletePersonalTransaction(id: string): Promise<void> {
 
 export async function commitPersonalStatementDrafts(
   drafts: PersonalStatementDraft[],
-  meta: { fileName: string; source: "csv" | "pdf" }
+  meta: { fileName: string; source: "csv" | "pdf" | "image" }
 ): Promise<PersonalImportRecord> {
   const selected = drafts.filter((d) => d.selected && d.amount > 0);
   const importId = `pim_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
