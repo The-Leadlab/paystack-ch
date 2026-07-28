@@ -491,6 +491,114 @@ export function trendAxisTickDates(dates: string[], maxTicks = 6): string[] {
   return out;
 }
 
+export type RevenueIntervalId = 'all' | '1m' | '2m' | '3m' | '6m' | '1y';
+
+export const REVENUE_INTERVALS: { id: RevenueIntervalId; labelKey: string }[] = [
+  { id: 'all', labelKey: 'rhIntervalAll' },
+  { id: '1m', labelKey: 'rhInterval1m' },
+  { id: '2m', labelKey: 'rhInterval2m' },
+  { id: '3m', labelKey: 'rhInterval3m' },
+  { id: '6m', labelKey: 'rhInterval6m' },
+  { id: '1y', labelKey: 'rhInterval1y' },
+];
+
+/** First day of the calendar month `monthsAgo` months before the month of `iso`. */
+export function monthStartMonthsAgo(iso: string, monthsAgo: number): string {
+  const [y, m] = iso.split('-').map(Number);
+  const d = new Date(y, (m || 1) - 1 - monthsAgo, 1);
+  return toIsoDate(d);
+}
+
+export function dataDateSpan(income: IncomeRow[]): { first: string; last: string } | null {
+  if (!income.length) return null;
+  let first = income[0].date;
+  let last = income[0].date;
+  for (const row of income) {
+    if (row.date < first) first = row.date;
+    if (row.date > last) last = row.date;
+  }
+  return { first, last };
+}
+
+export function resolveRevenueInterval(
+  interval: RevenueIntervalId,
+  today: string,
+  income: IncomeRow[]
+): { start: string; end: string; firstDoc: string | null; lastDoc: string | null } {
+  const span = dataDateSpan(income);
+  const end = today;
+  if (interval === 'all') {
+    if (span) return { start: span.first, end: span.last > today ? span.last : today, firstDoc: span.first, lastDoc: span.last };
+    const { start } = monthBounds(today);
+    return { start, end, firstDoc: null, lastDoc: null };
+  }
+  const monthsAgo =
+    interval === '1m' ? 0 : interval === '2m' ? 1 : interval === '3m' ? 2 : interval === '6m' ? 5 : 11;
+  const start = monthStartMonthsAgo(today, monthsAgo);
+  return {
+    start,
+    end,
+    firstDoc: span?.first ?? null,
+    lastDoc: span?.last ?? null,
+  };
+}
+
+export function priorPeriodBounds(start: string, end: string): { start: string; end: string } {
+  let days = 0;
+  for (let iso = start; iso <= end; iso = addDaysIso(iso, 1)) days += 1;
+  const priorEnd = addDaysIso(start, -1);
+  const priorStart = addDaysIso(priorEnd, -(Math.max(days, 1) - 1));
+  return { start: priorStart, end: priorEnd };
+}
+
+export type TrendPoint = { date: string; label: string; fullLabel: string; amount: number };
+
+function formatTrendPoint(iso: string, locale: string, amount: number, weekly = false): TrendPoint {
+  const d = new Date(iso + 'T12:00:00');
+  return {
+    date: iso,
+    label: weekly
+      ? d.toLocaleDateString(locale, { day: 'numeric', month: 'short' })
+      : d.toLocaleDateString(locale, { day: 'numeric', month: 'short' }),
+    fullLabel: weekly
+      ? `${d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })} (7d)`
+      : d.toLocaleDateString(locale, {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        }),
+    amount,
+  };
+}
+
+/** Daily series when range ≤ 90 days; otherwise weekly buckets. */
+export function trendForRange(
+  income: IncomeRow[],
+  start: string,
+  end: string,
+  locale: string
+): TrendPoint[] {
+  let dayCount = 0;
+  for (let iso = start; iso <= end; iso = addDaysIso(iso, 1)) dayCount += 1;
+
+  if (dayCount <= 90) {
+    const days: TrendPoint[] = [];
+    for (let iso = start; iso <= end; iso = addDaysIso(iso, 1)) {
+      days.push(formatTrendPoint(iso, locale, sumInRange(income, iso, iso)));
+    }
+    return days;
+  }
+
+  const weeks: TrendPoint[] = [];
+  for (let iso = start; iso <= end; ) {
+    const weekEnd = addDaysIso(iso, 6) > end ? end : addDaysIso(iso, 6);
+    weeks.push(formatTrendPoint(iso, locale, sumInRange(income, iso, weekEnd), true));
+    iso = addDaysIso(weekEnd, 1);
+  }
+  return weeks;
+}
+
 /** Description used when a Z-reading is synced into the income ledger. */
 export function zReadingIncomeDescription(date: string): string {
   return `Z-reading ${date}`;

@@ -1090,7 +1090,9 @@ export function RestaurantDashboard() {
               user={user}
             />
           )}
-          {activeTab === 'revenue' && showRevenueTab ? <POSManager onNavigateTab={setActiveTab} /> : null}
+          {activeTab === 'revenue' && showRevenueTab ? (
+            <POSManager onNavigateTab={setActiveTab} onNavigateToDocument={handleNavigateToDocument} />
+          ) : null}
           {activeTab === 'invoices' && <InvoiceMakerPanel />}
           {activeTab === 'reports' && <ReportsPlaceholder />}
           {activeTab === 'documents' && <DocumentsTab selectedDocument={selectedDocumentFromFinance} onClearSelection={() => setSelectedDocumentFromFinance(null)} />}

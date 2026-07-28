@@ -22,6 +22,8 @@ import {
   RefreshCw,
   History,
   CreditCard,
+  ExternalLink,
+  FileText,
 } from 'lucide-react';
 import {
   Area,
@@ -39,9 +41,6 @@ import { usePOS } from '../context/POSContext';
 import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
-import type { POSReading } from '../types';
-import { analyzeFinancialDocument } from '../services/geminiService';
-import { Z_READING_AI_HINT, parseZReadingFromFinancialData } from '../lib/posZReading';
 import {
   addDaysIso,
   buildCashPosition,
@@ -52,11 +51,15 @@ import {
   findIncomeForZReading,
   monthlyBudgetTarget,
   monthBounds,
+  priorPeriodBounds,
+  REVENUE_INTERVALS,
+  resolveRevenueInterval,
   sumInRange,
   toIsoDate,
   trendAxisTickDates,
-  trendMonthToDate,
+  trendForRange,
   zReadingIncomeDescription,
+  type RevenueIntervalId,
 } from '../lib/revenueAnalytics';
 import {
   autoMapColumns,
@@ -96,6 +99,10 @@ import {
   pushRevenueActivity,
   type RevenueActivity,
 } from '../lib/revenueActivityHistory';
+import { useDocuments } from '../context/DocumentContext';
+import type { POSReading, ProcessedDocument } from '../types';
+import { analyzeFinancialDocument } from '../services/geminiService';
+import { Z_READING_AI_HINT, parseZReadingFromFinancialData } from '../lib/posZReading';
 import '../businessApp.css';
 
 type DatePeriod = 'day' | '7d' | '14d' | 'month' | 'custom';
@@ -129,9 +136,16 @@ const CHART_GREEN = '#34d399';
 const CHART_BLUE = '#60a5fa';
 const CHART_GOLD = '#fbbf24';
 
-export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: (tab: BusinessTab) => void }) {
+export function POSManager({
+  onNavigateTab: _onNavigateTab,
+  onNavigateToDocument,
+}: {
+  onNavigateTab?: (tab: BusinessTab) => void;
+  onNavigateToDocument?: (doc: ProcessedDocument) => void;
+}) {
   const { posReadings, addPOSReading, updatePOSReading, deletePOSReading } = usePOS();
   const { income, expenses, addIncome, addExpense, deleteIncome, deleteExpense } = useFinance();
+  const { documents } = useDocuments();
   const { currentSession, isAllSessionsView, sessions } = useSession();
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
@@ -144,6 +158,9 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
   const [customKeywords, setCustomKeywords] = useState('');
   const [customIcon, setCustomIcon] = useState('📌');
   const [demoLoading, setDemoLoading] = useState(false);
+  const [intervalId, setIntervalId] = useState<RevenueIntervalId>('1m');
+  const [hubTab, setHubTab] = useState<'trend' | 'documents' | 'reconciliation'>('trend');
+  const [docVisible, setDocVisible] = useState(10);
   const [demoHold, setDemoHold] = useState<{
     income: { date: string; amount: number; type: string; description?: string }[];
     expenses: { date: string; amount: number; category: string; description?: string }[];
@@ -254,67 +271,101 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
   const activityRemaining = Math.max(0, activity.length - activityVisible);
 
   const today = toIsoDate(new Date());
-  const yesterday = addDaysIso(today, -1);
-  const weekStart = addDaysIso(today, -6);
-  const prevWeekStart = addDaysIso(today, -13);
-  const prevWeekEnd = addDaysIso(today, -7);
-  const { start: monthStart, end: monthEnd } = monthBounds(today);
+  const range = useMemo(
+    () => resolveRevenueInterval(intervalId, today, sectorIncomeRows),
+    [intervalId, today, sectorIncomeRows]
+  );
+  const { start: rangeStart, end: rangeEnd } = range;
+  const prior = useMemo(() => priorPeriodBounds(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
 
+  const periodIncomeRows = useMemo(
+    () => sectorIncomeRows.filter((r) => r.date >= rangeStart && r.date <= rangeEnd),
+    [sectorIncomeRows, rangeStart, rangeEnd]
+  );
+
+  const revPeriod = sumInRange(sectorIncomeRows, rangeStart, rangeEnd);
+  const revPrior = sumInRange(sectorIncomeRows, prior.start, prior.end);
   const revToday = sumInRange(sectorIncomeRows, today, today);
-  const revYesterday = sumInRange(sectorIncomeRows, yesterday, yesterday);
-  const revWeek = sumInRange(sectorIncomeRows, weekStart, today);
-  const revPrevWeek = sumInRange(sectorIncomeRows, prevWeekStart, prevWeekEnd);
-  const revMonth = sumInRange(sectorIncomeRows, monthStart, monthEnd);
-  const revYtd = sumInRange(sectorIncomeRows, `${new Date().getFullYear()}-01-01`, today);
   const growthPct =
-    revPrevWeek > 0 ? ((revWeek - revPrevWeek) / revPrevWeek) * 100 : revWeek > 0 ? 100 : 0;
+    revPrior > 0 ? ((revPeriod - revPrior) / revPrior) * 100 : revPeriod > 0 ? 100 : 0;
+
+  let periodDays = 0;
+  for (let iso = rangeStart; iso <= rangeEnd; iso = addDaysIso(iso, 1)) periodDays += 1;
+  const dailyAvg = periodDays > 0 ? revPeriod / periodDays : 0;
 
   const budgetMonth = monthlyBudgetTarget(sectorIncomeRows, today);
-  const budgetPct = budgetMonth > 0 ? Math.min(100, (revMonth / budgetMonth) * 100) : 0;
+  const budgetPct = budgetMonth > 0 ? Math.min(100, (revPeriod / budgetMonth) * 100) : 0;
 
-  const cash = buildCashPosition(sectorIncomeRows, sectorPosReadings, today);
-  const profit = buildProfitability(sectorIncomeRows, sectorExpenseRows, monthStart, monthEnd);
-  const paymentMix = buildPaymentMix(sectorPosReadings, sectorIncomeRows, monthStart, monthEnd);
+  const cash = buildCashPosition(periodIncomeRows, sectorPosReadings, today);
+  const profit = buildProfitability(sectorIncomeRows, sectorExpenseRows, rangeStart, rangeEnd);
+  const paymentMix = buildPaymentMix(sectorPosReadings, sectorIncomeRows, rangeStart, rangeEnd);
   const reconciliation = buildReconciliation(
     sectorIncomeRows,
     sectorPosReadings,
-    monthStart,
-    monthEnd,
+    rangeStart,
+    rangeEnd,
     today
   );
   const insights = buildInsights({
     revToday,
-    revWeek,
-    revPrevWeek,
-    revMonth,
+    revWeek: revPeriod,
+    revPrevWeek: revPrior,
+    revMonth: revPeriod,
     budgetMonth,
     reconciliationOpen: reconciliation.openCount,
     reconciliationVariance: reconciliation.variance,
     posCount: sectorPosReadings.length,
-    incomeCount: sectorIncomeRows.length,
+    incomeCount: periodIncomeRows.length,
     incomingInvoices: cash.incoming,
     cashOnHand: cash.onHand,
   });
 
   const paymentBase = Math.max(paymentMix.cash + paymentMix.card + paymentMix.other, 1);
-  const flowBase = Math.max(revToday, revWeek, revMonth, revYtd, paymentMix.gross, 1);
+  const flowBase = Math.max(revPeriod, dailyAvg, paymentMix.gross, 1);
 
   const fmt = (n: number) =>
     n.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const fmtChf = (n: number) => `${fmt(n)} CHF`;
+  const fmtDate = (iso: string) =>
+    new Date(iso + 'T12:00:00').toLocaleDateString(chfLocale, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
 
   const trendData = useMemo(
-    () => trendMonthToDate(sectorIncomeRows, today, chfLocale),
-    [sectorIncomeRows, today, chfLocale]
+    () => trendForRange(sectorIncomeRows, rangeStart, rangeEnd, chfLocale),
+    [sectorIncomeRows, rangeStart, rangeEnd, chfLocale]
   );
   const trendTickDates = useMemo(
     () => trendAxisTickDates(trendData.map((d) => d.date), 6),
     [trendData]
   );
   const trendRangeLabel =
-    trendData.length > 0
-      ? `${trendData[0].label} – ${trendData[trendData.length - 1].label}`
-      : '';
+    trendData.length > 0 ? `${fmtDate(rangeStart)} – ${fmtDate(rangeEnd)}` : '';
+
+  const periodDocs = useMemo(() => {
+    const rows = filteredIncome
+      .filter(
+        (i) =>
+          i.date >= rangeStart &&
+          i.date <= rangeEnd &&
+          rowMatchesAnySector(i.description || '', activeSectors)
+      )
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    return rows.map((row) => {
+      const doc = row.document_id ? documents.find((d) => d.id === row.document_id) : undefined;
+      return { row, doc };
+    });
+  }, [filteredIncome, rangeStart, rangeEnd, activeSectors, documents, recipeTick]);
+
+  useEffect(() => {
+    setDocVisible(10);
+  }, [intervalId, activeSectors.join('|'), hubTab]);
+
+  const visibleDocs = periodDocs.slice(0, docVisible);
+  const docsRemaining = Math.max(0, periodDocs.length - docVisible);
+  const docsWithFile = periodDocs.filter((d) => d.doc).length;
 
   const paymentMethods = useMemo(() => {
     const items = [
@@ -668,11 +719,12 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
       <div className="ba-revenue-hero">
         <div>
           <p className="text-xs text-cdlp-muted uppercase tracking-wide">{t('rhOverview')}</p>
-          <h1 className="ba-revenue-hero__title">{t('rhTodayAtGlance')}</h1>
+          <h1 className="ba-revenue-hero__title">{t('rhPeriodAtGlance')}</h1>
+          <p className="text-[10px] text-cdlp-muted mt-1 uppercase tracking-wide">{trendRangeLabel}</p>
         </div>
         <div className="ba-revenue-hero__today">
-          <p className="text-xs text-cdlp-muted uppercase tracking-wide">{t('rhRevToday')}</p>
-          <p className="text-2xl md:text-3xl font-bold text-emerald-400 tabular-nums">{fmtChf(revToday)}</p>
+          <p className="text-xs text-cdlp-muted uppercase tracking-wide">{t('rhPeriodTotal')}</p>
+          <p className="text-2xl md:text-3xl font-bold text-emerald-400 tabular-nums">{fmtChf(revPeriod)}</p>
         </div>
       </div>
 
@@ -685,46 +737,94 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
         </div>
       ) : null}
 
+      <div className="ba-interval-bar">
+        <div className="ba-interval-bar__chips">
+          {REVENUE_INTERVALS.map((iv) => (
+            <button
+              key={iv.id}
+              type="button"
+              className={`ba-filter-chip ${intervalId === iv.id ? 'ba-filter-chip--active' : ''}`}
+              onClick={() => setIntervalId(iv.id)}
+            >
+              {t(iv.labelKey)}
+            </button>
+          ))}
+        </div>
+        <p className="ba-interval-bar__span">
+          {t('rhDataSpan')
+            .replace('{first}', range.firstDoc ? fmtDate(range.firstDoc) : '—')
+            .replace('{last}', range.lastDoc ? fmtDate(range.lastDoc) : '—')}
+          <span className="ba-interval-bar__sep">·</span>
+          {t('rhFilterSpan')
+            .replace('{first}', fmtDate(rangeStart))
+            .replace('{last}', fmtDate(rangeEnd))}
+        </p>
+      </div>
+
       <div className="ba-kpi-grid-4">
         <BusinessKpiCard
-          label={t('rhKpiYesterday')}
-          value={fmt(revYesterday)}
+          label={t('rhKpiPeriod')}
+          value={fmt(revPeriod)}
           icon={Wallet}
           tone="neutral"
-          progressPct={(revYesterday / flowBase) * 100}
+          progressPct={(revPeriod / flowBase) * 100}
         />
         <BusinessKpiCard
-          label={t('rhKpiWeek')}
-          value={fmt(revWeek)}
-          hint={`${growthPct >= 0 ? '+' : ''}${growthPct.toFixed(1)}% ${t('rhVsLastWeek')}`}
+          label={t('rhKpiVsPrior')}
+          value={`${growthPct >= 0 ? '+' : ''}${growthPct.toFixed(1)}%`}
+          hint={t('rhVsPriorPeriod')}
           icon={CalendarDays}
           tone="green"
-          progressPct={(revWeek / flowBase) * 100}
+          progressPct={Math.min(100, Math.abs(growthPct))}
         />
         <BusinessKpiCard
-          label={t('rhKpiMonth')}
-          value={fmt(revMonth)}
+          label={t('rhKpiDailyAvg')}
+          value={fmt(dailyAvg)}
           icon={CalendarRange}
           tone="blue"
-          progressPct={(revMonth / flowBase) * 100}
+          progressPct={(dailyAvg / flowBase) * 100}
         />
         <BusinessKpiCard
-          label={t('rhKpiYtd')}
-          value={fmt(revYtd)}
+          label={t('rhKpiEntries')}
+          value={String(periodIncomeRows.length)}
+          hint={t('rhDocsLinked').replace('{n}', String(docsWithFile))}
           icon={TrendingUp}
           tone="gold"
-          progressPct={(revYtd / flowBase) * 100}
+          progressPct={periodIncomeRows.length ? 70 : 0}
         />
       </div>
 
+      <div className="ba-hub-tabs" role="tablist" aria-label={t('rhHubTabs')}>
+        {(
+          [
+            { id: 'trend' as const, label: t('rhTabTrend') },
+            { id: 'documents' as const, label: t('rhTabDocuments') },
+            { id: 'reconciliation' as const, label: t('rhTabReconciliation') },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={hubTab === tab.id}
+            className={`ba-hub-tabs__btn ${hubTab === tab.id ? 'ba-hub-tabs__btn--active' : ''}`}
+            onClick={() => setHubTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {hubTab === 'trend' ? (
+      <>
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="ba-panel lg:col-span-2">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
               <p className="text-xs text-cdlp-muted uppercase tracking-wide">{t('rhRevTrend')}</p>
               <p className="text-lg font-bold text-white tabular-nums">
-                {fmtChf(revMonth)}{' '}
-                <span className="text-xs text-cdlp-muted font-normal">{t('rhThisMonth')}</span>
+                {fmtChf(revPeriod)}{' '}
+                <span className="text-xs text-cdlp-muted font-normal">{t('rhInFilter')}</span>
               </p>
               {trendRangeLabel ? (
                 <p className="text-[10px] text-cdlp-muted mt-1 uppercase tracking-wide">
@@ -734,7 +834,7 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
             </div>
             <span className="text-xs font-bold tabular-nums text-emerald-400">
               {growthPct >= 0 ? '+' : ''}
-              {growthPct.toFixed(1)}% WoW
+              {growthPct.toFixed(1)}% {t('rhVsPriorShort')}
             </span>
           </div>
           <div className="h-52">
@@ -788,7 +888,7 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
 
         <div className="ba-panel">
           <p className="text-xs text-cdlp-muted uppercase tracking-wide mb-1">{t('rhBudgetActual')}</p>
-          <p className="text-lg font-bold text-white tabular-nums">{fmtChf(revMonth)}</p>
+          <p className="text-lg font-bold text-white tabular-nums">{fmtChf(revPeriod)}</p>
           <p className="text-xs text-cdlp-muted mt-1">
             {t('rhOfTarget').replace('{v}', fmtChf(budgetMonth))}
           </p>
@@ -813,7 +913,7 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2">
         <div className="ba-panel ba-revenue-stat-panel">
           <p className="text-xs text-cdlp-muted uppercase tracking-wide">{t('rhCashPosition')}</p>
           <p className="ba-revenue-stat-panel__value tabular-nums">{fmtChf(cash.total)}</p>
@@ -834,40 +934,6 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
             <div className="ba-revenue-stat-row"><span>{t('rhMargin')}</span><span>{profit.marginPct.toFixed(1)}%</span></div>
             <div className="ba-revenue-stat-row"><span>{t('rhAvgTransaction')}</span><span>{fmtChf(profit.avgTransaction)}</span></div>
           </div>
-        </div>
-
-        <div className="ba-panel ba-revenue-stat-panel">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-cdlp-muted uppercase tracking-wide">{t('rhReconciliation')}</p>
-            {reconciliation.openCount > 0 ? (
-              <span className="ba-revenue-badge-open">
-                {reconciliation.openCount} {t('rhOpen')}
-              </span>
-            ) : null}
-          </div>
-          <p className="ba-revenue-stat-panel__value tabular-nums">{fmtChf(reconciliation.variance)}</p>
-          <p className="text-xs text-cdlp-muted">{t('rhTotalVariance')}</p>
-          <ul className="mt-3 space-y-2 text-xs max-h-36 overflow-auto">
-            {reconciliation.items.length === 0 ? (
-              <li className="text-cdlp-muted">{t('rhAllClear')}</li>
-            ) : (
-              reconciliation.items.slice(0, 5).map((item) => (
-                <li key={item.id}>
-                  <div className="flex justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-white truncate">{item.description}</p>
-                      <p className="text-[10px] text-cdlp-muted uppercase">{item.label}</p>
-                    </div>
-                    {item.amount !== 0 ? (
-                      <span className={`tabular-nums shrink-0 font-bold ${item.amount < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                        {fmtChf(item.amount)}
-                      </span>
-                    ) : null}
-                  </div>
-                </li>
-              ))
-            )}
-          </ul>
         </div>
       </div>
 
@@ -943,12 +1009,145 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
           )}
         </div>
       </div>
+      </>
+      ) : null}
+
+      {hubTab === 'documents' ? (
+        <div className="ba-panel ba-revenue-docs">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-sm font-black uppercase text-cdlp-gold">{t('rhTabDocuments')}</h2>
+              <p className="text-xs text-cdlp-muted mt-1">
+                {t('rhDocsTableHint')
+                  .replace('{n}', String(periodDocs.length))
+                  .replace('{range}', trendRangeLabel || '—')}
+              </p>
+            </div>
+          </div>
+          {periodDocs.length === 0 ? (
+            <p className="text-sm text-cdlp-muted py-8 text-center">{t('rhDocsEmpty')}</p>
+          ) : (
+            <>
+              <div className="ba-revenue-docs__table-wrap">
+                <table className="ba-revenue-docs__table">
+                  <thead>
+                    <tr>
+                      <th>{t('date')}</th>
+                      <th>{t('rhDocCategory')}</th>
+                      <th>{t('rhDocDescription')}</th>
+                      <th className="text-right">{t('rhAmount')}</th>
+                      <th>{t('rhDocSource')}</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleDocs.map(({ row, doc }) => {
+                      const meta = activeSectors
+                        .map((id) => getSectorMeta(id))
+                        .find((m) => rowMatchesAnySector(row.description || '', [m.id]));
+                      return (
+                        <tr key={row.id}>
+                          <td className="whitespace-nowrap">{fmtDate(row.date)}</td>
+                          <td className="whitespace-nowrap">
+                            {meta ? `${meta.icon} ${sectorDisplayTitle(meta, t)}` : '—'}
+                          </td>
+                          <td className="max-w-[14rem] truncate" title={row.description || ''}>
+                            {row.description || '—'}
+                          </td>
+                          <td className="text-right tabular-nums font-bold">{fmtChf(row.amount)}</td>
+                          <td className="max-w-[10rem] truncate text-cdlp-muted">
+                            {doc?.fileName || (row.document_id ? t('rhDocMissing') : t('rhLedgerOnly'))}
+                          </td>
+                          <td className="text-right">
+                            <button
+                              type="button"
+                              className="ba-revenue-link-btn"
+                              disabled={!doc || !onNavigateToDocument}
+                              title={doc ? t('rhOpenDocument') : t('rhLedgerOnly')}
+                              onClick={() => {
+                                if (doc && onNavigateToDocument) onNavigateToDocument(doc);
+                              }}
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              <ExternalLink className="w-3 h-3" />
+                              {t('rhOpenDocument')}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {periodDocs.length > 10 ? (
+                <div className="flex flex-wrap items-center gap-2 mt-4">
+                  {docsRemaining > 0 ? (
+                    <button
+                      type="button"
+                      className="ba-filter-chip"
+                      onClick={() => setDocVisible((n) => Math.min(periodDocs.length, n + 10))}
+                    >
+                      {t('rhLoadMore').replace('{n}', String(docsRemaining))}
+                    </button>
+                  ) : (
+                    <button type="button" className="ba-filter-chip" onClick={() => setDocVisible(10)}>
+                      {t('rhShowLess')}
+                    </button>
+                  )}
+                  <span className="text-[10px] text-cdlp-muted uppercase tracking-wide">
+                    {Math.min(docVisible, periodDocs.length)} / {periodDocs.length}
+                  </span>
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+      ) : null}
+
+      {hubTab === 'reconciliation' ? (
+        <div className="ba-panel ba-revenue-stat-panel">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h2 className="text-sm font-black uppercase text-cdlp-gold">{t('rhTabReconciliation')}</h2>
+            {reconciliation.openCount > 0 ? (
+              <span className="ba-revenue-badge-open">
+                {reconciliation.openCount} {t('rhOpen')}
+              </span>
+            ) : null}
+          </div>
+          <p className="text-xs text-cdlp-muted mb-3">{trendRangeLabel}</p>
+          <p className="ba-revenue-stat-panel__value tabular-nums">{fmtChf(reconciliation.variance)}</p>
+          <p className="text-xs text-cdlp-muted">{t('rhTotalVariance')}</p>
+          <ul className="mt-4 space-y-3 text-sm">
+            {reconciliation.items.length === 0 ? (
+              <li className="text-cdlp-muted">{t('rhAllClear')}</li>
+            ) : (
+              reconciliation.items.map((item) => (
+                <li key={item.id} className="rounded-lg border border-cdlp-border/60 p-3">
+                  <div className="flex justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-white font-bold">{item.description}</p>
+                      <p className="text-[10px] text-cdlp-muted uppercase mt-1">{item.label}</p>
+                    </div>
+                    {item.amount !== 0 ? (
+                      <span
+                        className={`tabular-nums shrink-0 font-bold ${item.amount < 0 ? 'text-red-400' : 'text-emerald-400'}`}
+                      >
+                        {fmtChf(item.amount)}
+                      </span>
+                    ) : null}
+                  </div>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      ) : null}
 
       {visibleModules.map((sectorId) => (
         <RevenueIndustryModule
           key={`${sectorId}-${recipeTick}`}
           sector={sectorId}
-          rows={sectorIncomeRows.filter((r) => r.date >= monthStart && r.date <= monthEnd)}
+          rows={sectorIncomeRows.filter((r) => r.date >= rangeStart && r.date <= rangeEnd)}
           fmt={fmt}
           fmtChf={fmtChf}
           t={t}
@@ -993,7 +1192,12 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
       ) : null}
 
       <RevenueLedgerTable
-        income={filteredIncome.filter((i) => rowMatchesAnySector(i.description || '', activeSectors))}
+        income={filteredIncome.filter(
+          (i) =>
+            i.date >= rangeStart &&
+            i.date <= rangeEnd &&
+            rowMatchesAnySector(i.description || '', activeSectors)
+        )}
         expenses={[]}
         incomeOnly
       />
