@@ -43,8 +43,8 @@ export function buildDemoSeeds(anchorIso: string): {
   const lines: { tag: string; weight: number }[] = [
     { tag: 'Service labour', weight: 0.08 },
     { tag: 'Parts repair', weight: 0.06 },
-    { tag: 'Room booking', weight: 0.08 },
-    { tag: 'F&B breakfast', weight: 0.05 },
+    { tag: 'Room booking hotel', weight: 0.08 },
+    { tag: 'F&B breakfast hotel', weight: 0.05 },
     { tag: 'Consulting advisory', weight: 0.07 },
     { tag: 'Food dine-in', weight: 0.08 },
     { tag: 'Beverage bar', weight: 0.05 },

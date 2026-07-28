@@ -54,7 +54,8 @@ import {
   monthBounds,
   sumInRange,
   toIsoDate,
-  trendLast30Days,
+  trendAxisTickDates,
+  trendMonthToDate,
   zReadingIncomeDescription,
 } from '../lib/revenueAnalytics';
 import {
@@ -76,14 +77,18 @@ import { RevenueLedgerTable } from './RevenueLedgerTable';
 import { RevenueIndustryModule } from './RevenueIndustryModule';
 import type { BusinessTab } from './BusinessSidebarNav';
 import {
+  addCustomSector,
   ALL_SECTORS,
   filterExpensesForSectors,
   getSectorMeta,
+  loadCustomSectors,
   loadStoredSectors,
   rowMatchesAnySector,
   saveStoredSectors,
   SECTOR_CATALOG,
-  type SectorId,
+  sectorDisplayDesc,
+  sectorDisplayTitle,
+  type CustomSectorDef,
 } from '../lib/revenueSectors';
 import { buildDemoSeeds, DEMO_TAG, isDemoDescription } from '../lib/revenueDemoData';
 import {
@@ -131,9 +136,13 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
   const [editingReading, setEditingReading] = useState<POSReading | null>(null);
-  const [activeSectors, setActiveSectors] = useState<SectorId[]>(() => loadStoredSectors());
+  const [activeSectors, setActiveSectors] = useState<string[]>(() => loadStoredSectors());
   const [showSectorPicker, setShowSectorPicker] = useState(false);
   const [sectorLog, setSectorLog] = useState<string[]>([]);
+  const [customSectors, setCustomSectors] = useState<CustomSectorDef[]>(() => loadCustomSectors());
+  const [customName, setCustomName] = useState('');
+  const [customKeywords, setCustomKeywords] = useState('');
+  const [customIcon, setCustomIcon] = useState('📌');
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoHold, setDemoHold] = useState<{
     income: { date: string; amount: number; type: string; description?: string }[];
@@ -295,9 +304,17 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
   const fmtChf = (n: number) => `${fmt(n)} CHF`;
 
   const trendData = useMemo(
-    () => trendLast30Days(sectorIncomeRows, today, chfLocale),
+    () => trendMonthToDate(sectorIncomeRows, today, chfLocale),
     [sectorIncomeRows, today, chfLocale]
   );
+  const trendTickDates = useMemo(
+    () => trendAxisTickDates(trendData.map((d) => d.date), 6),
+    [trendData]
+  );
+  const trendRangeLabel =
+    trendData.length > 0
+      ? `${trendData[0].label} – ${trendData[trendData.length - 1].label}`
+      : '';
 
   const paymentMethods = useMemo(() => {
     const items = [
@@ -319,20 +336,23 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
     setActivity(pushRevenueActivity(entry));
   };
 
-  const toggleSector = (id: SectorId) => {
+  const toggleSector = (id: string) => {
     setActiveSectors((prev) => {
       const next = prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id];
       const resolved = next.length ? next : [id];
       saveStoredSectors(resolved);
       const meta = getSectorMeta(id);
       setSectorLog((log) =>
-        [`${new Date().toLocaleTimeString(chfLocale)} — ${t(meta.titleKey)}`, ...log].slice(0, 8)
+        [
+          `${new Date().toLocaleTimeString(chfLocale)} — ${sectorDisplayTitle(meta, t)}`,
+          ...log,
+        ].slice(0, 8)
       );
       queueMicrotask(() =>
         logActivity({
           type: 'sector_change',
           label: t('rhActivitySectorChange'),
-          detail: resolved.map((s) => t(getSectorMeta(s).titleKey)).join(', '),
+          detail: resolved.map((s) => sectorDisplayTitle(getSectorMeta(s), t)).join(', '),
         })
       );
       return resolved;
@@ -340,7 +360,7 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
   };
 
   const selectAllSectors = () => {
-    const all = ALL_SECTORS.slice();
+    const all = [...ALL_SECTORS, ...customSectors.map((c) => c.id)];
     setActiveSectors(all);
     saveStoredSectors(all);
     setSectorLog((log) => [`${new Date().toLocaleTimeString(chfLocale)} — ${t('rhSelectAllSectors')}`, ...log].slice(0, 8));
@@ -352,13 +372,40 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
   };
 
   const clearToDefaultSector = () => {
-    const next: SectorId[] = ['restaurants'];
+    const next = ['restaurants'];
     setActiveSectors(next);
     saveStoredSectors(next);
     logActivity({
       type: 'sector_change',
       label: t('rhActivitySectorChange'),
       detail: t(getSectorMeta('restaurants').titleKey),
+    });
+  };
+
+  const handleAddCustomCategory = () => {
+    const created = addCustomSector({
+      name: customName,
+      icon: customIcon,
+      keywords: customKeywords.split(/[,;\n]+/),
+    });
+    if (!created) {
+      alert(t('rhCustomCategoryInvalid'));
+      return;
+    }
+    setCustomSectors(loadCustomSectors());
+    setActiveSectors((prev) => {
+      const next = prev.includes(created.id) ? prev : [...prev, created.id];
+      saveStoredSectors(next);
+      return next;
+    });
+    setCustomName('');
+    setCustomKeywords('');
+    setCustomIcon('📌');
+    setRecipeTick((n) => n + 1);
+    logActivity({
+      type: 'sector_change',
+      label: t('rhActivityCustomCategory'),
+      detail: created.name,
     });
   };
 
@@ -471,9 +518,9 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
                   type="button"
                   className="ba-sector-pill ba-sector-pill--active"
                   onClick={() => setShowSectorPicker(true)}
-                  title={t(meta.descKey)}
+                  title={sectorDisplayDesc(meta, t)}
                 >
-                  {meta.icon} {t(meta.titleKey)}
+                  {meta.icon} {sectorDisplayTitle(meta, t)}
                 </button>
               );
             })
@@ -495,7 +542,8 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
                   ? []
                   : [
                       `${t('rhSectorLog')} — ${
-                        activeSectors.map((s) => t(getSectorMeta(s).titleKey)).join(', ') || t('rhNoSectorsSelected')
+                        activeSectors.map((s) => sectorDisplayTitle(getSectorMeta(s), t)).join(', ') ||
+                        t('rhNoSectorsSelected')
                       }`,
                     ]
               )
@@ -557,6 +605,54 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
                 </button>
               );
             })}
+            {customSectors.map((c) => {
+              const meta = getSectorMeta(c.id);
+              const active = activeSectors.includes(c.id);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`ba-sector-card ${active ? 'ba-sector-card--active' : ''}`}
+                  onClick={() => toggleSector(c.id)}
+                >
+                  <span className="ba-sector-card__icon">{meta.icon}</span>
+                  <span className="ba-sector-card__label">{sectorDisplayTitle(meta, t)}</span>
+                  <span className="ba-sector-card__desc">{sectorDisplayDesc(meta, t)}</span>
+                  <span className="ba-sector-card__check">{active ? '✓' : ''}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="ba-custom-category">
+            <p className="ba-custom-category__title">{t('rhAddCustomCategory')}</p>
+            <p className="ba-custom-category__hint">{t('rhAddCustomCategoryHint')}</p>
+            <div className="ba-custom-category__form">
+              <input
+                type="text"
+                className="ba-verify-field"
+                placeholder={t('rhCustomCategoryName')}
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+              />
+              <input
+                type="text"
+                className="ba-verify-field ba-custom-category__icon"
+                placeholder={t('rhCustomCategoryIcon')}
+                value={customIcon}
+                onChange={(e) => setCustomIcon(e.target.value)}
+                maxLength={4}
+              />
+              <input
+                type="text"
+                className="ba-verify-field ba-custom-category__keywords"
+                placeholder={t('rhCustomCategoryKeywords')}
+                value={customKeywords}
+                onChange={(e) => setCustomKeywords(e.target.value)}
+              />
+              <button type="button" className="ba-revenue-cta" onClick={handleAddCustomCategory}>
+                {t('rhSaveCustomCategory')}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -630,6 +726,11 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
                 {fmtChf(revMonth)}{' '}
                 <span className="text-xs text-cdlp-muted font-normal">{t('rhThisMonth')}</span>
               </p>
+              {trendRangeLabel ? (
+                <p className="text-[10px] text-cdlp-muted mt-1 uppercase tracking-wide">
+                  {t('rhTrendRange').replace('{range}', trendRangeLabel)}
+                </p>
+              ) : null}
             </div>
             <span className="text-xs font-bold tabular-nums text-emerald-400">
               {growthPct >= 0 ? '+' : ''}
@@ -647,11 +748,16 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
                 </defs>
                 <CartesianGrid stroke="#3d4450" strokeDasharray="3 3" vertical={false} />
                 <XAxis
-                  dataKey="label"
+                  dataKey="date"
+                  ticks={trendTickDates}
+                  tickFormatter={(iso: string) => {
+                    const row = trendData.find((d) => d.date === iso);
+                    return row?.label || iso;
+                  }}
                   tick={{ fontSize: 11, fill: '#9aa0a6' }}
                   axisLine={false}
                   tickLine={false}
-                  minTickGap={28}
+                  interval={0}
                 />
                 <YAxis hide />
                 <Tooltip
@@ -661,6 +767,10 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
                     borderRadius: 8,
                     fontSize: 12,
                     color: '#fff',
+                  }}
+                  labelFormatter={(_label, payload) => {
+                    const row = payload?.[0]?.payload as { fullLabel?: string } | undefined;
+                    return row?.fullLabel || '';
                   }}
                   formatter={(value: number) => [fmtChf(value), t('revenue')]}
                 />
@@ -843,6 +953,16 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
           fmtChf={fmtChf}
           t={t}
           onRecipeSaved={() => setRecipeTick((n) => n + 1)}
+          onCustomDeleted={(id) => {
+            setCustomSectors(loadCustomSectors());
+            setActiveSectors((prev) => {
+              const next = prev.filter((s) => s !== id);
+              const resolved = next.length ? next : ['restaurants'];
+              saveStoredSectors(resolved);
+              return resolved;
+            });
+            setRecipeTick((n) => n + 1);
+          }}
         />
       ))}
       {activeSectors.length > 2 ? (

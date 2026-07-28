@@ -1,21 +1,37 @@
 import React, { useState } from 'react';
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import type { SectorId } from '../lib/revenueSectors';
-import { computeSectorModule, getSectorMeta, setSectorKeywords } from '../lib/revenueSectors';
+import {
+  computeSectorModule,
+  deleteCustomSector,
+  getSectorMeta,
+  isCustomSectorId,
+  sectorDisplayDesc,
+  sectorDisplayTitle,
+  setSectorKeywords,
+} from '../lib/revenueSectors';
 import type { IncomeRow } from '../lib/revenueAnalytics';
 
 const CHART_COLORS = ['#34d399', '#60a5fa', '#fbbf24', '#a78bfa', '#f472b6', '#94a3b8'];
 
 type Props = {
-  sector: SectorId;
+  sector: string;
   rows: IncomeRow[];
   fmt: (n: number) => string;
   fmtChf: (n: number) => string;
   t: (key: string) => string;
   onRecipeSaved?: () => void;
+  onCustomDeleted?: (id: string) => void;
 };
 
-export function RevenueIndustryModule({ sector, rows, fmt, fmtChf, t, onRecipeSaved }: Props) {
+export function RevenueIndustryModule({
+  sector,
+  rows,
+  fmt,
+  fmtChf,
+  t,
+  onRecipeSaved,
+  onCustomDeleted,
+}: Props) {
   const meta = getSectorMeta(sector);
   const data = computeSectorModule(sector, rows, fmt);
   const [editing, setEditing] = useState(false);
@@ -36,18 +52,32 @@ export function RevenueIndustryModule({ sector, rows, fmt, fmtChf, t, onRecipeSa
     onRecipeSaved?.();
   };
 
+  const removeCustom = () => {
+    if (!isCustomSectorId(sector)) return;
+    if (!confirm(t('rhDeleteCustomConfirm'))) return;
+    deleteCustomSector(sector);
+    onCustomDeleted?.(sector);
+  };
+
   return (
     <section className="ba-industry-module">
       <header className="ba-industry-module__head">
         <div>
           <p className="ba-industry-module__eyebrow">
-            {t('rhIndustryModule')} {meta.icon} {t(meta.titleKey)}
+            {t('rhIndustryModule')} {meta.icon} {sectorDisplayTitle(meta, t)}
           </p>
-          <p className="ba-industry-module__desc">{t(meta.descKey)}</p>
+          <p className="ba-industry-module__desc">{sectorDisplayDesc(meta, t)}</p>
         </div>
-        <button type="button" className="ba-revenue-link-btn" onClick={openEdit}>
-          {t('rhEditRecipe')}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="ba-revenue-link-btn" onClick={openEdit}>
+            {t('rhEditRecipe')}
+          </button>
+          {meta.isCustom ? (
+            <button type="button" className="ba-revenue-link-btn" onClick={removeCustom}>
+              {t('rhDeleteCustom')}
+            </button>
+          ) : null}
+        </div>
       </header>
 
       {editing ? (

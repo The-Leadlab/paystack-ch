@@ -438,17 +438,57 @@ export function buildInsights(opts: {
 }
 
 export function trendLast30Days(income: IncomeRow[], today: string, locale: string) {
-  const days: { date: string; label: string; amount: number }[] = [];
+  const days: { date: string; label: string; fullLabel: string; amount: number }[] = [];
   for (let i = 29; i >= 0; i -= 1) {
     const iso = addDaysIso(today, -i);
     const d = new Date(iso + 'T12:00:00');
     days.push({
       date: iso,
       label: d.toLocaleDateString(locale, { day: 'numeric', month: 'short' }),
+      fullLabel: d.toLocaleDateString(locale, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }),
       amount: sumInRange(income, iso, iso),
     });
   }
   return days;
+}
+
+/** One point per calendar day from month start → today (matches “this month” MTD KPIs). */
+export function trendMonthToDate(income: IncomeRow[], today: string, locale: string) {
+  const { start } = monthBounds(today);
+  const days: { date: string; label: string; fullLabel: string; amount: number }[] = [];
+  for (let iso = start; iso <= today; iso = addDaysIso(iso, 1)) {
+    const d = new Date(iso + 'T12:00:00');
+    days.push({
+      date: iso,
+      label: d.toLocaleDateString(locale, { day: 'numeric', month: 'short' }),
+      fullLabel: d.toLocaleDateString(locale, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }),
+      amount: sumInRange(income, iso, iso),
+    });
+  }
+  return days;
+}
+
+/** Evenly spaced ISO dates for chart axis ticks (inclusive ends). */
+export function trendAxisTickDates(dates: string[], maxTicks = 6): string[] {
+  if (dates.length <= maxTicks) return dates;
+  const out: string[] = [];
+  const last = dates.length - 1;
+  for (let i = 0; i < maxTicks; i += 1) {
+    const idx = Math.round((i * last) / (maxTicks - 1));
+    const d = dates[idx];
+    if (!out.includes(d)) out.push(d);
+  }
+  return out;
 }
 
 /** Description used when a Z-reading is synced into the income ledger. */

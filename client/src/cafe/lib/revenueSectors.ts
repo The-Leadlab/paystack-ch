@@ -19,10 +19,13 @@ export type SectorId =
   | 'general';
 
 export type SectorMeta = {
-  id: SectorId;
+  id: string;
   icon: string;
   titleKey: string;
   descKey: string;
+  /** When set, UI shows this instead of t(titleKey) — used for custom categories. */
+  titleOverride?: string;
+  descOverride?: string;
   keywords: string[];
   leftTitleKey: string;
   rightTitleKey: string;
@@ -43,6 +46,7 @@ export type SectorMeta = {
     | 'events'
     | 'fuel_station'
     | 'general';
+  isCustom?: boolean;
 };
 
 export const SECTOR_CATALOG: SectorMeta[] = [
@@ -51,7 +55,7 @@ export const SECTOR_CATALOG: SectorMeta[] = [
     icon: '🍷',
     titleKey: 'rhSectorRestaurants',
     descKey: 'rhSectorRestaurantsDesc',
-    keywords: ['food', 'beverage', 'dine', 'takeaway', 'catering', 'bar', 'alcohol', 'cafe', 'café'],
+    keywords: ['food', 'beverage', 'dine', 'dine-in', 'takeaway', 'catering', 'bar', 'alcohol', 'cafe', 'café', 'z-reading'],
     leftTitleKey: 'rhSecRevByCategory',
     rightTitleKey: 'rhSecRevByOutlet',
     kpiMode: 'restaurants',
@@ -81,7 +85,7 @@ export const SECTOR_CATALOG: SectorMeta[] = [
     icon: '🏟️',
     titleKey: 'rhSectorStadium',
     descKey: 'rhSectorStadiumDesc',
-    keywords: ['ticket', 'stadium', 'arena', 'merch', 'hospitality', 'visitor', 'scan'],
+    keywords: ['stadium ticket', 'stadium', 'arena', 'stadium merch', 'hospitality box', 'visitor scan'],
     leftTitleKey: 'rhSecRevByCategory',
     rightTitleKey: 'rhSecRevByEvent',
     kpiMode: 'stadium',
@@ -101,7 +105,7 @@ export const SECTOR_CATALOG: SectorMeta[] = [
     icon: '🏨',
     titleKey: 'rhSectorHotels',
     descKey: 'rhSectorHotelsDesc',
-    keywords: ['room', 'f&b', 'spa', 'breakfast', 'minibar', 'booking', 'hotel', 'adr'],
+    keywords: ['room booking', 'room', 'f&b breakfast', 'spa', 'breakfast', 'minibar', 'hotel', 'adr'],
     leftTitleKey: 'rhSecRevByRoom',
     rightTitleKey: 'rhSecRevByChannel',
     kpiMode: 'hotel',
@@ -171,7 +175,7 @@ export const SECTOR_CATALOG: SectorMeta[] = [
     icon: '🎟️',
     titleKey: 'rhSectorEvents',
     descKey: 'rhSectorEventsDesc',
-    keywords: ['event', 'sponsor', 'ticket', 'venue', 'conference', 'wedding'],
+    keywords: ['event ticket', 'event sponsor', 'sponsor', 'venue', 'conference', 'wedding', 'event '],
     leftTitleKey: 'rhSecRevByCategory',
     rightTitleKey: 'rhSecRevByEvent',
     kpiMode: 'events',
@@ -212,9 +216,13 @@ const LEGACY_MAP: Record<string, SectorId> = {
   fiduciary: 'fiduciary',
 };
 
-export function getSectorMeta(id: SectorId): SectorMeta {
+export function getSectorMeta(id: string): SectorMeta {
+  if (isCustomSectorId(id)) {
+    const custom = loadCustomSectors().find((c) => c.id === id);
+    if (custom) return customSectorToMeta(custom);
+  }
   const base = SECTOR_CATALOG.find((s) => s.id === id) || SECTOR_CATALOG[SECTOR_CATALOG.length - 1];
-  const overrides = loadKeywordOverrides()[id];
+  const overrides = loadKeywordOverrides()[id as SectorId];
   if (!overrides?.length) return base;
   return { ...base, keywords: overrides };
 }
@@ -239,15 +247,22 @@ export function saveKeywordOverrides(map: Partial<Record<SectorId, string[]>>) {
   }
 }
 
-export function setSectorKeywords(sector: SectorId, keywords: string[]) {
+export function setSectorKeywords(sector: string, keywords: string[]) {
   const cleaned = keywords.map((k) => k.trim().toLowerCase()).filter(Boolean);
+  if (isCustomSectorId(sector)) {
+    const list = loadCustomSectors().map((c) =>
+      c.id === sector ? { ...c, keywords: cleaned.length ? cleaned : c.keywords } : c
+    );
+    saveCustomSectors(list);
+    return;
+  }
   const next = { ...loadKeywordOverrides(), [sector]: cleaned.length ? cleaned : undefined };
-  if (!cleaned.length) delete next[sector];
+  if (!cleaned.length) delete next[sector as SectorId];
   saveKeywordOverrides(next);
 }
 
 /** True if description matches any of the selected sector recipes. */
-export function rowMatchesAnySector(description: string, sectors: SectorId[]): boolean {
+export function rowMatchesAnySector(description: string, sectors: string[]): boolean {
   if (!sectors.length) return false;
   const lower = (description || '').toLowerCase();
   // Manual Z-readings sync to income without sector tags — count under restaurants.
@@ -258,7 +273,7 @@ export function rowMatchesAnySector(description: string, sectors: SectorId[]): b
 /** Scale untagged supplier COGS by sector income share so margins stay realistic. */
 export function filterExpensesForSectors<
   T extends { amount: number; category: string; description?: string },
->(expenses: T[], allIncomeTotal: number, sectorIncomeTotal: number, sectors: SectorId[]): T[] {
+>(expenses: T[], allIncomeTotal: number, sectorIncomeTotal: number, sectors: string[]): T[] {
   if (!sectors.length) return [];
   const share = allIncomeTotal > 0 ? sectorIncomeTotal / allIncomeTotal : 0;
   const out: T[] = [];
@@ -286,23 +301,25 @@ export type SectorModuleData = {
   rightBars: SectorBreakdown[];
 };
 
-export function matchSector(description: string, sector: SectorId): boolean {
+export function matchSector(description: string, sector: string): boolean {
   const lower = description.toLowerCase();
   const meta = getSectorMeta(sector);
   if (sector === 'general') {
-    // Catch rows that match no other industry keyword
-    return !SECTOR_CATALOG.filter((s) => s.id !== 'general').some((s) =>
-      getSectorMeta(s.id).keywords.some((k) => lower.includes(k))
-    );
+    // Catch rows that match no other industry keyword (built-in + custom)
+    const others = [
+      ...SECTOR_CATALOG.filter((s) => s.id !== 'general').map((s) => s.id),
+      ...loadCustomSectors().map((c) => c.id),
+    ];
+    return !others.some((id) => getSectorMeta(id).keywords.some((k) => lower.includes(k)));
   }
   return meta.keywords.some((k) => lower.includes(k));
 }
 
-function filterRowsForSector(rows: IncomeRow[], sector: SectorId): IncomeRow[] {
+function filterRowsForSector(rows: IncomeRow[], sector: string): IncomeRow[] {
   return rows.filter((r) => matchSector(r.description || '', sector));
 }
 
-function groupByKeyword(rows: IncomeRow[], sector: SectorId): SectorBreakdown[] {
+function groupByKeyword(rows: IncomeRow[], sector: string): SectorBreakdown[] {
   const meta = getSectorMeta(sector);
   const buckets = new Map<string, number>();
   for (const row of rows) {
@@ -311,7 +328,7 @@ function groupByKeyword(rows: IncomeRow[], sector: SectorId): SectorBreakdown[] 
     const label = key.charAt(0).toUpperCase() + key.slice(1);
     buckets.set(label, (buckets.get(label) || 0) + row.amount);
   }
-  return [...buckets.entries()]
+  return Array.from(buckets.entries())
     .map(([name, amount]) => ({ name, amount }))
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 6);
@@ -324,7 +341,7 @@ function groupByDescription(rows: IncomeRow[]): SectorBreakdown[] {
     const key = raw.replace(/^\[DEMO\]\s*/i, '').slice(0, 40);
     buckets.set(key, (buckets.get(key) || 0) + row.amount);
   }
-  return [...buckets.entries()]
+  return Array.from(buckets.entries())
     .map(([name, amount]) => ({ name, amount }))
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 6);
@@ -342,15 +359,17 @@ function amountNamed(bars: SectorBreakdown[], needle: string): number {
 }
 
 function uniqueRefs(rows: IncomeRow[]): number {
-  return new Set(
-    rows
-      .map((r) => (r.description || '').replace(/^\[DEMO\]\s*/i, '').split(/[—-]/)[0]?.trim())
-      .filter(Boolean)
-  ).size;
+  return Array.from(
+    new Set(
+      rows
+        .map((r) => (r.description || '').replace(/^\[DEMO\]\s*/i, '').split(/[—-]/)[0]?.trim())
+        .filter(Boolean)
+    )
+  ).length;
 }
 
 export function computeSectorModule(
-  sector: SectorId,
+  sector: string,
   rows: IncomeRow[],
   fmt: (n: number) => string
 ): SectorModuleData {
@@ -481,29 +500,142 @@ export function computeSectorModule(
   };
 }
 
-export function normalizeSectorIds(raw: string[]): SectorId[] {
+export function normalizeSectorIds(raw: string[]): string[] {
+  const customIds = new Set(loadCustomSectors().map((c) => c.id));
   const mapped = raw
     .map((s) => LEGACY_MAP[s] || s)
-    .filter((s): s is SectorId => ALL_SECTORS.includes(s as SectorId));
-  return [...new Set(mapped)];
+    .filter((s) => ALL_SECTORS.includes(s as SectorId) || customIds.has(s));
+  return Array.from(new Set(mapped));
 }
 
-export function loadStoredSectors(): SectorId[] {
+export function loadStoredSectors(): string[] {
   try {
     const raw = localStorage.getItem(SECTORS_STORAGE_KEY);
-    if (!raw) return DEFAULT_SECTORS;
+    if (!raw) return DEFAULT_SECTORS.slice();
     const parsed = JSON.parse(raw) as string[];
     const valid = normalizeSectorIds(parsed);
-    return valid.length ? valid : DEFAULT_SECTORS;
+    return valid.length ? valid : DEFAULT_SECTORS.slice();
   } catch {
-    return DEFAULT_SECTORS;
+    return DEFAULT_SECTORS.slice();
   }
 }
 
-export function saveStoredSectors(sectors: SectorId[]) {
+export function saveStoredSectors(sectors: string[]) {
   try {
     localStorage.setItem(SECTORS_STORAGE_KEY, JSON.stringify(sectors));
   } catch {
     /* ignore */
   }
+}
+
+const CUSTOM_SECTORS_KEY = 'paystack.revenue.customSectors';
+
+export type CustomSectorDef = {
+  id: string;
+  name: string;
+  icon: string;
+  keywords: string[];
+};
+
+export function isCustomSectorId(id: string): boolean {
+  return id.startsWith('custom_');
+}
+
+export function loadCustomSectors(): CustomSectorDef[] {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SECTORS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as CustomSectorDef[];
+    return Array.isArray(parsed) ? parsed.filter((c) => c?.id && c?.name) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveCustomSectors(list: CustomSectorDef[]) {
+  try {
+    localStorage.setItem(CUSTOM_SECTORS_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore */
+  }
+}
+
+function slugifyCategoryName(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 40);
+}
+
+export function customSectorToMeta(c: CustomSectorDef): SectorMeta {
+  return {
+    id: c.id,
+    icon: c.icon || '📌',
+    titleKey: '',
+    descKey: '',
+    titleOverride: c.name,
+    descOverride: c.keywords.join(', '),
+    keywords: c.keywords,
+    leftTitleKey: 'rhSecSales',
+    rightTitleKey: 'rhSecTopCategory',
+    kpiMode: 'general',
+    isCustom: true,
+  };
+}
+
+/** Create a custom category from user input (name + keywords). No AI. */
+export function addCustomSector(input: {
+  name: string;
+  keywords: string[];
+  icon?: string;
+}): CustomSectorDef | null {
+  const name = input.name.trim();
+  const keywords = input.keywords.map((k) => k.trim().toLowerCase()).filter(Boolean);
+  if (!name || !keywords.length) return null;
+  const base = slugifyCategoryName(name) || `cat_${Date.now().toString(36)}`;
+  let id = `custom_${base}`;
+  const existing = loadCustomSectors();
+  if (existing.some((c) => c.id === id)) {
+    id = `custom_${base}_${Date.now().toString(36).slice(-4)}`;
+  }
+  const next: CustomSectorDef = {
+    id,
+    name,
+    icon: input.icon?.trim() || '📌',
+    keywords,
+  };
+  saveCustomSectors([...existing, next]);
+  return next;
+}
+
+export function updateCustomSector(id: string, patch: Partial<Pick<CustomSectorDef, 'name' | 'icon' | 'keywords'>>) {
+  const list = loadCustomSectors().map((c) => {
+    if (c.id !== id) return c;
+    return {
+      ...c,
+      name: patch.name?.trim() || c.name,
+      icon: patch.icon?.trim() || c.icon,
+      keywords: patch.keywords
+        ? patch.keywords.map((k) => k.trim().toLowerCase()).filter(Boolean)
+        : c.keywords,
+    };
+  });
+  saveCustomSectors(list);
+}
+
+export function deleteCustomSector(id: string) {
+  saveCustomSectors(loadCustomSectors().filter((c) => c.id !== id));
+}
+
+/** Display title for a sector (built-in i18n or custom override). */
+export function sectorDisplayTitle(meta: SectorMeta, t: (key: string) => string): string {
+  if (meta.titleOverride) return meta.titleOverride;
+  return meta.titleKey ? t(meta.titleKey) : meta.id;
+}
+
+export function sectorDisplayDesc(meta: SectorMeta, t: (key: string) => string): string {
+  if (meta.descOverride) return meta.descOverride;
+  return meta.descKey ? t(meta.descKey) : '';
 }
