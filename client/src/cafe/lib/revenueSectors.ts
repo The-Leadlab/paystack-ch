@@ -213,7 +213,65 @@ const LEGACY_MAP: Record<string, SectorId> = {
 };
 
 export function getSectorMeta(id: SectorId): SectorMeta {
-  return SECTOR_CATALOG.find((s) => s.id === id) || SECTOR_CATALOG[SECTOR_CATALOG.length - 1];
+  const base = SECTOR_CATALOG.find((s) => s.id === id) || SECTOR_CATALOG[SECTOR_CATALOG.length - 1];
+  const overrides = loadKeywordOverrides()[id];
+  if (!overrides?.length) return base;
+  return { ...base, keywords: overrides };
+}
+
+const KEYWORD_OVERRIDES_KEY = 'paystack.revenue.sectorKeywordOverrides';
+
+export function loadKeywordOverrides(): Partial<Record<SectorId, string[]>> {
+  try {
+    const raw = localStorage.getItem(KEYWORD_OVERRIDES_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as Partial<Record<SectorId, string[]>>;
+  } catch {
+    return {};
+  }
+}
+
+export function saveKeywordOverrides(map: Partial<Record<SectorId, string[]>>) {
+  try {
+    localStorage.setItem(KEYWORD_OVERRIDES_KEY, JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function setSectorKeywords(sector: SectorId, keywords: string[]) {
+  const cleaned = keywords.map((k) => k.trim().toLowerCase()).filter(Boolean);
+  const next = { ...loadKeywordOverrides(), [sector]: cleaned.length ? cleaned : undefined };
+  if (!cleaned.length) delete next[sector];
+  saveKeywordOverrides(next);
+}
+
+/** True if description matches any of the selected sector recipes. */
+export function rowMatchesAnySector(description: string, sectors: SectorId[]): boolean {
+  if (!sectors.length) return false;
+  const lower = (description || '').toLowerCase();
+  // Manual Z-readings sync to income without sector tags — count under restaurants.
+  if (lower.includes('z-reading') && sectors.includes('restaurants')) return true;
+  return sectors.some((s) => matchSector(description, s));
+}
+
+/** Scale untagged supplier COGS by sector income share so margins stay realistic. */
+export function filterExpensesForSectors<
+  T extends { amount: number; category: string; description?: string },
+>(expenses: T[], allIncomeTotal: number, sectorIncomeTotal: number, sectors: SectorId[]): T[] {
+  if (!sectors.length) return [];
+  const share = allIncomeTotal > 0 ? sectorIncomeTotal / allIncomeTotal : 0;
+  const out: T[] = [];
+  for (const e of expenses) {
+    if (rowMatchesAnySector(e.description || '', sectors)) {
+      out.push(e);
+      continue;
+    }
+    if (e.category === 'SUPPLIERS' && share > 0) {
+      out.push({ ...e, amount: Math.round(e.amount * share * 100) / 100 });
+    }
+  }
+  return out;
 }
 
 export type SectorKpi = { labelKey: string; value: string; sub?: string };
@@ -234,7 +292,7 @@ export function matchSector(description: string, sector: SectorId): boolean {
   if (sector === 'general') {
     // Catch rows that match no other industry keyword
     return !SECTOR_CATALOG.filter((s) => s.id !== 'general').some((s) =>
-      s.keywords.some((k) => lower.includes(k))
+      getSectorMeta(s.id).keywords.some((k) => lower.includes(k))
     );
   }
   return meta.keywords.some((k) => lower.includes(k));

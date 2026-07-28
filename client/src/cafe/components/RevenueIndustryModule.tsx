@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { SectorId } from '../lib/revenueSectors';
-import { computeSectorModule, getSectorMeta } from '../lib/revenueSectors';
+import { computeSectorModule, getSectorMeta, setSectorKeywords } from '../lib/revenueSectors';
 import type { IncomeRow } from '../lib/revenueAnalytics';
 
 const CHART_COLORS = ['#34d399', '#60a5fa', '#fbbf24', '#a78bfa', '#f472b6', '#94a3b8'];
@@ -12,11 +12,29 @@ type Props = {
   fmt: (n: number) => string;
   fmtChf: (n: number) => string;
   t: (key: string) => string;
+  onRecipeSaved?: () => void;
 };
 
-export function RevenueIndustryModule({ sector, rows, fmt, fmtChf, t }: Props) {
+export function RevenueIndustryModule({ sector, rows, fmt, fmtChf, t, onRecipeSaved }: Props) {
   const meta = getSectorMeta(sector);
   const data = computeSectorModule(sector, rows, fmt);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(meta.keywords.join(', '));
+
+  const openEdit = () => {
+    setDraft(getSectorMeta(sector).keywords.join(', '));
+    setEditing(true);
+  };
+
+  const saveEdit = () => {
+    const keywords = draft
+      .split(/[,;\n]+/)
+      .map((k) => k.trim())
+      .filter(Boolean);
+    setSectorKeywords(sector, keywords);
+    setEditing(false);
+    onRecipeSaved?.();
+  };
 
   return (
     <section className="ba-industry-module">
@@ -27,7 +45,33 @@ export function RevenueIndustryModule({ sector, rows, fmt, fmtChf, t }: Props) {
           </p>
           <p className="ba-industry-module__desc">{t(meta.descKey)}</p>
         </div>
+        <button type="button" className="ba-revenue-link-btn" onClick={openEdit}>
+          {t('rhEditRecipe')}
+        </button>
       </header>
+
+      {editing ? (
+        <div className="ba-industry-module__recipe">
+          <label className="ba-industry-module__recipe-label" htmlFor={`recipe-${sector}`}>
+            {t('rhEditRecipeHint')}
+          </label>
+          <textarea
+            id={`recipe-${sector}`}
+            className="ba-industry-module__recipe-input"
+            rows={2}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+          />
+          <div className="flex flex-wrap gap-2 mt-2">
+            <button type="button" className="ba-revenue-cta" onClick={saveEdit}>
+              {t('rhSaveRecipe')}
+            </button>
+            <button type="button" className="ba-revenue-link-btn" onClick={() => setEditing(false)}>
+              {t('rhCancelRecipe')}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="ba-kpi-grid-4">
         {data.kpis.map((kpi) => (

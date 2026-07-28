@@ -77,13 +77,20 @@ import { RevenueIndustryModule } from './RevenueIndustryModule';
 import type { BusinessTab } from './BusinessSidebarNav';
 import {
   ALL_SECTORS,
+  filterExpensesForSectors,
   getSectorMeta,
   loadStoredSectors,
+  rowMatchesAnySector,
   saveStoredSectors,
   SECTOR_CATALOG,
   type SectorId,
 } from '../lib/revenueSectors';
 import { buildDemoSeeds, DEMO_TAG, isDemoDescription } from '../lib/revenueDemoData';
+import {
+  loadRevenueActivity,
+  pushRevenueActivity,
+  type RevenueActivity,
+} from '../lib/revenueActivityHistory';
 import '../businessApp.css';
 
 type DatePeriod = 'day' | '7d' | '14d' | 'month' | 'custom';
@@ -128,9 +135,19 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
   const [showSectorPicker, setShowSectorPicker] = useState(false);
   const [sectorLog, setSectorLog] = useState<string[]>([]);
   const [demoLoading, setDemoLoading] = useState(false);
+  const [demoHold, setDemoHold] = useState<{
+    income: { date: string; amount: number; type: string; description?: string }[];
+    expenses: { date: string; amount: number; category: string; description?: string }[];
+    pos: typeof posReadings;
+  } | null>(null);
   const [zVisible, setZVisible] = useState(10);
+  const [moduleVisible, setModuleVisible] = useState(2);
+  const [recipeTick, setRecipeTick] = useState(0);
+  const [activity, setActivity] = useState<RevenueActivity[]>(() => loadRevenueActivity());
+  const [activityVisible, setActivityVisible] = useState(10);
   const uploadRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
+  const activityRef = useRef<HTMLDivElement>(null);
 
   const existingSessionIds = sessions.map((s) => s.id);
   const filteredIncome = isAllSessionsView
@@ -140,6 +157,10 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
   useEffect(() => {
     setZVisible(10);
   }, [posReadings.length]);
+
+  useEffect(() => {
+    setModuleVisible(2);
+  }, [activeSectors.join('|')]);
 
   const visibleZReadings = posReadings.slice(0, zVisible);
   const zRemaining = Math.max(0, posReadings.length - zVisible);
@@ -170,6 +191,59 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
     [filteredExpenses]
   );
 
+  const baseIncomeRows = demoHold?.income ?? incomeRows;
+  const baseExpenseRows = demoHold?.expenses ?? expenseRows;
+  const basePosReadings = demoHold?.pos ?? posReadings;
+
+  const sectorIncomeRows = useMemo(() => {
+    void recipeTick;
+    if (!activeSectors.length) return [];
+    return baseIncomeRows.filter((r) => rowMatchesAnySector(r.description || '', activeSectors));
+  }, [baseIncomeRows, activeSectors, recipeTick]);
+
+  const allIncomeTotal = useMemo(
+    () => baseIncomeRows.reduce((s, r) => s + r.amount, 0),
+    [baseIncomeRows]
+  );
+  const sectorIncomeTotal = useMemo(
+    () => sectorIncomeRows.reduce((s, r) => s + r.amount, 0),
+    [sectorIncomeRows]
+  );
+
+  const sectorExpenseRows = useMemo(() => {
+    void recipeTick;
+    return filterExpensesForSectors(
+      baseExpenseRows,
+      allIncomeTotal,
+      sectorIncomeTotal,
+      activeSectors
+    );
+  }, [baseExpenseRows, allIncomeTotal, sectorIncomeTotal, activeSectors, recipeTick]);
+
+  /** Scale POS totals by sector share so payment mix tracks sector selection. */
+  const sectorPosReadings = useMemo(() => {
+    const share = allIncomeTotal > 0 ? sectorIncomeTotal / allIncomeTotal : 0;
+    if (share <= 0) return [];
+    if (share >= 0.999) return basePosReadings;
+    return basePosReadings.map((r) => ({
+      ...r,
+      gross_sales: Math.round(r.gross_sales * share * 100) / 100,
+      net_sales: Math.round(r.net_sales * share * 100) / 100,
+      vat_amount: Math.round(r.vat_amount * share * 100) / 100,
+      cash: Math.round(r.cash * share * 100) / 100,
+      card: Math.round(r.card * share * 100) / 100,
+      other_payment: Math.round(r.other_payment * share * 100) / 100,
+      tips: Math.round(r.tips * share * 100) / 100,
+      discounts: Math.round(r.discounts * share * 100) / 100,
+      refunds: Math.round(r.refunds * share * 100) / 100,
+    }));
+  }, [basePosReadings, allIncomeTotal, sectorIncomeTotal]);
+
+  const visibleModules = activeSectors.slice(0, moduleVisible);
+  const moduleRemaining = Math.max(0, activeSectors.length - moduleVisible);
+  const visibleActivity = activity.slice(0, activityVisible);
+  const activityRemaining = Math.max(0, activity.length - activityVisible);
+
   const today = toIsoDate(new Date());
   const yesterday = addDaysIso(today, -1);
   const weekStart = addDaysIso(today, -6);
@@ -177,22 +251,28 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
   const prevWeekEnd = addDaysIso(today, -7);
   const { start: monthStart, end: monthEnd } = monthBounds(today);
 
-  const revToday = sumInRange(incomeRows, today, today);
-  const revYesterday = sumInRange(incomeRows, yesterday, yesterday);
-  const revWeek = sumInRange(incomeRows, weekStart, today);
-  const revPrevWeek = sumInRange(incomeRows, prevWeekStart, prevWeekEnd);
-  const revMonth = sumInRange(incomeRows, monthStart, monthEnd);
-  const revYtd = sumInRange(incomeRows, `${new Date().getFullYear()}-01-01`, today);
+  const revToday = sumInRange(sectorIncomeRows, today, today);
+  const revYesterday = sumInRange(sectorIncomeRows, yesterday, yesterday);
+  const revWeek = sumInRange(sectorIncomeRows, weekStart, today);
+  const revPrevWeek = sumInRange(sectorIncomeRows, prevWeekStart, prevWeekEnd);
+  const revMonth = sumInRange(sectorIncomeRows, monthStart, monthEnd);
+  const revYtd = sumInRange(sectorIncomeRows, `${new Date().getFullYear()}-01-01`, today);
   const growthPct =
     revPrevWeek > 0 ? ((revWeek - revPrevWeek) / revPrevWeek) * 100 : revWeek > 0 ? 100 : 0;
 
-  const budgetMonth = monthlyBudgetTarget(incomeRows, today);
+  const budgetMonth = monthlyBudgetTarget(sectorIncomeRows, today);
   const budgetPct = budgetMonth > 0 ? Math.min(100, (revMonth / budgetMonth) * 100) : 0;
 
-  const cash = buildCashPosition(incomeRows, posReadings, today);
-  const profit = buildProfitability(incomeRows, expenseRows, monthStart, monthEnd);
-  const paymentMix = buildPaymentMix(posReadings, incomeRows, monthStart, monthEnd);
-  const reconciliation = buildReconciliation(incomeRows, posReadings, monthStart, monthEnd, today);
+  const cash = buildCashPosition(sectorIncomeRows, sectorPosReadings, today);
+  const profit = buildProfitability(sectorIncomeRows, sectorExpenseRows, monthStart, monthEnd);
+  const paymentMix = buildPaymentMix(sectorPosReadings, sectorIncomeRows, monthStart, monthEnd);
+  const reconciliation = buildReconciliation(
+    sectorIncomeRows,
+    sectorPosReadings,
+    monthStart,
+    monthEnd,
+    today
+  );
   const insights = buildInsights({
     revToday,
     revWeek,
@@ -201,8 +281,8 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
     budgetMonth,
     reconciliationOpen: reconciliation.openCount,
     reconciliationVariance: reconciliation.variance,
-    posCount: posReadings.length,
-    incomeCount: filteredIncome.length,
+    posCount: sectorPosReadings.length,
+    incomeCount: sectorIncomeRows.length,
     incomingInvoices: cash.incoming,
     cashOnHand: cash.onHand,
   });
@@ -215,8 +295,8 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
   const fmtChf = (n: number) => `${fmt(n)} CHF`;
 
   const trendData = useMemo(
-    () => trendLast30Days(incomeRows, today, chfLocale),
-    [incomeRows, today, chfLocale]
+    () => trendLast30Days(sectorIncomeRows, today, chfLocale),
+    [sectorIncomeRows, today, chfLocale]
   );
 
   const paymentMethods = useMemo(() => {
@@ -228,11 +308,15 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
     return items.length ? items : [{ name: t('posCash'), amount: 0, fill: CHART_GREEN }];
   }, [paymentMix.cash, paymentMix.card, paymentMix.other, t]);
 
-  const hasTransactions = filteredIncome.length > 0 || posReadings.length > 0;
+  const hasTransactions = sectorIncomeRows.length > 0 || sectorPosReadings.length > 0;
   const hasPayments = paymentMix.gross > 0;
 
   const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const logActivity = (entry: Omit<RevenueActivity, 'id' | 'at'> & { at?: string }) => {
+    setActivity(pushRevenueActivity(entry));
   };
 
   const toggleSector = (id: SectorId) => {
@@ -244,6 +328,13 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
       setSectorLog((log) =>
         [`${new Date().toLocaleTimeString(chfLocale)} — ${t(meta.titleKey)}`, ...log].slice(0, 8)
       );
+      queueMicrotask(() =>
+        logActivity({
+          type: 'sector_change',
+          label: t('rhActivitySectorChange'),
+          detail: resolved.map((s) => t(getSectorMeta(s).titleKey)).join(', '),
+        })
+      );
       return resolved;
     });
   };
@@ -253,12 +344,22 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
     setActiveSectors(all);
     saveStoredSectors(all);
     setSectorLog((log) => [`${new Date().toLocaleTimeString(chfLocale)} — ${t('rhSelectAllSectors')}`, ...log].slice(0, 8));
+    logActivity({
+      type: 'sector_change',
+      label: t('rhActivitySectorChange'),
+      detail: t('rhSelectAllSectors'),
+    });
   };
 
   const clearToDefaultSector = () => {
     const next: SectorId[] = ['restaurants'];
     setActiveSectors(next);
     saveStoredSectors(next);
+    logActivity({
+      type: 'sector_change',
+      label: t('rhActivitySectorChange'),
+      detail: t(getSectorMeta('restaurants').titleKey),
+    });
   };
 
   const syncZReadingToIncome = async (
@@ -283,6 +384,12 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
   ) => {
     await addPOSReading(data);
     await syncZReadingToIncome(data);
+    logActivity({
+      type: 'z_reading',
+      label: t('rhActivityZReading'),
+      detail: data.date,
+      amountChf: data.gross_sales,
+    });
   };
 
   const seedDemoData = async () => {
@@ -309,30 +416,41 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
   const loadDemoData = async () => {
     if (!currentSession?.id) return;
     if (!confirm(t('rhDemoConfirm'))) return;
+    setDemoHold({ income: incomeRows, expenses: expenseRows, pos: posReadings });
     setDemoLoading(true);
     try {
       await seedDemoData();
+      logActivity({ type: 'demo_load', label: t('rhActivityDemoLoad'), detail: t('rhDemoLoaded') });
     } finally {
       setDemoLoading(false);
+      setDemoHold(null);
     }
   };
 
   const refreshDemoData = async () => {
     if (!currentSession?.id) return;
+    const oldIncomeIds = filteredIncome.filter((i) => isDemoDescription(i.description)).map((i) => i.id);
+    const oldExpenseIds = filteredExpenses
+      .filter((e) => isDemoDescription(e.description))
+      .map((e) => e.id);
+    const oldPosIds = posReadings.filter((p) => p.notes?.includes(DEMO_TAG)).map((p) => p.id);
+
+    setDemoHold({ income: incomeRows, expenses: expenseRows, pos: posReadings });
     setDemoLoading(true);
     try {
-      for (const row of filteredIncome.filter((i) => isDemoDescription(i.description))) {
-        await deleteIncome(row.id);
-      }
-      for (const row of filteredExpenses.filter((e) => isDemoDescription(e.description))) {
-        await deleteExpense(row.id);
-      }
-      for (const r of posReadings.filter((p) => p.notes?.includes(DEMO_TAG))) {
-        await deletePOSReading(r.id);
-      }
+      // Seed first so the live ledger never empties; hold snapshot covers KPIs until done.
       await seedDemoData();
+      for (const id of oldIncomeIds) await deleteIncome(id);
+      for (const id of oldExpenseIds) await deleteExpense(id);
+      for (const id of oldPosIds) await deletePOSReading(id);
+      logActivity({
+        type: 'demo_refresh',
+        label: t('rhActivityDemoRefresh'),
+        detail: t('rhDemoRefreshing'),
+      });
     } finally {
       setDemoLoading(false);
+      setDemoHold(null);
     }
   };
 
@@ -392,7 +510,7 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
       </div>
 
       <div className="ba-revenue-secondary">
-        <button type="button" className="ba-revenue-link-btn" onClick={() => scrollTo(historyRef)}>
+        <button type="button" className="ba-revenue-link-btn" onClick={() => scrollTo(activityRef)}>
           <History className="w-3.5 h-3.5" /> {t('rhImportHistory')}
         </button>
         <button type="button" className="ba-revenue-link-btn" disabled={demoLoading} onClick={() => void refreshDemoData()}>
@@ -716,16 +834,37 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
         </div>
       </div>
 
-      {activeSectors.map((sectorId) => (
+      {visibleModules.map((sectorId) => (
         <RevenueIndustryModule
-          key={sectorId}
+          key={`${sectorId}-${recipeTick}`}
           sector={sectorId}
-          rows={incomeRows.filter((r) => r.date >= monthStart && r.date <= monthEnd)}
+          rows={sectorIncomeRows.filter((r) => r.date >= monthStart && r.date <= monthEnd)}
           fmt={fmt}
           fmtChf={fmtChf}
           t={t}
+          onRecipeSaved={() => setRecipeTick((n) => n + 1)}
         />
       ))}
+      {activeSectors.length > 2 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {moduleRemaining > 0 ? (
+            <button
+              type="button"
+              className="ba-filter-chip"
+              onClick={() => setModuleVisible((n) => Math.min(activeSectors.length, n + 2))}
+            >
+              {t('rhLoadMore').replace('{n}', String(moduleRemaining))}
+            </button>
+          ) : (
+            <button type="button" className="ba-filter-chip" onClick={() => setModuleVisible(2)}>
+              {t('rhShowLess')}
+            </button>
+          )}
+          <span className="text-[10px] text-cdlp-muted uppercase tracking-wide">
+            {Math.min(moduleVisible, activeSectors.length)} / {activeSectors.length} {t('rhIndustryModules')}
+          </span>
+        </div>
+      ) : null}
 
       {paymentMix.fromPos === false && hasPayments ? (
         <p className="text-[10px] text-cdlp-muted uppercase tracking-wide">
@@ -733,10 +872,79 @@ export function POSManager({ onNavigateTab: _onNavigateTab }: { onNavigateTab?: 
         </p>
       ) : null}
 
-      <RevenueLedgerTable income={filteredIncome} expenses={[]} incomeOnly />
+      <RevenueLedgerTable
+        income={filteredIncome.filter((i) => rowMatchesAnySector(i.description || '', activeSectors))}
+        expenses={[]}
+        incomeOnly
+      />
+
+      <div className="ba-panel" ref={activityRef}>
+        <h2 className="text-sm font-black uppercase text-cdlp-gold mb-2">{t('rhActivityHistory')}</h2>
+        <p className="text-xs text-cdlp-muted mb-4">{t('rhActivityHistoryDesc')}</p>
+        {activity.length === 0 ? (
+          <p className="text-sm text-cdlp-muted">{t('rhActivityEmpty')}</p>
+        ) : (
+          <>
+            <ul className="ba-activity-list">
+              {visibleActivity.map((item) => (
+                <li key={item.id} className="ba-activity-list__item">
+                  <div>
+                    <p className="ba-activity-list__label">{item.label}</p>
+                    {item.detail ? <p className="ba-activity-list__detail">{item.detail}</p> : null}
+                  </div>
+                  <div className="ba-activity-list__meta">
+                    <time dateTime={item.at}>
+                      {new Date(item.at).toLocaleString(chfLocale, {
+                        dateStyle: 'short',
+                        timeStyle: 'short',
+                      })}
+                    </time>
+                    {item.amountChf != null ? (
+                      <span className="tabular-nums font-bold text-emerald-400">{fmtChf(item.amountChf)}</span>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {activity.length > 10 ? (
+              <div className="flex flex-wrap items-center gap-2 mt-4">
+                {activityRemaining > 0 ? (
+                  <button
+                    type="button"
+                    className="ba-filter-chip"
+                    onClick={() => setActivityVisible((n) => Math.min(activity.length, n + 10))}
+                  >
+                    {t('rhLoadMore').replace('{n}', String(activityRemaining))}
+                  </button>
+                ) : (
+                  <button type="button" className="ba-filter-chip" onClick={() => setActivityVisible(10)}>
+                    {t('rhShowLess')}
+                  </button>
+                )}
+                <span className="text-[10px] text-cdlp-muted uppercase tracking-wide">
+                  {Math.min(activityVisible, activity.length)} / {activity.length}
+                </span>
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
 
       <div ref={uploadRef}>
-        <POSModal inline reading={null} onClose={() => undefined} onSave={handleAddZReading} />
+        <POSModal
+          inline
+          reading={null}
+          onClose={() => undefined}
+          onSave={handleAddZReading}
+          onCsvReady={(preview) =>
+            logActivity({
+              type: 'csv_import',
+              label: t('rhActivityCsvImport'),
+              detail: `${preview.validRows} ${t('rhValidRows')}`,
+              amountChf: preview.totals.gross,
+            })
+          }
+        />
       </div>
 
       <div className="ba-panel" ref={historyRef}>
@@ -843,6 +1051,7 @@ function POSModal({
   onClose,
   onSave,
   inline = false,
+  onCsvReady,
 }: {
   reading: POSReading | null;
   onClose: () => void;
@@ -850,6 +1059,7 @@ function POSModal({
     data: Omit<POSReading, 'id' | 'restaurant_id' | 'session_id' | 'created_at' | 'updated_at'>
   ) => Promise<void>;
   inline?: boolean;
+  onCsvReady?: (preview: CsvPreview) => void;
 }) {
   const { income } = useFinance();
   const { currentSession } = useSession();
@@ -975,6 +1185,7 @@ function POSModal({
 
   const applyCsvPreview = () => {
     if (!csvPreview) return;
+    onCsvReady?.(csvPreview);
     applyDraft(csvPreviewToZReadingDraft(csvPreview, date));
     setCsvStep('pick');
     setCsvMatrix(null);
