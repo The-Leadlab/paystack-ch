@@ -49,6 +49,8 @@ export type RevenueInsight = {
   tone: 'info' | 'warn' | 'positive';
   title: string;
   body: string;
+  /** Optional hub tab / action target when the insight is clicked. */
+  action?: 'reconciliation' | 'documents' | 'cash_deposit' | 'upload_z';
 };
 
 export type CashPosition = {
@@ -57,12 +59,17 @@ export type CashPosition = {
   onHand: number;
   incoming: number;
   pendingDeposits: number;
+  fromPos: boolean;
 };
 
 export type Profitability = {
   revenue: number;
   cogs: number;
+  operating: number;
+  payroll: number;
+  totalExpenses: number;
   grossProfit: number;
+  netProfit: number;
   marginPct: number;
   avgTransaction: number;
   txCount: number;
@@ -111,13 +118,27 @@ export function sumExpensesInRange(rows: ExpenseRow[], start: string, end: strin
   }, 0);
 }
 
-/** COGS proxy: supplier + other variable spend (excludes payroll/bills). */
+/** Cost of goods: supplier purchases in range. */
 export function sumCogsInRange(rows: ExpenseRow[], start: string, end: string): number {
   return rows.reduce((sum, row) => {
     if (row.date < start || row.date > end) return sum;
     const cat = (row.category || '').toUpperCase();
-    if (cat === 'SUPPLIERS' || cat === 'OTHER') return sum + row.amount;
+    if (cat === 'SUPPLIERS') return sum + row.amount;
     return sum;
+  }, 0);
+}
+
+function sumByCategories(
+  rows: ExpenseRow[],
+  start: string,
+  end: string,
+  cats: string[]
+): number {
+  const set = new Set(cats.map((c) => c.toUpperCase()));
+  return rows.reduce((sum, row) => {
+    if (row.date < start || row.date > end) return sum;
+    const cat = (row.category || 'OTHER').toUpperCase();
+    return set.has(cat) ? sum + row.amount : sum;
   }, 0);
 }
 
@@ -150,26 +171,36 @@ export function monthlyBudgetTarget(income: IncomeRow[], anchorIso: string): num
 export function buildCashPosition(
   income: IncomeRow[],
   readings: PosReadingRow[],
-  today: string
+  today: string,
+  depositedInRange = 0
 ): CashPosition {
   const ytdStart = `${today.slice(0, 4)}-01-01`;
   const posYtd = sumPosInRange(readings, ytdStart, today);
-  const incomeYtd = sumInRange(income, ytdStart, today);
-
   const fromPos = posYtd.count > 0;
-  const inBank = fromPos ? posYtd.card : incomeYtd * 0.55;
-  const onHand = fromPos ? posYtd.cash : incomeYtd * 0.15;
 
   const incoming = income
     .filter((i) => i.type === 'RESERVATION')
     .reduce((s, i) => s + i.amount, 0);
 
+  if (!fromPos) {
+    return {
+      total: Math.max(0, incoming),
+      inBank: 0,
+      onHand: 0,
+      incoming,
+      pendingDeposits: 0,
+      fromPos: false,
+    };
+  }
+
+  const inBank = posYtd.card;
+  const onHand = Math.max(0, posYtd.cash - depositedInRange);
   const recentStart = addDaysIso(today, -7);
   const recentCash = sumPosInRange(readings, recentStart, today).cash;
-  const pendingDeposits = fromPos ? recentCash * 0.35 : Math.max(0, onHand * 0.2);
+  const pendingDeposits = Math.max(0, recentCash - depositedInRange);
 
   const total = inBank + onHand + incoming + pendingDeposits;
-  return { total, inBank, onHand, incoming, pendingDeposits };
+  return { total, inBank, onHand, incoming, pendingDeposits, fromPos: true };
 }
 
 export function buildProfitability(
@@ -180,11 +211,26 @@ export function buildProfitability(
 ): Profitability {
   const revenue = sumInRange(income, monthStart, monthEnd);
   const cogs = sumCogsInRange(expenses, monthStart, monthEnd);
+  const operating = sumByCategories(expenses, monthStart, monthEnd, ['BILLS', 'OTHER']);
+  const payroll = sumByCategories(expenses, monthStart, monthEnd, ['PAYROLL', 'PAYROLL_TAXES']);
+  const totalExpenses = sumExpensesInRange(expenses, monthStart, monthEnd);
   const grossProfit = revenue - cogs;
-  const marginPct = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
+  const netProfit = revenue - totalExpenses;
+  const marginPct = revenue > 0 ? (netProfit / revenue) * 100 : 0;
   const txCount = income.filter((i) => i.date >= monthStart && i.date <= monthEnd).length;
   const avgTransaction = txCount > 0 ? revenue / txCount : 0;
-  return { revenue, cogs, grossProfit, marginPct, avgTransaction, txCount };
+  return {
+    revenue,
+    cogs,
+    operating,
+    payroll,
+    totalExpenses,
+    grossProfit,
+    netProfit,
+    marginPct,
+    avgTransaction,
+    txCount,
+  };
 }
 
 export function buildPaymentMix(
@@ -304,13 +350,14 @@ export function buildReconciliation(
 
   const recentStart = addDaysIso(today, -7);
   const recentCash = sumPosInRange(readings, recentStart, today).cash;
-  if (recentCash > 50) {
+  // Only flag pending deposit when there is real recent POS cash (not a synthetic %).
+  if (recentCash > 200 && posMonth.count > 0) {
     items.push({
       id: 'pending-deposit',
       kind: 'pending_deposit',
       label: 'Pending Deposit',
-      description: 'Weekend / recent cash pickup pending',
-      amount: Math.round(recentCash * 0.35 * 100) / 100,
+      description: 'Recent POS cash not yet logged as a bank deposit',
+      amount: Math.round(recentCash * 100) / 100,
     });
   }
 
@@ -342,17 +389,17 @@ export function buildInsights(opts: {
   reconciliationOpen: number;
   reconciliationVariance: number;
   posCount: number;
+  /** Distinct days with POS/Z readings in the compared windows (need ≥4 for honest WoW). */
+  posDaysWithData?: number;
   incomeCount: number;
   incomingInvoices: number;
   cashOnHand: number;
+  /** True when cash figure comes from real POS cash, not a revenue estimate. */
+  cashFromPos?: boolean;
+  tillAdviceChf?: number;
 }): RevenueInsight[] {
   const out: RevenueInsight[] = [];
-  const growth =
-    opts.revPrevWeek > 0
-      ? ((opts.revWeek - opts.revPrevWeek) / opts.revPrevWeek) * 100
-      : opts.revWeek > 0
-        ? 100
-        : 0;
+  const hasDailyDensity = (opts.posDaysWithData ?? opts.posCount) >= 4;
 
   if (opts.incomingInvoices > 0) {
     out.push({
@@ -368,24 +415,42 @@ export function buildInsights(opts: {
       id: 'recon',
       tone: 'warn',
       title: 'Reconciliation exceptions',
-      body: `${opts.reconciliationOpen} item(s) need review (${opts.reconciliationVariance.toFixed(0)} CHF variance).`,
+      body: `${opts.reconciliationOpen} item(s) need review (${opts.reconciliationVariance.toFixed(0)} CHF variance). Tap to open them.`,
+      action: 'reconciliation',
     });
   }
 
-  if (growth >= 5) {
+  if (!hasDailyDensity) {
     out.push({
-      id: 'growth',
-      tone: 'positive',
+      id: 'wow-insufficient',
+      tone: 'info',
       title: 'Week-over-week momentum',
-      body: `Revenue is up ${growth.toFixed(1)}% vs last week.`,
+      body:
+        'Not enough daily data yet. Upload daily Z-readings or POS exports (not only a monthly recap) to get an accurate week-over-week insight.',
+      action: 'upload_z',
     });
-  } else if (growth <= -5 && opts.revWeek > 0) {
-    out.push({
-      id: 'decline',
-      tone: 'warn',
-      title: 'Week-over-week dip',
-      body: `Revenue is down ${Math.abs(growth).toFixed(1)}% vs last week.`,
-    });
+  } else {
+    const growth =
+      opts.revPrevWeek > 0
+        ? ((opts.revWeek - opts.revPrevWeek) / opts.revPrevWeek) * 100
+        : opts.revWeek > 0
+          ? 100
+          : 0;
+    if (growth >= 5) {
+      out.push({
+        id: 'growth',
+        tone: 'positive',
+        title: 'Week-over-week momentum',
+        body: `Revenue is up ${growth.toFixed(1)}% vs last week.`,
+      });
+    } else if (growth <= -5 && opts.revWeek > 0) {
+      out.push({
+        id: 'decline',
+        tone: 'warn',
+        title: 'Week-over-week dip',
+        body: `Revenue is down ${Math.abs(growth).toFixed(1)}% vs last week.`,
+      });
+    }
   }
 
   if (opts.budgetMonth > 0 && opts.revMonth > 0) {
@@ -407,12 +472,22 @@ export function buildInsights(opts: {
     }
   }
 
-  if (opts.cashOnHand > 500) {
+  if (opts.cashFromPos && opts.cashOnHand > 0) {
+    const till = opts.tillAdviceChf ?? 300;
     out.push({
       id: 'cash-hand',
       tone: 'info',
       title: 'Cash on hand',
-      body: `${opts.cashOnHand.toFixed(0)} CHF sitting in drawer — schedule a deposit.`,
+      body: `${opts.cashOnHand.toFixed(0)} CHF in the till. Suggested float ~${till.toFixed(0)} CHF — log deposits when you bank the rest.`,
+      action: 'cash_deposit',
+    });
+  } else if (!opts.cashFromPos) {
+    out.push({
+      id: 'cash-hand-unknown',
+      tone: 'info',
+      title: 'Cash on hand',
+      body: 'No POS cash readings yet. Log a deposit or import Z-readings so we can advise how much to keep in the till.',
+      action: 'cash_deposit',
     });
   }
 
@@ -422,6 +497,7 @@ export function buildInsights(opts: {
       tone: 'info',
       title: 'No Z-readings yet',
       body: 'Import or auto-generate a Z-reading to reconcile POS totals with your income ledger.',
+      action: 'upload_z',
     });
   }
 

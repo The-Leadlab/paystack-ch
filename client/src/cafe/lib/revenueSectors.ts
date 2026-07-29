@@ -302,7 +302,7 @@ export function resolveRowSector(description: string | undefined, preferred: str
   return preferred[0] || null;
 }
 
-/** Scale untagged supplier COGS by sector income share so margins stay realistic. */
+/** Include sector-matched expenses; scale untagged opex (all categories) by sector income share. */
 export function filterExpensesForSectors<
   T extends { amount: number; category: string; description?: string },
 >(expenses: T[], allIncomeTotal: number, sectorIncomeTotal: number, sectors: string[]): T[] {
@@ -314,7 +314,8 @@ export function filterExpensesForSectors<
       out.push(e);
       continue;
     }
-    if (e.category === 'SUPPLIERS' && share > 0) {
+    // Untagged bills / payroll / suppliers / other: allocate by sector revenue share.
+    if (share > 0) {
       out.push({ ...e, amount: Math.round(e.amount * share * 100) / 100 });
     }
   }

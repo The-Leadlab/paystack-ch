@@ -10,7 +10,9 @@ const EXPENSE_LABEL: Record<PersonalExpenseCategory, string> = {
   SAVINGS_INVEST: "Savings & invest",
 };
 
-/** Maps personal bucket → Firestore expense row (same collections as /app). */
+/** Maps personal bucket → display-shaped expense row for forecast helpers only.
+ * Does NOT write to the business Firestore ledger — personal txs stay in IndexedDB.
+ */
 export function personalExpenseToFirestore(
   cat: PersonalExpenseCategory,
   userDescription: string

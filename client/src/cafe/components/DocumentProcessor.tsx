@@ -38,6 +38,7 @@ import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useExpenseCategoryMeta } from '../i18n/expenseCategoryI18n';
 import { formatIssuerForDisplay, invoicesDetectedIssuer, documentDisplayName, conjoinedInvoicesLabel } from '../i18n/documentDisplayI18n';
 import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
+import { evaluateVatReview } from '../lib/vatReview';
 
 // Neural Log Component (from Ypsom)
 const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
@@ -2043,6 +2044,7 @@ export const DocumentProcessor: React.FC<{
       pending: t('dpStatusPending'),
       processing: t('dpStatusProcessing'),
       completed: t('dpStatusCompleted'),
+      needs_review: t('dpStatusNeedAction'),
       error: t('dpStatusError'),
       skipped: t('dpStatusSkipped'),
     };
@@ -2590,16 +2592,20 @@ export const DocumentProcessor: React.FC<{
                     uniqueRateValues.length > 0
                       ? uniqueRateValues.map((r) => `${r.toFixed(2)}%`).join(' / ')
                       : '';
-                  const vatNeedsAttention = vat <= 0;
+                  const vatReview = evaluateVatReview(doc.data);
+                  const vatNeedsAttention =
+                    doc.status === 'needs_review' || vatReview.needsAction;
+                  const isActionable =
+                    doc.status === 'completed' || doc.status === 'needs_review';
                   return (
                     <React.Fragment key={doc.id}>
                       <tr 
-                        onClick={() => doc.status === 'completed' && toggleRow(doc.id)} 
-                        className={`transition-colors ${doc.status === 'completed' ? 'cursor-pointer' : ''} ${isExpanded ? 'ba-doc-row--expanded' : ''}`}
+                        onClick={() => isActionable && toggleRow(doc.id)} 
+                        className={`transition-colors ${isActionable ? 'cursor-pointer' : ''} ${isExpanded ? 'ba-doc-row--expanded' : ''}`}
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2 min-w-0">
-                            {doc.status === 'completed' && (
+                            {isActionable && (
                               isExpanded ? <ChevronDown className="w-3.5 h-3.5 shrink-0 text-cdlp-muted" /> : <ChevronRight className="w-3.5 h-3.5 shrink-0 text-cdlp-muted" />
                             )}
                             <span className="ba-doc-filename truncate max-w-[200px]">{doc.fileName}</span>
@@ -2672,7 +2678,11 @@ export const DocumentProcessor: React.FC<{
                         </td>
                         <td className="px-4 py-3 text-right ba-status-cell">
                           <div className="flex items-center justify-end gap-2 flex-wrap">
-                            {doc.status === 'completed' ? (
+                            {doc.status === 'needs_review' || (doc.status === 'completed' && vatNeedsAttention) ? (
+                              <span className="ba-status-pill ba-status-pill--verify">
+                                {t('dpStatusNeedAction')}
+                              </span>
+                            ) : doc.status === 'completed' ? (
                               <span
                                 className={`ba-status-pill ${isExpanded ? 'ba-status-pill--verify' : 'ba-status-pill--completed'}`}
                               >
@@ -2763,7 +2773,7 @@ export const DocumentProcessor: React.FC<{
                         </td>
                         <td className="px-4 py-3 text-right ba-actions-cell">
                           <div className="flex items-center justify-end gap-1.5">
-                            {doc.status === 'completed' && (
+                            {(doc.status === 'completed' || doc.status === 'needs_review') && (
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -2774,6 +2784,24 @@ export const DocumentProcessor: React.FC<{
                                 title={t('dpVerificationCenter')}
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {vatNeedsAttention && doc.data && (doc as any).source === 'firestore' && (
+                              <button
+                                type="button"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const recordId = firestoreRecordId(doc);
+                                  const nextData = { ...doc.data!, vatConfirmed: true };
+                                  await updateDocument(recordId, {
+                                    status: 'completed',
+                                    data: nextData,
+                                  });
+                                }}
+                                className="px-2 py-1 bg-amber-600/20 hover:bg-amber-600/30 text-amber-500 text-[9px] font-bold uppercase rounded transition-colors"
+                                title={t('dpConfirmVat')}
+                              >
+                                {t('dpConfirmVat')}
                               </button>
                             )}
                             {doc.fileRaw && (
@@ -2891,16 +2919,30 @@ export const DocumentProcessor: React.FC<{
                               onSave={async (newData) => {
                                 if ((doc as any).source === 'firestore') {
                                   const recordId = firestoreRecordId(doc);
-                                  // Update document in Firestore
-                                  await updateDocument(recordId, { data: newData });
+                                  const confirmed = {
+                                    ...newData,
+                                    vatConfirmed: true,
+                                    isHumanVerified: true,
+                                  };
+                                  await updateDocument(recordId, {
+                                    status: 'completed',
+                                    data: confirmed,
+                                  });
                                   
-                                  // Update related income/expenses in dashboard
                                   if (onDocumentUpdated) {
-                                    await onDocumentUpdated(recordId, newData);
+                                    await onDocumentUpdated(recordId, confirmed);
                                   }
                                 } else {
                                   setLocalDocs((prev) =>
-                                    prev.map((d) => (d.id === doc.id ? { ...d, data: newData } : d))
+                                    prev.map((d) =>
+                                      d.id === doc.id
+                                        ? {
+                                            ...d,
+                                            status: 'completed',
+                                            data: { ...newData, vatConfirmed: true, isHumanVerified: true },
+                                          }
+                                        : d
+                                    )
                                   );
                                 }
                                 toggleRow(doc.id);

@@ -37,6 +37,9 @@ import type { FinancialData } from '../types';
 import { loadReportSchedule, saveReportSchedule } from '../lib/reportScheduleClient';
 import type { ReportScheduleCadenceDays } from '@shared/reportSchedule';
 import { RevenueLedgerTable } from './RevenueLedgerTable';
+import { mapAiExpenseCategoryToLedger } from '../lib/mapExpenseCategory';
+import { evaluateVatReview } from '../lib/vatReview';
+import { filterBusinessExpenses } from '../lib/personalBleedFilter';
 
 type Tab = BusinessTab;
 
@@ -191,9 +194,11 @@ export function RestaurantDashboard() {
   const filteredIncome = isAllSessionsView 
     ? income.filter(i => existingSessionIds.includes(i.session_id))
     : income.filter(i => i.session_id === currentSession?.id);
-  const filteredExpenses = isAllSessionsView 
+  const filteredExpensesRaw = isAllSessionsView 
     ? expenses.filter(e => existingSessionIds.includes(e.session_id))
     : expenses.filter(e => e.session_id === currentSession?.id);
+  // Exclude legacy personal-ledger bleed (Groceries / Going out: …) from business KPIs & Expenses.
+  const filteredExpenses = filterBusinessExpenses(filteredExpensesRaw);
 
   console.log('=== DASHBOARD DATA DEBUG ===');
   console.log('isAllSessionsView:', isAllSessionsView);
@@ -443,24 +448,30 @@ export function RestaurantDashboard() {
     // (count it toward the monthly plan cap) or a re-processing of an already-completed
     // document (don't double-count it).
     const wasAlreadyCompleted =
-      !!persistedDocumentId && documents.find((d) => d.id === persistedDocumentId)?.status === 'completed';
+      !!persistedDocumentId &&
+      ['completed', 'needs_review'].includes(
+        documents.find((d) => d.id === persistedDocumentId)?.status || ''
+      );
+
+    const vatReview = evaluateVatReview(data);
+    const docStatus = vatReview.needsAction ? 'needs_review' : 'completed';
 
     let documentId: string;
     try {
       if (persistedDocumentId) {
         await updateDocumentData(persistedDocumentId, {
-          status: 'completed',
+          status: docStatus,
           data,
           ...(fileHash ? { fileHash } : {}),
         });
         documentId = persistedDocumentId;
-        console.log('âœ… Document updated to completed with ID:', documentId);
+        console.log('âœ… Document updated with ID:', documentId, docStatus);
       } else {
         console.log('ðŸ’¾ Saving document to Firestore (legacy path)...');
         const newDoc = await addDocument({
           id: Math.random().toString(36).substr(2, 9),
           fileName,
-          status: 'completed',
+          status: docStatus,
           data,
           ...(fileHash ? { fileHash } : {}),
         });
@@ -536,10 +547,30 @@ export function RestaurantDashboard() {
             const vatAmount = data.vatAmount || 0;
             const expCode = resolveDocumentAccountCode(data, {
               kind: 'expense',
-              category: 'OTHER',
+              category: mapAiExpenseCategoryToLedger({
+                expenseCategory: item.description,
+                issuer: data.issuer,
+                description: item.description,
+                documentType: docType,
+              }),
               description,
             });
-            await addExpense(date, 'OTHER', item.amount, description, currentSession.id, undefined, documentId, vatAmount, expCode);
+            await addExpense(
+              date,
+              mapAiExpenseCategoryToLedger({
+                expenseCategory: item.description,
+                issuer: data.issuer,
+                description: item.description,
+                documentType: docType,
+              }),
+              item.amount,
+              description,
+              currentSession.id,
+              undefined,
+              documentId,
+              vatAmount,
+              expCode
+            );
           }
         }
       }
@@ -591,10 +622,13 @@ export function RestaurantDashboard() {
       await addIncome(date, 'SALES', amount, description, currentSession.id, documentId, vatAmount, incCode);
     } else if (amount > 0) {
       console.log('ðŸ’¸ Adding expense:', amount);
-      const category = data.expenseCategory?.toLowerCase().includes('supplier') ? 'SUPPLIERS' : 
-                      data.expenseCategory?.toLowerCase().includes('bill') ? 'BILLS' :
-                      data.expenseCategory?.toLowerCase().includes('salary') || data.expenseCategory?.toLowerCase().includes('payroll') ? 'PAYROLL' :
-                      'OTHER';
+      const category = mapAiExpenseCategoryToLedger({
+        expenseCategory: data.expenseCategory,
+        issuer: data.issuer,
+        description: data.notes,
+        notes: data.notes,
+        documentType: docType,
+      });
       const description = data.issuer || data.notes || fileName;
       const vatAmount = data.vatAmount || 0;
       const splits = data.swissAccountClassification?.splits;
@@ -603,7 +637,7 @@ export function RestaurantDashboard() {
           const splitAmount = split.amount ?? amount / splits.length;
           await addExpense(
             date,
-            category as any,
+            category,
             splitAmount,
             split.description || description,
             currentSession.id,
@@ -615,7 +649,7 @@ export function RestaurantDashboard() {
         }
       } else {
         const expCode = resolveDocumentAccountCode(data, { kind: 'expense', category, description });
-        await addExpense(date, category as any, amount, description, currentSession.id, undefined, documentId, vatAmount, expCode);
+        await addExpense(date, category, amount, description, currentSession.id, undefined, documentId, vatAmount, expCode);
       }
     }
     
@@ -664,7 +698,20 @@ export function RestaurantDashboard() {
             } else if (item.type === 'EXPENSE') {
               console.log('âž– Re-adding expense:', item.amount, item.description);
               const description = item.description || newData.issuer || 'Bank Statement';
-              await addExpense(date, 'OTHER', item.amount, description, currentSession.id, undefined, documentId);
+              await addExpense(
+                date,
+                mapAiExpenseCategoryToLedger({
+                  expenseCategory: item.description,
+                  issuer: newData.issuer,
+                  description: item.description,
+                  documentType: docType,
+                }),
+                item.amount,
+                description,
+                currentSession.id,
+                undefined,
+                documentId
+              );
             }
           }
         }
@@ -690,12 +737,15 @@ export function RestaurantDashboard() {
         await addIncome(date, 'SALES', amount, description, currentSession.id, documentId);
       } else if (amount > 0) {
         console.log('ðŸ’¸ Re-adding expense:', amount);
-        const category = newData.expenseCategory?.toLowerCase().includes('supplier') ? 'SUPPLIERS' : 
-                        newData.expenseCategory?.toLowerCase().includes('bill') ? 'BILLS' :
-                        newData.expenseCategory?.toLowerCase().includes('salary') || newData.expenseCategory?.toLowerCase().includes('payroll') ? 'PAYROLL' :
-                        'OTHER';
+        const category = mapAiExpenseCategoryToLedger({
+          expenseCategory: newData.expenseCategory,
+          issuer: newData.issuer,
+          description: newData.notes,
+          notes: newData.notes,
+          documentType: docType,
+        });
         const description = newData.issuer || newData.notes || 'Document';
-        await addExpense(date, category as any, amount, description, currentSession.id, undefined, documentId);
+        await addExpense(date, category, amount, description, currentSession.id, undefined, documentId);
       }
       
       console.log('âœ… Document update complete');
@@ -2009,9 +2059,11 @@ function ReportsPlaceholder() {
   const filteredIncome = isAllSessionsView 
     ? income.filter(i => existingSessionIds.includes(i.session_id))
     : income.filter(i => i.session_id === currentSession?.id);
-  const filteredExpenses = isAllSessionsView 
-    ? expenses.filter(e => existingSessionIds.includes(e.session_id))
-    : expenses.filter(e => e.session_id === currentSession?.id);
+  const filteredExpenses = filterBusinessExpenses(
+    isAllSessionsView 
+      ? expenses.filter(e => existingSessionIds.includes(e.session_id))
+      : expenses.filter(e => e.session_id === currentSession?.id)
+  );
 
   // Apply date filter
   const dateFilteredIncome = dateFrom && dateTo 

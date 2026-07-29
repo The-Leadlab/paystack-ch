@@ -39,6 +39,7 @@ import { GlassCard } from "../personal-plan/components/GlassCard";
 import { PersonalRecentLedger } from "../personal-plan/components/PersonalRecentLedger";
 import { usePersonalPlan } from "../personal-plan/context/PersonalPlanContext";
 import { formatChfDisplay } from "../personal-plan/formatChfDisplay";
+import { parseBudgetAmount } from "../lib/parseBudgetAmount";
 
 type BudgetRow = {
   id: string;
@@ -80,7 +81,8 @@ function ExpenseRow({
   Icon: typeof Home;
   href?: string;
 }) {
-  const budget = Number(budgetInput) || 0;
+  const budgetParsed = parseBudgetAmount(budgetInput);
+  const budget = Number.isFinite(budgetParsed) ? budgetParsed : 0;
   const over = budget > 0 && spent > budget;
   const barWidth = budget > 0 ? Math.min(100, (spent / budget) * 100) : spent > 0 ? 100 : 0;
   const title = href ? (
@@ -113,6 +115,12 @@ function ExpenseRow({
             value={budgetInput}
             onChange={(e) => onBudgetInputChange(e.target.value)}
             onBlur={onBudgetCommit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
             aria-label={`Budget for ${label}`}
           />
         </div>
@@ -223,7 +231,11 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
 
   const commitBudgetDraft = (category: string) => {
     const raw = draftBudgets[category] ?? "";
-    const parsed = raw.trim() === "" ? 0 : Number(raw);
+    if (raw.trim() === "") {
+      void setBudget(category, 0);
+      return;
+    }
+    const parsed = parseBudgetAmount(raw);
     if (!Number.isFinite(parsed) || parsed < 0) return;
     void setBudget(category, parsed);
   };

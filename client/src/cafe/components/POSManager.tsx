@@ -42,6 +42,14 @@ import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import {
+  addCashDeposit,
+  loadCashDeposits,
+  suggestTillFloat,
+  sumDepositsInRange,
+  type CashDeposit,
+} from '../lib/cashDeposits';
+import { filterBusinessExpenses } from '../lib/personalBleedFilter';
+import {
   addDaysIso,
   buildCashPosition,
   buildInsights,
@@ -175,6 +183,10 @@ export function POSManager({
   const [recipeTick, setRecipeTick] = useState(0);
   const [activity, setActivity] = useState<RevenueActivity[]>(() => loadRevenueActivity());
   const [activityVisible, setActivityVisible] = useState(10);
+  const [cashDeposits, setCashDeposits] = useState<CashDeposit[]>(() => loadCashDeposits());
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositDate, setDepositDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [showCashDeposit, setShowCashDeposit] = useState(false);
   const uploadRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
   const activityRef = useRef<HTMLDivElement>(null);
@@ -195,9 +207,11 @@ export function POSManager({
   const visibleZReadings = posReadings.slice(0, zVisible);
   const zRemaining = Math.max(0, posReadings.length - zVisible);
 
-  const filteredExpenses = isAllSessionsView
-    ? expenses.filter((e) => existingSessionIds.includes(e.session_id))
-    : expenses.filter((e) => e.session_id === currentSession?.id);
+  const filteredExpenses = filterBusinessExpenses(
+    isAllSessionsView
+      ? expenses.filter((e) => existingSessionIds.includes(e.session_id))
+      : expenses.filter((e) => e.session_id === currentSession?.id)
+  );
 
   const incomeRows = useMemo(
     () =>
@@ -313,7 +327,8 @@ export function POSManager({
   const budgetMonth = monthlyBudgetTarget(sectorIncomeRows, today);
   const budgetPct = budgetMonth > 0 ? Math.min(100, (revPeriod / budgetMonth) * 100) : 0;
 
-  const cash = buildCashPosition(periodIncomeRows, sectorPosReadings, today);
+  const depositedYtd = sumDepositsInRange(`${today.slice(0, 4)}-01-01`, today);
+  const cash = buildCashPosition(periodIncomeRows, sectorPosReadings, today, depositedYtd);
   const profit = buildProfitability(sectorIncomeRows, sectorExpenseRows, rangeStart, rangeEnd);
   const paymentMix = buildPaymentMix(sectorPosReadings, sectorIncomeRows, rangeStart, rangeEnd);
   const reconciliation = buildReconciliation(
@@ -323,6 +338,15 @@ export function POSManager({
     rangeEnd,
     today
   );
+  const posDaysWithData = useMemo(() => {
+    const days = new Set(sectorPosReadings.map((r) => r.date));
+    return days.size;
+  }, [sectorPosReadings]);
+  const avgDailyCash =
+    posDaysWithData > 0
+      ? sectorPosReadings.reduce((s, r) => s + r.cash, 0) / posDaysWithData
+      : 0;
+  const tillAdvice = suggestTillFloat(avgDailyCash);
   const insights = buildInsights({
     revToday,
     revWeek: revPeriod,
@@ -332,10 +356,34 @@ export function POSManager({
     reconciliationOpen: reconciliation.openCount,
     reconciliationVariance: reconciliation.variance,
     posCount: sectorPosReadings.length,
+    posDaysWithData,
     incomeCount: periodIncomeRows.length,
     incomingInvoices: cash.incoming,
     cashOnHand: cash.onHand,
+    cashFromPos: cash.fromPos,
+    tillAdviceChf: tillAdvice,
   });
+
+  const handleInsightClick = (action?: string) => {
+    if (action === 'reconciliation') setHubTab('reconciliation');
+    else if (action === 'documents') setHubTab('documents');
+    else if (action === 'upload_z') {
+      setHubTab('trend');
+      uploadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (action === 'cash_deposit') {
+      setShowCashDeposit(true);
+      setHubTab('trend');
+    }
+  };
+
+  const submitCashDeposit = () => {
+    const amount = Number(String(depositAmount).replace(',', '.'));
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    addCashDeposit({ date: depositDate, amount });
+    setCashDeposits(loadCashDeposits());
+    setDepositAmount('');
+    setShowCashDeposit(false);
+  };
 
   const paymentBase = Math.max(paymentMix.cash + paymentMix.card + paymentMix.other, 1);
   const flowBase = Math.max(revPeriod, dailyAvg, paymentMix.gross, 1);
@@ -1065,15 +1113,51 @@ export function POSManager({
             <div className="ba-revenue-stat-row"><span>{t('rhOnHand')}</span><span>{fmtChf(cash.onHand)}</span></div>
             <div className="ba-revenue-stat-row"><span>{t('rhIncoming')}</span><span>{fmtChf(cash.incoming)}</span></div>
             <div className="ba-revenue-stat-row"><span>{t('rhPendingDeposits')}</span><span>{fmtChf(cash.pendingDeposits)}</span></div>
+            <div className="ba-revenue-stat-row"><span>{t('rhTillAdvice')}</span><span>{fmtChf(tillAdvice)}</span></div>
           </div>
+          <button
+            type="button"
+            className="ba-filter-chip mt-3 w-full justify-center"
+            onClick={() => setShowCashDeposit((v) => !v)}
+          >
+            {t('rhLogDeposit')}
+          </button>
+          {showCashDeposit ? (
+            <div className="mt-3 space-y-2 border-t border-cdlp-border pt-3">
+              <input
+                type="date"
+                className="ba-verify-field"
+                value={depositDate}
+                onChange={(e) => setDepositDate(e.target.value)}
+              />
+              <input
+                type="text"
+                inputMode="decimal"
+                className="ba-verify-field"
+                placeholder={t('rhDepositAmount')}
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+              />
+              <button type="button" className="ba-btn-approve w-full !h-9" onClick={submitCashDeposit}>
+                {t('rhSaveDeposit')}
+              </button>
+              {cashDeposits.slice(0, 3).map((d) => (
+                <p key={d.id} className="text-[10px] text-cdlp-muted">
+                  {d.date}: {fmtChf(d.amount)}
+                </p>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className="ba-panel ba-revenue-stat-panel">
           <p className="text-xs text-cdlp-muted uppercase tracking-wide">{t('rhProfitability')}</p>
-          <p className="ba-revenue-stat-panel__value tabular-nums">{fmtChf(profit.grossProfit)}</p>
-          <p className="text-xs text-cdlp-muted">{t('rhGrossProfit')}</p>
+          <p className="ba-revenue-stat-panel__value tabular-nums">{fmtChf(profit.netProfit)}</p>
+          <p className="text-xs text-cdlp-muted">{t('rhNetProfit')}</p>
           <div className="space-y-2 mt-3">
             <div className="ba-revenue-stat-row"><span>{t('rhCogs')}</span><span>{fmtChf(profit.cogs)}</span></div>
+            <div className="ba-revenue-stat-row"><span>{t('rhOperating')}</span><span>{fmtChf(profit.operating)}</span></div>
+            <div className="ba-revenue-stat-row"><span>{t('rhPayrollCost')}</span><span>{fmtChf(profit.payroll)}</span></div>
             <div className="ba-revenue-stat-row"><span>{t('rhMargin')}</span><span>{profit.marginPct.toFixed(1)}%</span></div>
             <div className="ba-revenue-stat-row"><span>{t('rhAvgTransaction')}</span><span>{fmtChf(profit.avgTransaction)}</span></div>
           </div>
@@ -1134,18 +1218,24 @@ export function POSManager({
           ) : (
             <ul className="space-y-3">
               {insights.map((ins) => (
-                <li
-                  key={ins.id}
-                  className={`rounded-lg border p-3 text-sm ${
-                    ins.tone === 'warn'
-                      ? 'border-amber-500/30 bg-amber-500/5'
-                      : ins.tone === 'positive'
-                        ? 'border-emerald-500/30 bg-emerald-500/5'
-                        : 'border-cdlp-border bg-cdlp-card/30'
-                  }`}
-                >
-                  <p className="font-bold text-white">{ins.title}</p>
-                  <p className="text-xs text-cdlp-muted mt-1">{ins.body}</p>
+                <li key={ins.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleInsightClick(ins.action)}
+                    className={`w-full text-left rounded-lg border p-3 text-sm transition-colors ${
+                      ins.tone === 'warn'
+                        ? 'border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10'
+                        : ins.tone === 'positive'
+                          ? 'border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10'
+                          : 'border-cdlp-border bg-cdlp-card/30 hover:bg-cdlp-card/50'
+                    } ${ins.action ? 'cursor-pointer' : 'cursor-default'}`}
+                  >
+                    <p className="font-bold text-[var(--ba-text,#fff)]">{ins.title}</p>
+                    <p className="text-xs text-cdlp-muted mt-1">{ins.body}</p>
+                    {ins.action === 'reconciliation' ? (
+                      <p className="text-[10px] text-cdlp-gold mt-2 uppercase font-bold">{t('rhOpenRecon')}</p>
+                    ) : null}
+                  </button>
                 </li>
               ))}
             </ul>

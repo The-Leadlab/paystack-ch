@@ -18,6 +18,7 @@ import {
   type PersonalIncomeCategory,
 } from "../../personalCategories";
 import { addPersonalTransaction } from "../../lib/personalBudgetStore";
+import { parseBudgetAmount } from "../../lib/parseBudgetAmount";
 import { formatChfDisplay } from "../formatChfDisplay";
 
 type TxKind = "expense" | "income";
@@ -67,7 +68,7 @@ export function PersonalTransactionModal() {
 
   const submit = async () => {
     setErr(null);
-    const value = Number(amount);
+    const value = parseBudgetAmount(amount);
     if (!Number.isFinite(value) || value <= 0) {
       setErr(t("stmtInvalidAmount"));
       return;

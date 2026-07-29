@@ -207,6 +207,8 @@ export interface FinancialData {
   netAmount: number;
   /** Standard Swiss VAT rate % when a single rate applies (optional) */
   vatRate?: number;
+  /** User confirmed VAT is correct / intentionally zero */
+  vatConfirmed?: boolean;
   expenseCategory: string;
   amountInCHF: number;
   conversionRateUsed: number;
@@ -237,7 +239,7 @@ export interface FinancialData {
 export interface ProcessedDocument {
   id: string;
   fileName: string;
-  status: 'pending' | 'processing' | 'completed' | 'error' | 'verifying' | 'skipped';
+  status: 'pending' | 'processing' | 'completed' | 'error' | 'verifying' | 'skipped' | 'needs_review';
   data?: FinancialData;
   error?: string;
   fileRaw?: File;
