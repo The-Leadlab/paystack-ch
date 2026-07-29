@@ -50,12 +50,11 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
   const [dueDate, setDueDate] = useState("");
   const [amountInput, setAmountInput] = useState("");
   const [recurrence, setRecurrence] = useState<LabBill["recurrence"]>("monthly");
-  const [receiptDataUrl, setReceiptDataUrl] = useState<string | undefined>();
-  const [receiptFileName, setReceiptFileName] = useState<string | undefined>();
+  const [receipts, setReceipts] = useState<{ dataUrl: string; fileName: string; file?: File }[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiMsg, setAiMsg] = useState<string | null>(null);
-  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
 
   /** Drop hardcoded demo bills from older builds. */
   useEffect(() => {
@@ -96,28 +95,30 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
   };
 
   const clearReceipt = () => {
-    setReceiptDataUrl(undefined);
-    setReceiptFileName(undefined);
-    setPendingPhotoFile(null);
+    setReceipts([]);
     if (photoRef.current) photoRef.current.value = "";
   };
 
-  const onPickPhoto = async (file: File | undefined) => {
-    if (!file) return;
+  const onPickPhotos = async (fileList: FileList | null) => {
+    const files = fileList ? Array.from(fileList) : [];
+    if (!files.length) return;
     setFormError(null);
     setAiMsg(null);
-    try {
-      const { dataUrl, fileName } = await fileToCompressedDataUrl(file);
-      setReceiptDataUrl(dataUrl);
-      setReceiptFileName(fileName);
-      setPendingPhotoFile(file);
-    } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+    const next = [...receipts];
+    for (const file of files.slice(0, 8)) {
+      try {
+        const { dataUrl, fileName } = await fileToCompressedDataUrl(file);
+        next.push({ dataUrl, fileName, file });
+      } catch (e) {
+        setFormError(e instanceof Error ? e.message : String(e));
+      }
     }
+    setReceipts(next.slice(0, 8));
   };
 
   const fillFromPhotoAi = async () => {
-    if (!pendingPhotoFile && !receiptDataUrl) {
+    const primary = receipts[0];
+    if (!primary) {
       setFormError(t("billNeedPhoto"));
       return;
     }
@@ -125,13 +126,12 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
     setAiMsg(null);
     setFormError(null);
     try {
-      let file = pendingPhotoFile;
-      if (!file && receiptDataUrl) {
-        const res = await fetch(receiptDataUrl);
+      let file = primary.file;
+      if (!file) {
+        const res = await fetch(primary.dataUrl);
         const blob = await res.blob();
-        file = new File([blob], receiptFileName || "receipt.jpg", { type: blob.type || "image/jpeg" });
+        file = new File([blob], primary.fileName || "receipt.jpg", { type: blob.type || "image/jpeg" });
       }
-      if (!file) throw new Error(t("billNeedPhoto"));
       const data = await analyzeFinancialDocument(file, "CHF", PERSONAL_RECEIPT_AI_HINT);
       const issuer = (data.issuer || "").trim();
       const amount = data.amountInCHF || data.totalAmount || 0;
@@ -148,7 +148,7 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
     }
   };
 
-  const submitBill = () => {
+  const submitBill = async () => {
     setFormError(null);
     if (!name.trim()) {
       setFormError(t("billNeedName"));
@@ -163,20 +163,34 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
       setFormError(t("billNeedAmount"));
       return;
     }
-    void add({
-      name: name.trim(),
-      dueDate,
-      amountChf,
-      recurrence,
-      remindDaysBefore: 14,
-      ...(receiptDataUrl ? { receiptDataUrl, receiptFileName } : {}),
-    });
-    setName("");
-    setDueDate("");
-    setAmountInput("");
-    setRecurrence("monthly");
-    clearReceipt();
-    setAiMsg(null);
+    setSaving(true);
+    try {
+      const primary = receipts[0];
+      const extras = receipts.slice(1).map((r) => ({ dataUrl: r.dataUrl, fileName: r.fileName }));
+      const payload: Omit<LabBill, "id"> = {
+        name: name.trim(),
+        dueDate,
+        amountChf,
+        recurrence,
+        remindDaysBefore: 14,
+      };
+      if (primary) {
+        payload.receiptDataUrl = primary.dataUrl;
+        payload.receiptFileName = primary.fileName;
+      }
+      if (extras.length) payload.extraReceipts = extras;
+      await add(payload);
+      setName("");
+      setDueDate("");
+      setAmountInput("");
+      setRecurrence("monthly");
+      clearReceipt();
+      setAiMsg(null);
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const editBill = (bill: LabBill) => {
@@ -245,10 +259,11 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
             onChange={(e) => setAmountInput(e.target.value)}
           />
           <select
-            className="pp-input px-2 py-2 text-sm min-w-[110px]"
+            className="pp-input px-2 py-2 text-sm min-w-[130px]"
             value={recurrence}
             onChange={(e) => setRecurrence(e.target.value as LabBill["recurrence"])}
             aria-label={t("billFrequency")}
+            style={{ color: "var(--pp-on-surface)", background: "var(--pp-surface-low)" }}
           >
             <option value="once">{t("billFreqOnce")}</option>
             <option value="weekly">{t("billFreqWeekly")}</option>
@@ -258,10 +273,11 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
           </select>
           <button
             type="button"
-            className="bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] px-4 py-2 rounded-lg text-xs font-bold"
-            onClick={submitBill}
+            disabled={saving}
+            className="bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] px-4 py-2 rounded-lg text-xs font-bold disabled:opacity-50"
+            onClick={() => void submitBill()}
           >
-            {t("addBill")}
+            {saving ? <Loader2 className="size-3.5 animate-spin inline" /> : null} {t("addBill")}
           </button>
         </div>
 
@@ -277,32 +293,42 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
           <input
             ref={photoRef}
             type="file"
+            multiple
             accept="image/*,.jpg,.jpeg,.png,.webp,.heic"
             className="hidden"
-            onChange={(e) => void onPickPhoto(e.target.files?.[0])}
+            onChange={(e) => void onPickPhotos(e.target.files)}
           />
           <button
             type="button"
-            disabled={aiBusy || (!pendingPhotoFile && !receiptDataUrl)}
+            disabled={aiBusy || receipts.length === 0}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--pp-primary)]/10 text-[var(--pp-primary)] text-[11px] font-bold disabled:opacity-40"
             onClick={() => void fillFromPhotoAi()}
           >
             {aiBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
             {t("billAiFromPhoto")}
           </button>
-          {receiptDataUrl ? (
-            <div className="relative inline-flex items-center gap-2">
-              <img
-                src={receiptDataUrl}
-                alt=""
-                className="h-12 w-12 rounded object-cover border border-[var(--pp-outline-variant)]"
-              />
-              <span className="text-[10px] text-[var(--pp-on-surface-variant)] max-w-[120px] truncate">
-                {receiptFileName}
+          {receipts.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {receipts.map((r, idx) => (
+                <div key={`${r.fileName}-${idx}`} className="relative inline-flex items-center gap-1">
+                  <img
+                    src={r.dataUrl}
+                    alt=""
+                    className="h-12 w-12 rounded object-cover border border-[var(--pp-outline-variant)]"
+                  />
+                  <button
+                    type="button"
+                    className="p-1 text-[var(--pp-on-surface-variant)]"
+                    onClick={() => setReceipts((prev) => prev.filter((_, i) => i !== idx))}
+                    aria-label={t("delete")}
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              ))}
+              <span className="text-[10px] text-[var(--pp-on-surface-variant)]">
+                {receipts.length} {t("billPhotosCount")}
               </span>
-              <button type="button" className="p-1 text-[var(--pp-on-surface-variant)]" onClick={clearReceipt} aria-label={t("delete")}>
-                <X className="size-3.5" />
-              </button>
             </div>
           ) : (
             <p className="text-[11px] text-[var(--pp-on-surface-variant)]">{t("billPhotoHint")}</p>

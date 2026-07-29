@@ -15,9 +15,11 @@ export function InvestmentsPanel({ feature }: { feature: AliLabFeature }) {
   const { items, add, remove, update } = useAliLabPersist<LabHolding>(labCollections.holdings, "holdings", []);
   const [symbol, setSymbol] = useState("");
   const [name, setName] = useState("");
-  const [qty, setQty] = useState(1);
-  const [price, setPrice] = useState(100);
+  const [qtyInput, setQtyInput] = useState("1");
+  const [priceInput, setPriceInput] = useState("100");
   const [query, setQuery] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const total = items.reduce((s, h) => s + h.quantity * h.lastPriceChf, 0);
   const cost = items.reduce((s, h) => s + h.quantity * h.costBasisChf, 0);
@@ -45,6 +47,42 @@ export function InvestmentsPanel({ feature }: { feature: AliLabFeature }) {
       weight: (h.quantity * h.lastPriceChf) / total,
     }));
   }, [items, total]);
+
+  const submitHolding = async () => {
+    setFormError(null);
+    if (!symbol.trim()) {
+      setFormError(t("holdingNeedSymbol"));
+      return;
+    }
+    const qty = Number(qtyInput.replace(",", "."));
+    const price = Number(priceInput.replace(",", "."));
+    if (!Number.isFinite(qty) || qty <= 0) {
+      setFormError(t("holdingNeedQty"));
+      return;
+    }
+    if (!Number.isFinite(price) || price < 0) {
+      setFormError(t("holdingNeedPrice"));
+      return;
+    }
+    setBusy(true);
+    try {
+      await add({
+        symbol: symbol.trim().toUpperCase(),
+        name: (name.trim() || symbol).trim(),
+        quantity: qty,
+        costBasisChf: price,
+        lastPriceChf: price,
+      });
+      setSymbol("");
+      setName("");
+      setQtyInput("1");
+      setPriceInput("100");
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -84,7 +122,7 @@ export function InvestmentsPanel({ feature }: { feature: AliLabFeature }) {
         </p>
       )}
 
-      <GlassCard className="p-4">
+      <GlassCard className="p-4 space-y-2">
         <div className="flex flex-wrap gap-2">
           <input
             className="pp-input px-3 py-2 w-20 text-sm uppercase"
@@ -99,37 +137,31 @@ export function InvestmentsPanel({ feature }: { feature: AliLabFeature }) {
             onChange={(e) => setName(e.target.value)}
           />
           <input
-            type="number"
+            type="text"
+            inputMode="decimal"
             className="pp-input px-3 py-2 w-16 text-sm"
-            value={qty}
-            onChange={(e) => setQty(Number(e.target.value))}
+            value={qtyInput}
+            onChange={(e) => setQtyInput(e.target.value)}
+            aria-label="Quantity"
           />
           <input
-            type="number"
+            type="text"
+            inputMode="decimal"
             className="pp-input px-3 py-2 w-24 text-sm"
             placeholder="Price CHF"
-            value={price}
-            onChange={(e) => setPrice(Number(e.target.value))}
+            value={priceInput}
+            onChange={(e) => setPriceInput(e.target.value)}
           />
           <button
             type="button"
-            className="bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] px-4 py-2 rounded-lg text-xs font-bold"
-            onClick={() => {
-              if (!symbol.trim()) return;
-              void add({
-                symbol: symbol.toUpperCase(),
-                name: name || symbol,
-                quantity: qty,
-                costBasisChf: price,
-                lastPriceChf: price,
-              });
-              setSymbol("");
-              setName("");
-            }}
+            disabled={busy}
+            className="bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] px-4 py-2 rounded-lg text-xs font-bold disabled:opacity-50"
+            onClick={() => void submitHolding()}
           >
-            Add holding
+            {t("addHolding")}
           </button>
         </div>
+        {formError && <p className="text-xs text-[var(--pp-error)]">{formError}</p>}
       </GlassCard>
 
       {allocation.length > 0 && (

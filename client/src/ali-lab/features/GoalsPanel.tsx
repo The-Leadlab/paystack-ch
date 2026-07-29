@@ -85,7 +85,7 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
     window.setTimeout(() => setFormHighlight(false), 2200);
   };
 
-  const submitGoal = () => {
+  const submitGoal = async () => {
     setFormError(null);
     if (!name.trim()) {
       setFormError(t("goalNeedName"));
@@ -97,17 +97,22 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
       setFormError(t("goalNeedTarget"));
       return;
     }
-    void add({
-      name: name.trim(),
-      targetChf,
-      currentChf: 0,
-      type,
-      deadline: deadline || undefined,
-    });
-    setName("");
-    setDeadline("");
-    setTargetInput("5000");
-    setFormError(null);
+    try {
+      const payload: Omit<LabGoal, "id"> = {
+        name: name.trim(),
+        targetChf,
+        currentChf: 0,
+        type,
+      };
+      if (deadline.trim()) payload.deadline = deadline.trim();
+      await add(payload);
+      setName("");
+      setDeadline("");
+      setTargetInput("5000");
+      setFormError(null);
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (
@@ -142,7 +147,7 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") submitGoal();
+                if (e.key === "Enter") void submitGoal();
               }}
             />
             <input
@@ -171,7 +176,7 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
             <button
               type="button"
               className="flex items-center gap-2 bg-[var(--pp-primary)] text-[var(--pp-on-primary)] px-4 py-2 rounded-lg text-xs font-bold hover:opacity-90"
-              onClick={submitGoal}
+              onClick={() => void submitGoal()}
             >
               <Plus className="size-4" />
               {t("addGoal")}

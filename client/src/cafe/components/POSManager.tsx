@@ -615,9 +615,7 @@ export function POSManager({
       addExpense(exp.date, exp.category, exp.amount, exp.description, sid)
     );
     await chunk(zReadings, 6, (z) => addPOSReading(z));
-    const all = ALL_SECTORS.slice();
-    setActiveSectors(all);
-    saveStoredSectors(all);
+    // Keep the user's sector filter — do not force all sectors on demo load/refresh.
     setSectorLog((log) => [`${new Date().toLocaleTimeString(chfLocale)} — ${t('rhDemoLoaded')}`, ...log].slice(0, 8));
   };
 

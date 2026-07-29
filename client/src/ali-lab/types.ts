@@ -18,6 +18,8 @@ export type LabBill = {
   /** Compressed JPEG data URL of a receipt/bill photo (optional). */
   receiptDataUrl?: string;
   receiptFileName?: string;
+  /** Additional receipt photos (optional). */
+  extraReceipts?: { dataUrl: string; fileName: string }[];
   notes?: string;
 };
 

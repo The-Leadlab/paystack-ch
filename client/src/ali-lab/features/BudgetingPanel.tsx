@@ -19,12 +19,17 @@ import type { LabBudgetMode } from "../types";
 import { labCollections } from "../aliLabFirestore";
 import {
   PERSONAL_EXPENSE_CATEGORIES,
+  PERSONAL_EXPENSE_FIXED,
+  PERSONAL_EXPENSE_SAVINGS,
+  PERSONAL_EXPENSE_VARIABLE,
   PERSONAL_INCOME_CATEGORIES,
   personalExpenseLabelKey,
   personalIncomeLabelKey,
   type PersonalExpenseCategory,
   type PersonalIncomeCategory,
 } from "../personalCategories";
+import { personalFeaturePath } from "../personal-plan/personalPlanNav";
+import { Link } from "wouter";
 import {
   shiftMonth,
   suggestExpenseBudgetsFromPersonal,
@@ -65,6 +70,7 @@ function ExpenseRow({
   onBudgetInputChange,
   onBudgetCommit,
   Icon,
+  href,
 }: {
   label: string;
   budgetInput: string;
@@ -72,11 +78,18 @@ function ExpenseRow({
   onBudgetInputChange: (v: string) => void;
   onBudgetCommit: () => void;
   Icon: typeof Home;
+  href?: string;
 }) {
   const budget = Number(budgetInput) || 0;
-  const pct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : spent > 0 ? 100 : 0;
   const over = budget > 0 && spent > budget;
   const barWidth = budget > 0 ? Math.min(100, (spent / budget) * 100) : spent > 0 ? 100 : 0;
+  const title = href ? (
+    <Link href={href} className="text-sm font-medium truncate underline-offset-2 hover:underline text-[var(--pp-primary)]">
+      {label}
+    </Link>
+  ) : (
+    <span className="text-sm font-medium truncate">{label}</span>
+  );
 
   return (
     <div className="space-y-1.5">
@@ -86,7 +99,7 @@ function ExpenseRow({
             className={`size-4 shrink-0 ${over ? "text-[var(--pp-error)]" : "text-[var(--pp-primary)]"}`}
             style={over ? { fill: "currentColor", opacity: 0.3 } : undefined}
           />
-          <span className="text-sm font-medium truncate">{label}</span>
+          {title}
         </div>
         <div className="text-right shrink-0 text-sm pp-tabular">
           <span className={over ? "text-[var(--pp-error)] font-bold" : "font-semibold"}>
@@ -121,13 +134,14 @@ function ExpenseRow({
 
 export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   const { t } = useLabFeatureText(feature);
-  const { month } = usePersonalPlan();
+  const { month, surface } = usePersonalPlan();
   const ledger = usePersonalBudgetLedger(month);
   const { loading: finLoading } = ledger;
   const [mode, setMode] = useState<LabBudgetMode>("traditional");
   const [draftBudgets, setDraftBudgets] = useState<Record<string, string>>({});
   const [suggestMessage, setSuggestMessage] = useState<string | null>(null);
   const [pendingSuggestions, setPendingSuggestions] = useState<Record<string, number>>({});
+  const billsHref = personalFeaturePath("bill-reminders", surface);
 
   const { items: saved, update, add, uid } = useAliLabPersist<BudgetRow>(
     labCollections.budgets,
@@ -304,11 +318,18 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
 
   return (
     <div className="space-y-6">
+      <section>
+        <h2 className="text-2xl font-bold">{t("budgetTitle")}</h2>
+        <p className="text-sm text-[var(--pp-on-surface-variant)] mt-2 max-w-2xl">{t("budgetIntro")}</p>
+        <p className="text-xs text-[var(--pp-on-surface-variant)] mt-1">{t("budgetSpentExplain")}</p>
+      </section>
+
       <div className="flex flex-wrap gap-3 items-center text-xs">
         <select
           className="pp-input rounded px-2 py-1"
           value={mode}
           onChange={(e) => void persistMode(e.target.value as LabBudgetMode)}
+          aria-label={t("budgetModeLabel")}
         >
           <option value="traditional">{t("traditional")}</option>
           <option value="zero-based">{t("zeroBased")}</option>
@@ -407,7 +428,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
           </GlassCard>
 
           <GlassCard className="p-5 md:p-6">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-2">
               <h2 className="text-lg font-semibold">{t("expensesHousehold")}</h2>
               <div className="flex gap-1">
                 <span className="bg-[var(--pp-surface-highest)] px-2 py-0.5 rounded-full text-[11px]">
@@ -418,19 +439,40 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
                 </span>
               </div>
             </div>
-            <div className="space-y-4">
-              {expenseRows.map((row) => (
-                <ExpenseRow
-                  key={row.cat}
-                  label={t(personalExpenseLabelKey(row.cat))}
-                  budgetInput={displayBudget(row.cat, row.budgetChf)}
-                  spent={row.spent}
-                  onBudgetInputChange={(v) => updateDraft(row.cat, v)}
-                  onBudgetCommit={() => commitBudgetDraft(row.cat)}
-                  Icon={EXPENSE_ICONS[row.cat]}
-                />
-              ))}
-            </div>
+            <p className="text-[11px] text-[var(--pp-on-surface-variant)] mb-4">{t("budgetSpentExplain")}</p>
+
+            {(
+              [
+                { titleKey: "budgetFixedGroup", cats: PERSONAL_EXPENSE_FIXED },
+                { titleKey: "budgetVariableGroup", cats: PERSONAL_EXPENSE_VARIABLE },
+                { titleKey: "budgetSavingsGroup", cats: PERSONAL_EXPENSE_SAVINGS },
+              ] as const
+            ).map((group) => (
+              <div key={group.titleKey} className="mb-5 last:mb-0">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--pp-on-surface-variant)] mb-3">
+                  {t(group.titleKey)}
+                </h3>
+                <div className="space-y-4">
+                  {group.cats.map((cat) => {
+                    const row = expenseRows.find((r) => r.cat === cat);
+                    if (!row) return null;
+                    return (
+                      <ExpenseRow
+                        key={row.cat}
+                        label={t(personalExpenseLabelKey(row.cat))}
+                        budgetInput={displayBudget(row.cat, row.budgetChf)}
+                        spent={row.spent}
+                        onBudgetInputChange={(v) => updateDraft(row.cat, v)}
+                        onBudgetCommit={() => commitBudgetDraft(row.cat)}
+                        Icon={EXPENSE_ICONS[row.cat]}
+                        href={row.cat === "BILLS" ? billsHref : undefined}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
             <div className="mt-4 pt-3 border-t border-[var(--pp-border)] flex justify-between text-sm font-bold pp-tabular">
               <span>{t("total")}</span>
               <span>
@@ -443,7 +485,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
         <div className="lg:col-span-4 space-y-6">
           <GlassCard className="p-5 md:p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Budget mode</h2>
+              <h2 className="text-lg font-semibold">{t("budgetModeLabel")}</h2>
               <button
                 type="button"
                 onClick={() => void persistMode(mode === "zero-based" ? "traditional" : "zero-based")}
@@ -465,7 +507,9 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
               </div>
               <div>
                 <p className="text-sm font-bold">{mode === "zero-based" ? t("zeroBased") : t("traditional")}</p>
-                <p className="text-[11px] text-[var(--pp-on-surface-variant)]">Every CHF has a job</p>
+                <p className="text-[11px] text-[var(--pp-on-surface-variant)]">
+                  {mode === "zero-based" ? t("budgetModeZeroDesc") : t("budgetModeTraditionalDesc")}
+                </p>
               </div>
             </div>
             {mode === "zero-based" && (

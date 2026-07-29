@@ -62,6 +62,13 @@
   border-color: var(--pp-primary);
 }
 
+/* Native <select> options — Windows light theme otherwise paints white-on-white */
+.personal-plan-shell .pp-input option,
+.personal-plan-shell select.pp-input option {
+  background: var(--pp-surface);
+  color: var(--pp-on-surface);
+}
+
 .personal-plan-shell .pp-progress-track {
   background: var(--pp-surface-highest);
   border-radius: 9999px;

@@ -20,6 +20,15 @@ export const PERSONAL_EXPENSE_CATEGORIES: PersonalExpenseCategory[] = [
   "SAVINGS_INVEST",
 ];
 
+/** Fixed / necessities vs variable spend — household budget structure. */
+export const PERSONAL_EXPENSE_FIXED: PersonalExpenseCategory[] = ["BILLS", "RENT"];
+export const PERSONAL_EXPENSE_VARIABLE: PersonalExpenseCategory[] = [
+  "GROCERIES",
+  "GOING_OUT",
+  "SHOPPING_OTHER",
+];
+export const PERSONAL_EXPENSE_SAVINGS: PersonalExpenseCategory[] = ["SAVINGS_INVEST"];
+
 export const PERSONAL_INCOME_CATEGORIES: PersonalIncomeCategory[] = [
   "SALARY",
   "ASSET_REVENUE",

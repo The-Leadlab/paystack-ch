@@ -23,6 +23,27 @@ function localKey(uid: string, suffix: string): string {
   return `ali-lab-${suffix}-${uid || "anon"}`;
 }
 
+/** Firestore rejects `undefined` field values — strip before write. */
+function stripUndefined<T extends Record<string, unknown>>(data: T): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (v !== undefined) out[k] = v;
+  }
+  return out;
+}
+
+/** Keep huge receipt data URLs local-only (Firestore ~1MB doc limit). */
+function forFirestoreWrite(data: Record<string, unknown>): Record<string, unknown> {
+  const cleaned = stripUndefined(data);
+  const receipt = cleaned.receiptDataUrl;
+  if (typeof receipt === "string" && receipt.length > 400_000) {
+    delete cleaned.receiptDataUrl;
+  }
+  // Extra photo gallery stays device-local (too large for Firestore docs).
+  if ("extraReceipts" in cleaned) delete cleaned.extraReceipts;
+  return cleaned;
+}
+
 export async function loadLabDocs<T extends { id: string }>(
   uid: string | undefined,
   collectionName: string,
@@ -62,7 +83,7 @@ export async function addLabDoc<T extends Record<string, unknown>>(
 ): Promise<string> {
   if (uid && db) {
     const ref = await addDoc(collection(db, collectionName), {
-      ...data,
+      ...forFirestoreWrite(data as Record<string, unknown>),
       restaurantId: uid,
       createdAt: new Date().toISOString(),
     });
@@ -78,7 +99,7 @@ export async function updateLabDoc(
   data: Record<string, unknown>
 ): Promise<void> {
   if (uid && db) {
-    await updateDoc(doc(db, collectionName, id), data);
+    await updateDoc(doc(db, collectionName, id), forFirestoreWrite(data));
   }
 }
 
