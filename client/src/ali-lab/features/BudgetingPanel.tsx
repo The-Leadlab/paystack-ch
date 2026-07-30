@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeftRight,
   Home,
@@ -64,6 +64,8 @@ const INCOME_ICONS: Record<PersonalIncomeCategory, typeof Banknote> = {
   CONTRIBUTIONS: Gift,
 };
 
+const BUDGET_DEBOUNCE_MS = 400;
+
 function ExpenseRow({
   label,
   budgetInput,
@@ -111,7 +113,7 @@ function ExpenseRow({
           <input
             type="text"
             inputMode="decimal"
-            className="pp-input w-20 text-right text-xs py-0.5 px-1 inline-block"
+            className="pp-input w-24 text-right text-xs py-0.5 px-1 inline-block"
             value={budgetInput}
             onChange={(e) => onBudgetInputChange(e.target.value)}
             onBlur={onBudgetCommit}
@@ -147,11 +149,15 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   const { loading: finLoading } = ledger;
   const [mode, setMode] = useState<LabBudgetMode>("traditional");
   const [draftBudgets, setDraftBudgets] = useState<Record<string, string>>({});
+  const [dirtyKeys, setDirtyKeys] = useState<Record<string, boolean>>({});
   const [suggestMessage, setSuggestMessage] = useState<string | null>(null);
   const [pendingSuggestions, setPendingSuggestions] = useState<Record<string, number>>({});
+  const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const draftBudgetsRef = useRef(draftBudgets);
+  draftBudgetsRef.current = draftBudgets;
   const billsHref = personalFeaturePath("bill-reminders", surface);
 
-  const { items: saved, update, add, uid } = useAliLabPersist<BudgetRow>(
+  const { items: saved, update, add, uid, syncError } = useAliLabPersist<BudgetRow>(
     labCollections.budgets,
     "budgets",
     []
@@ -167,18 +173,34 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   }, [saved, month]);
 
   useEffect(() => {
-    const next: Record<string, string> = {};
-    for (const cat of PERSONAL_EXPENSE_CATEGORIES) {
-      const row = saved.find((b) => b.month === month && b.category === cat);
-      next[cat] = row && row.budgetChf > 0 ? String(row.budgetChf) : "";
-    }
-    for (const cat of PERSONAL_INCOME_CATEGORIES) {
-      const key = `income:${cat}`;
-      const row = saved.find((b) => b.month === month && b.category === key);
-      next[key] = row && row.budgetChf > 0 ? String(row.budgetChf) : "";
-    }
-    setDraftBudgets(next);
-  }, [saved, month]);
+    setDirtyKeys({});
+    for (const timer of Object.values(debounceTimers.current)) clearTimeout(timer);
+    debounceTimers.current = {};
+  }, [month]);
+
+  useEffect(() => {
+    setDraftBudgets((prev) => {
+      const next: Record<string, string> = { ...prev };
+      for (const cat of PERSONAL_EXPENSE_CATEGORIES) {
+        if (dirtyKeys[cat]) continue;
+        const row = saved.find((b) => b.month === month && b.category === cat);
+        next[cat] = row && row.budgetChf > 0 ? String(row.budgetChf) : "";
+      }
+      for (const cat of PERSONAL_INCOME_CATEGORIES) {
+        const key = `income:${cat}`;
+        if (dirtyKeys[key]) continue;
+        const row = saved.find((b) => b.month === month && b.category === key);
+        next[key] = row && row.budgetChf > 0 ? String(row.budgetChf) : "";
+      }
+      return next;
+    });
+  }, [saved, month, dirtyKeys]);
+
+  useEffect(() => {
+    return () => {
+      for (const timer of Object.values(debounceTimers.current)) clearTimeout(timer);
+    };
+  }, []);
 
   const persistMode = async (next: LabBudgetMode) => {
     setMode(next);
@@ -188,28 +210,38 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
     else await add(payload);
   };
 
+  const draftAmount = (category: string, fallback: number) => {
+    if (category in draftBudgets) {
+      const raw = draftBudgets[category] ?? "";
+      if (raw.trim() === "") return 0;
+      const parsed = parseBudgetAmount(raw);
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+    }
+    return fallback;
+  };
+
   const expenseRows = useMemo(() => {
     return PERSONAL_EXPENSE_CATEGORIES.map((cat) => {
       const savedRow = saved.find((b) => b.month === month && b.category === cat);
-      const budgetChf = savedRow?.budgetChf ?? 0;
+      const budgetChf = draftAmount(cat, savedRow?.budgetChf ?? 0);
       const spent = ledger.monthRows
         .filter((e) => e.kind === "expense" && e.expenseCat === cat)
         .reduce((s, e) => s + e.amount, 0);
       return { cat, budgetChf, spent, id: savedRow?.id };
     });
-  }, [saved, month, ledger.monthRows]);
+  }, [saved, month, ledger.monthRows, draftBudgets]);
 
   const incomeRows = useMemo(() => {
     return PERSONAL_INCOME_CATEGORIES.map((cat) => {
       const key = `income:${cat}`;
       const savedRow = saved.find((b) => b.month === month && b.category === key);
-      const budgetChf = savedRow?.budgetChf ?? 0;
+      const budgetChf = draftAmount(key, savedRow?.budgetChf ?? 0);
       const received = ledger.monthRows
         .filter((i) => i.kind === "income" && i.incomeCat === cat)
         .reduce((s, i) => s + i.amount, 0);
       return { cat, key, budgetChf, received, id: savedRow?.id };
     });
-  }, [saved, month, ledger.monthRows]);
+  }, [saved, month, ledger.monthRows, draftBudgets]);
 
   const totalExpenseBudget = expenseRows.reduce((s, r) => s + r.budgetChf, 0);
   const totalSpent = expenseRows.reduce((s, r) => s + r.spent, 0);
@@ -227,10 +259,16 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
     const payload = { month, category, budgetChf, mode };
     if (existing) await update(existing.id, payload);
     else await add(payload);
+    setDirtyKeys((prev) => {
+      if (!prev[category]) return prev;
+      const next = { ...prev };
+      delete next[category];
+      return next;
+    });
   };
 
   const commitBudgetDraft = (category: string) => {
-    const raw = draftBudgets[category] ?? "";
+    const raw = draftBudgetsRef.current[category] ?? "";
     if (raw.trim() === "") {
       void setBudget(category, 0);
       return;
@@ -240,18 +278,27 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
     void setBudget(category, parsed);
   };
 
+  const scheduleCommit = (category: string) => {
+    if (debounceTimers.current[category]) clearTimeout(debounceTimers.current[category]);
+    debounceTimers.current[category] = setTimeout(() => {
+      commitBudgetDraft(category);
+    }, BUDGET_DEBOUNCE_MS);
+  };
+
   const displayBudget = (category: string, fallback: number) =>
     draftBudgets[category] ?? (fallback > 0 ? String(fallback) : "");
 
   /** Manual edits take priority — drop any pending (unsaved) suggestion for that field. */
   const updateDraft = (category: string, value: string) => {
     setDraftBudgets((prev) => ({ ...prev, [category]: value }));
+    setDirtyKeys((prev) => ({ ...prev, [category]: true }));
     setPendingSuggestions((prev) => {
       if (!(category in prev)) return prev;
       const next = { ...prev };
       delete next[category];
       return next;
     });
+    scheduleCommit(category);
   };
 
   const stagePending = (pending: Record<string, number>, verb: string, emptyMessage: string) => {
@@ -260,6 +307,11 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
       setDraftBudgets((prev) => {
         const next = { ...prev };
         for (const [key, value] of Object.entries(pending)) next[key] = String(value);
+        return next;
+      });
+      setDirtyKeys((prev) => {
+        const next = { ...prev };
+        for (const key of Object.keys(pending)) next[key] = true;
         return next;
       });
       setPendingSuggestions(pending);
@@ -348,6 +400,11 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
         </select>
         {finLoading && <span className="text-[var(--pp-on-surface-variant)]">{t("loadingLedger")}</span>}
         {!uid && <span className="text-[var(--pp-primary)]">{t("localBudgetCache")}</span>}
+        {syncError ? (
+          <span className="text-[var(--pp-error)]" title={syncError}>
+            Saved on this device — cloud sync failed
+          </span>
+        ) : null}
         <button
           type="button"
           onClick={applySuggestions}
@@ -409,21 +466,32 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold truncate">{t(personalIncomeLabelKey(row.cat))}</p>
-                        <p className="text-[11px] text-[var(--pp-on-surface-variant)]">{t("expected")}</p>
+                        <p className="text-[11px] text-[var(--pp-on-surface-variant)]">
+                          {t("expected")} · {t("received")}: {formatChfDisplay(row.received, { prefix: false })}
+                        </p>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-bold pp-tabular">{formatChfDisplay(row.received)}</p>
+                      <p className="text-sm font-bold pp-tabular text-[var(--pp-primary)]">
+                        {formatChfDisplay(row.budgetChf)}
+                      </p>
                       <input
                         type="text"
                         inputMode="decimal"
-                        className="pp-input w-24 text-right text-xs py-0.5 px-1 mt-1"
+                        className="pp-input w-28 text-right text-xs py-0.5 px-1 mt-1"
                         value={displayBudget(row.key, row.budgetChf)}
                         onChange={(e) => updateDraft(row.key, e.target.value)}
                         onBlur={() => commitBudgetDraft(row.key)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            (e.target as HTMLInputElement).blur();
+                          }
+                        }}
                         aria-label={t(personalIncomeLabelKey(row.cat))}
+                        placeholder="0.00"
                       />
-                      <div className="pp-progress-track h-1 w-24 ml-auto mt-1">
+                      <div className="pp-progress-track h-1 w-28 ml-auto mt-1">
                         <div className="h-full bg-[var(--pp-secondary)]" style={{ width: `${pct}%` }} />
                       </div>
                     </div>

@@ -19,8 +19,8 @@ function priorMonths(currentMonth: string, lookback: number): string[] {
   return Array.from({ length: lookback }, (_, i) => shiftMonth(currentMonth, -(i + 1)));
 }
 
-function roundToNearest5(n: number): number {
-  return Math.round(n / 5) * 5;
+function roundToCents(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 /**
@@ -48,7 +48,7 @@ function averageByCategory<T extends { date: string }, C extends string>(
 
   const result: Partial<Record<C, number>> = {};
   for (const [cat, total] of sums) {
-    result[cat] = roundToNearest5(total / activeMonths.size);
+    result[cat] = roundToCents(total / activeMonths.size);
   }
   return result;
 }

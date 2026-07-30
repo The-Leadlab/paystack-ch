@@ -200,9 +200,11 @@ const EditableLineItemsTable: React.FC<{
     next[idx] = { ...next[idx], [field]: value, isHumanVerified: false };
 
     if (field === 'description' && value) {
-      const detectedCategory = detectCategory(value);
+      const detectedCategory = detectCategory(value, undefined);
       if (detectedCategory && detectedCategory !== 'OTHER') {
         next[idx].category = detectedCategory;
+      } else if (!next[idx].category || next[idx].category === 'OTHER') {
+        next[idx].category = 'SUPPLIERS';
       }
       next[idx] = applyInferredType(next[idx]);
     } else if (field === 'category') {

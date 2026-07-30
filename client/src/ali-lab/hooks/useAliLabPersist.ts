@@ -17,6 +17,7 @@ export function useAliLabPersist<T extends { id: string }>(
   const uid = user?.uid;
   const [items, setItems] = useState<T[]>(seed);
   const [loading, setLoading] = useState(true);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   /** Callers often pass an inline `seed` literal (new reference every render); read via ref
    * so it doesn't sit in `refresh`'s deps and destabilize its identity. */
@@ -25,9 +26,8 @@ export function useAliLabPersist<T extends { id: string }>(
 
   const localKey = `ali-lab-${localSuffix}-${uid || "anon"}`;
 
-  const persistLocal = useCallback(
+  const writeLocal = useCallback(
     (next: T[]) => {
-      setItems(next);
       try {
         localStorage.setItem(localKey, JSON.stringify(next));
       } catch {
@@ -37,21 +37,47 @@ export function useAliLabPersist<T extends { id: string }>(
     [localKey]
   );
 
+  const persistLocal = useCallback(
+    (next: T[]) => {
+      setItems(next);
+      writeLocal(next);
+    },
+    [writeLocal]
+  );
+
+  const readLocal = useCallback((): T[] => {
+    try {
+      const local = JSON.parse(localStorage.getItem(localKey) || "[]") as T[];
+      return Array.isArray(local) ? local : [];
+    } catch {
+      return [];
+    }
+  }, [localKey]);
+
   const refresh = useCallback(async () => {
     setLoading(true);
-    const list = await loadLabDocs<T>(uid, collectionName, localSuffix);
-    if (list.length > 0) {
-      setItems(list);
-    } else {
-      try {
-        const local = JSON.parse(localStorage.getItem(localKey) || "[]") as T[];
-        setItems(local.length > 0 ? local : seedRef.current);
-      } catch {
+    setSyncError(null);
+    const local = readLocal();
+    try {
+      const remote = await loadLabDocs<T>(uid, collectionName, localSuffix);
+      if (remote.length > 0) {
+        // Prefer remote, but keep any newer local-only rows (cloud write may have failed).
+        const remoteIds = new Set(remote.map((r) => r.id));
+        const localOnly = local.filter((r) => !remoteIds.has(r.id));
+        const merged = [...remote, ...localOnly];
+        setItems(merged);
+        writeLocal(merged);
+      } else if (local.length > 0) {
+        setItems(local);
+      } else {
         setItems(seedRef.current);
       }
+    } catch (e) {
+      setSyncError(e instanceof Error ? e.message : String(e));
+      setItems(local.length > 0 ? local : seedRef.current);
     }
     setLoading(false);
-  }, [uid, collectionName, localSuffix, localKey]);
+  }, [uid, collectionName, localSuffix, localKey, readLocal, writeLocal]);
 
   useEffect(() => {
     void refresh();
@@ -59,53 +85,73 @@ export function useAliLabPersist<T extends { id: string }>(
 
   const add = useCallback(
     async (data: Omit<T, "id">) => {
-      const id = await addLabDoc(uid, collectionName, data as Record<string, unknown>);
-      const row = { id, ...data } as T;
+      const tempId =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `local_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+      let id = tempId;
+      setSyncError(null);
+
+      // Optimistic local write first so refresh never loses Expected budgets.
+      const optimistic = { id, ...data } as T;
       setItems((prev) => {
-        const next = [...prev, row];
-        try {
-          localStorage.setItem(localKey, JSON.stringify(next));
-        } catch {
-          /* ignore */
-        }
+        const next = [...prev, optimistic];
+        writeLocal(next);
         return next;
       });
-      return row;
+
+      try {
+        id = await addLabDoc(uid, collectionName, data as Record<string, unknown>);
+        if (id !== tempId) {
+          setItems((prev) => {
+            const next = prev.map((x) => (x.id === tempId ? ({ ...x, id } as T) : x));
+            writeLocal(next);
+            return next;
+          });
+        }
+      } catch (e) {
+        setSyncError(e instanceof Error ? e.message : String(e));
+        // Keep local row with tempId
+      }
+
+      return { id, ...data } as T;
     },
-    [uid, collectionName, localKey, refresh]
+    [uid, collectionName, writeLocal]
   );
 
   const update = useCallback(
     async (id: string, patch: Partial<T>) => {
-      if (uid && db) await updateLabDoc(uid, collectionName, id, patch as Record<string, unknown>);
+      setSyncError(null);
       setItems((prev) => {
         const next = prev.map((x) => (x.id === id ? { ...x, ...patch } : x));
-        try {
-          localStorage.setItem(localKey, JSON.stringify(next));
-        } catch {
-          /* ignore */
-        }
+        writeLocal(next);
         return next;
       });
+      try {
+        if (uid && db) await updateLabDoc(uid, collectionName, id, patch as Record<string, unknown>);
+      } catch (e) {
+        setSyncError(e instanceof Error ? e.message : String(e));
+      }
     },
-    [uid, collectionName, localKey, db]
+    [uid, collectionName, writeLocal]
   );
 
   const remove = useCallback(
     async (id: string) => {
-      if (uid && db) await removeLabDoc(uid, collectionName, id);
+      setSyncError(null);
       setItems((prev) => {
         const next = prev.filter((x) => x.id !== id);
-        try {
-          localStorage.setItem(localKey, JSON.stringify(next));
-        } catch {
-          /* ignore */
-        }
+        writeLocal(next);
         return next;
       });
+      try {
+        if (uid && db) await removeLabDoc(uid, collectionName, id);
+      } catch (e) {
+        setSyncError(e instanceof Error ? e.message : String(e));
+      }
     },
-    [uid, collectionName, localKey, db]
+    [uid, collectionName, writeLocal]
   );
 
-  return { items, loading, refresh, add, update, remove, setItems: persistLocal, uid };
+  return { items, loading, refresh, add, update, remove, setItems: persistLocal, uid, syncError };
 }

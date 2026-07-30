@@ -1,6 +1,8 @@
-/** Swiss CHF display for personal plan UI (de-CH apostrophe separator). */
+/** Swiss CHF display for personal plan UI (de-CH apostrophe separator).
+ * Default: always show centimes so 1499.50 never becomes 1500.
+ */
 export function formatChfDisplay(n: number, opts?: { decimals?: boolean; prefix?: boolean }): string {
-  const decimals = opts?.decimals ?? false;
+  const decimals = opts?.decimals !== false;
   const formatted = n.toLocaleString("de-CH", {
     minimumFractionDigits: decimals ? 2 : 0,
     maximumFractionDigits: decimals ? 2 : 0,

@@ -1094,7 +1094,7 @@ CRITICAL RULES:
 1. Identify document type accurately
 2. Determine if this is INCOME (revenue, sales, deposits) or EXPENSE (bills, invoices to pay, purchases)
 3. For INCOME documents: Set expenseCategory to "REVENUE" or "SALES"
-4. For EXPENSE documents: Categorize specifically (e.g., "FOOD_SUPPLIES", "RENT", "UTILITIES")
+4. For EXPENSE documents: ALWAYS assign a precise category — NEVER use "OTHER" when you can classify. Prefer one of: FOOD_SUPPLIES, BEVERAGES, RESTAURANT_SUPPLIES, PACKAGING, CLEANING, MAINTENANCE, RENT, UTILITIES, INSURANCE, TELECOM, BANK_FEES, ACCOUNTING, MARKETING, DELIVERY, OFFICE_SUPPLIES, LICENSES, TAXES, PAYROLL, PAYROLL_TAXES, SUPPLIERS, BILLS. Use issuer name + line items to decide (e.g. Transgourmet/Aligro → FOOD_SUPPLIES; Swisscom → TELECOM; landlord → RENT).
 5. Extract key financial data (amounts, dates, issuer)
 6. For bank statements: extract ALL transactions into lineItems
 7. For payslips: extract employee/employer info and components
@@ -1108,7 +1108,7 @@ CRITICAL RULES:
 15. NEVER cap extracted invoices to 2 or 3; include EVERY distinct invoice found across ALL pages (a 7-page binder may have 5–7 invoices).
 16. Extract only values visible in the document. Never invent issuer names, dates, VAT, or totals.
 17. If a required field is not visible, use safe defaults (empty string for text, 0 for numbers, pageRange="" if unknown) and continue — never drop an invoice because one field is hard to read.
-18. Prefer exact numeric copying from document totals over inferred arithmetic when both are present.
+18. Prefer exact numeric copying from document totals over inferred arithmetic when both are present. NEVER round money to whole francs — keep centimes exactly as printed (e.g. 1499.50 stays 1499.50, not 1500).
 19. Keep sign consistency: INCOME amounts positive, EXPENSE amounts positive (classification carries direction).
 20. Always return valid JSON that strictly matches the schema and contains no markdown/comments.
 21. MULTI-INVOICE PDFs: If subDocuments has 2+ entries, top-level totalAmount MUST equal the sum of every subDocument.totalAmount (gross). Top-level vatAmount and netAmount MUST equal the sums of sub-invoice VAT and net respectively. Do not use only the first page total as the document total.

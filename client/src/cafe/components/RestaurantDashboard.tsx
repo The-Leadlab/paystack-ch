@@ -32,12 +32,12 @@ import {
 } from '../services/swissPayrollService';
 import { SwissAccountCodeBadge, SwissAccountCodeField } from './SwissAccountCodeField';
 import { suggestSwissAccountCode } from '@shared/suggestSwissAccountCode';
-import { classifyLineItemAccountCode } from '../services/swissAccountClassifierService';
 import type { FinancialData } from '../types';
 import { loadReportSchedule, saveReportSchedule } from '../lib/reportScheduleClient';
 import type { ReportScheduleCadenceDays } from '@shared/reportSchedule';
 import { RevenueLedgerTable } from './RevenueLedgerTable';
 import { mapAiExpenseCategoryToLedger } from '../lib/mapExpenseCategory';
+import { postLedgerFromFinancialData } from '../lib/postLedgerFromFinancialData';
 import { evaluateVatReview } from '../lib/vatReview';
 import { filterBusinessExpenses } from '../lib/personalBleedFilter';
 
@@ -412,29 +412,6 @@ export function RestaurantDashboard() {
     }
   };
 
-  const resolveDocumentAccountCode = (
-    data: FinancialData,
-    opts: { kind: 'income' | 'expense'; category?: string; description?: string; isIncome?: boolean }
-  ): string | undefined => {
-    const ai = data.swissAccountClassification;
-    if (ai?.account_code && !ai.splits?.length) {
-      return ai.account_code;
-    }
-    if (opts.description) {
-      return classifyLineItemAccountCode({
-        vendor: data.issuer,
-        description: opts.description,
-        isIncome: opts.isIncome ?? opts.kind === 'income',
-      });
-    }
-    return suggestSwissAccountCode({
-      kind: opts.kind,
-      category: opts.category,
-      incomeType: opts.kind === 'income' ? 'SALES' : undefined,
-      description: `${data.issuer || ''} ${data.notes || ''}`,
-    });
-  };
-
   const handleDocumentData = async (data: FinancialData, fileName: string, fileHash?: string, fileRaw?: File, persistedDocumentId?: string) => {
     console.log('ðŸ”µ handleDocumentData called:', { fileName, hasData: !!data, currentSession: currentSession?.id, persistedDocumentId });
 
@@ -492,10 +469,6 @@ export function RestaurantDashboard() {
       }
     }
 
-    const date = data.date || new Date().toISOString().split('T')[0];
-    const amount = data.amountInCHF || data.totalAmount || 0;
-    const docType = data.documentType;
-
     // AI processing has now concluded successfully and the document's own date is known — back
     // up to Google Drive directly into that week's subfolder in a single upload.
     const docForDrive = documents.find((d) => d.id === documentId);
@@ -518,73 +491,30 @@ export function RestaurantDashboard() {
         }
       })();
     }
-    
-    console.log('ðŸ“Š Processing document type:', docType, 'Amount:', amount);
-    
-    // Check if this is revenue based on category or document type
-    const isRevenue = data.expenseCategory?.toUpperCase().includes('REVENUE') || 
-                      data.expenseCategory?.toUpperCase().includes('SALES') ||
-                      docType === 'Ticket/Receipt' ||
-                      docType === 'Z2 Multi-Ticket Sheet';
-    
-    if (docType === 'Bank Statement' || docType === 'Bank Deposit') {
-      console.log('ðŸ¦ Processing bank statement with', data.lineItems?.length || 0, 'line items');
-      if (data.lineItems) {
-        for (const item of data.lineItems) {
-          if (item.type === 'INCOME') {
-            console.log('âž• Adding income:', item.amount, item.description);
-            // Extract VAT if available (typically 8.1% in Switzerland).
-            const vatAmount = data.vatAmount || 0;
-            const incCode = resolveDocumentAccountCode(data, {
-              kind: 'income',
-              description: item.description || fileName,
-              isIncome: true,
-            });
-            await addIncome(date, 'SALES', item.amount, item.description || fileName, currentSession.id, documentId, vatAmount, incCode);
-          } else if (item.type === 'EXPENSE') {
-            console.log('âž– Adding expense:', item.amount, item.description);
-            const description = item.description || data.issuer || fileName;
-            const vatAmount = data.vatAmount || 0;
-            const expCode = resolveDocumentAccountCode(data, {
-              kind: 'expense',
-              category: mapAiExpenseCategoryToLedger({
-                expenseCategory: item.description,
-                issuer: data.issuer,
-                description: item.description,
-                documentType: docType,
-              }),
-              description,
-            });
-            await addExpense(
-              date,
-              mapAiExpenseCategoryToLedger({
-                expenseCategory: item.description,
-                issuer: data.issuer,
-                description: item.description,
-                documentType: docType,
-              }),
-              item.amount,
-              description,
-              currentSession.id,
-              undefined,
-              documentId,
-              vatAmount,
-              expCode
-            );
-          }
-        }
-      }
-    } else if (docType === 'Pay Slip') {
+
+    // Always replace linked ledger rows so documents stay in sync with income/expenses
+    try {
+      await deleteFinancesByDocumentId(documentId);
+    } catch (syncErr) {
+      console.warn('Could not clear prior ledger rows for document:', syncErr);
+    }
+
+    const writers = { addIncome, addExpense };
+    const posted = await postLedgerFromFinancialData(
+      writers,
+      data,
+      fileName,
+      currentSession.id,
+      documentId
+    );
+
+    // Payslip employee upsert (side effect kept outside ledger helper)
+    if (data.documentType === 'Pay Slip') {
       const employeeName = data.paySlip?.employee?.name || 'Unknown Employee';
       const settlement = resolvePayrollSettlementMode(data);
       const payrollLines = buildPayrollExpenseLines(data, employeeName, settlement);
       const netForEmployee =
-        payrollLines.find((l) => l.category === 'PAYROLL')?.amount ??
-        payrollLines[0]?.amount ??
-        0;
-
-      console.log('ðŸ’° Processing payslip:', employeeName, settlement, payrollLines);
-
+        payrollLines.find((l) => l.category === 'PAYROLL')?.amount ?? payrollLines[0]?.amount ?? 0;
       try {
         const existingEmployee = employees.find(
           (emp) => emp.name.toLowerCase() === employeeName.toLowerCase()
@@ -595,65 +525,9 @@ export function RestaurantDashboard() {
       } catch (empError) {
         console.error('âš ï¸ Error managing employee:', empError);
       }
-
-      for (const line of payrollLines) {
-        const payrollCode = suggestSwissAccountCode({
-          kind: 'expense',
-          category: line.category,
-          description: line.description,
-        });
-        await addExpense(
-          date,
-          line.category,
-          line.amount,
-          line.description,
-          currentSession.id,
-          undefined,
-          documentId,
-          undefined,
-          payrollCode
-        );
-      }
-    } else if (isRevenue && amount > 0) {
-      console.log('ðŸ’µ Adding revenue:', amount);
-      const description = data.issuer || data.notes || fileName;
-      const vatAmount = data.vatAmount || 0;
-      const incCode = resolveDocumentAccountCode(data, { kind: 'income', description });
-      await addIncome(date, 'SALES', amount, description, currentSession.id, documentId, vatAmount, incCode);
-    } else if (amount > 0) {
-      console.log('ðŸ’¸ Adding expense:', amount);
-      const category = mapAiExpenseCategoryToLedger({
-        expenseCategory: data.expenseCategory,
-        issuer: data.issuer,
-        description: data.notes,
-        notes: data.notes,
-        documentType: docType,
-      });
-      const description = data.issuer || data.notes || fileName;
-      const vatAmount = data.vatAmount || 0;
-      const splits = data.swissAccountClassification?.splits;
-      if (splits?.length) {
-        for (const split of splits) {
-          const splitAmount = split.amount ?? amount / splits.length;
-          await addExpense(
-            date,
-            category,
-            splitAmount,
-            split.description || description,
-            currentSession.id,
-            undefined,
-            documentId,
-            vatAmount / splits.length,
-            split.account_code
-          );
-        }
-      } else {
-        const expCode = resolveDocumentAccountCode(data, { kind: 'expense', category, description });
-        await addExpense(date, category, amount, description, currentSession.id, undefined, documentId, vatAmount, expCode);
-      }
     }
-    
-    console.log('âœ… Document processing complete:', fileName);
+
+    console.log('âœ… Document processing complete:', fileName, posted);
   };
 
   const handleNavigateToDocument = (doc: ProcessedDocument) => {
@@ -670,90 +544,67 @@ export function RestaurantDashboard() {
     }
 
     try {
-      // Delete all existing income/expenses linked to this document
       console.log('ðŸ—‘ï¸ Deleting old income/expenses for document:', documentId);
       const removed = await deleteFinancesByDocumentId(documentId);
       console.log(`âœ… Deleted ${removed.income} income and ${removed.expenses} expense entries`);
+
+      const fileName =
+        documents.find((d) => d.id === documentId)?.fileName || 'Document';
+      const posted = await postLedgerFromFinancialData(
+        { addIncome, addExpense },
+        newData,
+        fileName,
+        currentSession.id,
+        documentId
+      );
       
-      // Re-create income/expenses from updated document data
-      const date = newData.date || new Date().toISOString().split('T')[0];
-      const amount = newData.amountInCHF || newData.totalAmount || 0;
-      const docType = newData.documentType;
-      
-      console.log('ðŸ“Š Re-processing document type:', docType, 'Amount:', amount);
-      
-      // Check if this is revenue based on category or document type
-      const isRevenue = newData.expenseCategory?.toUpperCase().includes('REVENUE') || 
-                        newData.expenseCategory?.toUpperCase().includes('SALES') ||
-                        docType === 'Ticket/Receipt' ||
-                        docType === 'Z2 Multi-Ticket Sheet';
-      
-      if (docType === 'Bank Statement' || docType === 'Bank Deposit') {
-        console.log('ðŸ¦ Re-processing bank statement with', newData.lineItems?.length || 0, 'line items');
-        if (newData.lineItems) {
-          for (const item of newData.lineItems) {
-            if (item.type === 'INCOME') {
-              console.log('âž• Re-adding income:', item.amount, item.description);
-              await addIncome(date, 'SALES', item.amount, item.description || 'Bank Statement', currentSession.id, documentId);
-            } else if (item.type === 'EXPENSE') {
-              console.log('âž– Re-adding expense:', item.amount, item.description);
-              const description = item.description || newData.issuer || 'Bank Statement';
-              await addExpense(
-                date,
-                mapAiExpenseCategoryToLedger({
-                  expenseCategory: item.description,
-                  issuer: newData.issuer,
-                  description: item.description,
-                  documentType: docType,
-                }),
-                item.amount,
-                description,
-                currentSession.id,
-                undefined,
-                documentId
-              );
-            }
-          }
-        }
-    } else if (docType === 'Pay Slip') {
-        const employeeName = newData.paySlip?.employee?.name || 'Unknown Employee';
-        const settlement = resolvePayrollSettlementMode(newData);
-        const payrollLines = buildPayrollExpenseLines(newData, employeeName, settlement);
-        console.log('ðŸ’° Re-processing payslip:', employeeName, settlement, payrollLines);
-        for (const line of payrollLines) {
-          await addExpense(
-            date,
-            line.category,
-            line.amount,
-            line.description,
-            currentSession.id,
-            undefined,
-            documentId
-          );
-        }
-      } else if (isRevenue && amount > 0) {
-        console.log('ðŸ’µ Re-adding revenue:', amount);
-        const description = newData.issuer || newData.notes || 'Document';
-        await addIncome(date, 'SALES', amount, description, currentSession.id, documentId);
-      } else if (amount > 0) {
-        console.log('ðŸ’¸ Re-adding expense:', amount);
-        const category = mapAiExpenseCategoryToLedger({
-          expenseCategory: newData.expenseCategory,
-          issuer: newData.issuer,
-          description: newData.notes,
-          notes: newData.notes,
-          documentType: docType,
-        });
-        const description = newData.issuer || newData.notes || 'Document';
-        await addExpense(date, category, amount, description, currentSession.id, undefined, documentId);
-      }
-      
-      console.log('âœ… Document update complete');
+      console.log('âœ… Document update complete', posted);
       alert(t('alertDocumentUpdated'));
     } catch (error) {
       console.error('âŒ Error updating document:', error);
       alert(t('alertUpdateDocumentFailed').replace('{msg}', errMsg(error)));
     }
+  };
+
+  /** Rebuild income/expense rows from completed documents (fixes orphan ledger / missing sync). */
+  const handleResyncLedgerFromDocuments = async () => {
+    if (!currentSession) {
+      alert(t('alertSelectSessionFirst'));
+      return;
+    }
+    const completed = documents.filter(
+      (d) => d.data && (d.status === 'completed' || d.status === 'needs_review')
+    );
+    if (completed.length === 0) {
+      alert(t('alertNoDocumentsToSync') || 'No completed documents to sync.');
+      return;
+    }
+    if (
+      !confirm(
+        (t('alertResyncLedgerConfirm') ||
+          'Rebuild income & expenses from {n} completed documents for this view? Linked ledger rows will be replaced.')
+          .replace('{n}', String(completed.length))
+      )
+    ) {
+      return;
+    }
+    let ok = 0;
+    for (const doc of completed) {
+      try {
+        await deleteFinancesByDocumentId(doc.id);
+        await postLedgerFromFinancialData(
+          { addIncome, addExpense },
+          doc.data!,
+          doc.fileName,
+          currentSession.id,
+          doc.id
+        );
+        ok += 1;
+      } catch (e) {
+        console.error('Resync failed for', doc.fileName, e);
+      }
+    }
+    alert((t('alertResyncLedgerDone') || 'Synced {ok}/{total} documents to the ledger.').replace('{ok}', String(ok)).replace('{total}', String(completed.length)));
   };
 
   const switchTab = (tab: Tab) => {
@@ -1124,6 +975,7 @@ export function RestaurantDashboard() {
               onDocumentQueued={handleQueueDocument}
               onDocumentData={handleDocumentData}
               onDocumentUpdated={handleDocumentUpdated}
+              onResyncLedger={handleResyncLedgerFromDocuments}
               language={language}
               documents={documents}
               updateDocument={updateDocumentData}
@@ -1696,16 +1548,16 @@ function IncomeExpenseSection({
                 // View Mode
                 <div className="flex justify-between items-start">
                   <button
-                    onClick={() => onItemClick && item.document_id && onItemClick(item)}
-                    className={`flex-1 min-w-0 text-left ${item.document_id ? 'cursor-pointer hover:bg-cdlp-gold/5 -m-1 p-1 rounded transition-colors' : ''}`}
-                    disabled={!item.document_id}
+                    onClick={() => onItemClick?.(item)}
+                    className="flex-1 min-w-0 text-left cursor-pointer hover:bg-cdlp-gold/5 -m-1 p-1 rounded transition-colors"
+                    title={t('linkedToDocument')}
                   >
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-bold text-xs md:text-sm truncate">
                         {isIncome ? item.type : item.category}
                       </p>
                       <SwissAccountCodeBadge konto={item.account_code} lang={language} />
-                      {item.document_id && (
+                      {(item.document_id || item.description) && (
                         <FileText className="w-3 h-3 text-cdlp-gold flex-shrink-0" title={t('linkedToDocument')} />
                       )}
                     </div>
@@ -1718,16 +1570,22 @@ function IncomeExpenseSection({
                     <p className={`font-black text-sm md:text-base text-${colorClass}-500`}>
                       {formatChf(item.amount)}
                     </p>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={() => startEdit(item)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startEdit(item);
+                        }}
                         className="p-1 hover:bg-cdlp-gold/20 rounded transition-colors"
                         title={t('dashActionEdit')}
                       >
                         <Edit2 className="w-3 h-3 text-cdlp-gold" />
                       </button>
                       <button
-                        onClick={() => onDelete(item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void onDelete(item.id);
+                        }}
                         className="p-1 hover:bg-red-500/20 rounded transition-colors"
                         title={t('dashActionDelete')}
                       >
@@ -1760,19 +1618,35 @@ function useLiveClock(): string {
   return clock;
 }
 
-function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument }: any) {
+function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, onResyncLedger, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument }: any) {
   const liveClock = useLiveClock();
   const vatFlowBase = Math.max(vatReceived, vatPaid, Math.abs(vatBalance), 1);
 
   const handleItemClick = (item: any) => {
-    if (item.document_id && onNavigateToDocument) {
-      const doc = documents.find((d: any) => d.id === item.document_id);
+    if (!onNavigateToDocument) return;
+    if (item.document_id) {
+      const doc =
+        documents.find((d: any) => d.id === item.document_id) ||
+        documents.find((d: any) => d.persistedDocumentId === item.document_id);
       if (doc) {
         onNavigateToDocument(doc);
-      } else {
-        alert(t('alertDocumentNotFound'));
+        return;
       }
     }
+    // Fallback: match by description ≈ issuer / fileName for older rows missing document_id
+    const needle = String(item.description || '').toLowerCase().trim();
+    if (needle.length >= 3) {
+      const fuzzy = documents.find((d: any) => {
+        const issuer = String(d.data?.issuer || '').toLowerCase();
+        const name = String(d.fileName || '').toLowerCase();
+        return (issuer && needle.includes(issuer.slice(0, 12))) || (name && needle.includes(name.slice(0, 12)));
+      });
+      if (fuzzy) {
+        onNavigateToDocument(fuzzy);
+        return;
+      }
+    }
+    alert(t('alertDocumentNotFound'));
   };
 
   return (
@@ -1860,7 +1734,17 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
         </div>
       )}
       {currentSession && (
-        <div>
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => void onResyncLedger?.()}
+              className="text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded border border-cdlp-border text-cdlp-muted hover:text-cdlp-gold hover:border-cdlp-gold transition-colors"
+              title={t('dashResyncLedgerHint') || 'Rebuild income/expenses from completed documents'}
+            >
+              {t('dashResyncLedger') || 'Sync ledger from documents'}
+            </button>
+          </div>
           <DocumentProcessor 
             documents={documents}
             updateDocument={updateDocument}
@@ -1963,13 +1847,28 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                 console.log('User confirmed conversion');
                 console.log('Calling addExpense with params:', {
                   date: item.date,
-                  category: 'OTHER',
+                  category: mapAiExpenseCategoryToLedger({
+                    expenseCategory: item.type,
+                    description: item.description || item.type,
+                  }),
                   amount: item.amount,
                   description: item.description || item.type,
                   sessionId: item.session_id
                 });
                 
-                const newExpense = await addExpense(item.date, 'OTHER', item.amount, item.description || item.type, item.session_id);
+                const category = mapAiExpenseCategoryToLedger({
+                  expenseCategory: item.type,
+                  description: item.description || item.type,
+                });
+                const newExpense = await addExpense(
+                  item.date,
+                  category,
+                  item.amount,
+                  item.description || item.type,
+                  item.session_id,
+                  undefined,
+                  item.document_id
+                );
                 console.log('addExpense returned:', newExpense);
                 
                 if (newExpense) {

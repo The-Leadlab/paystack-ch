@@ -1,6 +1,7 @@
 /** Map AI / detector fine categories + issuer text → business ledger enum. */
 
 import type { Expense } from '../types';
+import { detectCategory } from '../services/categoryDetectionService';
 
 export type LedgerExpenseCategory = Expense['category'];
 
@@ -117,6 +118,10 @@ export function mapAiExpenseCategoryToLedger(opts: {
 
   if (opts.documentType?.toLowerCase().includes('pay')) return 'PAYROLL';
 
+  // Fine AI categories (FOOD_SUPPLIES, RENT, …) → ledger enum first
+  const fromFine = mapFineCategoryToLedger((opts.expenseCategory || '').toUpperCase().replace(/\s+/g, '_'));
+  if (fromFine !== 'OTHER') return fromFine;
+
   if (includesAny(cat, PAYROLL_TAX_HINTS) || includesAny(blob, PAYROLL_TAX_HINTS)) {
     return 'PAYROLL_TAXES';
   }
@@ -136,5 +141,50 @@ export function mapAiExpenseCategoryToLedger(opts: {
   if (cat === 'payroll') return 'PAYROLL';
   if (cat === 'payroll taxes' || cat === 'payroll_taxes') return 'PAYROLL_TAXES';
 
+  // Keyword detector on issuer + description before OTHER
+  const detected = detectCategory(
+    `${opts.description || ''} ${opts.notes || ''}`,
+    opts.issuer || undefined
+  );
+  const fromDetector = mapFineCategoryToLedger(detected);
+  if (fromDetector !== 'OTHER') return fromDetector;
+
+  // Restaurant default: supplier invoice when document looks like a purchase invoice
+  const dtype = (opts.documentType || '').toLowerCase();
+  if (dtype.includes('invoice') || dtype.includes('facture') || dtype.includes('receipt')) {
+    return 'SUPPLIERS';
+  }
+
+  return 'OTHER';
+}
+
+function mapFineCategoryToLedger(fine: string): LedgerExpenseCategory {
+  const c = fine.toUpperCase();
+  if (c === 'SALARY' || c === 'PAYROLL') return 'PAYROLL';
+  if (c === 'PAYROLL_TAXES' || c === 'TAXES') return 'PAYROLL_TAXES';
+  if (
+    c === 'FOOD_SUPPLIES' ||
+    c === 'BEVERAGES' ||
+    c === 'RESTAURANT_SUPPLIES' ||
+    c === 'PACKAGING' ||
+    c === 'CLEANING' ||
+    c === 'DELIVERY'
+  ) {
+    return 'SUPPLIERS';
+  }
+  if (
+    c === 'RENT' ||
+    c === 'UTILITIES' ||
+    c === 'INSURANCE' ||
+    c === 'TELECOM' ||
+    c === 'BANK_FEES' ||
+    c === 'ACCOUNTING' ||
+    c === 'MARKETING' ||
+    c === 'OFFICE_SUPPLIES' ||
+    c === 'LICENSES' ||
+    c === 'MAINTENANCE'
+  ) {
+    return 'BILLS';
+  }
   return 'OTHER';
 }
