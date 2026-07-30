@@ -17,6 +17,11 @@ import {
 } from "../types";
 import { prepareDocumentForAi } from "../lib/prepareDocumentForAi";
 import { inferLineItemType, matchLineItemTypeFromAi } from "./categoryDetectionService";
+import {
+  normalizeIsoDate,
+  resolveDocumentVatAmount,
+  splitIssuerAndReference,
+} from "../lib/swissDocumentNormalize";
 
 const Type = {
   ARRAY: "ARRAY",
@@ -278,8 +283,8 @@ MANDATORY:
 2. Return one subDocuments entry per DISTINCT invoice/receipt (different issuer, invoice number, or dated block). Do NOT create a subDocuments entry per product line item — line items belong inside an invoice, not as separate invoices.
 3. NEVER stop after the first page or first two invoices.
 4. If one invoice spans multiple pages, merge into ONE entry with pageRange like "3-4".
-5. Extract per-invoice: issuer (supplier name), invoice/reference number if visible (append to issuer as "Name | Ref 12345"), date, pageRange, originalCurrency, netAmount, vatAmount, vatRate, totalAmount (gross including VAT).
-6. lineItems: one EXPENSE row per sub-invoice (amount = that invoice gross total, description = issuer + pages).
+5. Extract per-invoice: issuer = supplier trade name ONLY (never append invoice/ref numbers to issuer). Put invoice/ref in documentNumber when available. date = printed invoice date converted to YYYY-MM-DD (Swiss DD.MM.YYYY → YYYY-MM-DD). NEVER use today's/upload date. Also extract pageRange, originalCurrency, netAmount, vatAmount (TVA CHF), vatRate, totalAmount (gross TTC including VAT). If TVA is printed in a multi-rate table, sum column TVA into vatAmount.
+6. lineItems: one EXPENSE row per sub-invoice (amount = that invoice gross total, description = clean issuer name + pages — no "| REF").
 7. After extraction, verify detectedInvoiceCount matches len(subDocuments); if not, fix before returning.
 8. JSON only: no raw newlines or unescaped " inside strings; keep descriptions short.
 9. DISTINCT-INVOICE RULE: invoices with different dates/page blocks are separate entries, even if supplier and amounts look similar.
@@ -704,7 +709,7 @@ function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
       const category = sanitizeLooseText(item?.category, 80) || 'OTHER';
       const rawType = item?.type === 'INCOME' ? 'INCOME' : 'EXPENSE';
       return {
-        date: sanitizeLooseText(item?.date, 24),
+        date: normalizeIsoDate(item?.date) || sanitizeLooseText(item?.date, 24),
         description,
         amount,
         type: inferLineItemType({
@@ -724,38 +729,54 @@ function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
 
   const rootSwiss = sanitizeSwissVatFields(data, data.expenseCategory || "OTHER");
 
+  const rootSplit = splitIssuerAndReference(data.issuer);
   const safeSubDocuments: FinancialData[] = (Array.isArray(data.subDocuments) ? data.subDocuments : [])
     .map((sub) => {
       const subCat = sanitizeLooseText(sub?.expenseCategory, 80) || data.expenseCategory || "OTHER";
+      const subSplit = splitIssuerAndReference(sub?.issuer);
       const baseSub = {
         ...sub,
         pageRange: sanitizeLooseText((sub as any)?.pageRange, 40),
-        date: sanitizeLooseText(sub?.date, 24),
-        issuer: sanitizeLooseText(sub?.issuer, 120) || "Unknown issuer",
+        date: normalizeIsoDate(sub?.date) || sanitizeLooseText(sub?.date, 24),
+        issuer: sanitizeLooseText(subSplit.issuer, 120) || "Unknown issuer",
+        documentNumber:
+          sanitizeLooseText((sub as any)?.documentNumber, 80) ||
+          sanitizeLooseText(subSplit.reference, 80) ||
+          undefined,
         originalCurrency: sanitizeLooseText(sub?.originalCurrency, 10) || data.originalCurrency || "CHF",
         documentType: coerceDocumentType(sub?.documentType),
         expenseCategory: subCat || "OTHER",
         totalAmount: toFiniteNumber(sub?.totalAmount, 0),
         vatAmount: toFiniteNumber(sub?.vatAmount, 0),
+        vatRate: toFiniteNumber((sub as any)?.vatRate, 0),
         netAmount: toFiniteNumber(sub?.netAmount, 0),
         aiInterpretation: sanitizeLooseText(sub?.aiInterpretation, 320),
       } as FinancialData;
-      return { ...baseSub, ...sanitizeSwissVatFields(baseSub, subCat) };
+      const withSwiss = { ...baseSub, ...sanitizeSwissVatFields(baseSub, subCat) };
+      return {
+        ...withSwiss,
+        vatAmount: resolveDocumentVatAmount(withSwiss),
+        date: normalizeIsoDate(withSwiss.date) || withSwiss.date,
+      };
     })
     .filter((sub) => toFiniteNumber(sub.totalAmount, 0) >= 0);
 
-  return {
+  const rootWithSwiss = {
     ...data,
     documentType: coerceDocumentType(data.documentType),
-    date: sanitizeLooseText(data.date, 24),
-    issuer: sanitizeLooseText(data.issuer, 120) || "Unknown issuer",
-    documentNumber: sanitizeLooseText(data.documentNumber, 80),
+    date: normalizeIsoDate(data.date) || sanitizeLooseText(data.date, 24),
+    issuer: sanitizeLooseText(rootSplit.issuer, 120) || "Unknown issuer",
+    documentNumber:
+      sanitizeLooseText(data.documentNumber, 80) ||
+      sanitizeLooseText(rootSplit.reference, 80) ||
+      undefined,
     originalCurrency: sanitizeLooseText(data.originalCurrency, 10) || "CHF",
     expenseCategory: sanitizeLooseText(data.expenseCategory, 80) || "OTHER",
     notes: sanitizeLooseText(data.notes, 280),
     aiInterpretation: sanitizeLooseText(data.aiInterpretation, 380),
     totalAmount: toFiniteNumber(data.totalAmount, 0),
     vatAmount: toFiniteNumber(data.vatAmount, 0),
+    vatRate: toFiniteNumber((data as any).vatRate, 0),
     netAmount: toFiniteNumber(data.netAmount, 0),
     amountInCHF: toFiniteNumber(data.amountInCHF, 0),
     confidenceScore: toFiniteNumber(data.confidenceScore, 0),
@@ -767,9 +788,18 @@ function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
     forensicAlerts: (Array.isArray(data.forensicAlerts) ? data.forensicAlerts : [])
       .map((msg) => sanitizeLooseText(msg, 180))
       .filter(Boolean),
+    ...rootSwiss,
     lineItems: safeLineItems,
     subDocuments: safeSubDocuments,
-    ...rootSwiss,
+  } as FinancialData;
+
+  return {
+    ...rootWithSwiss,
+    vatAmount: resolveDocumentVatAmount(rootWithSwiss),
+    date:
+      normalizeIsoDate(rootWithSwiss.date) ||
+      (safeSubDocuments.map((s) => normalizeIsoDate(s.date)).find(Boolean) as string | undefined) ||
+      rootWithSwiss.date,
   };
 }
 
@@ -929,14 +959,29 @@ export const analyzeFinancialDocument = async (
           enum: ["Bank Statement", "Pay Slip", "Invoice", "Ticket/Receipt", "Z2 Multi-Ticket Sheet", "Bank Deposit", "Unknown"],
           description: "Document type classification"
         },
-        date: { type: Type.STRING, description: "YYYY-MM-DD" },
-        issuer: { type: Type.STRING, description: "Primary entity name" },
-        documentNumber: { type: Type.STRING },
-        totalAmount: { type: Type.NUMBER, description: "Total amount INCLUDING VAT" },
+        date: {
+          type: Type.STRING,
+          description:
+            "Printed invoice/document date as YYYY-MM-DD. Convert Swiss DD.MM.YYYY. Never use upload/today date.",
+        },
+        issuer: {
+          type: Type.STRING,
+          description:
+            "Supplier/company trade name only. Do NOT append invoice number, reference, or '| REF …'.",
+        },
+        documentNumber: {
+          type: Type.STRING,
+          description: "Invoice / facture / Beleg / reference number if printed (not in issuer).",
+        },
+        totalAmount: { type: Type.NUMBER, description: "Total amount INCLUDING VAT (TTC)" },
         originalCurrency: { type: Type.STRING },
-        vatAmount: { type: Type.NUMBER, description: "VAT/Tax amount. Set to 0 if not found." },
-        vatRate: { type: Type.NUMBER, description: "VAT rate %. Set to 0 if not found." },
-        netAmount: { type: Type.NUMBER, description: "Amount BEFORE VAT" },
+        vatAmount: {
+          type: Type.NUMBER,
+          description:
+            "TVA/VAT amount in document currency. Prefer printed Total TVA or sum of swissVatBreakdown. Only 0 if truly exempt/not shown.",
+        },
+        vatRate: { type: Type.NUMBER, description: "VAT rate % when a single rate applies (e.g. 8.1, 2.6)." },
+        netAmount: { type: Type.NUMBER, description: "Amount BEFORE VAT (HT)" },
         expenseCategory: { 
           type: Type.STRING,
           description: "Specific category based on issuer"
@@ -1095,18 +1140,18 @@ CRITICAL RULES:
 2. Determine if this is INCOME (revenue, sales, deposits) or EXPENSE (bills, invoices to pay, purchases)
 3. For INCOME documents: Set expenseCategory to "REVENUE" or "SALES"
 4. For EXPENSE documents: ALWAYS assign a precise category — NEVER use "OTHER" when you can classify. Prefer one of: FOOD_SUPPLIES, BEVERAGES, RESTAURANT_SUPPLIES, PACKAGING, CLEANING, MAINTENANCE, RENT, UTILITIES, INSURANCE, TELECOM, BANK_FEES, ACCOUNTING, MARKETING, DELIVERY, OFFICE_SUPPLIES, LICENSES, TAXES, PAYROLL, PAYROLL_TAXES, SUPPLIERS, BILLS. Use issuer name + line items to decide (e.g. Transgourmet/Aligro → FOOD_SUPPLIES; Swisscom → TELECOM; landlord → RENT).
-5. Extract key financial data (amounts, dates, issuer)
+5. Extract key financial data (amounts, printed dates, issuer). DATE RULE: date MUST be the date printed on the invoice/receipt/ticket (Facture du / Datum / Date), converted to YYYY-MM-DD. Swiss DD.MM.YYYY → YYYY-MM-DD. NEVER use today's date, upload date, or processing date.
 6. For bank statements: extract ALL transactions into lineItems
 7. For payslips: extract employee/employer info and components
-8. Extract VAT if shown (TVA, VAT, MwSt, Tax labels)
+8. Extract VAT if shown (TVA, VAT, MwSt, Tax labels). Prefer explicit Total TVA; else sum multi-rate columns; else derive gross−net. Do not leave vatAmount=0 when TVA is visible.
 9. For multi-document files (NOT pay slips): use subDocuments array — one entry per separate supplier invoice only
 10. READ ALL PAGES of the PDF. Do not summarize only the first page.
-11. If multiple invoices/receipts exist in one PDF, create one subDocuments entry per invoice/receipt with issuer, VAT, net, gross, currency, and pageRange.
-12. If VAT is missing for a sub-document, set vatAmount=0 and vatRate=0 (never omit fields).
+11. If multiple invoices/receipts exist in one PDF, create one subDocuments entry per invoice/receipt with clean issuer (no "| REF"), documentNumber for the invoice ref, printed date, VAT, net, gross, currency, and pageRange.
+12. If VAT is truly not printed and cannot be derived, set vatAmount=0 and vatRate=0 and add a forensicAlerts note (never omit fields).
 13. If one invoice spans multiple pages, merge those pages into ONE subDocuments entry with a combined pageRange (e.g. "2-3"), do not duplicate it.
-14. For multi-invoice files, include lineItems with ONE row per invoice (gross total per invoice), not per product/ticket line.
+14. For multi-invoice files, include lineItems with ONE row per invoice (gross total per invoice), not per product/ticket line. description = clean supplier name only.
 15. NEVER cap extracted invoices to 2 or 3; include EVERY distinct invoice found across ALL pages (a 7-page binder may have 5–7 invoices).
-16. Extract only values visible in the document. Never invent issuer names, dates, VAT, or totals.
+16. Extract only values visible in the document. Never invent issuer names, dates, VAT, or totals. ISSUER RULE: issuer is the company name only; put Facture/N°/Ref in documentNumber — never "Name | Ref 12345".
 17. If a required field is not visible, use safe defaults (empty string for text, 0 for numbers, pageRange="" if unknown) and continue — never drop an invoice because one field is hard to read.
 18. Prefer exact numeric copying from document totals over inferred arithmetic when both are present. NEVER round money to whole francs — keep centimes exactly as printed (e.g. 1499.50 stays 1499.50, not 1500).
 19. Keep sign consistency: INCOME amounts positive, EXPENSE amounts positive (classification carries direction).

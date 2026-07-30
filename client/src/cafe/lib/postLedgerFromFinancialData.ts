@@ -5,6 +5,12 @@ import {
   resolvePayrollSettlementMode,
 } from '../services/swissPayrollService';
 import { suggestSwissAccountCode } from '@shared/suggestSwissAccountCode';
+import {
+  canonicalizeSupplierName,
+  resolveDocumentDate,
+  resolveDocumentVatAmount,
+  splitIssuerAndReference,
+} from './swissDocumentNormalize';
 
 type LedgerWriters = {
   addIncome: (
@@ -66,12 +72,22 @@ async function postSingleAmount(
   sessionId: string,
   documentId: string
 ): Promise<'income' | 'expense' | null> {
-  const date = data.date || new Date().toISOString().split('T')[0];
+  const lineDates = (data.lineItems || []).map((l) => l.date);
+  const date = resolveDocumentDate(
+    data.date,
+    (data as { paySlip?: { periodEnd?: string } }).paySlip?.periodEnd,
+    ...lineDates
+  );
   const amount = data.amountInCHF || data.totalAmount || 0;
   if (amount <= 0) return null;
 
-  const description = data.issuer || data.notes || fileName;
-  const vatAmount = data.vatAmount || 0;
+  const cleanedIssuer = splitIssuerAndReference(data.issuer).issuer || data.issuer;
+  const description =
+    canonicalizeSupplierName(cleanedIssuer, '') ||
+    cleanedIssuer ||
+    data.notes ||
+    fileName;
+  const vatAmount = resolveDocumentVatAmount(data);
 
   if (isRevenueDoc(data)) {
     const code = resolveAccountCode(data, { kind: 'income', description });
@@ -136,24 +152,29 @@ export async function postLedgerFromFinancialData(
   let expensePosted = 0;
 
   if (docType === 'Bank Statement' || docType === 'Bank Deposit') {
-    const date = data.date || new Date().toISOString().split('T')[0];
+    const date = resolveDocumentDate(data.date);
     for (const item of data.lineItems || []) {
+      const lineDate = resolveDocumentDate(item.date, data.date);
       if (item.type === 'INCOME') {
         const description = item.description || fileName;
         const code = resolveAccountCode(data, { kind: 'income', description });
         await writers.addIncome(
-          date,
+          lineDate,
           'SALES',
           item.amount,
           description,
           sessionId,
           documentId,
-          data.vatAmount || 0,
+          0,
           code
         );
         incomePosted += 1;
       } else if (item.type === 'EXPENSE') {
-        const description = item.description || data.issuer || fileName;
+        const description =
+          canonicalizeSupplierName(item.description || data.issuer, '') ||
+          item.description ||
+          data.issuer ||
+          fileName;
         const category = mapAiExpenseCategoryToLedger({
           expenseCategory: item.category || item.description,
           issuer: data.issuer,
@@ -162,14 +183,14 @@ export async function postLedgerFromFinancialData(
         });
         const code = resolveAccountCode(data, { kind: 'expense', category, description });
         await writers.addExpense(
-          date,
+          lineDate,
           category,
           item.amount,
           description,
           sessionId,
           undefined,
           documentId,
-          data.vatAmount || 0,
+          0,
           code
         );
         expensePosted += 1;
@@ -182,7 +203,7 @@ export async function postLedgerFromFinancialData(
     const employeeName = data.paySlip?.employee?.name || 'Unknown Employee';
     const settlement = resolvePayrollSettlementMode(data);
     const payrollLines = buildPayrollExpenseLines(data, employeeName, settlement);
-    const date = data.date || new Date().toISOString().split('T')[0];
+    const date = resolveDocumentDate(data.date, data.paySlip?.periodEnd);
     for (const line of payrollLines) {
       const code = suggestSwissAccountCode({
         kind: 'expense',
@@ -211,6 +232,19 @@ export async function postLedgerFromFinancialData(
       const merged: FinancialData = {
         ...data,
         ...sub,
+        // Prefer sub-invoice fields; do not inherit parent aggregated VAT for each row
+        swissVatBreakdown: sub.swissVatBreakdown,
+        swissVatReceiptTotals: sub.swissVatReceiptTotals,
+        date: resolveDocumentDate(sub.date, data.date),
+        vatAmount: resolveDocumentVatAmount({
+          vatAmount: sub.vatAmount,
+          vatRate: sub.vatRate,
+          netAmount: sub.netAmount,
+          totalAmount: sub.totalAmount,
+          amountInCHF: sub.amountInCHF ?? sub.totalAmount,
+          swissVatBreakdown: sub.swissVatBreakdown,
+          swissVatReceiptTotals: sub.swissVatReceiptTotals,
+        }),
         documentType: sub.documentType || data.documentType,
         expenseCategory: sub.expenseCategory || data.expenseCategory,
         swissAccountClassification: sub.swissAccountClassification || undefined,

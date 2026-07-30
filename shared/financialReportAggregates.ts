@@ -55,16 +55,53 @@ export function buildSupplierData(
   unknownLabel = "Unknown"
 ): [string, number][] {
   const suppliers: Record<string, number> = {};
+  const supplierCats = new Set([
+    "SUPPLIERS",
+    "FOOD_SUPPLIES",
+    "BEVERAGES",
+    "RESTAURANT_SUPPLIES",
+    "PACKAGING",
+    "CLEANING",
+  ]);
 
   for (const item of expenses) {
-    if (item.category !== "SUPPLIERS") continue;
-    const supplier = item.description?.trim() || unknownLabel;
+    if (!supplierCats.has(String(item.category || ""))) continue;
+    const supplier = canonicalizeSupplierKey(item.description, unknownLabel);
     suppliers[supplier] = (suppliers[supplier] || 0) + Number(item.amount || 0);
   }
 
   return Object.entries(suppliers)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10);
+}
+
+/** Shared light canonicalization (kept in shared/ for Node report exports). */
+function canonicalizeSupplierKey(raw: string | undefined, unknownLabel: string): string {
+  let s = (raw || "").trim();
+  if (!s) return unknownLabel;
+  s = s.replace(/\s*\|\s*.*$/, "");
+  s = s.replace(/\s*[-–—]\s*(ref\.?|n[°o]?|nr\.?|facture|invoice|beleg)\s*[:#]?\s*[\w./-]+$/i, "");
+  s = s.replace(/\s+/g, " ").trim();
+  const upper = s.toUpperCase();
+  if (/\b(TALIGRO|ALIGRO|DEMAUREX)\b/.test(upper)) return "TALIGRO DEMAUREX & CIE SA";
+  if (/\bTRANSGOURMET\b/.test(upper)) return "TRANSGOURMET";
+  if (/\bPRODEGA\b/.test(upper)) return "PRODEGA";
+  if (/\bMIGROS\b/.test(upper)) return "MIGROS";
+  if (/\bCOOP\b/.test(upper)) return "COOP";
+  if (/\bSWISSCOM\b/.test(upper)) return "SWISSCOM";
+  const stripped = upper
+    .replace(/\b(S\.?\s*A\.?|SA|SÀRL|SARL|AG|GMBH|LTD|LLC|INC)\b\.?/g, "")
+    .replace(/[&]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (stripped.length >= 3) {
+    return stripped
+      .split(" ")
+      .filter(Boolean)
+      .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+      .join(" ");
+  }
+  return s || unknownLabel;
 }
 
 export type LedgerRow = {
@@ -89,7 +126,7 @@ export function buildLedgerRows(
     ...income.map((item) => ({
       id: `in-${item.date}-${item.description}-${item.amount}`,
       date: item.date,
-      vendor: item.description || "—",
+      vendor: canonicalizeSupplierKey(item.description, "—"),
       category: labelIncomeType(item.type || "SALES"),
       account: item.account_code || "—",
       amount: Number(item.amount || 0),
@@ -100,7 +137,7 @@ export function buildLedgerRows(
     ...expenses.map((item) => ({
       id: `ex-${item.date}-${item.description}-${item.amount}`,
       date: item.date,
-      vendor: item.description || "—",
+      vendor: canonicalizeSupplierKey(item.description, "—"),
       category: labelCategory(item.category || "OTHER"),
       account: item.account_code || "—",
       amount: -Number(item.amount || 0),

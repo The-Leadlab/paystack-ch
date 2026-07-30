@@ -38,6 +38,7 @@ import type { ReportScheduleCadenceDays } from '@shared/reportSchedule';
 import { RevenueLedgerTable } from './RevenueLedgerTable';
 import { mapAiExpenseCategoryToLedger } from '../lib/mapExpenseCategory';
 import { postLedgerFromFinancialData } from '../lib/postLedgerFromFinancialData';
+import { canonicalizeSupplierName } from '../lib/swissDocumentNormalize';
 import { evaluateVatReview } from '../lib/vatReview';
 import { filterBusinessExpenses } from '../lib/personalBleedFilter';
 
@@ -1987,7 +1988,9 @@ function ReportsPlaceholder() {
   
   // Apply supplier filter (description contains supplier name)
   if (supplierFilter !== 'all') {
-    dateFilteredExpenses = dateFilteredExpenses.filter(e => e.description === supplierFilter);
+    dateFilteredExpenses = dateFilteredExpenses.filter(
+      (e) => canonicalizeSupplierName(e.description, t('repUnknown')) === supplierFilter
+    );
   }
 
   // Group by month
@@ -2015,36 +2018,48 @@ function ReportsPlaceholder() {
     return Object.entries(months).sort((a, b) => b[0].localeCompare(a[0]));
   }, [dateFilteredIncome, dateFilteredExpenses]);
 
-  // Group expenses by supplier
+  // Group expenses by supplier (canonical names — no duplicate Taligro/REF variants)
   const supplierData = React.useMemo(() => {
     const suppliers: Record<string, number> = {};
-    
+    const supplierCats = new Set([
+      'SUPPLIERS',
+      'FOOD_SUPPLIES',
+      'BEVERAGES',
+      'RESTAURANT_SUPPLIES',
+      'PACKAGING',
+      'CLEANING',
+    ]);
+
     dateFilteredExpenses
-      .filter(e => e.category === 'SUPPLIERS')
-      .forEach(item => {
-        const supplier = item.description || t('repUnknown');
+      .filter(
+        (e) =>
+          supplierCats.has(String(e.category || '')) ||
+          e.category === 'SUPPLIERS'
+      )
+      .forEach((item) => {
+        const supplier = canonicalizeSupplierName(item.description, t('repUnknown'));
         suppliers[supplier] = (suppliers[supplier] || 0) + item.amount;
       });
-    
+
     return Object.entries(suppliers)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 10); // Top 10 suppliers
-  }, [dateFilteredExpenses]);
-  
+      .slice(0, 10);
+  }, [dateFilteredExpenses, t]);
+
   // Get unique categories and suppliers for filters
   const uniqueCategories = React.useMemo(() => {
     const cats = new Set(filteredExpenses.map(e => e.category));
     return Array.from(cats).sort();
   }, [filteredExpenses]);
-  
+
   const uniqueSuppliers = React.useMemo(() => {
     const suppliers = new Set(
       filteredExpenses
         .filter(e => e.description && e.description.trim() !== '' && !e.description.startsWith('Payslip'))
-        .map(e => e.description)
+        .map(e => canonicalizeSupplierName(e.description, t('repUnknown')))
     );
     return Array.from(suppliers).sort();
-  }, [filteredExpenses]);
+  }, [filteredExpenses, t]);
 
   const setQuickFilter = (type: string) => {
     const today = new Date();
