@@ -171,6 +171,7 @@ export function RestaurantDashboard() {
   const [renameValue, setRenameValue] = useState('');
   const [showMasterReset, setShowMasterReset] = useState(false);
   const [selectedDocumentFromFinance, setSelectedDocumentFromFinance] = useState<ProcessedDocument | null>(null);
+  const [openVerificationDocId, setOpenVerificationDocId] = useState<string | null>(null);
   const [showEmployeePanel, setShowEmployeePanel] = useState(false);
   const storageUploadEnabledRef = useRef(true);
 
@@ -531,8 +532,10 @@ export function RestaurantDashboard() {
   };
 
   const handleNavigateToDocument = (doc: ProcessedDocument) => {
-    setSelectedDocumentFromFinance(doc);
-    setActiveTab('documents');
+    // Open Verification center on the dashboard (not the Documents tab)
+    setActiveTab('dashboard');
+    setOpenVerificationDocId(doc.id);
+    setSelectedDocumentFromFinance(null);
   };
 
   const handleDocumentUpdated = async (documentId: string, newData: FinancialData) => {
@@ -987,6 +990,8 @@ export function RestaurantDashboard() {
               addExpense={addExpense}
               onDeleteDocument={handleDeleteDocument}
               onNavigateToDocument={handleNavigateToDocument}
+              openVerificationDocId={openVerificationDocId}
+              onOpenVerificationHandled={() => setOpenVerificationDocId(null)}
               onShowEmployeePanel={() => setShowEmployeePanel(true)}
               t={t}
               user={user}
@@ -1618,7 +1623,7 @@ function useLiveClock(): string {
   return clock;
 }
 
-function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, onResyncLedger, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument }: any) {
+function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, onResyncLedger, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument, openVerificationDocId, onOpenVerificationHandled }: any) {
   const liveClock = useLiveClock();
   const vatFlowBase = Math.max(vatReceived, vatPaid, Math.abs(vatBalance), 1);
 
@@ -1752,6 +1757,8 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
             onDocumentQueued={onDocumentQueued}
             onDataExtracted={onDocumentData}
             onDocumentUpdated={onDocumentUpdated}
+            openDocumentId={openVerificationDocId}
+            onOpenDocumentHandled={onOpenVerificationHandled}
           />
         </div>
       )}

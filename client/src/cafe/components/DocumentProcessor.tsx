@@ -2036,8 +2036,11 @@ export const DocumentProcessor: React.FC<{
   onDeleteDocument: (documentId: string) => Promise<void>,
   onDocumentQueued?: (fileName: string, fileHash?: string, fileRaw?: File) => Promise<string>,
   onDataExtracted: (data: any, fileName: string, fileHash?: string, fileRaw?: File, persistedDocumentId?: string) => void,
-  onDocumentUpdated?: (documentId: string, newData: FinancialData) => Promise<void>
-}> = ({ documents, updateDocument, onDeleteDocument, onDocumentQueued, onDataExtracted, onDocumentUpdated }) => {
+  onDocumentUpdated?: (documentId: string, newData: FinancialData) => Promise<void>,
+  /** When set, expand this document's Verification center on the dashboard. */
+  openDocumentId?: string | null,
+  onOpenDocumentHandled?: () => void,
+}> = ({ documents, updateDocument, onDeleteDocument, onDocumentQueued, onDataExtracted, onDocumentUpdated, openDocumentId, onOpenDocumentHandled }) => {
   const { enforcementEnabled, entitlements, documentsUsedThisMonth } = useSubscription();
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
@@ -2063,6 +2066,7 @@ export const DocumentProcessor: React.FC<{
   const reattachInputRef = useRef<HTMLInputElement>(null);
   const stopProcessingRef = useRef(false);
   const dragCounter = useRef(0);
+  const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
 
   /** Documents processed per batch; next batch starts only after the current batch completes. */
   const BATCH_SIZE = resolveDocumentBatchSize();
@@ -2073,6 +2077,21 @@ export const DocumentProcessor: React.FC<{
     const localProcessing = localDocs.filter(ld => !documents.some(d => d.fileName === ld.fileName));
     return [...firestoreDocs, ...localProcessing];
   }, [documents, localDocs]);
+
+  useEffect(() => {
+    if (!openDocumentId) return;
+    const match =
+      allDocs.find((d) => d.id === openDocumentId) ||
+      allDocs.find((d) => d.persistedDocumentId === openDocumentId);
+    const id = match?.id || openDocumentId;
+    setExpandedRows(new Set([id]));
+    const timer = window.setTimeout(() => {
+      rowRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      onOpenDocumentHandled?.();
+    }, 100);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react when openDocumentId changes
+  }, [openDocumentId]);
 
   const isQueuedStatus = (status?: ProcessedDocument['status']) =>
     status === 'pending' || status === 'error' || status === 'skipped';
@@ -2602,6 +2621,10 @@ export const DocumentProcessor: React.FC<{
                   return (
                     <React.Fragment key={doc.id}>
                       <tr 
+                        ref={(el) => {
+                          if (el) rowRefs.current.set(doc.id, el);
+                          else rowRefs.current.delete(doc.id);
+                        }}
                         onClick={() => isActionable && toggleRow(doc.id)} 
                         className={`transition-colors ${isActionable ? 'cursor-pointer' : ''} ${isExpanded ? 'ba-doc-row--expanded' : ''}`}
                       >
