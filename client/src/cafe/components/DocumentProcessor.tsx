@@ -38,6 +38,7 @@ import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useExpenseCategoryMeta } from '../i18n/expenseCategoryI18n';
 import { formatIssuerForDisplay, invoicesDetectedIssuer, documentDisplayName, conjoinedInvoicesLabel } from '../i18n/documentDisplayI18n';
 import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
+import { isLocalDocMirroredInFirestore } from '../lib/dedupeProcessedDocuments';
 import { evaluateVatReview } from '../lib/vatReview';
 
 // Neural Log Component (from Ypsom)
@@ -2071,12 +2072,22 @@ export const DocumentProcessor: React.FC<{
   /** Documents processed per batch; next batch starts only after the current batch completes. */
   const BATCH_SIZE = resolveDocumentBatchSize();
 
-  // Combine Firestore documents with local processing documents
+  // Combine Firestore documents with local processing documents (no pending+completed twins)
   const allDocs = useMemo(() => {
-    const firestoreDocs = documents.map(d => ({ ...d, source: 'firestore' as const }));
-    const localProcessing = localDocs.filter(ld => !documents.some(d => d.fileName === ld.fileName));
+    const firestoreDocs = documents.map((d) => ({ ...d, source: 'firestore' as const }));
+    const localProcessing = localDocs
+      .filter((ld) => !isLocalDocMirroredInFirestore(ld, documents))
+      .map((d) => ({ ...d, source: 'local' as const }));
     return [...firestoreDocs, ...localProcessing];
   }, [documents, localDocs]);
+
+  // Drop local mirrors once Firestore has the same file (avoids ghost rows after save)
+  useEffect(() => {
+    setLocalDocs((prev) => {
+      const next = prev.filter((ld) => !isLocalDocMirroredInFirestore(ld, documents));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [documents]);
 
   useEffect(() => {
     if (!openDocumentId) return;

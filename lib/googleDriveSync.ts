@@ -47,9 +47,27 @@ async function uploadBytesToFirebaseStorage(
 type DriveConnection = {
   refreshToken: string;
   folderId: string | null;
-  uploadedDocuments: Record<string, string>;
+  /** Drive file IDs previously uploaded from the app (or legacy bare-string ids). */
+  uploadedDriveFileIds: Set<string>;
   importedDriveFiles: Record<string, { storagePath: string; fileName: string }>;
 };
+
+/** uploadedDocuments values may be a bare Drive file id string (legacy) or `{ fileId, categorized }`. */
+function collectUploadedDriveFileIds(uploadedDocuments: unknown): Set<string> {
+  const ids = new Set<string>();
+  if (!uploadedDocuments || typeof uploadedDocuments !== "object") return ids;
+  for (const value of Object.values(uploadedDocuments as Record<string, unknown>)) {
+    if (typeof value === "string" && value.trim()) {
+      ids.add(value.trim());
+      continue;
+    }
+    if (value && typeof value === "object" && typeof (value as { fileId?: unknown }).fileId === "string") {
+      const fileId = (value as { fileId: string }).fileId.trim();
+      if (fileId) ids.add(fileId);
+    }
+  }
+  return ids;
+}
 
 async function getDriveConnection(uid: string): Promise<DriveConnection | null> {
   ensureFirebaseAdmin();
@@ -69,10 +87,6 @@ async function getDriveConnection(uid: string): Promise<DriveConnection | null> 
   if (typeof googleDrive?.refreshToken !== "string") {
     return null;
   }
-  const uploadedDocuments =
-    googleDrive.uploadedDocuments && typeof googleDrive.uploadedDocuments === "object"
-      ? (googleDrive.uploadedDocuments as Record<string, string>)
-      : {};
   const importedDriveFiles =
     googleDrive.importedDriveFiles && typeof googleDrive.importedDriveFiles === "object"
       ? (googleDrive.importedDriveFiles as Record<string, { storagePath: string; fileName: string }>)
@@ -80,7 +94,7 @@ async function getDriveConnection(uid: string): Promise<DriveConnection | null> 
   return {
     refreshToken: googleDrive.refreshToken,
     folderId: typeof googleDrive.folderId === "string" ? googleDrive.folderId : null,
-    uploadedDocuments,
+    uploadedDriveFileIds: collectUploadedDriveFileIds(googleDrive.uploadedDocuments),
     importedDriveFiles,
   };
 }
@@ -303,7 +317,7 @@ export async function runDriveSyncFromDrive(authorization: string | undefined): 
       return { status: 200, json: { imported: [], skipped: 0, message: "Google Drive not connected" } };
     }
 
-    const uploadedDriveIds = new Set(Object.values(connection.uploadedDocuments));
+    const uploadedDriveIds = connection.uploadedDriveFileIds;
     let accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
     let rootFolderId = await ensureValidRootFolder(uid, accessToken, connection.folderId);
 
@@ -342,6 +356,18 @@ export async function runDriveSyncFromDrive(authorization: string | undefined): 
         continue;
       }
       if (connection.importedDriveFiles[file.id] || uploadedDriveIds.has(file.id)) {
+        skipped += 1;
+        continue;
+      }
+      // Also skip when we already imported/backed up a file with the same name (re-upload cycle).
+      const alreadyKnownName = Object.values(connection.importedDriveFiles).some(
+        (meta) => meta?.fileName && meta.fileName === file.name
+      );
+      if (alreadyKnownName) {
+        await recordDriveImport(uid, file.id, {
+          storagePath: "skipped-duplicate-name",
+          fileName: file.name,
+        });
         skipped += 1;
         continue;
       }

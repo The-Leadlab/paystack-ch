@@ -353,14 +353,27 @@ export function RestaurantDashboard() {
       throw new Error('No session selected');
     }
 
-    // Check for duplicate document by hash
+    // Reuse an existing row instead of creating a pending twin
     if (fileHash) {
-      const existingDoc = documents.find(d => d.fileHash === fileHash);
-      if (existingDoc) {
-        console.log('âš ï¸ Duplicate document detected:', fileHash);
-        alert(t('alertDuplicateDocument').replace('{name}', existingDoc.fileName));
-        throw new Error('Duplicate document');
+      const existingByHash = documents.find((d) => d.fileHash === fileHash);
+      if (existingByHash) {
+        if (['completed', 'needs_review'].includes(existingByHash.status)) {
+          console.log('âš ï¸ Duplicate document detected:', fileHash);
+          alert(t('alertDuplicateDocument').replace('{name}', existingByHash.fileName));
+          throw new Error('Duplicate document');
+        }
+        console.log('Reusing existing queued document:', existingByHash.id);
+        return existingByHash.id;
       }
+    }
+    const existingByName = documents.find(
+      (d) =>
+        d.fileName === fileName &&
+        (d.status === 'pending' || d.status === 'processing' || d.status === 'error')
+    );
+    if (existingByName) {
+      console.log('Reusing existing queued document by name:', existingByName.id);
+      return existingByName.id;
     }
 
     try {
@@ -437,13 +450,30 @@ export function RestaurantDashboard() {
 
     let documentId: string;
     try {
-      if (persistedDocumentId) {
-        await updateDocumentData(persistedDocumentId, {
+      // Resolve an existing Firestore row even if the local queue id was lost
+      const existingById = persistedDocumentId
+        ? documents.find((d) => d.id === persistedDocumentId || d.persistedDocumentId === persistedDocumentId)
+        : undefined;
+      const existingByHash = !existingById && fileHash
+        ? documents.find((d) => d.fileHash === fileHash)
+        : undefined;
+      const existingByName = !existingById && !existingByHash
+        ? documents.find(
+            (d) =>
+              d.fileName === fileName &&
+              (d.status === 'pending' || d.status === 'processing' || d.status === 'error')
+          )
+        : undefined;
+      const existing = existingById || existingByHash || existingByName;
+      const targetId = existing?.id || persistedDocumentId;
+
+      if (targetId) {
+        await updateDocumentData(targetId, {
           status: docStatus,
           data,
           ...(fileHash ? { fileHash } : {}),
         });
-        documentId = persistedDocumentId;
+        documentId = targetId;
         console.log('âœ… Document updated with ID:', documentId, docStatus);
       } else {
         console.log('ðŸ’¾ Saving document to Firestore (legacy path)...');
@@ -635,17 +665,29 @@ export function RestaurantDashboard() {
     const { syncDocumentsFromGoogleDrive } = await import('../lib/googleDriveClient');
     const { imported } = await syncDocumentsFromGoogleDrive();
     let count = 0;
+    const existingNames = new Set(
+      documents.map((d) => (d.fileName || '').trim().toLowerCase()).filter(Boolean)
+    );
+    const existingPaths = new Set(documents.map((d) => d.storagePath).filter(Boolean) as string[]);
+
     for (const file of imported) {
+      const nameKey = (file.fileName || '').trim().toLowerCase();
+      if ((nameKey && existingNames.has(nameKey)) || (file.storagePath && existingPaths.has(file.storagePath))) {
+        console.log('Skipping Drive import already in session:', file.fileName);
+        continue;
+      }
       await addDocument({
         fileName: file.fileName,
         status: 'pending',
         fileUrl: file.fileUrl,
         storagePath: file.storagePath,
       });
+      if (nameKey) existingNames.add(nameKey);
+      if (file.storagePath) existingPaths.add(file.storagePath);
       count += 1;
     }
     return { count };
-  }, [currentSession, addDocument]);
+  }, [currentSession, addDocument, documents]);
 
   const driveAutoSyncRef = useRef<string | null>(null);
   useEffect(() => {

@@ -94,6 +94,8 @@ describe("runDriveSyncFromDrive", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchMock);
     fetchMock.mockReset();
+    fileSaveMock.mockReset();
+    firestoreSetMock.mockReset();
     vi.mocked(verifyFirebaseAuthorizationHeader).mockResolvedValue("user-1");
     vi.stubEnv("GOOGLE_DRIVE_CLIENT_ID", "cid");
     vi.stubEnv("GOOGLE_DRIVE_CLIENT_SECRET", "secret");
@@ -121,6 +123,12 @@ describe("runDriveSyncFromDrive", () => {
       if (url === "https://oauth2.googleapis.com/token") {
         return Promise.resolve({ ok: true, json: async () => ({ access_token: "access-1" }) });
       }
+      if (url.includes("drive/v3/files/folder-abc?")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ id: "folder-abc", trashed: false }),
+        });
+      }
       if (url.includes("drive/v3/files?")) {
         return Promise.resolve({
           ok: true,
@@ -144,5 +152,47 @@ describe("runDriveSyncFromDrive", () => {
     expect(out.json.imported).toHaveLength(1);
     expect(fileSaveMock).toHaveBeenCalled();
     expect(firestoreSetMock).toHaveBeenCalled();
+  });
+
+  it("skips Drive files that were previously uploaded from the app ({ fileId } records)", async () => {
+    firestoreGetMock.mockResolvedValue({
+      data: () => ({
+        googleDrive: {
+          refreshToken: "refresh-1",
+          folderId: "folder-abc",
+          uploadedDocuments: {
+            abc: { fileId: "drive-file-1", categorized: true },
+          },
+          importedDriveFiles: {},
+        },
+      }),
+    });
+
+    fetchMock.mockImplementation((url: string) => {
+      if (url === "https://oauth2.googleapis.com/token") {
+        return Promise.resolve({ ok: true, json: async () => ({ access_token: "access-1" }) });
+      }
+      if (url.includes("drive/v3/files/folder-abc?")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ id: "folder-abc", trashed: false }),
+        });
+      }
+      if (url.includes("drive/v3/files?")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            files: [{ id: "drive-file-1", name: "invoice.pdf", mimeType: "application/pdf", size: "1000" }],
+          }),
+        });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    const out = await runDriveSyncFromDrive("Bearer token");
+    expect(out.status).toBe(200);
+    expect(out.json.imported).toHaveLength(0);
+    expect(Number(out.json.skipped)).toBeGreaterThanOrEqual(1);
+    expect(fileSaveMock).not.toHaveBeenCalled();
   });
 });

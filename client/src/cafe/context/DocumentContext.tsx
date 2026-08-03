@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import { useSession } from './SessionContext';
 import { db } from '../lib/firebase';
 import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, orderBy } from 'firebase/firestore';
+import { dedupeProcessedDocuments } from '../lib/dedupeProcessedDocuments';
 
 function removeUndefinedDeep<T>(value: T): T {
   if (Array.isArray(value)) {
@@ -91,7 +92,7 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const docs: ProcessedDocument[] = snapshot.docs.map((docSnap) => {
+      const rawDocs: ProcessedDocument[] = snapshot.docs.map((docSnap) => {
         const data = docSnap.data() as Record<string, unknown>;
         const firestoreId = docSnap.id;
         const storedPersisted = data.persistedDocumentId;
@@ -102,14 +103,30 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
             typeof storedPersisted === 'string' && storedPersisted.length > 0 ? storedPersisted : firestoreId,
         } as ProcessedDocument;
       });
-      docs.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
-      
-      console.log('Fetched documents:', docs.length);
-      if (docs.length > 0) {
-        console.log('Sample document:', docs[0]);
+
+      const { keepers, duplicateIds } = dedupeProcessedDocuments(rawDocs);
+      keepers.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+
+      console.log('Fetched documents:', keepers.length, duplicateIds.length ? `(removed ${duplicateIds.length} duplicates)` : '');
+      if (keepers.length > 0) {
+        console.log('Sample document:', keepers[0]);
       }
-      
-      setDocuments(docs);
+
+      setDocuments(keepers);
+
+      // Best-effort cleanup of orphan pending twins left by Drive re-import / double-queue
+      if (duplicateIds.length > 0 && db) {
+        const database = db;
+        void (async () => {
+          for (const id of duplicateIds) {
+            try {
+              await deleteDoc(doc(database, 'documents', id));
+            } catch (cleanupErr) {
+              console.warn('Could not delete duplicate document', id, cleanupErr);
+            }
+          }
+        })();
+      }
     } catch (err) {
       console.error('Error fetching documents:', err);
       setError(err instanceof Error ? err.message : String(err));
