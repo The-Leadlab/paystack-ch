@@ -882,6 +882,218 @@ function shouldRunExhaustivePdfPass(file: File, parsed: FinancialData, userHint?
   );
 }
 
+/** Count product-like lines (exclude synthetic invoice rollups). */
+function countProductLineItems(data: FinancialData): number {
+  const isRollup = (item: BankTransaction) => {
+    const notes = (item.notes || '').toLowerCase();
+    if (notes.includes('vat amount') || notes.includes('vat %')) return true;
+    if (/\(pages?\s+/i.test(item.description || '')) return true;
+    return false;
+  };
+  const top = (Array.isArray(data.lineItems) ? data.lineItems : []).filter((i) => !isRollup(i));
+  const nested = (Array.isArray(data.subDocuments) ? data.subDocuments : []).flatMap((sub) => {
+    const items = Array.isArray((sub as FinancialData).lineItems)
+      ? ((sub as FinancialData).lineItems as BankTransaction[])
+      : [];
+    return items.filter((i) => !isRollup(i));
+  });
+  return Math.max(top.length, nested.length);
+}
+
+/**
+ * True when the model likely collapsed an itemized invoice into a single total row
+ * (or returned no product lines at all).
+ */
+function needsProductLineItemPass(file: File, parsed: FinancialData): boolean {
+  if (isPaySlipFinancialData(parsed, file)) return false;
+  const docType = String(parsed.documentType || '');
+  if (
+    docType === DocumentType.BANK_STATEMENT ||
+    docType === 'BANK_STATEMENT' ||
+    docType === DocumentType.PAY_SLIP ||
+    docType === 'Pay Slip'
+  ) {
+    return false;
+  }
+
+  const productCount = countProductLineItems(parsed);
+  const total = Math.abs(Number(parsed.totalAmount || 0));
+  if (productCount === 0 && total > 0) return true;
+
+  if (productCount === 1) {
+    const candidates = [
+      ...(Array.isArray(parsed.lineItems) ? parsed.lineItems : []),
+      ...(Array.isArray(parsed.subDocuments) ? parsed.subDocuments : []).flatMap(
+        (s) => ((s as FinancialData).lineItems as BankTransaction[] | undefined) || []
+      ),
+    ];
+    const only = candidates[0];
+    if (only && total > 0 && Math.abs(Number(only.amount || 0) - total) < 0.05) {
+      return true;
+    }
+  }
+  return false;
+}
+
+type ProductLineItemPass = {
+  lineItems?: BankTransaction[];
+};
+
+/**
+ * Dedicated pass: extract EVERY article/product row from itemized Swiss invoices
+ * (Bulletin de livraison, Feldschlösschen-style tables, etc.).
+ */
+async function extractProductLineItemsPass(
+  file: File,
+  storageRef: DocumentStorageRef | null,
+  model: string,
+  base: FinancialData,
+  userHint?: string,
+  signal?: AbortSignal
+): Promise<BankTransaction[] | null> {
+  const hintSection = userHint ? `USER HINT: "${userHint}".` : '';
+  const issuer = String(base.issuer || '').trim();
+  const date = String(base.date || '').trim();
+  const currency = String(base.originalCurrency || 'CHF').trim() || 'CHF';
+  const category = String(base.expenseCategory || 'BEVERAGES').trim() || 'BEVERAGES';
+
+  const promptText = `You extract PRODUCT LINE ITEMS from a Swiss supplier invoice / delivery note (Bulletin de livraison / Lieferschein / Facture).
+${hintSection}
+
+Context: issuer="${issuer}", date="${date}", currency="${currency}", document total ≈ ${Number(base.totalAmount || 0)}.
+
+MANDATORY:
+1. Read EVERY page. Extract EVERY article/product/service row from item tables.
+2. Swiss beverage tables often have columns: Article, Désignation, Contenu, Quantité, Unité, Prix, Valeur, TVA, Consigne. For each article row:
+   - description = Désignation (product name), keep under 120 chars
+   - quantity = package count when clear (e.g. 2 from "2 FUT", 4 from "4 CA")
+   - unitPrice = Prix
+   - amount = Valeur (merchandise line value — NOT the whole invoice total)
+   - type = EXPENSE
+   - category = "${category}" (or BEVERAGES / FOOD_SUPPLIES when obvious)
+   - date = "${date || 'invoice date YYYY-MM-DD'}"
+3. If Consigne (deposit) > 0 on a row, ALSO add a separate line: description "Consigne — {Désignation}", amount = Consigne, type EXPENSE, same category.
+4. Multiple "Commande" / "Bulletin de livraison" sections from the SAME supplier under ONE Montant final = still ONE list — include ALL article rows from ALL sections.
+5. Also extract footer fee lines when printed: tax recycling, logistics, eco-tax, empty returns (each as its own lineItem).
+6. NEVER return only one line equal to the invoice Montant final. That is a failure.
+7. SKIP sous-total, total, TVA summary, and header-only rows.
+8. Return as many lines as there are article rows (often 10–80). Prefer completeness over brevity.
+9. JSON only. Numbers must be plain finite numbers (no apostrophes in 1'642.65 — use 1642.65).
+
+Return JSON matching schema.`;
+
+  const schema = {
+    responseMimeType: 'application/json',
+    responseSchema: {
+      type: Type.OBJECT,
+      properties: {
+        lineItems: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              date: { type: Type.STRING },
+              description: { type: Type.STRING },
+              amount: { type: Type.NUMBER },
+              type: { type: Type.STRING, enum: ['INCOME', 'EXPENSE'] },
+              category: { type: Type.STRING },
+              quantity: { type: Type.NUMBER },
+              unitPrice: { type: Type.NUMBER },
+              notes: { type: Type.STRING },
+            },
+            required: ['description', 'amount', 'type', 'category'],
+          },
+        },
+      },
+      required: ['lineItems'],
+    },
+    temperature: 0.05,
+    topP: 0.9,
+    topK: 20,
+    maxOutputTokens: resolveMaxOutputTokens(32768),
+  };
+
+  try {
+    const response = await generateGeminiForDocumentFile(
+      file,
+      storageRef,
+      promptText,
+      model,
+      schema,
+      signal
+    );
+    const parsed = parseModelJsonResponse<ProductLineItemPass>(
+      response.text,
+      'product-line-items-pass'
+    );
+    const items = Array.isArray(parsed.lineItems) ? parsed.lineItems : [];
+    const cleaned = items
+      .map((item) => sanitizeLineItemRow(item, coerceDocumentType(base.documentType), category))
+      .filter((item) => item.amount > 0 && item.description.trim().length > 0);
+    return cleaned.length > 0 ? cleaned : null;
+  } catch (error) {
+    console.warn('Product line-items pass failed:', error);
+    return null;
+  }
+}
+
+function mergeProductLineItemsIntoData(
+  data: FinancialData,
+  products: BankTransaction[]
+): FinancialData {
+  if (!products.length) return data;
+  const subs = Array.isArray(data.subDocuments) ? data.subDocuments : [];
+
+  // Same-supplier multi-Commande mis-split: collapse to one invoice + all products.
+  const issuers = new Set(
+    subs.map((s) => String((s as FinancialData).issuer || '').trim().toLowerCase()).filter(Boolean)
+  );
+  const sameSupplierBlocks = subs.length > 1 && issuers.size <= 1;
+
+  if (subs.length === 0 || sameSupplierBlocks) {
+    const primary = (subs[0] as FinancialData | undefined) || data;
+    return {
+      ...data,
+      subDocuments: sameSupplierBlocks
+        ? [
+            {
+              ...primary,
+              totalAmount: Number(data.totalAmount || primary.totalAmount || 0),
+              vatAmount: Number(data.vatAmount || primary.vatAmount || 0),
+              netAmount: Number(data.netAmount || primary.netAmount || 0),
+              lineItems: products,
+            } as FinancialData,
+          ]
+        : data.subDocuments,
+      lineItems: products,
+      aiInterpretation: sanitizeLooseText(
+        `${data.aiInterpretation || ''} Extracted ${products.length} product line items.`.trim(),
+        400
+      ),
+    };
+  }
+
+  // True multi-invoice: attach all recovered products onto first sub that lacks nested items,
+  // and keep top-level as invoice rollups (do not replace rollups with products).
+  const repairedSubs = subs.map((sub, idx) => {
+    const nested = Array.isArray((sub as FinancialData).lineItems)
+      ? ((sub as FinancialData).lineItems as BankTransaction[])
+      : [];
+    if (nested.length >= 2) return sub;
+    if (idx === 0) return { ...(sub as FinancialData), lineItems: products };
+    return sub;
+  });
+
+  return {
+    ...data,
+    subDocuments: repairedSubs as FinancialData[],
+    aiInterpretation: sanitizeLooseText(
+      `${data.aiInterpretation || ''} Extracted ${products.length} product line items on invoice blocks.`.trim(),
+      400
+    ),
+  };
+}
+
 function applySwissVatWarnings(data: FinancialData): FinancialData {
   let dataIn = { ...data };
   const lines = Array.isArray(dataIn.swissVatBreakdown) ? dataIn.swissVatBreakdown : [];
@@ -1097,6 +1309,8 @@ export const analyzeFinancialDocument = async (
         },
         lineItems: {
           type: Type.ARRAY,
+          description:
+            "EVERY product/service/fee/deposit row on the invoice (not a single total row). For Swiss beverage delivery notes: one entry per Article/Désignation row (amount=Valeur) plus Consigne rows when >0.",
           items: {
             type: Type.OBJECT,
             properties: {
@@ -1131,7 +1345,8 @@ export const analyzeFinancialDocument = async (
               netAmount: { type: Type.NUMBER },
               lineItems: {
                 type: Type.ARRAY,
-                description: "Product/service lines ON this invoice only (not the invoice total row).",
+                description:
+                  "Product/service/deposit lines ON this invoice only (Article rows). Never only the invoice gross total.",
                 items: {
                   type: Type.OBJECT,
                   properties: {
@@ -1219,7 +1434,10 @@ CRITICAL RULES:
 37. PAY SLIPS ONLY: Put totals in paySlip.grossPay, paySlip.netPay (printed net salary), paySlip.paymentToEmployee (final Payment/Remittance/Virement to employee after any advance), and top-level totalAmount = gross pay for payroll; do not duplicate the same salary as two invoice blocks.
 38. PAY SLIPS ONLY: The business posts two payments for tax-at-source employees: (1) paymentToEmployee to the employee, (2) grossPay minus paymentToEmployee to the state for taxes and social contributions. If an advance on salary is deducted before payment, paymentToEmployee is the final Payment line, not netPay.
 39. ITEMS vs INVOICES: lineItems are products/services ON an invoice. Never create a subDocuments entry per line item. subDocuments are ONLY for distinct invoices/receipts (different supplier, invoice number, or separate receipt). One invoice with 20 products → subDocuments empty or one entry + 20 lineItems. A PDF with 3 separate supplier invoices → 3 subDocuments (label "3 invoices detected"), not "items".
-40. PER-ITEM DETECTION: For Invoice / Ticket/Receipt, extract EVERY visible product or service line (description, amount; quantity and unitPrice when printed). Do not collapse an itemized invoice into a single lineItem.
+40. PER-ITEM DETECTION (CRITICAL): For Invoice / Ticket/Receipt / Bulletin de livraison / Lieferschein, extract EVERY visible product or service line into lineItems (description, amount; quantity and unitPrice when printed). NEVER collapse an itemized invoice into a single lineItem equal to Montant final / Total TTC. If the PDF has an article table, returning only one total row is a hard failure.
+41. SWISS DELIVERY / BEVERAGE TABLES: Columns often include Article, Désignation, Contenu, Quantité, Unité, Prix, Valeur, TVA, Consigne. One lineItem per article row: description=Désignation, quantity=package count when clear, unitPrice=Prix, amount=Valeur. If Consigne>0, also add "Consigne — {Désignation}" as a separate EXPENSE line with amount=Consigne. Include recycling tax / logistics / eco-tax footer lines as their own lineItems. Skip sous-total and total rows.
+42. SAME-SUPPLIER COMMANDE BLOCKS: Multiple "Commande" / "Bulletin de livraison" sections from the SAME issuer under ONE Montant final = ONE invoice. Put ALL article rows into top-level lineItems (and into that single subDocument.lineItems if you emit one sub). Do NOT create one subDocuments entry per Commande unless each block is a separately payable invoice with its own total due.
+43. CATEGORY HINT: Beverage wholesalers (Feldschlösschen, Heineken, Coca-Cola, Valaisanne, etc.) → expenseCategory BEVERAGES; food wholesalers → FOOD_SUPPLIES.
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings
@@ -1315,6 +1533,25 @@ Return JSON only.`;
       }
     } else if (isPdf) {
       console.log('⏩ Skipping exhaustive PDF pass (single-document fast path)');
+    }
+
+    // Recover product lines when first pass collapsed an itemized invoice to a total-only row.
+    if (isPdf && needsProductLineItemPass(file, normalized)) {
+      console.log('🧾 Running product line-items recovery pass…');
+      const products = await extractProductLineItemsPass(
+        file,
+        storageRef,
+        model,
+        normalized,
+        userHint,
+        signal
+      );
+      if (products && products.length >= 2) {
+        normalized = mergeProductLineItemsIntoData(normalized, products);
+        console.log(`🧾 Product line-items pass recovered ${products.length} rows`);
+      } else {
+        console.log('🧾 Product line-items pass returned insufficient rows — keeping first-pass data');
+      }
     }
 
     normalized = repairPaySlipMultiInvoiceBlocks(normalized, file);

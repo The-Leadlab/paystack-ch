@@ -849,15 +849,38 @@ function repairSubTotals(sub: FinancialData): FinancialData {
 }
 
 /** Invoice-rollup rows synthesized for multi-invoice PDFs — not product lines. */
-function isInvoiceRollupLineItem(item: BankTransaction): boolean {
+function isInvoiceRollupLineItem(
+  item: BankTransaction,
+  docTotal?: number,
+  issuer?: string
+): boolean {
   const notes = (item.notes || '').toLowerCase();
-  if (notes.includes('vat amount')) return true;
+  if (notes.includes('vat amount') || /\bvat\s+\d/i.test(notes)) return true;
   if (/\(pages?\s+/i.test(item.description || '')) return true;
+  // Synthetic issuer/total row (AI collapsed the article table) — not a product.
+  const qty = Number((item as BankTransaction & { quantity?: number }).quantity || 0);
+  const unit = Number((item as BankTransaction & { unitPrice?: number }).unitPrice || 0);
+  if (qty > 0 || unit > 0) return false;
+  if (
+    docTotal != null &&
+    docTotal > 0 &&
+    Math.abs(Number(item.amount || 0) - docTotal) < 0.05
+  ) {
+    const desc = (item.description || '').trim().toLowerCase();
+    const iss = (issuer || '').trim().toLowerCase();
+    if (!desc) return true;
+    if (iss && (desc.includes(iss.slice(0, 12)) || iss.includes(desc.slice(0, 12)))) return true;
+    if (/invoice|facture|rechnung|invoic|bulletin|livraison/i.test(desc)) return true;
+  }
   return false;
 }
 
-function productLineItemsFrom(items: BankTransaction[] | undefined): BankTransaction[] {
-  return (items || []).filter((i) => !isInvoiceRollupLineItem(i));
+function productLineItemsFrom(
+  items: BankTransaction[] | undefined,
+  docTotal?: number,
+  issuer?: string
+): BankTransaction[] {
+  return (items || []).filter((i) => !isInvoiceRollupLineItem(i, docTotal, issuer));
 }
 
 function rollUpMultiInvoiceTotals(data: FinancialData): FinancialData {
@@ -895,8 +918,10 @@ function rollUpMultiInvoiceTotals(data: FinancialData): FinancialData {
   // Single invoice block: keep product line items (nested or prior top-level), not a synthetic rollup row.
   let mergedLineItems: BankTransaction[];
   if (subs.length === 1) {
-    const nested = productLineItemsFrom((subs[0] as FinancialData).lineItems);
-    const prior = productLineItemsFrom(data.lineItems);
+    const docTotal = Number(subs[0].totalAmount || data.totalAmount || 0);
+    const issuer = String(subs[0].issuer || data.issuer || '');
+    const nested = productLineItemsFrom((subs[0] as FinancialData).lineItems, docTotal, issuer);
+    const prior = productLineItemsFrom(data.lineItems, docTotal, issuer);
     const products = nested.length > 0 ? nested : prior;
     mergedLineItems = products.length > 0 ? products : lineItems;
   } else {
@@ -1099,14 +1124,31 @@ const VerificationHub: React.FC<{
   /** Product lines for per-item verification (nested on active invoice when multi). */
   const activeProductItems: BankTransaction[] = (() => {
     if (isPaySlip || isBankStatement) return [];
+    const docTotal = Number(editedData.totalAmount || 0);
+    const issuer = String(editedData.issuer || '');
     if (subDocuments.length > 0) {
-      const nested = productLineItemsFrom((subDocuments[subInvoiceTabIdx] as FinancialData)?.lineItems);
+      const activeSub = subDocuments[subInvoiceTabIdx] as FinancialData;
+      const nested = productLineItemsFrom(
+        activeSub?.lineItems,
+        Number(activeSub?.totalAmount || docTotal),
+        String(activeSub?.issuer || issuer)
+      );
       if (nested.length > 0) return nested;
-      // Single sub-invoice: fall back to top-level product lines
-      if (subDocuments.length === 1) return productLineItemsFrom(editedData.lineItems);
-      return [];
+      // Same-supplier multi-Commande mis-split: aggregate nested products from all blocks.
+      if (subDocuments.length > 1) {
+        const allNested = subDocuments.flatMap((s) =>
+          productLineItemsFrom(
+            (s as FinancialData).lineItems,
+            Number((s as FinancialData).totalAmount || docTotal),
+            String((s as FinancialData).issuer || issuer)
+          )
+        );
+        if (allNested.length > 0) return allNested;
+      }
+      // Fall back to top-level product lines (single sub or empty nested).
+      return productLineItemsFrom(editedData.lineItems, docTotal, issuer);
     }
-    return productLineItemsFrom(editedData.lineItems);
+    return productLineItemsFrom(editedData.lineItems, docTotal, issuer);
   })();
 
   const lineItemTabIdx = Math.min(activeLineItemTab, Math.max(0, activeProductItems.length - 1));
