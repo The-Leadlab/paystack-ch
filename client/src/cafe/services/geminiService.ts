@@ -534,8 +534,19 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
   );
 
   // Prefer real product line items on a single invoice; only synthesize one row per invoice for multi-invoice PDFs.
+  // Preserve nested product lines on each subDocument (per-item verification).
+  const repairedSubsWithItems = repairedSubs.map((sub: any) => {
+    const nested = Array.isArray(sub.lineItems) ? sub.lineItems : [];
+    if (nested.length > 0) return { ...sub, lineItems: nested };
+    // Single-invoice PDF: attach top-level product lines onto the one sub when present.
+    if (repairedSubs.length === 1 && normalizedLineItems.length > 0) {
+      return { ...sub, lineItems: normalizedLineItems };
+    }
+    return sub;
+  });
+
   const finalLineItems =
-    repairedSubs.length > 1
+    repairedSubsWithItems.length > 1
       ? rebasedItems
       : normalizedLineItems.length > 0
         ? normalizedLineItems
@@ -545,29 +556,29 @@ function normalizeMultiInvoiceData(parsed: FinancialData): FinancialData {
 
   /** For multi-invoice documents, grand total is ALWAYS the sum of invoice-level gross totals. */
   const aggregatedTotal =
-    repairedSubs.length > 1
+    repairedSubsWithItems.length > 1
       ? subTotal
       : rollupFromLines > 0 && Math.abs(subTotal - rollupFromLines) > 0.06
         ? rollupFromLines
         : subTotal;
-  const aggregatedVat = repairedSubs.reduce((sum: number, sub: any) => sum + Number(sub.vatAmount || 0), 0);
-  const aggregatedNet = repairedSubs.reduce((sum: number, sub: any) => sum + Number(sub.netAmount || 0), 0);
+  const aggregatedVat = repairedSubsWithItems.reduce((sum: number, sub: any) => sum + Number(sub.vatAmount || 0), 0);
+  const aggregatedNet = repairedSubsWithItems.reduce((sum: number, sub: any) => sum + Number(sub.netAmount || 0), 0);
 
-  const sortedDates = repairedSubs.map((s: any) => s.date).filter(Boolean).sort();
+  const sortedDates = repairedSubsWithItems.map((s: any) => s.date).filter(Boolean).sort();
 
   return {
     ...parsed,
-    subDocuments: repairedSubs as any,
+    subDocuments: repairedSubsWithItems as any,
     totalAmount: aggregatedTotal,
     vatAmount: aggregatedVat,
     netAmount: aggregatedNet,
     issuer:
-      repairedSubs.length > 1
-        ? String(repairedSubs[0]?.issuer || parsed.issuer || 'Unknown').trim() || 'Unknown'
-        : parsed.issuer || repairedSubs[0]?.issuer || 'Unknown',
+      repairedSubsWithItems.length > 1
+        ? String(repairedSubsWithItems[0]?.issuer || parsed.issuer || 'Unknown').trim() || 'Unknown'
+        : parsed.issuer || repairedSubsWithItems[0]?.issuer || 'Unknown',
     lineItems: finalLineItems,
     date: (sortedDates[0] as string) || parsed.date,
-    aiInterpretation: parsed.aiInterpretation || `Detected ${repairedSubs.length} invoice blocks across all pages.`,
+    aiInterpretation: parsed.aiInterpretation || `Detected ${repairedSubsWithItems.length} invoice blocks across all pages.`,
   };
 }
 
@@ -698,33 +709,43 @@ function sanitizeSwissVatFields(
   };
 }
 
+function sanitizeLineItemRow(
+  item: BankTransaction | any,
+  docType: DocumentType,
+  parentCat: string
+): BankTransaction {
+  const amount = toFiniteNumber(item?.amount, 0);
+  const description = sanitizeLooseText(item?.description, 220) || 'Unlabeled line item';
+  const category = sanitizeLooseText(item?.category, 80) || 'OTHER';
+  const rawType = item?.type === 'INCOME' ? 'INCOME' : 'EXPENSE';
+  const qty = toFiniteNumber(item?.quantity, NaN);
+  const unit = toFiniteNumber(item?.unitPrice, NaN);
+  return {
+    date: normalizeIsoDate(item?.date) || sanitizeLooseText(item?.date, 24),
+    description,
+    amount,
+    type: inferLineItemType({
+      expenseCategory: category,
+      documentType: docType,
+      description,
+      category,
+      parentExpenseCategory: parentCat,
+      existingType: rawType,
+    }),
+    category,
+    notes: sanitizeLooseText(item?.notes, 220),
+    isHumanVerified: Boolean(item?.isHumanVerified),
+    ...(Number.isFinite(qty) && qty > 0 ? { quantity: qty } : {}),
+    ...(Number.isFinite(unit) && unit >= 0 ? { unitPrice: unit } : {}),
+  };
+}
+
 function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
   const docType = coerceDocumentType(data.documentType);
   const parentCat = sanitizeLooseText(data.expenseCategory, 80) || 'OTHER';
 
   const safeLineItems: BankTransaction[] = (Array.isArray(data.lineItems) ? data.lineItems : [])
-    .map((item) => {
-      const amount = toFiniteNumber(item?.amount, 0);
-      const description = sanitizeLooseText(item?.description, 220) || 'Unlabeled line item';
-      const category = sanitizeLooseText(item?.category, 80) || 'OTHER';
-      const rawType = item?.type === 'INCOME' ? 'INCOME' : 'EXPENSE';
-      return {
-        date: normalizeIsoDate(item?.date) || sanitizeLooseText(item?.date, 24),
-        description,
-        amount,
-        type: inferLineItemType({
-          expenseCategory: category,
-          documentType: docType,
-          description,
-          category,
-          parentExpenseCategory: parentCat,
-          existingType: rawType,
-        }),
-        category,
-        notes: sanitizeLooseText((item as any)?.notes, 220),
-        isHumanVerified: Boolean((item as any)?.isHumanVerified),
-      };
-    })
+    .map((item) => sanitizeLineItemRow(item, docType, parentCat))
     .filter((item) => item.amount >= 0);
 
   const rootSwiss = sanitizeSwissVatFields(data, data.expenseCategory || "OTHER");
@@ -734,6 +755,9 @@ function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
     .map((sub) => {
       const subCat = sanitizeLooseText(sub?.expenseCategory, 80) || data.expenseCategory || "OTHER";
       const subSplit = splitIssuerAndReference(sub?.issuer);
+      const nestedItems = (Array.isArray((sub as any)?.lineItems) ? (sub as any).lineItems : [])
+        .map((item: BankTransaction) => sanitizeLineItemRow(item, coerceDocumentType(sub?.documentType) || docType, subCat))
+        .filter((item: BankTransaction) => item.amount >= 0);
       const baseSub = {
         ...sub,
         pageRange: sanitizeLooseText((sub as any)?.pageRange, 40),
@@ -751,12 +775,14 @@ function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
         vatRate: toFiniteNumber((sub as any)?.vatRate, 0),
         netAmount: toFiniteNumber(sub?.netAmount, 0),
         aiInterpretation: sanitizeLooseText(sub?.aiInterpretation, 320),
+        ...(nestedItems.length ? { lineItems: nestedItems } : {}),
       } as FinancialData;
       const withSwiss = { ...baseSub, ...sanitizeSwissVatFields(baseSub, subCat) };
       return {
         ...withSwiss,
         vatAmount: resolveDocumentVatAmount(withSwiss),
         date: normalizeIsoDate(withSwiss.date) || withSwiss.date,
+        ...(nestedItems.length ? { lineItems: nestedItems } : {}),
       };
     })
     .filter((sub) => toFiniteNumber(sub.totalAmount, 0) >= 0);
@@ -1078,7 +1104,9 @@ export const analyzeFinancialDocument = async (
               description: { type: Type.STRING },
               amount: { type: Type.NUMBER },
               type: { type: Type.STRING, enum: ["INCOME", "EXPENSE"] },
-              category: { type: Type.STRING }
+              category: { type: Type.STRING },
+              quantity: { type: Type.NUMBER, description: "Quantity when printed on the line" },
+              unitPrice: { type: Type.NUMBER, description: "Unit price when printed on the line" },
             }
           }
         },
@@ -1101,6 +1129,22 @@ export const analyzeFinancialDocument = async (
               vatAmount: { type: Type.NUMBER },
               vatRate: { type: Type.NUMBER },
               netAmount: { type: Type.NUMBER },
+              lineItems: {
+                type: Type.ARRAY,
+                description: "Product/service lines ON this invoice only (not the invoice total row).",
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    date: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    amount: { type: Type.NUMBER },
+                    type: { type: Type.STRING, enum: ["INCOME", "EXPENSE"] },
+                    category: { type: Type.STRING },
+                    quantity: { type: Type.NUMBER },
+                    unitPrice: { type: Type.NUMBER },
+                  }
+                }
+              },
               swissVatBreakdown: {
                 type: Type.ARRAY,
                 description: "Per-invoice Swiss multi-rate TVA columns when visible on that block.",
@@ -1149,7 +1193,7 @@ CRITICAL RULES:
 11. If multiple invoices/receipts exist in one PDF, create one subDocuments entry per invoice/receipt with clean issuer (no "| REF"), documentNumber for the invoice ref, printed date, VAT, net, gross, currency, and pageRange.
 12. If VAT is truly not printed and cannot be derived, set vatAmount=0 and vatRate=0 and add a forensicAlerts note (never omit fields).
 13. If one invoice spans multiple pages, merge those pages into ONE subDocuments entry with a combined pageRange (e.g. "2-3"), do not duplicate it.
-14. For multi-invoice files, include lineItems with ONE row per invoice (gross total per invoice), not per product/ticket line. description = clean supplier name only.
+14. For multi-invoice files: top-level lineItems = ONE row per invoice (gross total per invoice), description = clean supplier name only. ALSO put product/service lines into each subDocuments[i].lineItems when those lines are visible on that invoice (do not put product lines only at top-level for multi-invoice).
 15. NEVER cap extracted invoices to 2 or 3; include EVERY distinct invoice found across ALL pages (a 7-page binder may have 5–7 invoices).
 16. Extract only values visible in the document. Never invent issuer names, dates, VAT, or totals. ISSUER RULE: issuer is the company name only; put Facture/N°/Ref in documentNumber — never "Name | Ref 12345".
 17. If a required field is not visible, use safe defaults (empty string for text, 0 for numbers, pageRange="" if unknown) and continue — never drop an invoice because one field is hard to read.
@@ -1175,6 +1219,7 @@ CRITICAL RULES:
 37. PAY SLIPS ONLY: Put totals in paySlip.grossPay, paySlip.netPay (printed net salary), paySlip.paymentToEmployee (final Payment/Remittance/Virement to employee after any advance), and top-level totalAmount = gross pay for payroll; do not duplicate the same salary as two invoice blocks.
 38. PAY SLIPS ONLY: The business posts two payments for tax-at-source employees: (1) paymentToEmployee to the employee, (2) grossPay minus paymentToEmployee to the state for taxes and social contributions. If an advance on salary is deducted before payment, paymentToEmployee is the final Payment line, not netPay.
 39. ITEMS vs INVOICES: lineItems are products/services ON an invoice. Never create a subDocuments entry per line item. subDocuments are ONLY for distinct invoices/receipts (different supplier, invoice number, or separate receipt). One invoice with 20 products → subDocuments empty or one entry + 20 lineItems. A PDF with 3 separate supplier invoices → 3 subDocuments (label "3 invoices detected"), not "items".
+40. PER-ITEM DETECTION: For Invoice / Ticket/Receipt, extract EVERY visible product or service line (description, amount; quantity and unitPrice when printed). Do not collapse an itemized invoice into a single lineItem.
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings

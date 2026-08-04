@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   Ban,
   CheckCircle2,
+  Copy,
   CreditCard,
   ExternalLink,
   KeyRound,
@@ -11,8 +12,10 @@ import {
   RefreshCw,
   RotateCcw,
   Save,
+  Shield,
   Tag,
   Trash2,
+  Users,
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,6 +41,7 @@ import {
   adminOutlineBtnClass,
   adminPanelCardClass,
   subscriptionStatusClass,
+  verifiedStatusClass,
 } from "./adminUserUi";
 
 type Props = {
@@ -62,6 +66,23 @@ function formatDateTime(iso: string | null): string {
   } catch {
     return iso;
   }
+}
+
+function SectionTitle({ children }: { children: ReactNode }) {
+  return (
+    <p className="font-display text-xs font-bold uppercase tracking-wider text-muted-foreground">
+      {children}
+    </p>
+  );
+}
+
+function MetaRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex justify-between gap-3 text-sm">
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className="text-foreground text-right min-w-0 break-all">{children}</span>
+    </div>
+  );
 }
 
 export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
@@ -183,6 +204,11 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
     return id;
   };
 
+  const copyUid = () => {
+    void navigator.clipboard.writeText(uid);
+    toast.success(t("adminUserUidCopied"));
+  };
+
   const isPasswordUser = user?.providerIds.includes("password");
   const canEditEmail = isPasswordUser || (user?.providerIds.length ?? 0) === 0;
   const canSetPassword = Boolean(user?.email);
@@ -194,41 +220,39 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
     { id: "invoices", label: t("adminUserTabInvoices") },
   ];
 
+  const stripeDashboardUrl = user?.stripeCustomerId
+    ? `https://dashboard.stripe.com/customers/${user.stripeCustomerId}`
+    : null;
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3 min-w-0">
+    <div className="space-y-5">
+      {/* Sticky back bar */}
+      <div className="sticky top-0 z-20 -mx-1 px-1 py-2 bg-background/95 backdrop-blur-sm border-b border-border">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="font-display gap-1.5 -ml-2 text-muted-foreground hover:text-foreground"
+            className={`${adminOutlineBtnClass} min-h-10 gap-2 font-semibold`}
             onClick={onBack}
+            title={t("adminUserBackHint")}
           >
             <ArrowLeft className="size-4" />
+            <Users className="size-3.5 opacity-70 hidden sm:inline" />
             {t("adminUserBackToList")}
           </Button>
-          <div className="space-y-1">
-            <h2 className="font-display text-xl font-bold text-foreground truncate">
-              {user?.displayName || user?.email || uid}
-            </h2>
-            {user?.displayName && user.email ? (
-              <p className="text-sm text-muted-foreground break-all">{user.email}</p>
-            ) : null}
-            <p className="text-[11px] font-mono text-muted-foreground break-all">{uid}</p>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={`${adminOutlineBtnClass} min-h-10 shrink-0`}
+            onClick={() => void loadUser()}
+            disabled={loading}
+          >
+            <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
+            {t("adminUserRefresh")}
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className={`${adminOutlineBtnClass} shrink-0`}
-          onClick={() => void loadUser()}
-          disabled={loading}
-        >
-          <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-          {t("adminUserRefresh")}
-        </Button>
       </div>
 
       {loading || !user ? (
@@ -236,428 +260,763 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
           <Loader2 className="size-8 animate-spin text-brand-red" />
         </div>
       ) : (
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DetailTab)} className="gap-6">
-          <TabsList className="w-full h-auto gap-1.5 bg-muted/60 p-1.5 grid grid-cols-2 sm:flex sm:flex-wrap sm:w-auto">
-            {detailTabs.map((tab) => (
-              <TabsTrigger
-                key={tab.id}
-                value={tab.id}
-                className="font-display data-[state=active]:bg-card data-[state=active]:text-foreground px-3 sm:px-4 py-2.5 min-h-11 text-xs sm:text-sm touch-manipulation"
+        <>
+          {/* Identity header */}
+          <div className={`${adminPanelCardClass} space-y-4`}>
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+              <div
+                className="size-12 rounded-xl bg-brand-red/10 text-brand-red flex items-center justify-center font-display text-lg font-bold shrink-0"
+                aria-hidden
               >
-                {tab.label}
-                {tab.id === "invoices" && user.stripeInvoices.length > 0 ? (
-                  <span className="ml-1 text-[10px] opacity-70">({user.stripeInvoices.length})</span>
-                ) : null}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          <TabsContent value="profile" className="mt-0 space-y-4">
-            <div className={`${adminPanelCardClass} space-y-4`}>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="edit-display-name" className="font-display text-xs">
-                    {t("adminUserDisplayName")}
-                  </Label>
-                  <Input
-                    id="edit-display-name"
-                    value={editDisplayName}
-                    onChange={(e) => setEditDisplayName(e.target.value)}
-                    className="bg-background"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-email" className="font-display text-xs">
-                    {t("adminUsersColEmail")}
-                  </Label>
-                  <Input
-                    id="edit-email"
-                    type="email"
-                    value={editEmail}
-                    onChange={(e) => setEditEmail(e.target.value)}
-                    className="bg-background"
-                    disabled={!canEditEmail}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-phone" className="font-display text-xs">
-                    {t("adminUserPhone")}
-                  </Label>
-                  <Input
-                    id="edit-phone"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                    className="bg-background"
-                    placeholder="+41 78 757 59 93"
-                    inputMode="tel"
-                    autoComplete="tel"
-                  />
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">{t("adminUserPhoneHint")}</p>
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="edit-password" className="font-display text-xs">
-                    {t("adminUserNewPassword")}
-                  </Label>
-                  <Input
-                    id="edit-password"
-                    type="password"
-                    value={editPassword}
-                    onChange={(e) => setEditPassword(e.target.value)}
-                    placeholder={t("adminUserPasswordPlaceholder")}
-                    className="bg-background"
-                    minLength={6}
-                    disabled={!canSetPassword}
-                  />
-                </div>
+                {(user.displayName || user.email || "?").charAt(0).toUpperCase()}
               </div>
-              {!canEditEmail && user.providerIds.length > 0 ? (
-                <p className="text-xs text-muted-foreground">{t("adminUserEmailOAuthHint")}</p>
-              ) : null}
-              {canSetPassword && !isPasswordUser && user.providerIds.length > 0 ? (
-                <p className="text-xs text-muted-foreground">{t("adminUserPasswordOAuthHint")}</p>
-              ) : null}
-              {!canSetPassword ? (
-                <p className="text-xs text-muted-foreground">{t("adminUserNoEmailForPassword")}</p>
-              ) : null}
-              <div className="flex flex-wrap gap-4 pt-1">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editEmailVerified}
-                    onChange={(e) => setEditEmailVerified(e.target.checked)}
-                  />
-                  {t("adminUserMarkVerified")}
-                </label>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editDisabled}
-                    onChange={(e) => setEditDisabled(e.target.checked)}
-                  />
-                  {t("adminUserCreateDisabled")}
-                </label>
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground border-t border-border pt-3">
-                <span>{t("adminUserProviders")}: {user.providerIds.join(", ") || "—"}</span>
-                <span>{t("adminUsersColLastSignIn")}: {formatDateTime(user.lastSignInAt)}</span>
-                {user.usageThisMonth != null ? (
-                  <span>{t("adminUserDocsThisMonth")}: {user.usageThisMonth}</span>
-                ) : null}
-              </div>
-              <Button
-                type="button"
-                className="font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2"
-                disabled={actionBusy !== null}
-                onClick={() => void saveProfile()}
-              >
-                {actionBusy === "saveProfile" ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-                {t("adminUserSaveProfile")}
-              </Button>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="billing" className="mt-0 space-y-4">
-            <div className={`${adminPanelCardClass} space-y-3 text-sm`}>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="flex justify-between gap-2 items-center sm:flex-col sm:items-start">
-                  <span className="text-muted-foreground text-xs uppercase tracking-wide">{t("adminUsersColPlan")}</span>
-                  <span className="font-display font-bold uppercase text-foreground">{user.planId ?? "—"}</span>
+              <div className="min-w-0 flex-1 space-y-2">
+                <div>
+                  <h2 className="font-display text-xl font-bold text-foreground truncate">
+                    {user.displayName || user.email || uid}
+                  </h2>
+                  {user.displayName && user.email ? (
+                    <p className="text-sm text-muted-foreground break-all">{user.email}</p>
+                  ) : null}
                 </div>
-                <div className="flex justify-between gap-2 items-center sm:flex-col sm:items-start">
-                  <span className="text-muted-foreground text-xs uppercase tracking-wide">{t("adminUsersColStatus")}</span>
-                  <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${subscriptionStatusClass(user.subscriptionStatus)}`}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <code className="text-[11px] font-mono text-muted-foreground bg-muted/60 px-2 py-1 rounded break-all">
+                    {uid}
+                  </code>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1 text-xs text-muted-foreground"
+                    onClick={copyUid}
+                  >
+                    <Copy className="size-3" />
+                    {t("adminUserCopyUid")}
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  <span className="inline-flex items-center rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-display font-semibold uppercase">
+                    {user.planId ?? t("adminUserNoPlan")}
+                  </span>
+                  <span
+                    className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${subscriptionStatusClass(user.subscriptionStatus)}`}
+                  >
                     {user.subscriptionStatus ?? "none"}
                   </span>
+                  <span
+                    className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${verifiedStatusClass(user.emailVerified)}`}
+                  >
+                    {user.emailVerified ? t("adminUsersYes") : t("adminUsersNo")} · {t("adminUsersColVerified")}
+                  </span>
+                  {user.disabled ? (
+                    <span className="inline-flex items-center rounded-md border border-destructive/40 bg-destructive/15 text-destructive px-2 py-0.5 text-[11px] font-medium">
+                      {t("adminUsersDisabled")}
+                    </span>
+                  ) : null}
+                  {user.planTestMode ? (
+                    <span className="inline-flex items-center rounded-md border border-amber-500/40 bg-amber-500/15 text-amber-800 dark:text-amber-200 px-2 py-0.5 text-[11px] font-medium">
+                      {t("adminUsersTestMode")}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DetailTab)} className="gap-5">
+            <TabsList className="w-full h-auto gap-1.5 bg-muted/60 p-1.5 grid grid-cols-2 sm:flex sm:flex-wrap sm:w-auto">
+              {detailTabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  className="font-display data-[state=active]:bg-card data-[state=active]:text-foreground px-3 sm:px-4 py-2.5 min-h-11 text-xs sm:text-sm touch-manipulation gap-1.5"
+                >
+                  {tab.id === "actions" ? <Shield className="size-3.5 opacity-70" /> : null}
+                  {tab.label}
+                  {tab.id === "invoices" && user.stripeInvoices.length > 0 ? (
+                    <span className="ml-0.5 text-[10px] opacity-70">({user.stripeInvoices.length})</span>
+                  ) : null}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {/* ── Profile ── */}
+            <TabsContent value="profile" className="mt-0 space-y-4">
+              <div className={`${adminPanelCardClass} space-y-3`}>
+                <SectionTitle>{t("adminUserSectionSnapshot")}</SectionTitle>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <MetaRow label={t("adminUserProviders")}>
+                    {user.providerIds.join(", ") || "—"}
+                  </MetaRow>
+                  <MetaRow label={t("adminUsersColLastSignIn")}>
+                    {formatDateTime(user.lastSignInAt)}
+                  </MetaRow>
+                  {user.usageThisMonth != null ? (
+                    <MetaRow label={t("adminUserDocsThisMonth")}>{user.usageThisMonth}</MetaRow>
+                  ) : null}
                 </div>
               </div>
 
-              <div className="space-y-2 border-t border-border pt-3">
-                <div className="flex justify-between gap-2">
-                  <span className="text-muted-foreground">{t("adminUserSubStart")}</span>
-                  <span className="text-foreground text-right">
+              <div className={`${adminPanelCardClass} space-y-4`}>
+                <SectionTitle>{t("adminUserSectionEditProfile")}</SectionTitle>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="edit-display-name" className="font-display text-xs">
+                      {t("adminUserDisplayName")}
+                    </Label>
+                    <Input
+                      id="edit-display-name"
+                      value={editDisplayName}
+                      onChange={(e) => setEditDisplayName(e.target.value)}
+                      className="bg-background"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-email" className="font-display text-xs">
+                      {t("adminUsersColEmail")}
+                    </Label>
+                    <Input
+                      id="edit-email"
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      className="bg-background"
+                      disabled={!canEditEmail}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-phone" className="font-display text-xs">
+                      {t("adminUserPhone")}
+                    </Label>
+                    <Input
+                      id="edit-phone"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      className="bg-background"
+                      placeholder="+41 78 757 59 93"
+                      inputMode="tel"
+                      autoComplete="tel"
+                    />
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      {t("adminUserPhoneHint")}
+                    </p>
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="edit-password" className="font-display text-xs">
+                      {t("adminUserNewPassword")}
+                    </Label>
+                    <Input
+                      id="edit-password"
+                      type="password"
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      placeholder={t("adminUserPasswordPlaceholder")}
+                      className="bg-background"
+                      minLength={6}
+                      disabled={!canSetPassword}
+                    />
+                  </div>
+                </div>
+                {!canEditEmail && user.providerIds.length > 0 ? (
+                  <p className="text-xs text-muted-foreground">{t("adminUserEmailOAuthHint")}</p>
+                ) : null}
+                {canSetPassword && !isPasswordUser && user.providerIds.length > 0 ? (
+                  <p className="text-xs text-muted-foreground">{t("adminUserPasswordOAuthHint")}</p>
+                ) : null}
+                {!canSetPassword ? (
+                  <p className="text-xs text-muted-foreground">{t("adminUserNoEmailForPassword")}</p>
+                ) : null}
+                <div className="flex flex-wrap gap-4 pt-1 border-t border-border">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer pt-3">
+                    <input
+                      type="checkbox"
+                      checked={editEmailVerified}
+                      onChange={(e) => setEditEmailVerified(e.target.checked)}
+                    />
+                    {t("adminUserMarkVerified")}
+                  </label>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer pt-3">
+                    <input
+                      type="checkbox"
+                      checked={editDisabled}
+                      onChange={(e) => setEditDisabled(e.target.checked)}
+                    />
+                    {t("adminUserCreateDisabled")}
+                  </label>
+                </div>
+                <Button
+                  type="button"
+                  className="font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2"
+                  disabled={actionBusy !== null}
+                  onClick={() => void saveProfile()}
+                >
+                  {actionBusy === "saveProfile" ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Save className="size-4" />
+                  )}
+                  {t("adminUserSaveProfile")}
+                </Button>
+              </div>
+            </TabsContent>
+
+            {/* ── Billing ── */}
+            <TabsContent value="billing" className="mt-0 space-y-4">
+              <div className={`${adminPanelCardClass} space-y-3`}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <SectionTitle>{t("adminUserSectionOverview")}</SectionTitle>
+                  {stripeDashboardUrl ? (
+                    <Button type="button" variant="outline" size="sm" className={adminOutlineBtnClass} asChild>
+                      <a href={stripeDashboardUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="size-3.5" />
+                        {t("adminUserOpenStripe")}
+                      </a>
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {t("adminUsersColPlan")}
+                    </p>
+                    <p className="font-display font-bold uppercase text-foreground">
+                      {user.planId ?? "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {t("adminUsersColStatus")}
+                    </p>
+                    <span
+                      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${subscriptionStatusClass(user.subscriptionStatus)}`}
+                    >
+                      {user.subscriptionStatus ?? "none"}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-2 border-t border-border pt-3">
+                  <MetaRow label={t("adminUserSubStart")}>
                     {formatDateTime(user.stripeSubscription?.startDate ?? user.createdAt)}
-                  </span>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-muted-foreground">{t("adminUserPeriodStart")}</span>
-                  <span className="text-foreground text-right">
+                  </MetaRow>
+                  <MetaRow label={t("adminUserPeriodStart")}>
                     {formatDateTime(user.stripeSubscription?.currentPeriodStart ?? null)}
-                  </span>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-muted-foreground">{t("adminUserPeriodEnd")}</span>
-                  <span className="text-foreground text-right">
+                  </MetaRow>
+                  <MetaRow label={t("adminUserPeriodEnd")}>
                     {formatDateTime(
                       user.stripeSubscription?.currentPeriodEnd ?? user.currentPeriodEnd
                     )}
-                  </span>
-                </div>
-                {(user.stripeSubscription?.trialEndsAt || user.trialEndsAt) ? (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-muted-foreground">{t("adminUserTrialEnds")}</span>
-                    <span className="text-foreground text-right">
+                  </MetaRow>
+                  {(user.stripeSubscription?.trialEndsAt || user.trialEndsAt) ? (
+                    <MetaRow label={t("adminUserTrialEnds")}>
                       {formatDateTime(user.stripeSubscription?.trialEndsAt ?? user.trialEndsAt)}
+                    </MetaRow>
+                  ) : null}
+                  <MetaRow label={t("adminUserLastPayment")}>
+                    {user.lastPaymentAt
+                      ? formatDateTime(user.lastPaymentAt)
+                      : t("adminUserPaymentNever")}
+                  </MetaRow>
+                  <div className="flex justify-between gap-3 text-sm items-center">
+                    <span className="text-muted-foreground">{t("adminUserPaymentLate")}</span>
+                    <span
+                      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${
+                        user.paymentLate
+                          ? "border-destructive/40 bg-destructive/15 text-destructive"
+                          : "border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                      }`}
+                    >
+                      {user.paymentLate
+                        ? t("adminUserPaymentLateYes")
+                        : t("adminUserPaymentOnTime")}
                     </span>
                   </div>
-                ) : null}
-                <div className="flex justify-between gap-2">
-                  <span className="text-muted-foreground">{t("adminUserLastPayment")}</span>
-                  <span className="text-foreground text-right">
-                    {user.lastPaymentAt ? formatDateTime(user.lastPaymentAt) : t("adminUserPaymentNever")}
-                  </span>
+                  {user.stripeSubscription?.cancelAtPeriodEnd ? (
+                    <p className="text-xs text-amber-600 dark:text-amber-300">
+                      {t("adminUserCancelScheduled")}
+                    </p>
+                  ) : null}
+                  {user.stripeSubscription?.couponId ? (
+                    <MetaRow label={t("adminUserActiveCoupon")}>
+                      <span className="font-mono text-xs">{user.stripeSubscription.couponId}</span>
+                    </MetaRow>
+                  ) : null}
+                  {user.stripeCustomerId ? (
+                    <p className="text-xs text-muted-foreground break-all pt-1">
+                      Stripe: {user.stripeCustomerId}
+                      {user.stripeCustomerMatchPending ? " (not saved yet)" : ""}
+                    </p>
+                  ) : null}
                 </div>
-                <div className="flex justify-between gap-2 items-center">
-                  <span className="text-muted-foreground">{t("adminUserPaymentLate")}</span>
-                  <span
-                    className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${
-                      user.paymentLate
-                        ? "border-destructive/40 bg-destructive/15 text-destructive"
-                        : "border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                    }`}
+              </div>
+
+              {user.stripeCustomerMatchPending || !user.stripeCustomerId ? (
+                <div className={`${adminPanelCardClass} space-y-3`}>
+                  <SectionTitle>{t("adminUserSectionStripeLink")}</SectionTitle>
+                  {user.stripeCustomerMatchPending ? (
+                    <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
+                      {t("adminUserStripeMatchPending")}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {t("adminUserNoStripeCustomer")}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {t("adminUserLinkStripeHint")}
+                  </p>
+                  <Button
+                    type="button"
+                    className="font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2 w-full sm:w-auto min-h-11"
+                    disabled={!user.email || actionBusy !== null}
+                    onClick={() => void runAction("linkStripe", { action: "link_stripe_by_email" })}
                   >
-                    {user.paymentLate ? t("adminUserPaymentLateYes") : t("adminUserPaymentOnTime")}
-                  </span>
+                    {actionBusy === "linkStripe" ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <CreditCard className="size-4" />
+                    )}
+                    {t("adminUserLinkStripe")}
+                  </Button>
                 </div>
-                {user.stripeSubscription?.cancelAtPeriodEnd ? (
-                  <p className="text-xs text-amber-600 dark:text-amber-300">{t("adminUserCancelScheduled")}</p>
-                ) : null}
+              ) : null}
+
+              <div className={`${adminPanelCardClass} space-y-3`}>
+                <SectionTitle>{t("adminUserSectionSubActions")}</SectionTitle>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={adminOutlineBtnClass}
+                    disabled={!user.subscriptionId || actionBusy !== null}
+                    onClick={() =>
+                      void runAction(
+                        "cancel",
+                        { action: "cancel_subscription", atPeriodEnd: true },
+                        t("adminUserConfirmCancel")
+                      )
+                    }
+                  >
+                    {actionBusy === "cancel" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <XCircle className="size-3.5" />
+                    )}
+                    {t("adminUserCancelSub")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={adminOutlineBtnClass}
+                    disabled={!user.subscriptionId || actionBusy !== null}
+                    onClick={() =>
+                      void runAction("reactivate", { action: "reactivate_subscription" })
+                    }
+                  >
+                    {actionBusy === "reactivate" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <RotateCcw className="size-3.5" />
+                    )}
+                    {t("adminUserReactivateSub")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={adminOutlineBtnClass}
+                    disabled={!user.stripeCustomerId || actionBusy !== null}
+                    onClick={() =>
+                      void runAction(
+                        "refund",
+                        { action: "refund_last_payment" },
+                        t("adminUserConfirmRefund")
+                      )
+                    }
+                  >
+                    {actionBusy === "refund" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <CreditCard className="size-3.5" />
+                    )}
+                    {t("adminUserRefund")}
+                  </Button>
+                </div>
+              </div>
+
+              <div className={`${adminPanelCardClass} space-y-3`}>
+                <SectionTitle>{t("adminUserSectionCoupon")}</SectionTitle>
+                <Label htmlFor="admin-coupon" className="font-display text-xs">
+                  {t("adminUserCouponId")}
+                </Label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    id="admin-coupon"
+                    value={couponId}
+                    onChange={(e) => setCouponId(e.target.value)}
+                    placeholder="SUMMER25"
+                    className="font-mono text-sm bg-background flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={`${adminOutlineBtnClass} shrink-0`}
+                    disabled={!user.subscriptionId || !couponId.trim() || actionBusy !== null}
+                    onClick={() =>
+                      void runAction("coupon", {
+                        action: "apply_coupon",
+                        couponId: couponId.trim(),
+                      })
+                    }
+                  >
+                    {actionBusy === "coupon" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Tag className="size-3.5" />
+                    )}
+                    {t("adminUserApplyCoupon")}
+                  </Button>
+                </div>
                 {user.stripeSubscription?.couponId ? (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-muted-foreground">{t("adminUserActiveCoupon")}</span>
-                    <span className="font-mono text-xs">{user.stripeSubscription.couponId}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive"
+                    disabled={actionBusy !== null}
+                    onClick={() => void runAction("removeCoupon", { action: "remove_coupon" })}
+                  >
+                    {t("adminUserRemoveCoupon")}
+                  </Button>
+                ) : null}
+              </div>
+
+              <div className={`${adminPanelCardClass} space-y-3`}>
+                <SectionTitle>{t("adminUserSectionPlanOverride")}</SectionTitle>
+                <div className="flex gap-2">
+                  <Select
+                    value={planOverride}
+                    onValueChange={(v) => setPlanOverride(v as PaystackPlanId | "none")}
+                  >
+                    <SelectTrigger className="flex-1 bg-background border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover text-popover-foreground border-border">
+                      <SelectItem value="none">{t("adminUserNoPlan")}</SelectItem>
+                      {(["starter", "business", "unlimited", "enterprise"] as const).map((id) => (
+                        <SelectItem key={id} value={id}>
+                          {planLabel(id)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="font-display bg-brand-red text-white hover:bg-brand-red/90 shrink-0"
+                    disabled={actionBusy !== null}
+                    onClick={() =>
+                      void runAction("setPlan", {
+                        action: "set_plan",
+                        planId: planOverride === "none" ? null : planOverride,
+                        planTestMode,
+                      })
+                    }
+                  >
+                    {actionBusy === "setPlan" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      t("adminUserSavePlan")
+                    )}
+                  </Button>
+                </div>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={planTestMode}
+                    onChange={(e) => setPlanTestMode(e.target.checked)}
+                  />
+                  {t("adminUsersTestMode")}
+                </label>
+              </div>
+            </TabsContent>
+
+            {/* ── Security ── */}
+            <TabsContent value="actions" className="mt-0 space-y-4">
+              <div className={`${adminPanelCardClass} space-y-3`}>
+                <SectionTitle>{t("adminUserSectionAccess")}</SectionTitle>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={adminOutlineBtnClass}
+                    disabled={!user.email || actionBusy !== null}
+                    onClick={() =>
+                      void runAction("passwordReset", { action: "send_password_reset" })
+                    }
+                  >
+                    {actionBusy === "passwordReset" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <KeyRound className="size-3.5" />
+                    )}
+                    {t("adminUserPasswordReset")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={adminOutlineBtnClass}
+                    disabled={!user.email || user.emailVerified || actionBusy !== null}
+                    onClick={() =>
+                      void runAction("verify", { action: "resend_verification" })
+                    }
+                  >
+                    {actionBusy === "verify" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Mail className="size-3.5" />
+                    )}
+                    {t("adminUserResendVerify")}
+                  </Button>
+                </div>
+                {linkResult ? (
+                  <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
+                    <p className="text-sm font-medium text-foreground">
+                      {t("adminUserLinkGenerated")}
+                    </p>
+                    <Input
+                      readOnly
+                      value={linkResult}
+                      className="text-xs font-mono bg-background"
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className={adminOutlineBtnClass}
+                      onClick={() => {
+                        void navigator.clipboard.writeText(linkResult);
+                        toast.success(t("adminUserLinkCopied"));
+                      }}
+                    >
+                      {t("adminUserCopyLink")}
+                    </Button>
                   </div>
                 ) : null}
               </div>
 
-              {user.stripeCustomerId ? (
-                <p className="text-xs text-muted-foreground break-all border-t border-border pt-3">
-                  Stripe customer: {user.stripeCustomerId}
-                  {user.stripeCustomerMatchPending ? " (not saved yet)" : ""}
-                </p>
-              ) : null}
-            </div>
-
-            {user.stripeCustomerMatchPending || !user.stripeCustomerId ? (
               <div className={`${adminPanelCardClass} space-y-3`}>
-                {user.stripeCustomerMatchPending ? (
+                <SectionTitle>{t("adminUserSetPasswordTitle")}</SectionTitle>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t("adminUserSetPasswordHint")}
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    type="password"
+                    value={actionPassword}
+                    onChange={(e) => setActionPassword(e.target.value)}
+                    placeholder={t("adminUserNewPassword")}
+                    className="bg-background flex-1"
+                    minLength={6}
+                    disabled={!canSetPassword || actionBusy !== null}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="font-display bg-brand-red text-white hover:bg-brand-red/90 shrink-0 gap-1.5"
+                    disabled={
+                      !canSetPassword ||
+                      actionBusy !== null ||
+                      actionPassword.trim().length < 6
+                    }
+                    onClick={() => void setPassword()}
+                  >
+                    {actionBusy === "setPassword" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <KeyRound className="size-3.5" />
+                    )}
+                    {t("adminUserSetPassword")}
+                  </Button>
+                </div>
+              </div>
+
+              <div
+                className={`${adminPanelCardClass} space-y-3 border-destructive/30 bg-destructive/[0.03]`}
+              >
+                <SectionTitle>{t("adminUserSectionDanger")}</SectionTitle>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={adminOutlineBtnClass}
+                    disabled={actionBusy !== null}
+                    onClick={() =>
+                      void runAction(
+                        user.disabled ? "enable" : "disable",
+                        { action: user.disabled ? "enable_user" : "disable_user" },
+                        user.disabled ? undefined : t("adminUserConfirmDisable")
+                      )
+                    }
+                  >
+                    {actionBusy === "disable" || actionBusy === "enable" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : user.disabled ? (
+                      <CheckCircle2 className="size-3.5" />
+                    ) : (
+                      <Ban className="size-3.5" />
+                    )}
+                    {user.disabled ? t("adminUserEnable") : t("adminUserDisable")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="font-display gap-1"
+                    disabled={actionBusy !== null}
+                    onClick={() =>
+                      void runAction(
+                        "delete",
+                        { action: "delete_user" },
+                        t("adminUserConfirmDelete")
+                      )
+                    }
+                  >
+                    {actionBusy === "delete" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="size-3.5" />
+                    )}
+                    {t("adminUserDelete")}
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* ── Invoices ── */}
+            <TabsContent value="invoices" className="mt-0 space-y-4">
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
+                {t("adminUserInvoicesHint")}
+              </p>
+              {user.stripeCustomerMatchPending ? (
+                <div className={`${adminPanelCardClass} space-y-3`}>
                   <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
                     {t("adminUserStripeMatchPending")}
                   </p>
-                ) : (
-                  <p className="text-sm text-muted-foreground leading-relaxed">{t("adminUserNoStripeCustomer")}</p>
-                )}
-                <p className="text-xs text-muted-foreground leading-relaxed">{t("adminUserLinkStripeHint")}</p>
-                <Button
-                  type="button"
-                  className="font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2 w-full sm:w-auto min-h-11"
-                  disabled={!user.email || actionBusy !== null}
-                  onClick={() => void runAction("linkStripe", { action: "link_stripe_by_email" })}
-                >
-                  {actionBusy === "linkStripe" ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
-                  {t("adminUserLinkStripe")}
-                </Button>
-              </div>
-            ) : null}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <Button type="button" variant="outline" size="sm" className={adminOutlineBtnClass} disabled={!user.subscriptionId || actionBusy !== null}
-                onClick={() => void runAction("cancel", { action: "cancel_subscription", atPeriodEnd: true }, t("adminUserConfirmCancel"))}>
-                {actionBusy === "cancel" ? <Loader2 className="size-3.5 animate-spin" /> : <XCircle className="size-3.5" />}
-                {t("adminUserCancelSub")}
-              </Button>
-              <Button type="button" variant="outline" size="sm" className={adminOutlineBtnClass} disabled={!user.subscriptionId || actionBusy !== null}
-                onClick={() => void runAction("reactivate", { action: "reactivate_subscription" })}>
-                {actionBusy === "reactivate" ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
-                {t("adminUserReactivateSub")}
-              </Button>
-              <Button type="button" variant="outline" size="sm" className={adminOutlineBtnClass} disabled={!user.stripeCustomerId || actionBusy !== null}
-                onClick={() => void runAction("refund", { action: "refund_last_payment" }, t("adminUserConfirmRefund"))}>
-                {actionBusy === "refund" ? <Loader2 className="size-3.5 animate-spin" /> : <CreditCard className="size-3.5" />}
-                {t("adminUserRefund")}
-              </Button>
-              <Button type="button" variant="outline" size="sm" className={adminOutlineBtnClass} disabled={!user.subscriptionId || !couponId.trim() || actionBusy !== null}
-                onClick={() => void runAction("coupon", { action: "apply_coupon", couponId: couponId.trim() })}>
-                {actionBusy === "coupon" ? <Loader2 className="size-3.5 animate-spin" /> : <Tag className="size-3.5" />}
-                {t("adminUserApplyCoupon")}
-              </Button>
-            </div>
-
-            <div className={`${adminPanelCardClass} space-y-3`}>
-              <Label htmlFor="admin-coupon" className="font-display text-xs">{t("adminUserCouponId")}</Label>
-              <Input id="admin-coupon" value={couponId} onChange={(e) => setCouponId(e.target.value)} placeholder="SUMMER25" className="font-mono text-sm bg-background" />
-              {user.stripeSubscription?.couponId ? (
-                <Button type="button" variant="ghost" size="sm" className="text-destructive" disabled={actionBusy !== null}
-                  onClick={() => void runAction("removeCoupon", { action: "remove_coupon" })}>
-                  {t("adminUserRemoveCoupon")}
-                </Button>
+                  <Button
+                    type="button"
+                    className="font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2 w-full sm:w-auto min-h-11"
+                    disabled={!user.email || actionBusy !== null}
+                    onClick={() =>
+                      void runAction("linkStripe", { action: "link_stripe_by_email" })
+                    }
+                  >
+                    {actionBusy === "linkStripe" ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <CreditCard className="size-4" />
+                    )}
+                    {t("adminUserLinkStripe")}
+                  </Button>
+                </div>
               ) : null}
-            </div>
-
-            <div className={`${adminPanelCardClass} space-y-3`}>
-              <p className="font-display text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("adminUserSectionPlanOverride")}</p>
-              <div className="flex gap-2">
-                <Select value={planOverride} onValueChange={(v) => setPlanOverride(v as PaystackPlanId | "none")}>
-                  <SelectTrigger className="flex-1 bg-background border-border"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-popover text-popover-foreground border-border">
-                    <SelectItem value="none">{t("adminUserNoPlan")}</SelectItem>
-                    {(["starter", "business", "unlimited", "enterprise"] as const).map((id) => (
-                      <SelectItem key={id} value={id}>{planLabel(id)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button type="button" size="sm" className="font-display bg-brand-red text-white hover:bg-brand-red/90 shrink-0" disabled={actionBusy !== null}
-                  onClick={() => void runAction("setPlan", { action: "set_plan", planId: planOverride === "none" ? null : planOverride, planTestMode })}>
-                  {actionBusy === "setPlan" ? <Loader2 className="size-3.5 animate-spin" /> : t("adminUserSavePlan")}
-                </Button>
-              </div>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={planTestMode} onChange={(e) => setPlanTestMode(e.target.checked)} />
-                {t("adminUsersTestMode")}
-              </label>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="actions" className="mt-0 space-y-4">
-            <div className={`${adminPanelCardClass} space-y-3`}>
-              <p className="text-sm font-medium text-foreground">{t("adminUserSetPasswordTitle")}</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">{t("adminUserSetPasswordHint")}</p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Input
-                  type="password"
-                  value={actionPassword}
-                  onChange={(e) => setActionPassword(e.target.value)}
-                  placeholder={t("adminUserNewPassword")}
-                  className="bg-background flex-1"
-                  minLength={6}
-                  disabled={!canSetPassword || actionBusy !== null}
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  className="font-display bg-brand-red text-white hover:bg-brand-red/90 shrink-0 gap-1.5"
-                  disabled={!canSetPassword || actionBusy !== null || actionPassword.trim().length < 6}
-                  onClick={() => void setPassword()}
-                >
-                  {actionBusy === "setPassword" ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />}
-                  {t("adminUserSetPassword")}
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <Button type="button" variant="outline" size="sm" className={adminOutlineBtnClass} disabled={!user.email || actionBusy !== null}
-                onClick={() => void runAction("passwordReset", { action: "send_password_reset" })}>
-                {actionBusy === "passwordReset" ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />}
-                {t("adminUserPasswordReset")}
-              </Button>
-              <Button type="button" variant="outline" size="sm" className={adminOutlineBtnClass} disabled={!user.email || user.emailVerified || actionBusy !== null}
-                onClick={() => void runAction("verify", { action: "resend_verification" })}>
-                {actionBusy === "verify" ? <Loader2 className="size-3.5 animate-spin" /> : <Mail className="size-3.5" />}
-                {t("adminUserResendVerify")}
-              </Button>
-              <Button type="button" variant="outline" size="sm" className={adminOutlineBtnClass} disabled={actionBusy !== null}
-                onClick={() => void runAction(user.disabled ? "enable" : "disable", { action: user.disabled ? "enable_user" : "disable_user" }, user.disabled ? undefined : t("adminUserConfirmDisable"))}>
-                {actionBusy === "disable" || actionBusy === "enable" ? <Loader2 className="size-3.5 animate-spin" /> : user.disabled ? <CheckCircle2 className="size-3.5" /> : <Ban className="size-3.5" />}
-                {user.disabled ? t("adminUserEnable") : t("adminUserDisable")}
-              </Button>
-              <Button type="button" variant="destructive" size="sm" className="font-display gap-1" disabled={actionBusy !== null}
-                onClick={() => void runAction("delete", { action: "delete_user" }, t("adminUserConfirmDelete"))}>
-                {actionBusy === "delete" ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                {t("adminUserDelete")}
-              </Button>
-            </div>
-
-            {linkResult ? (
-              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
-                <p className="text-sm font-medium text-foreground">{t("adminUserLinkGenerated")}</p>
-                <Input readOnly value={linkResult} className="text-xs font-mono bg-background" onFocus={(e) => e.target.select()} />
-                <Button type="button" size="sm" variant="outline" className={adminOutlineBtnClass}
-                  onClick={() => { void navigator.clipboard.writeText(linkResult); toast.success(t("adminUserLinkCopied")); }}>
-                  {t("adminUserCopyLink")}
-                </Button>
-              </div>
-            ) : null}
-          </TabsContent>
-
-          <TabsContent value="invoices" className="mt-0 space-y-4">
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">{t("adminUserInvoicesHint")}</p>
-            {user.stripeCustomerMatchPending ? (
-              <div className={`${adminPanelCardClass} space-y-3`}>
-                <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
-                  {t("adminUserStripeMatchPending")}
-                </p>
-                <Button
-                  type="button"
-                  className="font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2 w-full sm:w-auto min-h-11"
-                  disabled={!user.email || actionBusy !== null}
-                  onClick={() => void runAction("linkStripe", { action: "link_stripe_by_email" })}
-                >
-                  {actionBusy === "linkStripe" ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
-                  {t("adminUserLinkStripe")}
-                </Button>
-              </div>
-            ) : null}
-            {!user.stripeCustomerId && !user.stripeCustomerMatchPending ? (
-              <div className={`${adminPanelCardClass} space-y-3`}>
-                <p className="text-sm text-muted-foreground">{t("adminUserNoStripeCustomer")}</p>
-                <Button
-                  type="button"
-                  className="font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2 w-full sm:w-auto min-h-11"
-                  disabled={!user.email || actionBusy !== null}
-                  onClick={() => void runAction("linkStripe", { action: "link_stripe_by_email" })}
-                >
-                  {actionBusy === "linkStripe" ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
-                  {t("adminUserLinkStripe")}
-                </Button>
-              </div>
-            ) : user.stripeInvoices.length === 0 ? (
-              <div className={`${adminPanelCardClass} text-sm text-muted-foreground`}>{t("adminUserNoInvoices")}</div>
-            ) : (
-              <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
-                {user.stripeInvoices.map((inv) => {
-                  const viewUrl = inv.hostedInvoiceUrl || inv.invoicePdf;
-                  return (
-                  <div key={inv.id} className="px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="min-w-0 space-y-1">
-                      <div className="font-medium text-foreground truncate">
-                        {inv.number ? `#${inv.number}` : inv.id}
-                      </div>
-                      <div className="font-mono text-[10px] text-muted-foreground truncate">{inv.id}</div>
-                      <div className="text-xs text-muted-foreground">{formatDateTime(inv.created)}</div>
-                      {inv.periodStart || inv.periodEnd ? (
-                        <div className="text-[10px] text-muted-foreground">
-                          {t("adminUserInvoicePeriod")}: {formatDateTime(inv.periodStart)} → {formatDateTime(inv.periodEnd)}
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="text-right">
-                        <div className="font-medium text-foreground">{formatMoney(inv.amountPaid, inv.currency)}</div>
-                        {inv.amountDue > 0 && inv.amountDue !== inv.amountPaid ? (
-                          <div className="text-[10px] text-muted-foreground">
-                            {t("adminUserInvoiceDue")}: {formatMoney(inv.amountDue, inv.currency)}
+              {!user.stripeCustomerId && !user.stripeCustomerMatchPending ? (
+                <div className={`${adminPanelCardClass} space-y-3`}>
+                  <p className="text-sm text-muted-foreground">
+                    {t("adminUserNoStripeCustomer")}
+                  </p>
+                  <Button
+                    type="button"
+                    className="font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2 w-full sm:w-auto min-h-11"
+                    disabled={!user.email || actionBusy !== null}
+                    onClick={() =>
+                      void runAction("linkStripe", { action: "link_stripe_by_email" })
+                    }
+                  >
+                    {actionBusy === "linkStripe" ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <CreditCard className="size-4" />
+                    )}
+                    {t("adminUserLinkStripe")}
+                  </Button>
+                </div>
+              ) : user.stripeInvoices.length === 0 ? (
+                <div className={`${adminPanelCardClass} text-sm text-muted-foreground`}>
+                  {t("adminUserNoInvoices")}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+                  {user.stripeInvoices.map((inv) => {
+                    const viewUrl = inv.hostedInvoiceUrl || inv.invoicePdf;
+                    return (
+                      <div
+                        key={inv.id}
+                        className="px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                      >
+                        <div className="min-w-0 space-y-1">
+                          <div className="font-medium text-foreground truncate">
+                            {inv.number ? `#${inv.number}` : inv.id}
                           </div>
-                        ) : null}
-                        <span className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-medium mt-1 ${subscriptionStatusClass(inv.status === "paid" ? "active" : inv.status)}`}>
-                          {inv.status ?? "—"}
-                        </span>
+                          <div className="font-mono text-[10px] text-muted-foreground truncate">
+                            {inv.id}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatDateTime(inv.created)}
+                          </div>
+                          {inv.periodStart || inv.periodEnd ? (
+                            <div className="text-[10px] text-muted-foreground">
+                              {t("adminUserInvoicePeriod")}: {formatDateTime(inv.periodStart)} →{" "}
+                              {formatDateTime(inv.periodEnd)}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="text-right">
+                            <div className="font-medium text-foreground">
+                              {formatMoney(inv.amountPaid, inv.currency)}
+                            </div>
+                            {inv.amountDue > 0 && inv.amountDue !== inv.amountPaid ? (
+                              <div className="text-[10px] text-muted-foreground">
+                                {t("adminUserInvoiceDue")}:{" "}
+                                {formatMoney(inv.amountDue, inv.currency)}
+                              </div>
+                            ) : null}
+                            <span
+                              className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-medium mt-1 ${subscriptionStatusClass(inv.status === "paid" ? "active" : inv.status)}`}
+                            >
+                              {inv.status ?? "—"}
+                            </span>
+                          </div>
+                          {viewUrl ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className={adminOutlineBtnClass}
+                              asChild
+                            >
+                              <a href={viewUrl} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="size-3.5" />
+                                {t("adminUserViewInvoice")}
+                              </a>
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
-                      {viewUrl ? (
-                        <Button type="button" variant="outline" size="sm" className={adminOutlineBtnClass} asChild>
-                          <a href={viewUrl} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="size-3.5" />
-                            {t("adminUserViewInvoice")}
-                          </a>
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                  );
-                })}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </>
       )}
     </div>
   );

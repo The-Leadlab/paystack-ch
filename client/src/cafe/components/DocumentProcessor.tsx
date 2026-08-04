@@ -255,7 +255,7 @@ const EditableLineItemsTable: React.FC<{
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-cdlp-border pb-3 gap-3">
          <div className="flex items-center gap-2">
             <ListOrdered className="w-4 h-4 text-cdlp-gold" />
-            <h5 className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-cdlp-gold">Line Item Detail Ledger</h5>
+            <h5 className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-cdlp-gold">{t('dpLineItemLedger')}</h5>
          </div>
          <div className="flex items-center gap-2 w-full sm:w-auto">
            {/* Search Bar */}
@@ -848,6 +848,18 @@ function repairSubTotals(sub: FinancialData): FinancialData {
   return { ...sub, totalAmount: total, netAmount: net, vatAmount: vat };
 }
 
+/** Invoice-rollup rows synthesized for multi-invoice PDFs — not product lines. */
+function isInvoiceRollupLineItem(item: BankTransaction): boolean {
+  const notes = (item.notes || '').toLowerCase();
+  if (notes.includes('vat amount')) return true;
+  if (/\(pages?\s+/i.test(item.description || '')) return true;
+  return false;
+}
+
+function productLineItemsFrom(items: BankTransaction[] | undefined): BankTransaction[] {
+  return (items || []).filter((i) => !isInvoiceRollupLineItem(i));
+}
+
 function rollUpMultiInvoiceTotals(data: FinancialData): FinancialData {
   const rawSubs = Array.isArray(data.subDocuments) ? data.subDocuments : [];
   if (rawSubs.length === 0) return data;
@@ -880,8 +892,17 @@ function rollUpMultiInvoiceTotals(data: FinancialData): FinancialData {
     };
   });
 
-  const existingIncome = (data.lineItems || []).filter((i) => i.type === 'INCOME');
-  const mergedLineItems = [...existingIncome, ...lineItems];
+  // Single invoice block: keep product line items (nested or prior top-level), not a synthetic rollup row.
+  let mergedLineItems: BankTransaction[];
+  if (subs.length === 1) {
+    const nested = productLineItemsFrom((subs[0] as FinancialData).lineItems);
+    const prior = productLineItemsFrom(data.lineItems);
+    const products = nested.length > 0 ? nested : prior;
+    mergedLineItems = products.length > 0 ? products : lineItems;
+  } else {
+    const existingIncome = (data.lineItems || []).filter((i) => i.type === 'INCOME');
+    mergedLineItems = [...existingIncome, ...lineItems];
+  }
 
   const calculatedTotalIncome = mergedLineItems
     .filter((item) => item.type === 'INCOME')
@@ -923,11 +944,17 @@ const VerificationHub: React.FC<{
   const [isAddingCustom, setIsAddingCustom] = useState(false);
   const [showSubInvoiceModal, setShowSubInvoiceModal] = useState(false);
   const [activeSubInvoiceTab, setActiveSubInvoiceTab] = useState(0);
+  const [activeLineItemTab, setActiveLineItemTab] = useState(0);
   const hasViewableSource = Boolean(doc.fileUrl || doc.fileDataUrl || doc.fileRaw);
 
   useEffect(() => {
     setActiveSubInvoiceTab(0);
+    setActiveLineItemTab(0);
   }, [doc.id, doc.data?.subDocuments?.length ?? 0]);
+
+  useEffect(() => {
+    setActiveLineItemTab(0);
+  }, [activeSubInvoiceTab]);
 
   const handleFieldChange = (field: keyof FinancialData, value: any) => {
     if (field === 'subDocuments') {
@@ -952,7 +979,7 @@ const VerificationHub: React.FC<{
       return;
     }
 
-    // When line items change, recalculate totals
+    // When line items change, recalculate totals (single-doc only — multi keeps invoice rollup totals)
     if (field === 'lineItems') {
       const lineItems = value as BankTransaction[];
       const totalIncome = lineItems
@@ -961,13 +988,17 @@ const VerificationHub: React.FC<{
       const totalExpense = lineItems
         .filter((item) => item.type === 'EXPENSE')
         .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-      
-      // Update calculated totals
+
       newData.calculatedTotalIncome = totalIncome;
       newData.calculatedTotalExpense = totalExpense;
-      
-      // For invoices/bills, total amount is the sum of all line items
-      // For bank statements, it's income - expense
+
+      const multiSubs = Array.isArray(newData.subDocuments) ? newData.subDocuments : [];
+      if (multiSubs.length > 0) {
+        // Multi-invoice: product edits must not overwrite header Total (sum of invoice tabs).
+        onUpdate({ ...newData, lineItems });
+        return;
+      }
+
       const rateAmt = Number(newData.conversionRateUsed ?? 1) || 1;
       if (newData.documentType === DocumentType.BANK_STATEMENT) {
         const net = Math.round((totalIncome - totalExpense) * 100) / 100;
@@ -979,12 +1010,6 @@ const VerificationHub: React.FC<{
         newData.amountInCHF =
           rateAmt !== 1 ? Math.round(signedSum * rateAmt * 100) / 100 : signedSum;
       }
-      
-      console.log('📊 Line items changed - recalculated totals:', {
-        totalIncome,
-        totalExpense,
-        totalAmount: newData.totalAmount
-      });
     }
 
     // Keep CHF rollup + live strip aligned when user edits Total Amount directly (single-doc mode).
@@ -1069,6 +1094,50 @@ const VerificationHub: React.FC<{
       i === idx ? { ...(s as FinancialData), ...patch } : { ...(s as FinancialData) }
     );
     handleFieldChange('subDocuments', next);
+  };
+
+  /** Product lines for per-item verification (nested on active invoice when multi). */
+  const activeProductItems: BankTransaction[] = (() => {
+    if (isPaySlip || isBankStatement) return [];
+    if (subDocuments.length > 0) {
+      const nested = productLineItemsFrom((subDocuments[subInvoiceTabIdx] as FinancialData)?.lineItems);
+      if (nested.length > 0) return nested;
+      // Single sub-invoice: fall back to top-level product lines
+      if (subDocuments.length === 1) return productLineItemsFrom(editedData.lineItems);
+      return [];
+    }
+    return productLineItemsFrom(editedData.lineItems);
+  })();
+
+  const lineItemTabIdx = Math.min(activeLineItemTab, Math.max(0, activeProductItems.length - 1));
+
+  const patchActiveProductItems = (nextItems: BankTransaction[]) => {
+    if (subDocuments.length > 0) {
+      patchSubDocument(subInvoiceTabIdx, { lineItems: nextItems } as Partial<FinancialData>);
+      return;
+    }
+    handleFieldChange('lineItems', nextItems);
+  };
+
+  const patchProductLineItem = (idx: number, patch: Partial<BankTransaction>) => {
+    const next = activeProductItems.map((row, i) =>
+      i === idx ? { ...row, ...patch } : row
+    );
+    patchActiveProductItems(next);
+  };
+
+  const addProductLineItem = () => {
+    const row: BankTransaction = {
+      date: editedData.date || new Date().toISOString().slice(0, 10),
+      description: '',
+      amount: 0,
+      type: 'EXPENSE',
+      category: editedData.expenseCategory || 'OTHER',
+      isHumanVerified: false,
+    };
+    const next = [...activeProductItems, row];
+    patchActiveProductItems(next);
+    setActiveLineItemTab(next.length - 1);
   };
 
   const lineIncomeSum =
@@ -1792,6 +1861,212 @@ const VerificationHub: React.FC<{
                    </div>
                  );
                })()}
+             </div>
+           )}
+
+           {!isPaySlip && !isBankStatement && (
+             <div className="mt-8 mb-6 space-y-3">
+               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-cdlp-border pb-2">
+                 <h5 className="text-[10px] font-black uppercase tracking-widest text-cdlp-gold flex items-center gap-2">
+                   <ListOrdered className="w-3.5 h-3.5" /> {t('dpPerItemTitle')}
+                 </h5>
+                 <div className="flex items-center gap-2">
+                   <span className="text-[8px] text-cdlp-muted uppercase tracking-tight">
+                     {t('dpPerItemHint')}
+                   </span>
+                   <button
+                     type="button"
+                     onClick={addProductLineItem}
+                     className="px-2 py-1 rounded-sm bg-cdlp-gold text-cdlp-black text-[8px] font-black uppercase tracking-widest"
+                   >
+                     {t('dpItemAdd')}
+                   </button>
+                 </div>
+               </div>
+
+               {activeProductItems.length === 0 ? (
+                 <p className="text-[10px] text-cdlp-muted py-3">{t('dpItemEmpty')}</p>
+               ) : (
+                 <>
+                   <div className="flex flex-wrap gap-2 pb-2 overflow-x-auto border-b border-cdlp-border/80">
+                     {activeProductItems.map((item, idx) => {
+                       const active = idx === lineItemTabIdx;
+                       return (
+                         <button
+                           key={`item-tab-${idx}-${item.description || 'line'}`}
+                           type="button"
+                           onClick={() => setActiveLineItemTab(idx)}
+                           className={`shrink-0 text-left px-3 py-2 rounded-sm border transition-colors min-w-[110px] max-w-[200px] ${
+                             active
+                               ? 'bg-cdlp-gold text-cdlp-black border-cdlp-gold shadow-md'
+                               : 'bg-cdlp-card/40 text-foreground border-cdlp-border hover:border-cdlp-gold/40'
+                           }`}
+                         >
+                           <span className="block text-[9px] font-black uppercase tracking-tight truncate">
+                             #{idx + 1} {item.description || t('dpItemDescription')}
+                           </span>
+                           <span className="block font-mono text-[10px] mt-1 opacity-90">
+                             {(Number(item.amount || 0)).toLocaleString(chfLocale, {
+                               minimumFractionDigits: 2,
+                               maximumFractionDigits: 2,
+                             })}{' '}
+                             {editedData.originalCurrency || 'CHF'}
+                           </span>
+                         </button>
+                       );
+                     })}
+                   </div>
+
+                   {(() => {
+                     const idx = lineItemTabIdx;
+                     const item = activeProductItems[idx];
+                     if (!item) return null;
+                     return (
+                       <div className="border border-cdlp-border rounded-sm bg-cdlp-card/35 p-4 mt-3">
+                         <div className="flex items-center justify-between gap-2 mb-4 pb-2 border-b border-cdlp-border/50">
+                           <span className="text-[10px] font-black uppercase text-cdlp-gold tracking-widest">
+                             {t('dpItemNofM')
+                               .replace('{current}', String(idx + 1))
+                               .replace('{total}', String(activeProductItems.length))}
+                           </span>
+                           <button
+                             type="button"
+                             onClick={() =>
+                               patchProductLineItem(idx, { isHumanVerified: !item.isHumanVerified })
+                             }
+                             className={`px-2 py-1 rounded-sm text-[8px] font-black uppercase tracking-widest border ${
+                               item.isHumanVerified
+                                 ? 'bg-emerald-600 text-white border-emerald-600'
+                                 : 'bg-cdlp-card text-cdlp-muted border-cdlp-border'
+                             }`}
+                           >
+                             {t('dpItemVerify')}
+                           </button>
+                         </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                           <div className="space-y-2 md:col-span-2 xl:col-span-2">
+                             <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">
+                               {t('dpItemDescription')}
+                             </label>
+                             <input
+                               value={item.description ?? ''}
+                               onChange={(e) => patchProductLineItem(idx, { description: e.target.value })}
+                               className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[11px] font-bold text-foreground outline-none focus:border-cdlp-gold"
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">
+                               {t('date')}
+                             </label>
+                             <input
+                               type="date"
+                               value={item.date ?? ''}
+                               onChange={(e) => patchProductLineItem(idx, { date: e.target.value })}
+                               className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[11px] font-bold text-foreground outline-none"
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">
+                               {t('dpItemQty')}
+                             </label>
+                             <input
+                               type="number"
+                               step="0.01"
+                               value={item.quantity ?? ''}
+                               onChange={(e) => {
+                                 const quantity = parseFloat(e.target.value);
+                                 const unitPrice = Number(item.unitPrice || 0);
+                                 const patch: Partial<BankTransaction> = {
+                                   quantity: Number.isFinite(quantity) ? quantity : undefined,
+                                 };
+                                 if (Number.isFinite(quantity) && unitPrice > 0) {
+                                   patch.amount = Math.round(quantity * unitPrice * 100) / 100;
+                                 }
+                                 patchProductLineItem(idx, patch);
+                               }}
+                               className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[11px] font-bold outline-none"
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">
+                               {t('dpItemUnitPrice')}
+                             </label>
+                             <input
+                               type="number"
+                               step="0.01"
+                               value={item.unitPrice ?? ''}
+                               onChange={(e) => {
+                                 const unitPrice = parseFloat(e.target.value);
+                                 const quantity = Number(item.quantity || 0);
+                                 const patch: Partial<BankTransaction> = {
+                                   unitPrice: Number.isFinite(unitPrice) ? unitPrice : undefined,
+                                 };
+                                 if (Number.isFinite(unitPrice) && quantity > 0) {
+                                   patch.amount = Math.round(quantity * unitPrice * 100) / 100;
+                                 }
+                                 patchProductLineItem(idx, patch);
+                               }}
+                               className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[11px] font-bold outline-none"
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">
+                               {t('dpItemAmount')}
+                             </label>
+                             <input
+                               type="number"
+                               step="0.01"
+                               value={item.amount ?? 0}
+                               onChange={(e) =>
+                                 patchProductLineItem(idx, { amount: parseFloat(e.target.value) || 0 })
+                               }
+                               className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[11px] font-black outline-none focus:border-cdlp-gold"
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">
+                               Type
+                             </label>
+                             <select
+                               value={item.type}
+                               onChange={(e) =>
+                                 patchProductLineItem(idx, {
+                                   type: e.target.value as 'INCOME' | 'EXPENSE',
+                                 })
+                               }
+                               className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black uppercase outline-none"
+                             >
+                               <option value="EXPENSE">EXPENSE</option>
+                               <option value="INCOME">INCOME</option>
+                             </select>
+                           </div>
+                           <div className="space-y-2 md:col-span-2 xl:col-span-3">
+                             <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest">
+                               {t('category')}
+                             </label>
+                             <select
+                               value={item.category || ''}
+                               onChange={(e) => patchProductLineItem(idx, { category: e.target.value })}
+                               className="w-full h-10 px-3 bg-cdlp-black border border-cdlp-border rounded-sm text-[10px] font-black text-foreground uppercase outline-none"
+                             >
+                               <option value="">{t('dpUncategorized')}</option>
+                               {CATEGORY_GROUPS.map((group) => (
+                                 <optgroup key={group.id} label={group.label}>
+                                   {RESTAURANT_CATEGORIES.filter((cat) => cat.group === group.id).map((cat) => (
+                                     <option key={cat.id} value={cat.id}>
+                                       {cat.label}
+                                     </option>
+                                   ))}
+                                 </optgroup>
+                               ))}
+                             </select>
+                           </div>
+                         </div>
+                       </div>
+                     );
+                   })()}
+                 </>
+               )}
              </div>
            )}
 
