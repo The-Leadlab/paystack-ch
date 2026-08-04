@@ -10,6 +10,8 @@ type RevenueLedgerTableProps = {
   expenses: Expense[];
   /** When true, only income rows (Revenue tab breakdown). Reports keep full ledger. */
   incomeOnly?: boolean;
+  /** When true, only expense rows (Expenses hub). */
+  expensesOnly?: boolean;
   showToggle?: boolean;
   enabled?: boolean;
   onToggle?: () => void;
@@ -20,6 +22,7 @@ export function RevenueLedgerTable({
   income,
   expenses,
   incomeOnly = false,
+  expensesOnly = false,
   showToggle = false,
   enabled = false,
   onToggle,
@@ -36,7 +39,7 @@ export function RevenueLedgerTable({
   };
 
   const allRows = buildLedgerRows(
-    income,
+    expensesOnly ? [] : income,
     incomeOnly ? [] : expenses,
     categoryLabel,
     (type) => (type === "SALES" || type === "RESERVATION" ? t(type) : type)
@@ -44,13 +47,23 @@ export function RevenueLedgerTable({
 
   useEffect(() => {
     setVisible(PAGE_SIZE);
-  }, [income.length, expenses.length, incomeOnly]);
+  }, [income.length, expenses.length, incomeOnly, expensesOnly]);
 
   const rows = allRows.slice(0, visible);
   const remaining = Math.max(0, allRows.length - visible);
 
-  const title = incomeOnly ? t("revBreakdownTitle") : t("repLedgerTitle");
-  const desc = incomeOnly ? t("revBreakdownDesc") : t("repLedgerDesc");
+  const title = expensesOnly
+    ? t("ehBreakdownTitle")
+    : incomeOnly
+      ? t("revBreakdownTitle")
+      : t("repLedgerTitle");
+  const desc = expensesOnly
+    ? t("ehBreakdownDesc")
+    : incomeOnly
+      ? t("revBreakdownDesc")
+      : t("repLedgerDesc");
+  const vendorCol = incomeOnly ? t("revColSource") : t("repColVendor");
+  const categoryCol = incomeOnly ? t("revColType") : t("repColCategory");
 
   return (
     <div className="ba-panel overflow-x-auto">
@@ -74,8 +87,8 @@ export function RevenueLedgerTable({
         <thead>
           <tr>
             <th>{t("repColDate")}</th>
-            <th>{incomeOnly ? t("revColSource") : t("repColVendor")}</th>
-            <th>{incomeOnly ? t("revColType") : t("repColCategory")}</th>
+            <th>{vendorCol}</th>
+            <th>{categoryCol}</th>
             <th>{t("repColAccount")}</th>
             <th className="text-right">{t("repColAmount")}</th>
             <th className="text-right">{t("repColVat")}</th>

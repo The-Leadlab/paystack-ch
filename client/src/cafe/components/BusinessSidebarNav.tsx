@@ -1,6 +1,13 @@
 import type { LucideIcon } from 'lucide-react';
 
-export type BusinessTab = 'dashboard' | 'revenue' | 'invoices' | 'reports' | 'documents' | 'billing';
+export type BusinessTab =
+  | 'dashboard'
+  | 'revenue'
+  | 'expenses'
+  | 'invoices'
+  | 'reports'
+  | 'documents'
+  | 'billing';
 
 export function BusinessSidebarNav({
   activeTab,
@@ -16,7 +23,9 @@ export function BusinessSidebarNav({
   return (
     <nav className="space-y-0.5 mb-0" aria-label="Main navigation">
       {items
-        .filter((item) => (item.id === 'revenue' ? showRevenueTab : true))
+        .filter((item) =>
+          item.id === 'revenue' || item.id === 'expenses' ? showRevenueTab : true
+        )
         .map((item) => {
           const Icon = item.icon;
           const active = activeTab === item.id;

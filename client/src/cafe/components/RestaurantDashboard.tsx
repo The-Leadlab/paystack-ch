@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'wouter';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings, Wallet, FilePenLine, Mail, Shield } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings, Wallet, FilePenLine, Mail, Shield, ArrowDownCircle } from 'lucide-react';
 import { BillingPlanPanel } from './BillingPlanPanel';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
@@ -20,6 +20,7 @@ import { PlanTestBanner, PlanTestPickerModal } from './PlanTestPickerModal';
 import { isAdminAppAccessUser, isPersonalFinancesAccessUser } from '../lib/subscriptionBypass';
 import { getSessionDisplayName } from '../lib/formatLocalDateTime';
 import { POSManager } from './POSManager';
+import { ExpensesManager } from './ExpensesManager';
 import { InvoiceMakerPanel } from './InvoiceMakerPanel';
 import type { ProcessedDocument, POSReading } from '../types';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
@@ -49,6 +50,7 @@ const FIRESTORE_BATCH_MAX = 450;
 const BUSINESS_NAV_ITEMS: { id: Tab; labelKey: string; icon: typeof LayoutDashboard }[] = [
   { id: 'dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
   { id: 'revenue', labelKey: 'revenue', icon: Receipt },
+  { id: 'expenses', labelKey: 'expenses', icon: ArrowDownCircle },
   { id: 'invoices', labelKey: 'invoiceMakerTab', icon: FilePenLine },
   { id: 'reports', labelKey: 'reports', icon: BarChart3 },
   { id: 'documents', labelKey: 'documents', icon: FileText },
@@ -112,7 +114,7 @@ export function RestaurantDashboard() {
     // Land on the billing tab when returning from the Google Drive OAuth redirect
     if (params.has('googleDrive')) return 'billing';
     const tab = params.get('tab');
-    const allowed: Tab[] = ['dashboard', 'revenue', 'invoices', 'reports', 'documents', 'billing'];
+    const allowed: Tab[] = ['dashboard', 'revenue', 'expenses', 'invoices', 'reports', 'documents', 'billing'];
     if (tab && (allowed as string[]).includes(tab)) return tab as Tab;
     return 'dashboard';
   });
@@ -134,7 +136,7 @@ export function RestaurantDashboard() {
       : '';
 
   useEffect(() => {
-    if (!showRevenueTab && activeTab === 'revenue') {
+    if (!showRevenueTab && (activeTab === 'revenue' || activeTab === 'expenses')) {
       setActiveTab('dashboard');
     }
   }, [showRevenueTab, activeTab]);
@@ -1041,7 +1043,10 @@ export function RestaurantDashboard() {
             />
           )}
           {activeTab === 'revenue' && showRevenueTab ? (
-            <POSManager onNavigateTab={setActiveTab} onNavigateToDocument={handleNavigateToDocument} />
+            <POSManager onNavigateTab={switchTab} onNavigateToDocument={handleNavigateToDocument} />
+          ) : null}
+          {activeTab === 'expenses' && showRevenueTab ? (
+            <ExpensesManager onNavigateTab={switchTab} onNavigateToDocument={handleNavigateToDocument} />
           ) : null}
           {activeTab === 'invoices' && <InvoiceMakerPanel />}
           {activeTab === 'reports' && <ReportsPlaceholder />}
@@ -1069,7 +1074,7 @@ export function RestaurantDashboard() {
           {showRevenueTab ? (
             <button
               type="button"
-              onClick={() => setActiveTab('revenue')}
+              onClick={() => switchTab('revenue')}
               className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
                 activeTab === 'revenue' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
               }`}
@@ -1078,9 +1083,21 @@ export function RestaurantDashboard() {
               <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('revenue')}</span>
             </button>
           ) : null}
+          {showRevenueTab ? (
+            <button
+              type="button"
+              onClick={() => switchTab('expenses')}
+              className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
+                activeTab === 'expenses' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
+              }`}
+            >
+              <ArrowDownCircle className="w-5 h-5 shrink-0" aria-hidden />
+              <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('expenses')}</span>
+            </button>
+          ) : null}
           <button
             type="button"
-            onClick={() => setActiveTab('invoices')}
+            onClick={() => switchTab('invoices')}
             className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
               activeTab === 'invoices' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
             }`}
