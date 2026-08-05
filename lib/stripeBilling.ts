@@ -65,6 +65,7 @@ export async function syncSubscriptionToFirestore(
             ? Timestamp.fromMillis(subscription.trial_end * 1000)
             : null,
         currentPeriodEnd: Timestamp.fromMillis(subscription.current_period_end * 1000),
+        cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true }
@@ -85,6 +86,7 @@ async function markSubscriptionCanceled(uid: string): Promise<void> {
         planId: null,
         trialEndsAt: null,
         currentPeriodEnd: null,
+        cancelAtPeriodEnd: false,
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true }
@@ -510,6 +512,19 @@ export async function runCancelSubscription(
       return { status: 403, json: { error: "Subscription does not belong to this account." } };
     }
 
+    if (subscription.status === "canceled") {
+      await markSubscriptionCanceled(uid);
+      return {
+        status: 200,
+        json: {
+          ok: true,
+          canceled: "already",
+          wasTrialing: false,
+          message: "Subscription is already canceled.",
+        },
+      };
+    }
+
     const isTrialing = subscription.status === "trialing";
     const forceImmediate = body?.immediate === true || isTrialing;
 
@@ -532,13 +547,29 @@ export async function runCancelSubscription(
       };
     }
 
-    await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
+    if (subscription.cancel_at_period_end) {
+      await syncSubscriptionToFirestore(uid, subscription, useTestStripe);
+      return {
+        status: 200,
+        json: {
+          ok: true,
+          canceled: "at_period_end",
+          wasTrialing: false,
+          alreadyScheduled: true,
+          message: "Subscription is already set to cancel at period end.",
+        },
+      };
+    }
+
+    const updated = await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
+    await syncSubscriptionToFirestore(uid, updated, useTestStripe);
     return {
       status: 200,
       json: {
         ok: true,
         canceled: "at_period_end",
         wasTrialing: false,
+        currentPeriodEnd: updated.current_period_end,
         message: "Subscription will cancel at the end of the billing period.",
       },
     };

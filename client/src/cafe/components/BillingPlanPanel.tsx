@@ -4,6 +4,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useWorkspaceOptional } from '../context/WorkspaceContext';
 import type { PaystackPlanId } from '@shared/planCatalog';
 import { parseTaxRegion, type TaxRegion } from '@shared/taxRegions';
 import { PlanMarketingFeatureBullets, PlanMarketingPanel, PLAN_ENTERPRISE_SALES_MAILTO } from './PlanMarketingPanel';
@@ -24,11 +25,16 @@ function formatLimit(n: number | null, t: (k: string) => string): string {
   return String(n);
 }
 
+function statusIsCancellable(status: string | null | undefined): boolean {
+  return status === 'trialing' || status === 'active' || status === 'past_due';
+}
+
 const UPGRADE_PLANS: PaystackPlanId[] = ['starter', 'business', 'unlimited', 'enterprise'];
 
 export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<{ count: number }> }) {
   const { t } = useLanguage();
   const { user, changePassword } = useAuth();
+  const workspace = useWorkspaceOptional();
   const { enforcementEnabled, loading, billing, entitlements, startCheckout, openCustomerPortal, cancelSubscription, isPlanTestUser, setPlanTestPlan } = useSubscription();
 
   const [portalBusy, setPortalBusy] = useState(false);
@@ -50,6 +56,12 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
   const [taxRegionLoading, setTaxRegionLoading] = useState(Boolean(user?.uid));
   const [taxRegionSaving, setTaxRegionSaving] = useState(false);
   const [taxRegionError, setTaxRegionError] = useState<string | null>(null);
+
+  const isOwner = workspace ? workspace.isOwner : true;
+  const canCancelPlan = isOwner && statusIsCancellable(billing?.subscriptionStatus);
+  const showCancelSection =
+    enforcementEnabled &&
+    (canCancelPlan || billing?.cancelAtPeriodEnd === true || !isOwner);
 
   const isPasswordUser = useMemo(
     () => user?.providerData?.some((p) => p.providerId === 'password') ?? false,
@@ -93,15 +105,28 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
     }
   };
 
-  const endTrialNow = async () => {
+  const handleCancelPlan = async () => {
+    if (!isOwner) return;
+    const isTrial = status === 'trialing';
+    if (!isTrial && !window.confirm(t('billingCancelConfirm'))) return;
     setCancelBusy(true);
     setCancelErr(null);
     setCancelMsg(null);
     try {
-      await cancelSubscription({ immediate: true });
-      setCancelMsg(t('billingCancelTrialDone'));
+      const result = await cancelSubscription(isTrial ? { immediate: true } : undefined);
+      if (result.wasTrialing || result.canceled === 'immediate') {
+        setCancelMsg(t('billingCancelTrialDone'));
+      } else {
+        setCancelMsg(t('billingCancelDone'));
+      }
     } catch (e) {
-      setCancelErr(e instanceof Error ? e.message : t('billingCancelTrialError'));
+      setCancelErr(
+        e instanceof Error
+          ? e.message
+          : isTrial
+            ? t('billingCancelTrialError')
+            : t('billingCancelError')
+      );
     } finally {
       setCancelBusy(false);
     }
@@ -347,37 +372,50 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
         </section>
       ) : null}
 
-      {enforcementEnabled ? (
+      {showCancelSection ? (
         <section className="rounded-xl border border-cdlp-gold-pale/25 bg-cdlp-cream/35 p-5 sm:p-6 space-y-3">
           <h2 className="text-sm font-black uppercase tracking-wider text-cdlp-muted flex items-center gap-2">
             <XCircle className="w-4 h-4 shrink-0 text-cdlp-gold/70" aria-hidden />
             {status === 'trialing' ? t('billingCancelTrialTitle') : t('billingCancelTitle')}
           </h2>
-          <p className="text-xs text-cdlp-muted leading-relaxed">
-            {status === 'trialing' ? t('billingCancelTrialBody') : t('billingCancelBody')}
-          </p>
-          {cancelMsg ? <p className="text-xs text-emerald-400 font-medium">{cancelMsg}</p> : null}
-          {cancelErr ? <p className="text-xs text-red-400 font-medium">{cancelErr}</p> : null}
-          {status === 'trialing' ? (
-            <button
-              type="button"
-              disabled={cancelBusy || Boolean(cancelMsg)}
-              onClick={() => void endTrialNow()}
-              className="w-full h-11 rounded-sm border border-cdlp-gold-pale/40 bg-transparent text-cdlp-muted font-black text-xs uppercase tracking-wider hover:border-cdlp-gold/40 hover:bg-cdlp-gold/5 hover:text-cdlp-gold/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
-            >
-              {cancelBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 opacity-80" />}
-              {t('billingCancelTrialCta')}
-            </button>
+          {!isOwner ? (
+            <p className="text-xs text-cdlp-muted leading-relaxed">{t('billingCancelMemberHint')}</p>
           ) : (
-            <button
-              type="button"
-              disabled={portalBusy}
-              onClick={() => void openPortal()}
-              className="w-full h-11 rounded-sm border border-cdlp-gold-pale/40 bg-transparent text-cdlp-muted font-black text-xs uppercase tracking-wider hover:border-cdlp-gold/40 hover:bg-cdlp-gold/5 hover:text-cdlp-gold/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
-            >
-              {portalBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 opacity-80" />}
-              {t('billingCancelCta')}
-            </button>
+            <>
+              <p className="text-xs text-cdlp-muted leading-relaxed">
+                {status === 'trialing' ? t('billingCancelTrialBody') : t('billingCancelBody')}
+              </p>
+              {billing?.cancelAtPeriodEnd && billing.currentPeriodEnd ? (
+                <p className="text-xs text-cdlp-muted">
+                  {t('billingAlreadyCanceling')}{' '}
+                  ({billing.currentPeriodEnd.toLocaleDateString()})
+                </p>
+              ) : null}
+              {cancelMsg ? <p className="text-xs text-emerald-400 font-medium">{cancelMsg}</p> : null}
+              {cancelErr ? <p className="text-xs text-red-400 font-medium">{cancelErr}</p> : null}
+              {canCancelPlan && !billing?.cancelAtPeriodEnd ? (
+                <button
+                  type="button"
+                  disabled={cancelBusy || Boolean(cancelMsg && status === 'trialing')}
+                  onClick={() => void handleCancelPlan()}
+                  className="w-full h-11 rounded-sm border border-cdlp-gold-pale/40 bg-transparent text-cdlp-muted font-black text-xs uppercase tracking-wider hover:border-cdlp-gold/40 hover:bg-cdlp-gold/5 hover:text-cdlp-gold/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+                >
+                  {cancelBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 opacity-80" />}
+                  {status === 'trialing' ? t('billingCancelTrialCta') : t('billingCancelCta')}
+                </button>
+              ) : null}
+              {isOwner && billing?.stripeCustomerId ? (
+                <button
+                  type="button"
+                  disabled={portalBusy}
+                  onClick={() => void openPortal()}
+                  className="w-full h-10 rounded-sm text-cdlp-muted/80 font-bold text-[10px] uppercase tracking-wider hover:text-cdlp-gold/80 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+                >
+                  {portalBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                  {t('billingManagePortalCta')}
+                </button>
+              ) : null}
+            </>
           )}
         </section>
       ) : null}

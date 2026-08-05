@@ -101,6 +101,13 @@ Checkout response includes `stripeMode: "live" | "test"` and `sessionId` for Das
 ### Trial cancel (no charge)
 
 - Billing → **End trial — no charge** calls `POST /api/stripe/cancel-subscription` which cancels the subscription **immediately** while `status === trialing` (`invoice_now: false`). Users who only open the Customer Portal and leave cancel unfinished can still be billed at trial end — prefer the in-app trial cancel button.
+
+### Paid plan cancel (customer self-serve)
+
+- Billing → **Cancel my plan** (any account owner, not only admin) calls the same `POST /api/stripe/cancel-subscription` without `immediate`.
+- Result: Stripe `cancel_at_period_end: true`, Firestore `cancelAtPeriodEnd` synced, access until period end, no further charges after that.
+- Stripe Customer Portal remains available as **Manage card** only.
+- Team members cannot cancel the owner’s subscription.
 - See also `docs/TEAM_INVITE_SUPER_PROMPT.md`.
 
 ---

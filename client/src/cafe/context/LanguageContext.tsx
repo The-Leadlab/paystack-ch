@@ -383,14 +383,21 @@ const translations = {
     billingUpgradeCta: 'Upgrade on Stripe',
     billingCancelTitle: 'Cancel subscription',
     billingCancelBody:
-      'Cancellation is handled in the Stripe customer portal. Your access continues until the end of the current billing period.',
-    billingCancelCta: 'Cancel subscription',
+      'Cancel in the app anytime. Your access continues until the end of the current billing period. You will not be charged again after that.',
+    billingCancelCta: 'Cancel my plan',
+    billingCancelConfirm:
+      'Cancel your subscription? You keep access until the end of the current period, then billing stops.',
+    billingCancelDone: 'Cancellation scheduled. You keep access until the end of the billing period.',
+    billingCancelError: 'Could not cancel. Please try again or open the billing portal.',
     billingCancelTrialTitle: 'End free trial',
     billingCancelTrialBody:
       'Ends your trial now. You will not be charged. Access stops immediately and your card is not billed.',
     billingCancelTrialCta: 'End trial — no charge',
     billingCancelTrialDone: 'Trial ended. You will not be charged.',
     billingCancelTrialError: 'Could not end the trial. Please try again or use the billing portal.',
+    billingCancelMemberHint: 'Only the workspace owner can cancel the subscription.',
+    billingManagePortalCta: 'Manage card in Stripe portal',
+    billingAlreadyCanceling: 'Cancellation already scheduled. Access continues until period end.',
     billingTeamTitle: 'Team members',
     billingTeamBody:
       'Invite people to share this dashboard (same sessions, documents, and finances). Seat limit follows your plan.',
@@ -1344,14 +1351,21 @@ const translations = {
     billingUpgradeCta: 'Mettre a niveau sur Stripe',
     billingCancelTitle: 'Resilier l\'abonnement',
     billingCancelBody:
-      'La resiliation se fait dans le portail client Stripe. L\'acces reste actif jusqu\'a la fin de la periode en cours.',
-    billingCancelCta: 'Annuler l\'abonnement',
+      'Annulez dans l\'app a tout moment. L\'acces reste actif jusqu\'a la fin de la periode en cours. Aucun nouveau prelevement apres.',
+    billingCancelCta: 'Annuler mon offre',
+    billingCancelConfirm:
+      'Annuler l\'abonnement ? Vous gardez l\'acces jusqu\'a la fin de la periode, puis la facturation s\'arrete.',
+    billingCancelDone: 'Resiliation programmee. Acces jusqu\'a la fin de la periode de facturation.',
+    billingCancelError: 'Impossible d\'annuler. Reessayez ou ouvrez le portail de facturation.',
     billingCancelTrialTitle: 'Terminer l\'essai gratuit',
     billingCancelTrialBody:
       'Met fin a l\'essai maintenant. Vous ne serez pas facture. L\'acces s\'arrete immediatement.',
     billingCancelTrialCta: 'Terminer l\'essai — sans frais',
     billingCancelTrialDone: 'Essai termine. Vous ne serez pas facture.',
     billingCancelTrialError: 'Impossible de terminer l\'essai. Reessayez ou utilisez le portail de facturation.',
+    billingCancelMemberHint: 'Seul le proprietaire de l\'espace peut resilier l\'abonnement.',
+    billingManagePortalCta: 'Gerer la carte dans le portail Stripe',
+    billingAlreadyCanceling: 'Resiliation deja programmee. Acces jusqu\'a la fin de la periode.',
     billingTeamTitle: 'Membres de l\'equipe',
     billingTeamBody:
       'Invitez des personnes a partager ce tableau de bord (memes sessions, documents et finances). La limite suit votre offre.',

@@ -26,6 +26,8 @@ type UserBillingSnapshot = {
   trialEndsAt: Date | null;
   planId: PaystackPlanId | null;
   stripeCustomerId: string | null;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: Date | null;
 };
 
 type SubscriptionContextValue = {
@@ -90,12 +92,20 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       ref,
       (snap) => {
         if (!snap.exists()) {
-          setBilling({ subscriptionStatus: 'none', trialEndsAt: null, planId: null, stripeCustomerId: null });
+          setBilling({
+            subscriptionStatus: 'none',
+            trialEndsAt: null,
+            planId: null,
+            stripeCustomerId: null,
+            cancelAtPeriodEnd: false,
+            currentPeriodEnd: null,
+          });
           setDocumentsUsedThisMonth(0);
           setPersonalDocumentsUsedThisMonth(0);
         } else {
           const d = snap.data() as Record<string, unknown>;
           const ts = d.trialEndsAt as { toDate?: () => Date } | undefined;
+          const periodTs = d.currentPeriodEnd as { toDate?: () => Date } | undefined;
           setBilling({
             subscriptionStatus: typeof d.subscriptionStatus === 'string' ? d.subscriptionStatus : 'none',
             trialEndsAt: ts && typeof ts.toDate === 'function' ? ts.toDate() : null,
@@ -104,6 +114,9 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
               typeof d.stripeCustomerId === 'string' && d.stripeCustomerId.trim()
                 ? d.stripeCustomerId.trim()
                 : null,
+            cancelAtPeriodEnd: d.cancelAtPeriodEnd === true,
+            currentPeriodEnd:
+              periodTs && typeof periodTs.toDate === 'function' ? periodTs.toDate() : null,
           });
           const usage = d.usage as Record<string, unknown> | undefined;
           const month = currentMonthKey();
@@ -119,7 +132,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       },
       (err) => {
         console.error('Subscription snapshot error:', err);
-        setBilling({ subscriptionStatus: 'none', trialEndsAt: null, planId: null, stripeCustomerId: null });
+        setBilling({
+          subscriptionStatus: 'none',
+          trialEndsAt: null,
+          planId: null,
+          stripeCustomerId: null,
+          cancelAtPeriodEnd: false,
+          currentPeriodEnd: null,
+        });
         setDocumentsUsedThisMonth(0);
         setPersonalDocumentsUsedThisMonth(0);
         setLoading(false);
