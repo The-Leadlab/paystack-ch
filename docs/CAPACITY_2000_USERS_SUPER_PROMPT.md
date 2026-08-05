@@ -4,6 +4,8 @@ Use when validating whether Paystack.ch can sustain **~2000 concurrent active us
 
 **Safety:** Do **not** create 2000 real Stripe checkouts or 2000 Firebase Auth users against production. This harness is a **local simulation + optional HTTP smoke** of entitlement logic, concurrency, and API surface.
 
+**Latest documented run:** `docs/CAPACITY_2000_USERS_RESULTS.md` (2026-08-05 — PASS, 0 hard errors).
+
 Related: `shared/planCatalog.ts`, `docs/TEAM_INVITE_SUPER_PROMPT.md`, `docs/STRIPE_CHECKOUT_SUPER_PROMPT.md`.
 
 ---
