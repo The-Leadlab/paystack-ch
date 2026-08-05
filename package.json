@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "security:scan": "node scripts/security-scan.mjs",
+    "test:capacity": "node scripts/capacity-test-2000.mjs",
     "assets:brand-icons": "node scripts/generate-brand-icons.mjs",
     "format": "prettier --write ."
   },
