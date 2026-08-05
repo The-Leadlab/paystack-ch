@@ -8,6 +8,7 @@ import { getStripe, getStripeTest, runCreateCheckoutSessionGuest } from "../lib/
 import {
   runCreateCheckoutSession,
   runCreatePortalSession,
+  runCancelSubscription,
   runLinkCheckoutSession,
   runStripeWebhook,
 } from "../lib/stripeBilling";
@@ -70,6 +71,27 @@ export async function handleCreatePortalSessionExpress(
     res.status(out.status).json(out.json);
   } catch (e) {
     console.error("[stripe] create-portal-session express:", e);
+    if (!res.headersSent) {
+      res.status(500).json({ error: e instanceof Error ? e.message : "Internal server error" });
+    }
+  }
+}
+
+export async function handleCancelSubscriptionExpress(
+  req: Request,
+  res: Response,
+  useTestStripe = false
+): Promise<void> {
+  try {
+    const out = await runCancelSubscription(
+      req.headers.authorization,
+      (req.body ?? {}) as { immediate?: boolean },
+      req.headers as Record<string, string | string[] | undefined>,
+      useTestStripe
+    );
+    res.status(out.status).json(out.json);
+  } catch (e) {
+    console.error("[stripe] cancel-subscription express:", e);
     if (!res.headersSent) {
       res.status(500).json({ error: e instanceof Error ? e.message : "Internal server error" });
     }
@@ -165,6 +187,9 @@ function mountStripeRoutes(app: Express, useTestStripe: boolean): void {
   });
   app.post(`${prefix}/create-portal-session`, jsonParser, (req, res) => {
     void handleCreatePortalSessionExpress(req, res, useTestStripe);
+  });
+  app.post(`${prefix}/cancel-subscription`, jsonParser, (req, res) => {
+    void handleCancelSubscriptionExpress(req, res, useTestStripe);
   });
 }
 

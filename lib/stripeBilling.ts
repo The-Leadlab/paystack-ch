@@ -465,6 +465,94 @@ export async function runCreatePortalSession(
   }
 }
 
+/**
+ * Cancel the signed-in user's Stripe subscription.
+ * During trial → cancel immediately (no charge).
+ * Active paid → cancel_at_period_end by default (access until period end).
+ */
+export async function runCancelSubscription(
+  authorization: string | undefined,
+  body: { immediate?: boolean } | undefined,
+  headers: HeaderMap,
+  useTestStripe = false
+): Promise<{ status: number; json: Record<string, unknown> }> {
+  const stripe = useTestStripe ? getStripeTest() : getStripe();
+  if (!stripe) {
+    return {
+      status: 503,
+      json: { error: useTestStripe ? "Stripe test mode not configured" : "Stripe not configured" },
+    };
+  }
+  if (!isAllowedBrowserOrigin(headers)) {
+    return { status: 403, json: { error: "Origin not allowed" } };
+  }
+
+  const m = (authorization || "").match(/^Bearer\s+(.+)$/i);
+  if (!m) {
+    return { status: 401, json: { error: "Missing Authorization Bearer token" } };
+  }
+
+  try {
+    const { uid } = await verifyFirebaseUser(m[1]);
+    if (!hasFirebaseAdminCredentials()) {
+      return { status: 503, json: { error: "Firebase Admin is not configured." } };
+    }
+    ensureFirebaseAdmin();
+    const snap = await getFirestore().collection("users").doc(uid).get();
+    const subscriptionId = (snap.get("subscriptionId") as string | undefined)?.trim() || "";
+    if (!subscriptionId) {
+      return { status: 400, json: { error: "No active subscription on file." } };
+    }
+
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const metaUid = subscription.metadata?.firebaseUid;
+    if (metaUid && metaUid !== uid) {
+      return { status: 403, json: { error: "Subscription does not belong to this account." } };
+    }
+
+    const isTrialing = subscription.status === "trialing";
+    const forceImmediate = body?.immediate === true || isTrialing;
+
+    if (forceImmediate) {
+      await stripe.subscriptions.cancel(subscriptionId, {
+        invoice_now: false,
+        prorate: false,
+      });
+      await markSubscriptionCanceled(uid);
+      return {
+        status: 200,
+        json: {
+          ok: true,
+          canceled: "immediate",
+          wasTrialing: isTrialing,
+          message: isTrialing
+            ? "Trial ended immediately. You will not be charged."
+            : "Subscription canceled immediately.",
+        },
+      };
+    }
+
+    await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
+    return {
+      status: 200,
+      json: {
+        ok: true,
+        canceled: "at_period_end",
+        wasTrialing: false,
+        message: "Subscription will cancel at the end of the billing period.",
+      },
+    };
+  } catch (e) {
+    console.error("[stripe] cancel-subscription:", e);
+    const msg = e instanceof Error ? e.message : "Cancel subscription failed";
+    const status = (e as { status?: number }).status;
+    return {
+      status: typeof status === "number" ? status : 500,
+      json: { error: msg },
+    };
+  }
+}
+
 async function resolveStripeCheckoutEmail(
   stripe: Stripe,
   session: Stripe.Checkout.Session

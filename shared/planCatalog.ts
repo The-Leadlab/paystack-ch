@@ -8,7 +8,7 @@
  *
  * | Plan      | Retail | Docs/mo | Est. AI @ 100% cap | Stripe ~3% | Rough margin @ cap |
  * |-----------|--------|---------|------------------|------------|-------------------|
- * | Starter   | 29     | 50      | 4–8              | ~1         | ~65–85%           |
+ * | Starter   | 29     | 35      | 3–6              | ~1         | ~70–85%           |
  * | Business  | 59     | 120     | 10–20            | ~2         | ~60–80%           |
  * | Unlimited | 499    | ∞       | unbounded risk   | ~15        | depends on usage  |
  *
@@ -28,7 +28,11 @@ export const PLAN_MONTHLY_PRICE_CHF: Record<Exclude<PaystackPlanId, "enterprise"
 
 export type PlanEntitlements = {
   maxDocumentsPerMonth: number | null;
+  /** Personal statement / finance document uploads per calendar month. */
+  maxPersonalDocumentsPerMonth: number | null;
   maxEmployeeSlots: number | null;
+  /** Auth seats including the owner (Starter 1 = no invites). */
+  maxTeamSeats: number | null;
   maxSessions: number | null;
   basicReportsAndExports: boolean;
   advancedAnalyticsAndReports: boolean;
@@ -45,7 +49,9 @@ export type PlanEntitlements = {
 /** Full access when billing enforcement is off (dev / internal). */
 export const UNRESTRICTED_ENTITLEMENTS: PlanEntitlements = {
   maxDocumentsPerMonth: null,
+  maxPersonalDocumentsPerMonth: null,
   maxEmployeeSlots: null,
+  maxTeamSeats: null,
   maxSessions: null,
   basicReportsAndExports: true,
   advancedAnalyticsAndReports: true,
@@ -61,8 +67,10 @@ export const UNRESTRICTED_ENTITLEMENTS: PlanEntitlements = {
 
 export const PLAN_ENTITLEMENTS: Record<PaystackPlanId, PlanEntitlements> = {
   starter: {
-    maxDocumentsPerMonth: 50,
+    maxDocumentsPerMonth: 35,
+    maxPersonalDocumentsPerMonth: 35,
     maxEmployeeSlots: 1,
+    maxTeamSeats: 1,
     maxSessions: 2,
     basicReportsAndExports: true,
     advancedAnalyticsAndReports: false,
@@ -77,7 +85,9 @@ export const PLAN_ENTITLEMENTS: Record<PaystackPlanId, PlanEntitlements> = {
   },
   business: {
     maxDocumentsPerMonth: 120,
+    maxPersonalDocumentsPerMonth: 35,
     maxEmployeeSlots: 10,
+    maxTeamSeats: 10,
     maxSessions: null,
     basicReportsAndExports: true,
     advancedAnalyticsAndReports: true,
@@ -92,7 +102,9 @@ export const PLAN_ENTITLEMENTS: Record<PaystackPlanId, PlanEntitlements> = {
   },
   unlimited: {
     maxDocumentsPerMonth: null,
+    maxPersonalDocumentsPerMonth: 35,
     maxEmployeeSlots: null,
+    maxTeamSeats: null,
     maxSessions: null,
     basicReportsAndExports: true,
     advancedAnalyticsAndReports: true,
@@ -107,7 +119,9 @@ export const PLAN_ENTITLEMENTS: Record<PaystackPlanId, PlanEntitlements> = {
   },
   enterprise: {
     maxDocumentsPerMonth: null,
+    maxPersonalDocumentsPerMonth: null,
     maxEmployeeSlots: null,
+    maxTeamSeats: null,
     maxSessions: null,
     basicReportsAndExports: true,
     advancedAnalyticsAndReports: true,

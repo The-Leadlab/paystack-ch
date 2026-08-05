@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { Session } from '../types';
-import { useAuth } from './AuthContext';
+import { useWorkspace } from './WorkspaceContext';
 import { useSubscription } from './SubscriptionContext';
 import { useLanguage } from './LanguageContext';
 import { defaultSessionName } from '../lib/formatLocalDateTime';
@@ -59,7 +59,7 @@ type SessionContextValue = {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { dataOwnerUid, canWrite } = useWorkspace();
   const { enforcementEnabled, entitlements } = useSubscription();
   const { t } = useLanguage();
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -73,8 +73,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const addSession = useCallback(
     async (name?: string): Promise<Session | null> => {
-      const uid = user?.uid;
-      if (!uid) return null;
+      const uid = dataOwnerUid;
+      if (!uid || !canWrite) return null;
       if (!db) {
         setError('Firebase Firestore is not configured.');
         return null;
@@ -112,11 +112,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
     },
-    [user?.uid, enforcementEnabled, entitlements.maxSessions, sessions.length, t]
+    [dataOwnerUid, canWrite, enforcementEnabled, entitlements.maxSessions, sessions.length, t]
   );
 
   const fetchSessions = useCallback(async () => {
-    const uid = user?.uid;
+    const uid = dataOwnerUid;
     if (!uid) {
       setSessions([]);
       setLoading(false);
@@ -170,7 +170,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [user?.uid]);
+  }, [dataOwnerUid]);
 
   useEffect(() => {
     fetchSessions();
@@ -178,11 +178,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     initialBootstrapDoneRef.current = false;
-  }, [user?.uid]);
+  }, [dataOwnerUid]);
 
   /** Create the first session only for brand-new accounts — not after the user deletes the last one. */
   useEffect(() => {
-    if (!user?.uid || loading) return;
+    if (!dataOwnerUid || loading) return;
     if (sessions.length > 0) {
       initialBootstrapDoneRef.current = true;
       return;
@@ -190,13 +190,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     if (initialBootstrapDoneRef.current) return;
     initialBootstrapDoneRef.current = true;
     void addSession();
-  }, [user?.uid, loading, sessions.length, addSession]);
+  }, [dataOwnerUid, loading, sessions.length, addSession]);
 
   const deleteSession = useCallback(
     async (id: string): Promise<{ ok: boolean; message?: string }> => {
-      const uid = user?.uid;
-      if (!db || !uid) {
-        const message = 'Firebase Firestore is not configured.';
+      const uid = dataOwnerUid;
+      if (!db || !uid || !canWrite) {
+        const message = !canWrite ? 'Read-only access' : 'Firebase Firestore is not configured.';
         setError(message);
         return { ok: false, message };
       }
@@ -269,7 +269,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         return { ok: false, message };
       }
     },
-    [user?.uid]
+    [dataOwnerUid, canWrite]
   );
 
   const renameSession = useCallback(

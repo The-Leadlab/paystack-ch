@@ -19,6 +19,7 @@ import {
 } from '@shared/planCatalog';
 import { STRIPE_BILLING_PATH_LIVE, parseStripeFetchResponse } from '../lib/stripeCheckoutClient';
 import { apiUrl } from '@/lib/apiBase';
+import { useWorkspaceOptional } from './WorkspaceContext';
 
 type UserBillingSnapshot = {
   subscriptionStatus: string | null;
@@ -38,13 +39,19 @@ type SubscriptionContextValue = {
   entitlements: PlanEntitlements;
   /** Documents completed this calendar month, account-wide — survives new sessions and document deletion. */
   documentsUsedThisMonth: number;
+  /** Personal statement uploads this calendar month. */
+  personalDocumentsUsedThisMonth: number;
   /** Records one completed document against the current calendar month's durable usage count. */
   incrementDocumentUsage: () => Promise<void>;
+  /** Records one personal statement/finance document upload for the month. */
+  incrementPersonalDocumentUsage: () => Promise<void>;
   /** Ops sandbox: simulate starter / business / unlimited without Stripe. */
   isPlanTestUser: boolean;
   setPlanTestPlan: (planId: PaystackPlanId) => Promise<void>;
   startCheckout: (planId?: PaystackPlanId | null) => Promise<void>;
   openCustomerPortal: () => Promise<void>;
+  /** End trial immediately (no charge) or schedule cancel at period end for paid plans. */
+  cancelSubscription: (opts?: { immediate?: boolean }) => Promise<{ canceled: string; wasTrialing: boolean }>;
 };
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
@@ -55,28 +62,37 @@ function parseBoolEnv(v: unknown): boolean {
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const workspace = useWorkspaceOptional();
   const enforcementEnabled = parseBoolEnv(import.meta.env.VITE_SUBSCRIPTION_ENABLED);
   const bypass = useMemo(() => isSubscriptionOrVerificationBypassUser(user), [user]);
   const planTest = useMemo(() => isPlanTestUser(user), [user]);
   const [loading, setLoading] = useState(true);
   const [billing, setBilling] = useState<UserBillingSnapshot | null>(null);
   const [documentsUsedThisMonth, setDocumentsUsedThisMonth] = useState(0);
+  const [personalDocumentsUsedThisMonth, setPersonalDocumentsUsedThisMonth] = useState(0);
 
   useEffect(() => {
     if (!user || !db) {
       setBilling(null);
       setDocumentsUsedThisMonth(0);
+      setPersonalDocumentsUsedThisMonth(0);
       setLoading(false);
       return;
     }
+    // Members inherit the owner's plan + usage; owners use their own profile.
+    const profileUid =
+      workspace && !workspace.loading && !workspace.isOwner && workspace.dataOwnerUid
+        ? workspace.dataOwnerUid
+        : user.uid;
     setLoading(true);
-    const ref = doc(db, 'users', user.uid);
+    const ref = doc(db, 'users', profileUid);
     const unsub = onSnapshot(
       ref,
       (snap) => {
         if (!snap.exists()) {
           setBilling({ subscriptionStatus: 'none', trialEndsAt: null, planId: null, stripeCustomerId: null });
           setDocumentsUsedThisMonth(0);
+          setPersonalDocumentsUsedThisMonth(0);
         } else {
           const d = snap.data() as Record<string, unknown>;
           const ts = d.trialEndsAt as { toDate?: () => Date } | undefined;
@@ -90,8 +106,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
                 : null,
           });
           const usage = d.usage as Record<string, unknown> | undefined;
-          const usedRaw = usage?.[currentMonthKey()];
+          const month = currentMonthKey();
+          const usedRaw = usage?.[month];
           setDocumentsUsedThisMonth(typeof usedRaw === 'number' && Number.isFinite(usedRaw) ? usedRaw : 0);
+          const personalUsage = d.personalUsage as Record<string, unknown> | undefined;
+          const personalRaw = personalUsage?.[month];
+          setPersonalDocumentsUsedThisMonth(
+            typeof personalRaw === 'number' && Number.isFinite(personalRaw) ? personalRaw : 0
+          );
         }
         setLoading(false);
       },
@@ -99,24 +121,38 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         console.error('Subscription snapshot error:', err);
         setBilling({ subscriptionStatus: 'none', trialEndsAt: null, planId: null, stripeCustomerId: null });
         setDocumentsUsedThisMonth(0);
+        setPersonalDocumentsUsedThisMonth(0);
         setLoading(false);
       }
     );
     return () => unsub();
-  }, [user]);
+  }, [user, workspace?.loading, workspace?.isOwner, workspace?.dataOwnerUid]);
 
   const incrementDocumentUsage = useCallback(async () => {
     if (!user || !db) return;
+    // Only the owner can write usage on users/{uid}; members skip (caps still read from owner).
+    if (workspace && !workspace.isOwner) return;
     const ref = doc(db, 'users', user.uid);
     await setDoc(ref, { usage: { [currentMonthKey()]: increment(1) } }, { merge: true });
-  }, [user]);
+  }, [user, workspace]);
+
+  const incrementPersonalDocumentUsage = useCallback(async () => {
+    if (!user || !db) return;
+    if (workspace && !workspace.isOwner) return;
+    const ref = doc(db, 'users', user.uid);
+    await setDoc(ref, { personalUsage: { [currentMonthKey()]: increment(1) } }, { merge: true });
+  }, [user, workspace]);
 
   const inGoodStanding = useMemo(() => {
     if (bypass) return true;
     if (!enforcementEnabled) return true;
+    // Invited teammates share the owner's paid/trial workspace
+    if (workspace && !workspace.loading && !workspace.isOwner && workspace.dataOwnerUid) {
+      return true;
+    }
     const st = billing?.subscriptionStatus;
     return st === 'trialing' || st === 'active';
-  }, [bypass, enforcementEnabled, billing?.subscriptionStatus]);
+  }, [bypass, enforcementEnabled, billing?.subscriptionStatus, workspace]);
 
   const entitlements = useMemo(() => {
     if (!enforcementEnabled) return UNRESTRICTED_ENTITLEMENTS;
@@ -187,6 +223,30 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     window.location.href = url;
   }, [user, billing?.stripeCustomerId]);
 
+  const cancelSubscription = useCallback(
+    async (opts?: { immediate?: boolean }) => {
+      if (!user) throw new Error('Not signed in');
+      const token = await user.getIdToken();
+      const billingPath = STRIPE_BILLING_PATH_LIVE;
+      const res = await fetch(apiUrl(`${billingPath}/cancel-subscription`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ immediate: opts?.immediate === true }),
+      });
+      const { json, errorMessage } = await parseStripeFetchResponse(res);
+      if (!json) throw new Error(errorMessage || 'Cancel failed');
+      if (!res.ok) throw new Error(errorMessage || 'Cancel failed');
+      return {
+        canceled: typeof json.canceled === 'string' ? json.canceled : 'immediate',
+        wasTrialing: json.wasTrialing === true,
+      };
+    },
+    [user]
+  );
+
   const value: SubscriptionContextValue = {
     enforcementEnabled,
     loading,
@@ -194,11 +254,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     inGoodStanding,
     entitlements,
     documentsUsedThisMonth,
+    personalDocumentsUsedThisMonth,
     incrementDocumentUsage,
+    incrementPersonalDocumentUsage,
     isPlanTestUser: planTest,
     setPlanTestPlan,
     startCheckout,
     openCustomerPortal,
+    cancelSubscription,
   };
 
   return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;

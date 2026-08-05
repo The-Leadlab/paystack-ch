@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { ProcessedDocument } from '../types';
 import { useAuth } from './AuthContext';
+import { useWorkspace } from './WorkspaceContext';
 import { useSession } from './SessionContext';
 import { db } from '../lib/firebase';
 import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, orderBy } from 'firebase/firestore';
@@ -36,13 +37,14 @@ const DocumentContext = createContext<DocumentContextValue | null>(null);
 
 export function DocumentProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { dataOwnerUid, canWrite } = useWorkspace();
   const { currentSession, isAllSessionsView } = useSession();
   const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchDocuments = useCallback(async () => {
-    const uid = user?.uid;
+    const uid = dataOwnerUid;
     
     console.log('=== FETCH DOCUMENTS DEBUG ===');
     console.log('User ID:', uid);
@@ -115,7 +117,7 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
       setDocuments(keepers);
 
       // Best-effort cleanup of orphan pending twins left by Drive re-import / double-queue
-      if (duplicateIds.length > 0 && db) {
+      if (duplicateIds.length > 0 && db && canWrite) {
         const database = db;
         void (async () => {
           for (const id of duplicateIds) {
@@ -134,7 +136,7 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [user?.uid, currentSession?.id, isAllSessionsView]);
+  }, [dataOwnerUid, canWrite, currentSession?.id, isAllSessionsView]);
 
   useEffect(() => {
     fetchDocuments();
@@ -142,10 +144,10 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
 
   const addDocument = useCallback(
     async (document: ProcessedDocument): Promise<ProcessedDocument> => {
-      const uid = user?.uid;
+      const uid = dataOwnerUid;
       const sessionId = currentSession?.id;
       
-      if (!uid || !sessionId || !db) {
+      if (!uid || !canWrite || !sessionId || !db) {
         throw new Error('User or session not found');
       }
 
@@ -173,12 +175,12 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [user?.uid, currentSession?.id]
+    [dataOwnerUid, canWrite, currentSession?.id]
   );
 
   const updateDocumentData = useCallback(
     async (documentId: string, updates: Partial<ProcessedDocument>) => {
-      if (!db) return;
+      if (!db || !canWrite) return;
       
       try {
         const docRef = doc(db, 'documents', documentId);
@@ -193,11 +195,11 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    []
+    [canWrite]
   );
 
   const deleteDocument = useCallback(async (documentId: string) => {
-    if (!db) return;
+    if (!db || !canWrite) return;
     
     try {
       const docRef = doc(db, 'documents', documentId);
@@ -208,7 +210,7 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
       setError(err instanceof Error ? err.message : String(err));
       throw err;
     }
-  }, []);
+  }, [canWrite]);
 
   const value: DocumentContextValue = {
     documents,

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { CheckCircle2, FileUp, Loader2, Upload } from "lucide-react";
 import { useLabLanguage } from "../../context/LabLanguageContext";
 import { commitPersonalStatementDrafts } from "../../lib/personalBudgetStore";
+import { usePersonalBudgetLedger } from "../../hooks/usePersonalBudgetLedger";
 import { refinePersonalDraftsWithAi } from "../../lib/personalAiAssist";
 import {
   parsePersonalStatementFile,
@@ -10,6 +11,7 @@ import {
 import { downloadTextFile } from "@/cafe/lib/revenueImport";
 import { formatChfDisplay } from "../formatChfDisplay";
 import { GlassCard } from "./GlassCard";
+import { useSubscription } from "@/cafe/context/SubscriptionContext";
 
 type Props = {
   onImported: () => void;
@@ -17,6 +19,13 @@ type Props = {
 
 export function PersonalStatementUpload({ onImported }: Props) {
   const { t } = useLabLanguage();
+  const ledger = usePersonalBudgetLedger();
+  const {
+    enforcementEnabled,
+    entitlements,
+    personalDocumentsUsedThisMonth,
+    incrementPersonalDocumentUsage,
+  } = useSubscription();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState<"idle" | "analyzing" | "filling" | "saving">("idle");
@@ -24,11 +33,34 @@ export function PersonalStatementUpload({ onImported }: Props) {
   const [err, setErr] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const personalCap = entitlements.maxPersonalDocumentsPerMonth;
+  const personalAtCap =
+    enforcementEnabled &&
+    personalCap != null &&
+    personalDocumentsUsedThisMonth >= personalCap;
+
   const onFiles = async (fileList: FileList | null) => {
     const files = fileList ? Array.from(fileList) : [];
     if (!files.length) return;
     setErr(null);
     setSuccess(null);
+
+    if (personalAtCap) {
+      setErr(`Personal plan allows up to ${personalCap} document upload(s) this month.`);
+      return;
+    }
+
+    const remaining =
+      enforcementEnabled && personalCap != null
+        ? Math.max(0, personalCap - personalDocumentsUsedThisMonth)
+        : files.length;
+    const toProcess = files.slice(0, remaining);
+    if (toProcess.length < files.length) {
+      setErr(
+        `Only ${remaining} personal upload(s) left this month (cap ${personalCap}). Processing first ${toProcess.length} file(s).`
+      );
+    }
+
     setBusy(true);
     let totalRows = 0;
     let totalIncome = 0;
@@ -36,9 +68,9 @@ export function PersonalStatementUpload({ onImported }: Props) {
     const failures: string[] = [];
 
     try {
-      for (let i = 0; i < files.length; i += 1) {
-        const file = files[i];
-        setProgress(`${i + 1}/${files.length}: ${file.name}`);
+      for (let i = 0; i < toProcess.length; i += 1) {
+        const file = toProcess[i];
+        setProgress(`${i + 1}/${toProcess.length}: ${file.name}`);
         setPhase("analyzing");
         try {
           const preview = await parsePersonalStatementFile(file);
@@ -51,13 +83,20 @@ export function PersonalStatementUpload({ onImported }: Props) {
             preview.rows.map((r) => ({ ...r, selected: true }))
           );
           setPhase("saving");
-          const record = await commitPersonalStatementDrafts(filled, {
-            fileName: preview.fileName,
-            source: preview.source,
-          });
+          const record = ledger.commitStatementCloud
+            ? await ledger.commitStatementCloud(filled, {
+                fileName: preview.fileName,
+                source: preview.source,
+              })
+            : await commitPersonalStatementDrafts(filled, {
+                fileName: preview.fileName,
+                source: preview.source,
+              });
           totalRows += record.rowCount;
           totalIncome += record.incomeTotal;
           totalExpense += record.expenseTotal;
+          await incrementPersonalDocumentUsage();
+          ledger.bump();
         } catch (e) {
           failures.push(`${file.name}: ${e instanceof Error ? e.message : String(e)}`);
         }
@@ -66,7 +105,7 @@ export function PersonalStatementUpload({ onImported }: Props) {
       if (totalRows > 0) {
         setSuccess(
           t("stmtAiImportedBatch")
-            .replace("{files}", String(files.length - failures.length))
+            .replace("{files}", String(toProcess.length - failures.length))
             .replace("{n}", String(totalRows))
             .replace("{income}", formatChfDisplay(totalIncome))
             .replace("{expense}", formatChfDisplay(totalExpense))
@@ -102,6 +141,9 @@ export function PersonalStatementUpload({ onImported }: Props) {
           <p className="text-sm font-semibold">{t("stmtUploadTitle")}</p>
           <p className="text-[11px] text-[var(--pp-on-surface-variant)] mt-1 max-w-xl">
             {t("stmtAiUploadHint")}
+            {enforcementEnabled && personalCap != null
+              ? ` · ${personalDocumentsUsedThisMonth}/${personalCap} uploads this month`
+              : null}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -115,7 +157,7 @@ export function PersonalStatementUpload({ onImported }: Props) {
           </button>
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || personalAtCap}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] text-xs font-bold hover:opacity-90 disabled:opacity-50"
             onClick={() => inputRef.current?.click()}
           >

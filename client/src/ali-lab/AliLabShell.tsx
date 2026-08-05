@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { SubscriptionProvider } from "@/cafe/context/SubscriptionContext";
+import { WorkspaceProvider } from "@/cafe/context/WorkspaceContext";
 import { SessionProvider } from "@/cafe/context/SessionContext";
 import { FinanceProvider } from "@/cafe/context/FinanceContext";
 import { DocumentProvider } from "@/cafe/context/DocumentContext";
@@ -21,13 +22,15 @@ export function AliLabShell({ children }: { children: ReactNode }) {
     <LabLanguageProvider>
       <div className="min-h-[100dvh] dark">
         {!firebaseReady && <FirebaseLabBanner />}
-        <SubscriptionProvider>
-          <SessionProvider>
-            <FinanceProvider>
-              <DocumentProvider>{children}</DocumentProvider>
-            </FinanceProvider>
-          </SessionProvider>
-        </SubscriptionProvider>
+        <WorkspaceProvider>
+          <SubscriptionProvider>
+            <SessionProvider>
+              <FinanceProvider>
+                <DocumentProvider>{children}</DocumentProvider>
+              </FinanceProvider>
+            </SessionProvider>
+          </SubscriptionProvider>
+        </WorkspaceProvider>
       </div>
     </LabLanguageProvider>
   );

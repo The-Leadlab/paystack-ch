@@ -506,11 +506,14 @@ export async function runAdminUserAction(
       const resolved = await resolveStripeForSubscription(subscriptionId);
       if (!resolved) throw Object.assign(new Error("Could not resolve Stripe subscription."), { status: 400 });
       const { stripe } = resolved;
-      if (body.atPeriodEnd !== false) {
+      const live = await stripe.subscriptions.retrieve(subscriptionId);
+      // Trials must cancel immediately — cancel_at_period_end at trial end still risks a first invoice if timing slips.
+      const cancelImmediate = body.atPeriodEnd === false || live.status === "trialing";
+      if (!cancelImmediate) {
         await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
         return { ok: true, message: "Subscription will cancel at period end." };
       }
-      await stripe.subscriptions.cancel(subscriptionId);
+      await stripe.subscriptions.cancel(subscriptionId, { invoice_now: false, prorate: false });
       await db.collection("users").doc(uid).set(
         {
           subscriptionStatus: "canceled",
@@ -522,7 +525,13 @@ export async function runAdminUserAction(
         },
         { merge: true }
       );
-      return { ok: true, message: "Subscription canceled immediately." };
+      return {
+        ok: true,
+        message:
+          live.status === "trialing"
+            ? "Trial ended immediately. Customer will not be charged."
+            : "Subscription canceled immediately.",
+      };
     }
 
     case "reactivate_subscription": {

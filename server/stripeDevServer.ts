@@ -11,6 +11,7 @@ import { registerGeminiRoutes } from "./gemini";
 import { registerAliLabRoutes } from "./aliLab";
 import { registerGoogleDriveRoutes } from "./googleDrive";
 import { registerAdminRoutes } from "./adminUsers";
+import { registerTeamRoutes } from "./team";
 
 const app = express();
 registerStripeIfConfigured(app);
@@ -18,6 +19,7 @@ registerGeminiRoutes(app);
 registerAliLabRoutes(app);
 registerGoogleDriveRoutes(app);
 registerAdminRoutes(app);
+registerTeamRoutes(app);
 
 const port = parseInt(process.env.STRIPE_DEV_PORT || "8787", 10);
 app.listen(port, "127.0.0.1", () => {

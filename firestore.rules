@@ -10,21 +10,43 @@ service cloud.firestore {
       return request.auth.uid;
     }
 
+    /** Active membership: doc id = member uid, field ownerUid = workspace owner. */
+    function isActiveMemberOf(workspaceOwner) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/workspaceMembers/$(ownerUid())) &&
+        get(/databases/$(database)/documents/workspaceMembers/$(ownerUid())).data.status == 'active' &&
+        get(/databases/$(database)/documents/workspaceMembers/$(ownerUid())).data.ownerUid == workspaceOwner;
+    }
+
+    function canAccessOwner(dataOwner) {
+      return signedIn() && (ownerUid() == dataOwner || isActiveMemberOf(dataOwner));
+    }
+
+    function canWriteOwner(dataOwner) {
+      return signedIn() && (
+        ownerUid() == dataOwner ||
+        (
+          isActiveMemberOf(dataOwner) &&
+          get(/databases/$(database)/documents/workspaceMembers/$(ownerUid())).data.role in ['editor', 'owner']
+        )
+      );
+    }
+
     function resourceOwnedByUser() {
       return signedIn() && (
-        resource.data.restaurantId == ownerUid() ||
-        resource.data.restaurant_id == ownerUid() ||
-        resource.data.userId == ownerUid() ||
-        resource.data.uid == ownerUid()
+        canAccessOwner(resource.data.restaurantId) ||
+        canAccessOwner(resource.data.restaurant_id) ||
+        canAccessOwner(resource.data.userId) ||
+        canAccessOwner(resource.data.uid)
       );
     }
 
     function createOwnedByUser() {
       return signedIn() && (
-        request.resource.data.restaurantId == ownerUid() ||
-        request.resource.data.restaurant_id == ownerUid() ||
-        request.resource.data.userId == ownerUid() ||
-        request.resource.data.uid == ownerUid()
+        canWriteOwner(request.resource.data.restaurantId) ||
+        canWriteOwner(request.resource.data.restaurant_id) ||
+        canWriteOwner(request.resource.data.userId) ||
+        canWriteOwner(request.resource.data.uid)
       );
     }
 
@@ -33,8 +55,8 @@ service cloud.firestore {
         resource.data.session_id is string &&
         exists(/databases/$(database)/documents/sessions/$(resource.data.session_id)) &&
         (
-          get(/databases/$(database)/documents/sessions/$(resource.data.session_id)).data.restaurantId == ownerUid() ||
-          get(/databases/$(database)/documents/sessions/$(resource.data.session_id)).data.restaurant_id == ownerUid()
+          canAccessOwner(get(/databases/$(database)/documents/sessions/$(resource.data.session_id)).data.restaurantId) ||
+          canAccessOwner(get(/databases/$(database)/documents/sessions/$(resource.data.session_id)).data.restaurant_id)
         );
     }
 
@@ -43,82 +65,162 @@ service cloud.firestore {
         request.resource.data.session_id is string &&
         exists(/databases/$(database)/documents/sessions/$(request.resource.data.session_id)) &&
         (
-          get(/databases/$(database)/documents/sessions/$(request.resource.data.session_id)).data.restaurantId == ownerUid() ||
-          get(/databases/$(database)/documents/sessions/$(request.resource.data.session_id)).data.restaurant_id == ownerUid()
+          canWriteOwner(get(/databases/$(database)/documents/sessions/$(request.resource.data.session_id)).data.restaurantId) ||
+          canWriteOwner(get(/databases/$(database)/documents/sessions/$(request.resource.data.session_id)).data.restaurant_id)
         );
     }
 
     match /sessions/{id} {
-      allow read, update, delete: if resourceOwnedByUser();
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
       allow create: if createOwnedByUser();
     }
 
     match /documents/{id} {
-      allow read, update, delete: if resourceOwnedByUser() || resourceSessionOwnedByUser();
+      allow read: if resourceOwnedByUser() || resourceSessionOwnedByUser();
+      allow update, delete: if (resourceOwnedByUser() || resourceSessionOwnedByUser()) && (
+        canWriteOwner(resource.data.restaurantId) ||
+        canWriteOwner(resource.data.restaurant_id) ||
+        canWriteOwner(resource.data.userId) ||
+        canWriteOwner(resource.data.uid)
+      );
       allow create: if createOwnedByUser() || createSessionOwnedByUser();
     }
 
     match /income/{id} {
-      allow read, update, delete: if resourceOwnedByUser();
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
       allow create: if createOwnedByUser();
     }
 
     match /expenses/{id} {
-      allow read, update, delete: if resourceOwnedByUser();
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
       allow create: if createOwnedByUser();
     }
 
     match /pos_readings/{id} {
-      allow read, update, delete: if resourceOwnedByUser();
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
       allow create: if createOwnedByUser();
     }
 
     match /employees/{id} {
-      allow read, update, delete: if resourceOwnedByUser();
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
       allow create: if createOwnedByUser();
     }
 
     /** Ali feature lab — pre-production competitor features (promote to /app when ready). */
     match /ali_lab_budgets/{id} {
-      allow read, update, delete: if resourceOwnedByUser();
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
       allow create: if createOwnedByUser();
     }
     match /ali_lab_bills/{id} {
-      allow read, update, delete: if resourceOwnedByUser();
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
       allow create: if createOwnedByUser();
     }
     match /ali_lab_goals/{id} {
-      allow read, update, delete: if resourceOwnedByUser();
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
       allow create: if createOwnedByUser();
     }
     match /ali_lab_rules/{id} {
-      allow read, update, delete: if resourceOwnedByUser();
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
       allow create: if createOwnedByUser();
     }
     match /ali_lab_holdings/{id} {
-      allow read, update, delete: if resourceOwnedByUser();
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
       allow create: if createOwnedByUser();
     }
     match /ali_lab_members/{id} {
-      allow read, update, delete: if resourceOwnedByUser();
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
       allow create: if createOwnedByUser();
     }
     match /ali_lab_splits/{id} {
-      allow read, update, delete: if resourceOwnedByUser();
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
       allow create: if createOwnedByUser();
     }
     match /ali_lab_offline_queue/{id} {
-      allow read, update, delete: if resourceOwnedByUser();
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
       allow create: if createOwnedByUser();
+    }
+
+    /** Shared personal finance ledger (household / team). */
+    match /personal_transactions/{id} {
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
+      allow create: if createOwnedByUser();
+    }
+    match /personal_imports/{id} {
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
+      allow create: if createOwnedByUser();
+    }
+
+    /**
+     * Membership docs are written by Admin SDK only (invite accept).
+     * Members may read their own membership doc for client WorkspaceContext.
+     */
+    match /workspaceMembers/{memberUid} {
+      allow read: if signedIn() && (
+        memberUid == ownerUid() ||
+        resource.data.ownerUid == ownerUid()
+      );
+      allow write: if false;
+    }
+
+    match /workspaceInvites/{inviteId} {
+      allow read, write: if false;
     }
 
     /**
      * Billing profile for the signed-in user (Option B: client writes after server-verified Stripe link).
      * Stripe + email are validated on the server before the client receives billing fields to merge.
-     * Scoped to auth.uid only — users cannot write another account's document.
+     * Owner + active workspace members may read the owner's plan/usage for shared entitlements.
      */
     match /users/{userId} {
-      allow read: if signedIn() && userId == ownerUid();
+      allow read: if signedIn() && (
+        userId == ownerUid() ||
+        isActiveMemberOf(userId)
+      );
       allow create, update: if signedIn() && userId == ownerUid();
       allow delete: if false;
     }

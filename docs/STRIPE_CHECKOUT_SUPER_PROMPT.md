@@ -98,6 +98,13 @@ Checkout response includes `stripeMode: "live" | "test"` and `sessionId` for Das
 
 ---
 
+### Trial cancel (no charge)
+
+- Billing → **End trial — no charge** calls `POST /api/stripe/cancel-subscription` which cancels the subscription **immediately** while `status === trialing` (`invoice_now: false`). Users who only open the Customer Portal and leave cancel unfinished can still be billed at trial end — prefer the in-app trial cancel button.
+- See also `docs/TEAM_INVITE_SUPER_PROMPT.md`.
+
+---
+
 ## QA checklist
 
 ### Production live trial (real card)

@@ -44,6 +44,7 @@ Password-gated sandbox for competitor-gap features (budgeting, goals, bills, etc
 - **URLs:** `/ali-gate` (login), `/ali` and `/ali/<feature-id>` (lab)
 - **Password:** `ALI_LAB_PASSWORD` in `.env` (see `.env.example`; default `ali123*`)
 - **Super prompt:** `docs/ALI_LAB_SUPER_PROMPT.md`
+- **Team invites:** `docs/TEAM_INVITE_SUPER_PROMPT.md` — email invites + shared dashboard seats (`maxTeamSeats`)
 - **i18n super prompt:** `docs/I18N_SUPER_PROMPT.md` — landing `/`, `/app`, `/ali` translation audit and fixes
 - **Registry:** `client/src/ali-lab/featureRegistry.ts`
 - **Local API:** run `pnpm dev:stripe-server` so Vite can proxy `POST /api/ali/verify`; otherwise use `VITE_ALI_LAB_PASSWORD` dev fallback after gate

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/cafe/context/AuthContext";
+import { useWorkspaceOptional } from "@/cafe/context/WorkspaceContext";
 import { db } from "@/cafe/lib/firebase";
 import {
   addLabDoc,
@@ -14,7 +15,9 @@ export function useAliLabPersist<T extends { id: string }>(
   seed: T[] = []
 ) {
   const { user } = useAuth();
-  const uid = user?.uid;
+  const workspace = useWorkspaceOptional();
+  const uid = workspace?.dataOwnerUid || user?.uid;
+  const canWrite = workspace?.canWrite !== false;
   const [items, setItems] = useState<T[]>(seed);
   const [loading, setLoading] = useState(true);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -85,6 +88,7 @@ export function useAliLabPersist<T extends { id: string }>(
 
   const add = useCallback(
     async (data: Omit<T, "id">) => {
+      if (!canWrite) throw new Error("Read-only access");
       const tempId =
         typeof crypto !== "undefined" && crypto.randomUUID
           ? crypto.randomUUID()
@@ -116,11 +120,12 @@ export function useAliLabPersist<T extends { id: string }>(
 
       return { id, ...data } as T;
     },
-    [uid, collectionName, writeLocal]
+    [uid, collectionName, writeLocal, canWrite]
   );
 
   const update = useCallback(
     async (id: string, patch: Partial<T>) => {
+      if (!canWrite) throw new Error("Read-only access");
       setSyncError(null);
       setItems((prev) => {
         const next = prev.map((x) => (x.id === id ? { ...x, ...patch } : x));
@@ -133,11 +138,12 @@ export function useAliLabPersist<T extends { id: string }>(
         setSyncError(e instanceof Error ? e.message : String(e));
       }
     },
-    [uid, collectionName, writeLocal]
+    [uid, collectionName, writeLocal, canWrite]
   );
 
   const remove = useCallback(
     async (id: string) => {
+      if (!canWrite) throw new Error("Read-only access");
       setSyncError(null);
       setItems((prev) => {
         const next = prev.filter((x) => x.id !== id);
@@ -150,7 +156,7 @@ export function useAliLabPersist<T extends { id: string }>(
         setSyncError(e instanceof Error ? e.message : String(e));
       }
     },
-    [uid, collectionName, writeLocal]
+    [uid, collectionName, writeLocal, canWrite]
   );
 
   return { items, loading, refresh, add, update, remove, setItems: persistLocal, uid, syncError };

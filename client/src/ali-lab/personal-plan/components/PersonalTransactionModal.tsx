@@ -17,7 +17,7 @@ import {
   type PersonalExpenseCategory,
   type PersonalIncomeCategory,
 } from "../../personalCategories";
-import { addPersonalTransaction } from "../../lib/personalBudgetStore";
+import { usePersonalBudgetLedger } from "../../hooks/usePersonalBudgetLedger";
 import { parseBudgetAmount } from "../../lib/parseBudgetAmount";
 import { formatChfDisplay } from "../formatChfDisplay";
 
@@ -26,6 +26,7 @@ type TxKind = "expense" | "income";
 export function PersonalTransactionModal() {
   const { transactionOpen, closeTransaction, transactionPrefill } = usePersonalPlan();
   const { t } = useLabLanguage();
+  const ledger = usePersonalBudgetLedger();
 
   const [kind, setKind] = useState<TxKind>("expense");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -75,7 +76,7 @@ export function PersonalTransactionModal() {
     }
     setBusy(true);
     try {
-      await addPersonalTransaction({
+      await ledger.add({
         date,
         description: description.trim() || (kind === "expense" ? expenseCat : incomeCat),
         amount: value,

@@ -10,6 +10,7 @@ import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { EmailVerificationGate } from "@/cafe/components/EmailVerificationGate";
 import { DashboardLoadingShell } from "@/cafe/components/DashboardLoadingShell";
 import { SubscriptionProvider } from "@/cafe/context/SubscriptionContext";
+import { WorkspaceProvider, useWorkspace } from "@/cafe/context/WorkspaceContext";
 import { SubscriptionGate } from "@/cafe/components/SubscriptionGate";
 import { firebaseReady } from "@/cafe/lib/firebase";
 import {
@@ -26,6 +27,40 @@ const PersonalAppPage = lazy(() => import("./PersonalAppPage"));
 
 function isPersonalAppPath(path: string): boolean {
   return path === "/app/personal" || path.startsWith("/app/personal/");
+}
+
+/** Accepts ?team_invite=TOKEN once after sign-in. */
+function TeamInviteAcceptEffect() {
+  const { user } = useAuth();
+  const { acceptInviteToken } = useWorkspace();
+  const search = useSearch();
+
+  useEffect(() => {
+    if (!user) return;
+    const qs = search.startsWith("?") ? search.slice(1) : search;
+    const token = new URLSearchParams(qs).get("team_invite");
+    if (!token) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        await acceptInviteToken(token);
+        if (!cancelled) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("team_invite");
+          window.history.replaceState({}, "", url.pathname + (url.search || "") + url.hash);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          alert(e instanceof Error ? e.message : "Could not accept team invite");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, search, acceptInviteToken]);
+
+  return null;
 }
 
 /**
@@ -77,12 +112,14 @@ function PlatformContent() {
   }
 
   return (
-    <SubscriptionProvider>
+    <WorkspaceProvider>
+      <SubscriptionProvider>
       <SessionProvider>
         <EmployeeProvider>
           <FinanceProvider>
             <POSProvider>
               <DocumentProvider>
+                <TeamInviteAcceptEffect />
                 <SubscriptionGate>
                   <Suspense fallback={<DashboardLoadingShell />}>
                     {personal ? <PersonalAppPage /> : <RestaurantDashboard />}
@@ -93,6 +130,7 @@ function PlatformContent() {
           </FinanceProvider>
         </EmployeeProvider>
       </SessionProvider>
-    </SubscriptionProvider>
+      </SubscriptionProvider>
+    </WorkspaceProvider>
   );
 }

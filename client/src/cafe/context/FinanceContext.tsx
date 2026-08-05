@@ -13,6 +13,7 @@ import { db } from '../lib/firebase';
 import type { Income, Expense } from '../types';
 import { suggestSwissAccountCode } from '@shared/suggestSwissAccountCode';
 import { useAuth } from './AuthContext';
+import { useWorkspace } from './WorkspaceContext';
 
 const INCOME_COLLECTION = 'income';
 const EXPENSE_COLLECTION = 'expenses';
@@ -70,13 +71,14 @@ const FinanceContext = createContext<FinanceContextValue | null>(null);
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { dataOwnerUid, canWrite } = useWorkspace();
   const [income, setIncome] = useState<Income[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchFinances = useCallback(async () => {
-    const uid = user?.uid;
+    const uid = dataOwnerUid;
     if (!uid || !db) {
       setIncome([]);
       setExpenses([]);
@@ -111,7 +113,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [user?.uid]);
+  }, [dataOwnerUid]);
 
   useEffect(() => {
     fetchFinances();
@@ -119,8 +121,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const addIncome = useCallback(
     async (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number, accountCode?: string): Promise<Income | null> => {
-      const uid = user?.uid;
-      if (!uid || !db) {
+      const uid = dataOwnerUid;
+      if (!uid || !canWrite || !db) {
         console.error('addIncome failed: No user or database');
         throw new Error('User not authenticated or database not available');
       }
@@ -172,13 +174,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Failed to add income: ' + errorMsg);
       }
     },
-    [user?.uid]
+    [dataOwnerUid, canWrite]
   );
 
   const addExpense = useCallback(
     async (date: string, category: Expense['category'], amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number, accountCode?: string): Promise<Expense | null> => {
-      const uid = user?.uid;
-      if (!uid || !db) {
+      const uid = dataOwnerUid;
+      if (!uid || !canWrite || !db) {
         console.error('addExpense failed: No user or database');
         throw new Error('User not authenticated or database not available');
       }
@@ -232,33 +234,33 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Failed to add expense: ' + errorMsg);
       }
     },
-    [user?.uid]
+    [dataOwnerUid, canWrite]
   );
 
   const deleteIncome = useCallback(async (id: string) => {
-    if (!db) return;
+    if (!db || !canWrite) return;
     try {
       await deleteDoc(doc(db, INCOME_COLLECTION, id));
       setIncome((prev) => prev.filter((i) => i.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, []);
+  }, [canWrite]);
 
   const deleteExpense = useCallback(async (id: string) => {
-    if (!db) return;
+    if (!db || !canWrite) return;
     try {
       await deleteDoc(doc(db, EXPENSE_COLLECTION, id));
       setExpenses((prev) => prev.filter((e) => e.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, []);
+  }, [canWrite]);
 
   const deleteFinancesByDocumentId = useCallback(
     async (documentId: string): Promise<{ income: number; expenses: number }> => {
-      const uid = user?.uid;
-      if (!db || !uid || !documentId) {
+      const uid = dataOwnerUid;
+      if (!db || !uid || !canWrite || !documentId) {
         return { income: 0, expenses: 0 };
       }
 
@@ -308,11 +310,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [user?.uid, income, expenses]
+    [dataOwnerUid, canWrite, income, expenses]
   );
 
   const updateIncome = useCallback(async (id: string, updates: Partial<Omit<Income, 'id' | 'restaurant_id' | 'created_at'>>) => {
-    if (!db) return;
+    if (!db || !canWrite) return;
     try {
       const { updateDoc, doc: docRef } = await import('firebase/firestore');
       const updateData: any = {};
@@ -334,10 +336,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       setError(err instanceof Error ? err.message : String(err));
       throw err;
     }
-  }, []);
+  }, [canWrite]);
 
   const updateExpense = useCallback(async (id: string, updates: Partial<Omit<Expense, 'id' | 'restaurant_id' | 'created_at'>>) => {
-    if (!db) return;
+    if (!db || !canWrite) return;
     try {
       const { updateDoc, doc: docRef } = await import('firebase/firestore');
       const updateData: any = {};
@@ -360,7 +362,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       setError(err instanceof Error ? err.message : String(err));
       throw err;
     }
-  }, []);
+  }, [canWrite]);
 
   const value: FinanceContextValue = {
     income,

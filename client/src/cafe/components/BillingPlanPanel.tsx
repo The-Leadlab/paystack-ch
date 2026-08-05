@@ -8,6 +8,7 @@ import type { PaystackPlanId } from '@shared/planCatalog';
 import { parseTaxRegion, type TaxRegion } from '@shared/taxRegions';
 import { PlanMarketingFeatureBullets, PlanMarketingPanel, PLAN_ENTERPRISE_SALES_MAILTO } from './PlanMarketingPanel';
 import { GoogleDriveConnectPanel } from './GoogleDriveConnectPanel';
+import { TeamInvitePanel } from './TeamInvitePanel';
 import { db } from '../lib/firebase';
 
 function planDisplayName(id: PaystackPlanId | null | undefined, t: (k: string) => string): string {
@@ -28,9 +29,12 @@ const UPGRADE_PLANS: PaystackPlanId[] = ['starter', 'business', 'unlimited', 'en
 export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<{ count: number }> }) {
   const { t } = useLanguage();
   const { user, changePassword } = useAuth();
-  const { enforcementEnabled, loading, billing, entitlements, startCheckout, openCustomerPortal, isPlanTestUser, setPlanTestPlan } = useSubscription();
+  const { enforcementEnabled, loading, billing, entitlements, startCheckout, openCustomerPortal, cancelSubscription, isPlanTestUser, setPlanTestPlan } = useSubscription();
 
   const [portalBusy, setPortalBusy] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelMsg, setCancelMsg] = useState<string | null>(null);
+  const [cancelErr, setCancelErr] = useState<string | null>(null);
   const [upgradePlan, setUpgradePlan] = useState<PaystackPlanId | null>(billing?.planId ?? 'starter');
   const [upgradeBusy, setUpgradeBusy] = useState(false);
   const [upgradeErr, setUpgradeErr] = useState<string | null>(null);
@@ -71,10 +75,37 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
 
   const rows: { label: string; value: string }[] = [
     { label: t('planSummaryDocuments'), value: formatLimit(entitlements.maxDocumentsPerMonth, t) },
+    { label: t('planSummaryPersonalDocs'), value: formatLimit(entitlements.maxPersonalDocumentsPerMonth, t) },
     { label: t('planSummarySessions'), value: formatLimit(entitlements.maxSessions, t) },
+    { label: t('planSummaryTeamSeats'), value: formatLimit(entitlements.maxTeamSeats, t) },
   ];
 
   const planLabel = (id: PaystackPlanId) => planDisplayName(id, t);
+
+  const openPortal = async () => {
+    setPortalBusy(true);
+    try {
+      await openCustomerPortal();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPortalBusy(false);
+    }
+  };
+
+  const endTrialNow = async () => {
+    setCancelBusy(true);
+    setCancelErr(null);
+    setCancelMsg(null);
+    try {
+      await cancelSubscription({ immediate: true });
+      setCancelMsg(t('billingCancelTrialDone'));
+    } catch (e) {
+      setCancelErr(e instanceof Error ? e.message : t('billingCancelTrialError'));
+    } finally {
+      setCancelBusy(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -113,17 +144,6 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
       setTaxRegionError(t('billingTaxRegionSaveError'));
     } finally {
       setTaxRegionSaving(false);
-    }
-  };
-
-  const openPortal = async () => {
-    setPortalBusy(true);
-    try {
-      await openCustomerPortal();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
-    } finally {
-      setPortalBusy(false);
     }
   };
 
@@ -331,20 +351,38 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
         <section className="rounded-xl border border-cdlp-gold-pale/25 bg-cdlp-cream/35 p-5 sm:p-6 space-y-3">
           <h2 className="text-sm font-black uppercase tracking-wider text-cdlp-muted flex items-center gap-2">
             <XCircle className="w-4 h-4 shrink-0 text-cdlp-gold/70" aria-hidden />
-            {t('billingCancelTitle')}
+            {status === 'trialing' ? t('billingCancelTrialTitle') : t('billingCancelTitle')}
           </h2>
-          <p className="text-xs text-cdlp-muted leading-relaxed">{t('billingCancelBody')}</p>
-          <button
-            type="button"
-            disabled={portalBusy}
-            onClick={() => void openPortal()}
-            className="w-full h-11 rounded-sm border border-cdlp-gold-pale/40 bg-transparent text-cdlp-muted font-black text-xs uppercase tracking-wider hover:border-cdlp-gold/40 hover:bg-cdlp-gold/5 hover:text-cdlp-gold/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
-          >
-            {portalBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 opacity-80" />}
-            {t('billingCancelCta')}
-          </button>
+          <p className="text-xs text-cdlp-muted leading-relaxed">
+            {status === 'trialing' ? t('billingCancelTrialBody') : t('billingCancelBody')}
+          </p>
+          {cancelMsg ? <p className="text-xs text-emerald-400 font-medium">{cancelMsg}</p> : null}
+          {cancelErr ? <p className="text-xs text-red-400 font-medium">{cancelErr}</p> : null}
+          {status === 'trialing' ? (
+            <button
+              type="button"
+              disabled={cancelBusy || Boolean(cancelMsg)}
+              onClick={() => void endTrialNow()}
+              className="w-full h-11 rounded-sm border border-cdlp-gold-pale/40 bg-transparent text-cdlp-muted font-black text-xs uppercase tracking-wider hover:border-cdlp-gold/40 hover:bg-cdlp-gold/5 hover:text-cdlp-gold/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+            >
+              {cancelBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 opacity-80" />}
+              {t('billingCancelTrialCta')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={portalBusy}
+              onClick={() => void openPortal()}
+              className="w-full h-11 rounded-sm border border-cdlp-gold-pale/40 bg-transparent text-cdlp-muted font-black text-xs uppercase tracking-wider hover:border-cdlp-gold/40 hover:bg-cdlp-gold/5 hover:text-cdlp-gold/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+            >
+              {portalBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 opacity-80" />}
+              {t('billingCancelCta')}
+            </button>
+          )}
         </section>
       ) : null}
+
+      <TeamInvitePanel />
 
       <GoogleDriveConnectPanel onDriveSync={onDriveSync} />
 

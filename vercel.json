@@ -16,6 +16,12 @@
     "api/stripe/create-portal-session.ts": {
       "includeFiles": "{lib,shared}/**"
     },
+    "api/stripe/cancel-subscription.ts": {
+      "includeFiles": "{lib,shared}/**"
+    },
+    "api/team.ts": {
+      "includeFiles": "{lib,shared}/**"
+    },
     "api/stripe/link-checkout-session.ts": {
       "includeFiles": "{lib,shared}/**"
     },

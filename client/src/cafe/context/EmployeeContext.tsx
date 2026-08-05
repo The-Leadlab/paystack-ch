@@ -14,6 +14,7 @@ import {
 import { db } from '../lib/firebase';
 import type { Employee } from '../types';
 import { useAuth } from './AuthContext';
+import { useWorkspace } from './WorkspaceContext';
 import { useSubscription } from './SubscriptionContext';
 import { useLanguage } from './LanguageContext';
 
@@ -44,6 +45,7 @@ const EmployeeContext = createContext<EmployeeContextValue | null>(null);
 
 export function EmployeeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { dataOwnerUid, canWrite } = useWorkspace();
   const { enforcementEnabled, entitlements } = useSubscription();
   const { t } = useLanguage();
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -51,7 +53,7 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchEmployees = useCallback(async () => {
-    const uid = user?.uid;
+    const uid = dataOwnerUid;
     if (!uid) {
       setEmployees([]);
       setLoading(false);
@@ -83,7 +85,7 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [user?.uid]);
+  }, [dataOwnerUid]);
 
   useEffect(() => {
     fetchEmployees();
@@ -91,8 +93,8 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
 
   const addEmployee = useCallback(
     async (name: string, position?: string, salary?: number, contributions?: number): Promise<Employee | null> => {
-      const uid = user?.uid;
-      if (!uid) return null;
+      const uid = dataOwnerUid;
+      if (!uid || !canWrite) return null;
       if (!db) {
         setError('Firebase Firestore is not configured.');
         return null;
@@ -132,12 +134,12 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
     },
-    [user?.uid, enforcementEnabled, entitlements.maxEmployeeSlots, employees.length, t]
+    [dataOwnerUid, canWrite, enforcementEnabled, entitlements.maxEmployeeSlots, employees.length, t]
   );
 
   const deleteEmployee = useCallback(
     async (id: string) => {
-      if (!db) return;
+      if (!db || !canWrite) return;
       try {
         await deleteDoc(doc(db, EMPLOYEES_COLLECTION, id));
         setEmployees((prev) => prev.filter((e) => e.id !== id));
@@ -145,7 +147,7 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
         setError(err instanceof Error ? err.message : String(err));
       }
     },
-    []
+    [canWrite]
   );
 
   const value: EmployeeContextValue = {

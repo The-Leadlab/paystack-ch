@@ -10,10 +10,25 @@ import {
   type PersonalBudgetTx,
   type PersonalImportRecord,
 } from "../lib/personalBudgetStore";
+import {
+  addPersonalTransactionFs,
+  commitPersonalStatementDraftsFs,
+  deletePersonalTransactionFs,
+  listPersonalImportsFs,
+  listPersonalTransactionsFs,
+  updatePersonalTransactionFs,
+} from "../lib/personalLedgerFirestore";
 import { personalRowsToLedger } from "../lib/personalLedgerAdapt";
+import { db } from "@/cafe/lib/firebase";
+import { useWorkspaceOptional } from "@/cafe/context/WorkspaceContext";
 
 /** Personal money ledger for all /app/personal and /ali personal-plan tabs. */
 export function usePersonalBudgetLedger(month?: string) {
+  const workspace = useWorkspaceOptional();
+  const ownerUid = workspace?.dataOwnerUid ?? null;
+  const canWrite = workspace?.canWrite !== false;
+  const useCloud = Boolean(ownerUid && db);
+
   const [rows, setRows] = useState<PersonalBudgetTx[]>([]);
   const [imports, setImports] = useState<PersonalImportRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,15 +39,24 @@ export function usePersonalBudgetLedger(month?: string) {
     setLoading(true);
     setError(null);
     try {
-      const [tx, imp] = await Promise.all([listPersonalTransactions(), listPersonalImports()]);
-      setRows(tx);
-      setImports(imp);
+      if (useCloud && ownerUid && db) {
+        const [tx, imp] = await Promise.all([
+          listPersonalTransactionsFs(db, ownerUid),
+          listPersonalImportsFs(db, ownerUid),
+        ]);
+        setRows(tx);
+        setImports(imp);
+      } else {
+        const [tx, imp] = await Promise.all([listPersonalTransactions(), listPersonalImports()]);
+        setRows(tx);
+        setImports(imp);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [useCloud, ownerUid]);
 
   useEffect(() => {
     void refresh();
@@ -45,6 +69,49 @@ export function usePersonalBudgetLedger(month?: string) {
   }, []);
 
   const bump = useCallback(() => setTick((n) => n + 1), []);
+
+  const add = useCallback(
+    async (input: Omit<PersonalBudgetTx, "id" | "createdAt"> & { id?: string }) => {
+      if (!canWrite) throw new Error("Read-only access");
+      if (useCloud && ownerUid && db) {
+        const row = await addPersonalTransactionFs(db, ownerUid, input);
+        bump();
+        return row;
+      }
+      const row = await addPersonalTransaction(input);
+      return row;
+    },
+    [canWrite, useCloud, ownerUid, bump]
+  );
+
+  const update = useCallback(
+    async (
+      id: string,
+      patch: Partial<Pick<PersonalBudgetTx, "amount" | "description" | "date" | "kind" | "expenseCat" | "incomeCat">>
+    ) => {
+      if (!canWrite) throw new Error("Read-only access");
+      if (useCloud && ownerUid && db) {
+        await updatePersonalTransactionFs(db, ownerUid, id, patch);
+        bump();
+        return;
+      }
+      await updatePersonalTransaction(id, patch);
+    },
+    [canWrite, useCloud, ownerUid, bump]
+  );
+
+  const remove = useCallback(
+    async (id: string) => {
+      if (!canWrite) throw new Error("Read-only access");
+      if (useCloud && ownerUid && db) {
+        await deletePersonalTransactionFs(db, id);
+        bump();
+        return;
+      }
+      await deletePersonalTransaction(id);
+    },
+    [canWrite, useCloud, ownerUid, bump]
+  );
 
   const allTotals = useMemo(() => {
     const income = rows.filter((r) => r.kind === "income").reduce((s, r) => s + r.amount, 0);
@@ -100,9 +167,17 @@ export function usePersonalBudgetLedger(month?: string) {
       await refresh();
     },
     bump,
-    add: addPersonalTransaction,
-    update: updatePersonalTransaction,
-    remove: deletePersonalTransaction,
+    add,
+    update,
+    remove,
+    /** Cloud commit helper for statement upload when signed in. */
+    commitStatementCloud:
+      useCloud && ownerUid && db
+        ? (drafts: Parameters<typeof commitPersonalStatementDraftsFs>[2], meta: Parameters<typeof commitPersonalStatementDraftsFs>[3]) =>
+            commitPersonalStatementDraftsFs(db, ownerUid, drafts, meta)
+        : null,
+    useCloud,
+    canWrite,
     hasData: rows.length > 0,
     hasFirebaseData: rows.length > 0,
     sessionReady: true,

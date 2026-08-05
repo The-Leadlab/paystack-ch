@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { POSReading } from '../types';
 import { useAuth } from './AuthContext';
+import { useWorkspace } from './WorkspaceContext';
 import { useSession } from './SessionContext';
 import { db } from '../lib/firebase';
 import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, orderBy } from 'firebase/firestore';
@@ -19,13 +20,14 @@ const POSContext = createContext<POSContextValue | null>(null);
 
 export function POSProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { dataOwnerUid, canWrite } = useWorkspace();
   const { currentSession, isAllSessionsView } = useSession();
   const [posReadings, setPOSReadings] = useState<POSReading[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchPOSReadings = useCallback(async () => {
-    const uid = user?.uid;
+    const uid = dataOwnerUid;
     
     if (!uid || !db) {
       setPOSReadings([]);
@@ -89,7 +91,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [user?.uid, currentSession?.id, isAllSessionsView]);
+  }, [dataOwnerUid, currentSession?.id, isAllSessionsView]);
 
   useEffect(() => {
     fetchPOSReadings();
@@ -97,10 +99,10 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
   const addPOSReading = useCallback(
     async (reading: Omit<POSReading, 'id' | 'restaurant_id' | 'session_id' | 'created_at' | 'updated_at'>) => {
-      const uid = user?.uid;
+      const uid = dataOwnerUid;
       const sessionId = currentSession?.id;
       
-      if (!uid || !sessionId || !db) {
+      if (!uid || !canWrite || !sessionId || !db) {
         throw new Error('User or session not found');
       }
 
@@ -123,12 +125,12 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [user?.uid, currentSession?.id]
+    [dataOwnerUid, canWrite, currentSession?.id]
   );
 
   const updatePOSReading = useCallback(
     async (id: string, updates: Partial<POSReading>) => {
-      if (!db) return;
+      if (!db || !canWrite) return;
       
       try {
         const docRef = doc(db, 'pos_readings', id);
@@ -146,11 +148,11 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    []
+    [canWrite]
   );
 
   const deletePOSReading = useCallback(async (id: string) => {
-    if (!db) return;
+    if (!db || !canWrite) return;
     
     try {
       const docRef = doc(db, 'pos_readings', id);
@@ -161,7 +163,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       setError(err instanceof Error ? err.message : String(err));
       throw err;
     }
-  }, []);
+  }, [canWrite]);
 
   const value: POSContextValue = {
     posReadings,
