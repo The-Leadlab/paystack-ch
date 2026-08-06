@@ -4,6 +4,14 @@ import type { PaystackPlanId } from "./planCatalog";
  * Translation keys under `LanguageContext` — must match `PricingSection` / landing copy per tier.
  */
 export const PLAN_MARKETING_FEATURE_KEYS: Record<PaystackPlanId, readonly string[]> = {
+  personal: [
+    "planPersonalFeature1",
+    "planPersonalFeature2",
+    "planPersonalFeature3",
+    "planPersonalFeature4",
+    "planPersonalFeature5",
+    "planPersonalFeature6",
+  ],
   starter: [
     "planStarterFeature1",
     "planStarterFeature2",

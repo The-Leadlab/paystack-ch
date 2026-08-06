@@ -18,7 +18,10 @@ export default function StartTrialPage() {
 
   const planId = useMemo(() => {
     const qs = search.startsWith("?") ? search.slice(1) : search;
-    const p = parsePaystackPlanId(new URLSearchParams(qs).get("plan"));
+    const params = new URLSearchParams(qs);
+    const product = (params.get("product") || "").toLowerCase().trim();
+    if (product === "personal") return "personal" as PaystackPlanId;
+    const p = parsePaystackPlanId(params.get("plan"));
     return p && isSelfServePlan(p) ? p : ("starter" as PaystackPlanId);
   }, [search]);
 
@@ -49,7 +52,8 @@ export default function StartTrialPage() {
   }
 
   if (cancelled) {
-    const retryHref = `/start-trial?plan=${planId}`;
+    const retryHref =
+      planId === "personal" ? "/start-trial?product=personal" : `/start-trial?plan=${planId}`;
     return (
       <AuthLayout heading={t("startTrialCheckoutCancelled")}>
         <Card className="border-border shadow-sm max-w-lg mx-auto">

@@ -9,6 +9,7 @@ import {
   runCreateCheckoutSession,
   runCreatePortalSession,
   runCancelSubscription,
+  runPersonalAddonCheckout,
   runLinkCheckoutSession,
   runStripeWebhook,
 } from "../lib/stripeBilling";
@@ -92,6 +93,27 @@ export async function handleCancelSubscriptionExpress(
     res.status(out.status).json(out.json);
   } catch (e) {
     console.error("[stripe] cancel-subscription express:", e);
+    if (!res.headersSent) {
+      res.status(500).json({ error: e instanceof Error ? e.message : "Internal server error" });
+    }
+  }
+}
+
+export async function handlePersonalAddonExpress(
+  req: Request,
+  res: Response,
+  useTestStripe = false
+): Promise<void> {
+  try {
+    const out = await runPersonalAddonCheckout(
+      req.headers.authorization,
+      (req.body ?? {}) as { addon?: string },
+      req.headers as Record<string, string | string[] | undefined>,
+      useTestStripe
+    );
+    res.status(out.status).json(out.json);
+  } catch (e) {
+    console.error("[stripe] personal-addon express:", e);
     if (!res.headersSent) {
       res.status(500).json({ error: e instanceof Error ? e.message : "Internal server error" });
     }
@@ -190,6 +212,9 @@ function mountStripeRoutes(app: Express, useTestStripe: boolean): void {
   });
   app.post(`${prefix}/cancel-subscription`, jsonParser, (req, res) => {
     void handleCancelSubscriptionExpress(req, res, useTestStripe);
+  });
+  app.post(`${prefix}/personal-addon`, jsonParser, (req, res) => {
+    void handlePersonalAddonExpress(req, res, useTestStripe);
   });
 }
 

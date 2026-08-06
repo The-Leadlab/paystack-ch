@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { Redirect, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/cafe/context/AuthContext";
 import { SessionProvider } from "@/cafe/context/SessionContext";
@@ -9,7 +9,7 @@ import { POSProvider } from "@/cafe/context/POSContext";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { EmailVerificationGate } from "@/cafe/components/EmailVerificationGate";
 import { DashboardLoadingShell } from "@/cafe/components/DashboardLoadingShell";
-import { SubscriptionProvider } from "@/cafe/context/SubscriptionContext";
+import { SubscriptionProvider, useSubscription } from "@/cafe/context/SubscriptionContext";
 import { WorkspaceProvider, useWorkspace } from "@/cafe/context/WorkspaceContext";
 import { SubscriptionGate } from "@/cafe/components/SubscriptionGate";
 import { firebaseReady } from "@/cafe/lib/firebase";
@@ -17,7 +17,15 @@ import {
   isPersonalFinancesAccessUser,
   isSubscriptionOrVerificationBypassUser,
 } from "@/cafe/lib/subscriptionBypass";
-import { isSelfServePlan, parsePaystackPlanId, SELECTED_PLAN_STORAGE_KEY } from "@shared/planCatalog";
+import {
+  isPersonalPlan,
+  isSelfServePlan,
+  parsePaystackPlanId,
+  restaurantPlanIncludesPersonalBridge,
+  SELECTED_PLAN_STORAGE_KEY,
+  type PaystackPlanId,
+} from "@shared/planCatalog";
+import type { User } from "firebase/auth";
 
 const RestaurantDashboard = lazy(() =>
   import("@/cafe/components/RestaurantDashboard").then((m) => ({ default: m.RestaurantDashboard }))
@@ -27,6 +35,42 @@ const PersonalAppPage = lazy(() => import("./PersonalAppPage"));
 
 function isPersonalAppPath(path: string): boolean {
   return path === "/app/personal" || path.startsWith("/app/personal/");
+}
+
+function canAccessPersonalWorkspace(
+  user: User | null | undefined,
+  planId: PaystackPlanId | null | undefined
+): boolean {
+  if (isPersonalFinancesAccessUser(user)) return true;
+  if (isPersonalPlan(planId)) return true;
+  if (restaurantPlanIncludesPersonalBridge(planId)) return true;
+  return false;
+}
+
+/** Blocks /app/personal unless personal plan, Unlimited bridge, or ops allowlist. */
+function PersonalWorkspaceGate({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const { billing, loading } = useSubscription();
+  const [location] = useLocation();
+  if (!isPersonalAppPath(location)) return <>{children}</>;
+  if (loading) return <DashboardLoadingShell />;
+  if (!canAccessPersonalWorkspace(user, billing?.planId)) {
+    return <Redirect to="/app" />;
+  }
+  return <>{children}</>;
+}
+
+/** Personal-only subscribers stay on /app/personal, not restaurant modules. */
+function RestaurantWorkspaceGate({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const { billing, loading } = useSubscription();
+  const [location] = useLocation();
+  if (isPersonalAppPath(location)) return <>{children}</>;
+  if (loading) return <DashboardLoadingShell />;
+  if (isPersonalPlan(billing?.planId) && !isPersonalFinancesAccessUser(user)) {
+    return <Redirect to="/app/personal/overview" />;
+  }
+  return <>{children}</>;
 }
 
 /** Accepts ?team_invite=TOKEN once after sign-in. */
@@ -103,10 +147,6 @@ function PlatformContent() {
     return <EmailVerificationGate />;
   }
 
-  if (personal && !isPersonalFinancesAccessUser(user)) {
-    return <Redirect to="/app" />;
-  }
-
   if (location === "/app/personal") {
     return <Redirect to="/app/personal/overview" />;
   }
@@ -121,9 +161,13 @@ function PlatformContent() {
               <DocumentProvider>
                 <TeamInviteAcceptEffect />
                 <SubscriptionGate>
-                  <Suspense fallback={<DashboardLoadingShell />}>
-                    {personal ? <PersonalAppPage /> : <RestaurantDashboard />}
-                  </Suspense>
+                  <PersonalWorkspaceGate>
+                    <RestaurantWorkspaceGate>
+                      <Suspense fallback={<DashboardLoadingShell />}>
+                        {personal ? <PersonalAppPage /> : <RestaurantDashboard />}
+                      </Suspense>
+                    </RestaurantWorkspaceGate>
+                  </PersonalWorkspaceGate>
                 </SubscriptionGate>
               </DocumentProvider>
             </POSProvider>

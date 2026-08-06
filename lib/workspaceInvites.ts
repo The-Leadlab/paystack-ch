@@ -4,7 +4,7 @@
  */
 import { createHash, randomBytes } from "node:crypto";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
-import { entitlementsForPlan, parsePaystackPlanId } from "../shared/planCatalog.js";
+import { effectiveTeamSeats, parsePaystackPlanId } from "../shared/planCatalog.js";
 import { ensureFirebaseAdmin, hasFirebaseAdminCredentials } from "./firebaseAdmin.js";
 import { publicAppOriginFromHeaders, isAllowedBrowserOrigin, type HeaderMap } from "./stripeCore.js";
 import { sendResendEmail } from "./resendEmail.js";
@@ -44,8 +44,11 @@ async function countSeatsUsed(ownerUid: string): Promise<number> {
 async function ownerPlanSeats(ownerUid: string): Promise<number | null> {
   const snap = await getFirestore().collection("users").doc(ownerUid).get();
   const planId = parsePaystackPlanId(snap.get("planId"));
-  const caps = entitlementsForPlan(planId);
-  return caps.maxTeamSeats;
+  const paid =
+    typeof snap.get("personalAddonSeats") === "number" && Number.isFinite(snap.get("personalAddonSeats"))
+      ? Math.max(0, Math.floor(snap.get("personalAddonSeats") as number))
+      : 0;
+  return effectiveTeamSeats(planId, paid);
 }
 
 export async function runTeamAction(

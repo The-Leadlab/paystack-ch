@@ -7,6 +7,7 @@ export const PLAN_ENTERPRISE_SALES_MAILTO =
   'mailto:info@paystack.ch?subject=Enterprise%20plan%20%E2%80%94%20Paystack.ch';
 
 function planMarketingDescription(t: (k: string) => string, planId: PaystackPlanId): string {
+  if (planId === 'personal') return t('planPersonalDescription');
   if (planId === 'starter') return t('planStarterDescription');
   if (planId === 'business') return t('planBusinessDescription');
   if (planId === 'unlimited') return t('planUnlimitedDescription');
@@ -14,6 +15,7 @@ function planMarketingDescription(t: (k: string) => string, planId: PaystackPlan
 }
 
 function planMarketingName(t: (k: string) => string, planId: PaystackPlanId): string {
+  if (planId === 'personal') return t('planPersonalName');
   if (planId === 'starter') return t('planStarterName');
   if (planId === 'business') return t('planBusinessName');
   if (planId === 'unlimited') return t('planUnlimitedName');
@@ -26,11 +28,13 @@ export function planMarketingPriceLine(t: (k: string) => string, planId: Paystac
     return `${t('pricingCurrency')} ${t('pricingCustom')}`;
   }
   const amount =
-    planId === 'starter'
-      ? t('pricingStarterAmount')
-      : planId === 'business'
-        ? t('pricingBusinessAmount')
-        : t('pricingUnlimitedAmount');
+    planId === 'personal'
+      ? t('pricingPersonalAmount')
+      : planId === 'starter'
+        ? t('pricingStarterAmount')
+        : planId === 'business'
+          ? t('pricingBusinessAmount')
+          : t('pricingUnlimitedAmount');
   return `${t('pricingCurrency')} ${amount} ${t('pricingPerMonth')}`;
 }
 

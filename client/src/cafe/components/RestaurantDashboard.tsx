@@ -18,6 +18,7 @@ import '../businessApp.css';
 import { UpgradePromptModal } from './UpgradePromptModal';
 import { PlanTestBanner, PlanTestPickerModal } from './PlanTestPickerModal';
 import { isAdminAppAccessUser, isPersonalFinancesAccessUser } from '../lib/subscriptionBypass';
+import { restaurantPlanIncludesPersonalBridge, isPersonalPlan } from '@shared/planCatalog';
 import { getSessionDisplayName } from '../lib/formatLocalDateTime';
 import { POSManager } from './POSManager';
 import { ExpensesManager } from './ExpensesManager';
@@ -969,13 +970,15 @@ export function RestaurantDashboard() {
               {t("appAdminPanelLink")}
             </Link>
           ) : null}
-          {isPersonalFinancesAccessUser(user) ? (
+          {isPersonalFinancesAccessUser(user) ||
+          restaurantPlanIncludesPersonalBridge(billing?.planId) ||
+          isPersonalPlan(billing?.planId) ? (
             <Link
               href="/app/personal/overview"
               className="ba-sidebar-link-btn ba-sidebar-link-btn--accent"
             >
               <Wallet className="w-3 h-3 shrink-0" />
-              Personal finances
+              {t("appPersonalFinancesLink")}
             </Link>
           ) : null}
           <button

@@ -1,6 +1,6 @@
 /*
  * Palette F — "Jet d'Eau" Light Theme
- * Four-tier pricing (Starter, Business, Unlimited, Enterprise).
+ * Business tiers + Personal (CHF 20) behind product-line tabs.
  */
 
 import { Link } from "wouter";
@@ -8,14 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Check, ArrowRight } from "lucide-react";
 import ScrollReveal from "./ScrollReveal";
 import SectionLabel from "./SectionLabel";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import { PLAN_ENTERPRISE_SALES_MAILTO } from "@/cafe/components/PlanMarketingPanel";
 
+type PricingTab = "business" | "personal";
+
 export default function PricingSection() {
   const { t, language } = useLanguage();
+  const [tab, setTab] = useState<PricingTab>("business");
   const trialHref = (plan: string) => `/start-trial?plan=${plan}`;
-  const plans = useMemo(() => [
+
+  const businessPlans = useMemo(() => [
     {
       name: t("planStarterName"),
       price: t("pricingStarterAmount"),
@@ -90,24 +94,81 @@ export default function PricingSection() {
     },
   ], [t, language]);
 
+  const personalPlans = useMemo(() => [
+    {
+      name: t("planPersonalName"),
+      price: t("pricingPersonalAmount"),
+      period: t("pricingPerMonth"),
+      description: t("planPersonalDescription"),
+      features: [
+        t("planPersonalFeature1"),
+        t("planPersonalFeature2"),
+        t("planPersonalFeature3"),
+        t("planPersonalFeature4"),
+        t("planPersonalFeature5"),
+        t("planPersonalFeature6"),
+      ],
+      cta: t("ctaStartTrial"),
+      highlighted: true,
+      href: "/start-trial?product=personal",
+    },
+  ], [t, language]);
+
+  const plans = tab === "personal" ? personalPlans : businessPlans;
+
   return (
     <section id="pricing" className="relative py-24 lg:py-32 border-t border-border">
       <div className="container">
         <SectionLabel number="06" label={t("pricingTitle")} />
 
         <ScrollReveal>
-          <div className="max-w-2xl mb-16">
+          <div className="max-w-2xl mb-10">
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5 text-foreground">
-              {t("pricingHeadingStart")}{" "}
-              <span className="font-editorial italic font-normal text-gradient-red">{t("pricingHeadingHighlight")}</span>
+              {tab === "personal" ? (
+                t("pricingPersonalHeading")
+              ) : (
+                <>
+                  {t("pricingHeadingStart")}{" "}
+                  <span className="font-editorial italic font-normal text-gradient-red">{t("pricingHeadingHighlight")}</span>
+                </>
+              )}
             </h2>
             <p className="font-editorial text-lg text-muted-foreground leading-relaxed">
-              {t("pricingDescription")}
+              {tab === "personal" ? t("pricingPersonalDescription") : t("pricingDescription")}
             </p>
           </div>
         </ScrollReveal>
 
-        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-6 lg:gap-8">
+        <div className="flex gap-2 mb-12 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setTab("business")}
+            className={`font-display text-sm px-5 py-2.5 rounded-lg border transition-colors ${
+              tab === "business"
+                ? "bg-brand-red text-white border-brand-red"
+                : "bg-card text-foreground border-border hover:border-brand-red/40"
+            }`}
+          >
+            {t("pricingTabBusiness")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("personal")}
+            className={`font-display text-sm px-5 py-2.5 rounded-lg border transition-colors ${
+              tab === "personal"
+                ? "bg-brand-red text-white border-brand-red"
+                : "bg-card text-foreground border-border hover:border-brand-red/40"
+            }`}
+          >
+            {t("pricingTabPersonal")}
+          </button>
+        </div>
+
+        <div
+          className={`grid gap-6 lg:gap-8 ${
+            tab === "personal" ? "sm:grid-cols-1 max-w-md" : "sm:grid-cols-2 xl:grid-cols-4"
+          }`}
+        >
           {plans.map((plan, index) => (
             <ScrollReveal key={plan.name} delay={index * 0.1}>
               <div

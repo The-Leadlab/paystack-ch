@@ -19,6 +19,7 @@ export function resolvePlanIdFromStripeSubscription(
   const priceId = firstSubscriptionPriceId(subscription);
   if (priceId) {
     if (useTestPrices) {
+      if (priceId === process.env.STRIPE_TEST_PRICE_PERSONAL?.trim()) return "personal";
       if (priceId === process.env.STRIPE_TEST_PRICE_STARTER?.trim()) return "starter";
       if (priceId === process.env.STRIPE_TEST_PRICE_BUSINESS?.trim()) return "business";
       if (priceId === process.env.STRIPE_TEST_PRICE_UNLIMITED?.trim()) return "unlimited";
@@ -27,6 +28,7 @@ export function resolvePlanIdFromStripeSubscription(
         return parsePaystackPlanId(process.env.STRIPE_DEFAULT_PLAN_ID) || "starter";
       }
     } else {
+      if (priceId === process.env.STRIPE_PRICE_PERSONAL?.trim()) return "personal";
       if (priceId === process.env.STRIPE_PRICE_STARTER?.trim()) return "starter";
       if (priceId === process.env.STRIPE_PRICE_BUSINESS?.trim()) return "business";
       if (priceId === process.env.STRIPE_PRICE_UNLIMITED?.trim()) return "unlimited";

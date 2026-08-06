@@ -13,6 +13,7 @@ import { TeamInvitePanel } from './TeamInvitePanel';
 import { db } from '../lib/firebase';
 
 function planDisplayName(id: PaystackPlanId | null | undefined, t: (k: string) => string): string {
+  if (id === 'personal') return t('planPersonalName');
   if (id === 'starter') return t('planStarterName');
   if (id === 'business') return t('planBusinessName');
   if (id === 'unlimited') return t('planUnlimitedName');

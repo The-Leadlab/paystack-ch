@@ -12,8 +12,10 @@ import {
   SELECTED_PLAN_STORAGE_KEY,
   UNRESTRICTED_ENTITLEMENTS,
   currentMonthKey,
+  effectiveTeamSeats,
   entitlementsForPlan,
   parsePaystackPlanId,
+  personalDocumentsLimit,
   type PaystackPlanId,
   type PlanEntitlements,
 } from '@shared/planCatalog';
@@ -28,6 +30,8 @@ type UserBillingSnapshot = {
   stripeCustomerId: string | null;
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd: Date | null;
+  personalAddonSeats: number;
+  personalDocPack: boolean;
 };
 
 type SubscriptionContextValue = {
@@ -54,6 +58,8 @@ type SubscriptionContextValue = {
   openCustomerPortal: () => Promise<void>;
   /** End trial immediately (no charge) or schedule cancel at period end for paid plans. */
   cancelSubscription: (opts?: { immediate?: boolean }) => Promise<{ canceled: string; wasTrialing: boolean }>;
+  /** Personal plan: add paid seat (CHF 5) or activate doc pack (CHF 8 → 100 docs). */
+  purchasePersonalAddon: (addon: 'seat' | 'doc_pack') => Promise<{ message: string; alreadyActive?: boolean }>;
 };
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
@@ -99,6 +105,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             stripeCustomerId: null,
             cancelAtPeriodEnd: false,
             currentPeriodEnd: null,
+            personalAddonSeats: 0,
+            personalDocPack: false,
           });
           setDocumentsUsedThisMonth(0);
           setPersonalDocumentsUsedThisMonth(0);
@@ -117,6 +125,11 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             cancelAtPeriodEnd: d.cancelAtPeriodEnd === true,
             currentPeriodEnd:
               periodTs && typeof periodTs.toDate === 'function' ? periodTs.toDate() : null,
+            personalAddonSeats:
+              typeof d.personalAddonSeats === 'number' && Number.isFinite(d.personalAddonSeats)
+                ? Math.max(0, Math.floor(d.personalAddonSeats))
+                : 0,
+            personalDocPack: d.personalDocPack === true,
           });
           const usage = d.usage as Record<string, unknown> | undefined;
           const month = currentMonthKey();
@@ -139,6 +152,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           stripeCustomerId: null,
           cancelAtPeriodEnd: false,
           currentPeriodEnd: null,
+          personalAddonSeats: 0,
+          personalDocPack: false,
         });
         setDocumentsUsedThisMonth(0);
         setPersonalDocumentsUsedThisMonth(0);
@@ -174,12 +189,29 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     return st === 'trialing' || st === 'active';
   }, [bypass, enforcementEnabled, billing?.subscriptionStatus, workspace]);
 
-  const entitlements = useMemo(() => {
+  const entitlements = useMemo((): PlanEntitlements => {
     if (!enforcementEnabled) return UNRESTRICTED_ENTITLEMENTS;
     if (planTest) return entitlementsForPlan(billing?.planId ?? 'starter');
     if (bypass) return UNRESTRICTED_ENTITLEMENTS;
-    return entitlementsForPlan(billing?.planId ?? undefined);
-  }, [enforcementEnabled, planTest, bypass, billing?.planId]);
+    const base = entitlementsForPlan(billing?.planId ?? undefined);
+    const seats = effectiveTeamSeats(billing?.planId, billing?.personalAddonSeats ?? 0);
+    const personalDocs = personalDocumentsLimit({
+      docPackActive: billing?.personalDocPack === true,
+      planId: billing?.planId,
+    });
+    return {
+      ...base,
+      maxTeamSeats: seats,
+      maxPersonalDocumentsPerMonth: personalDocs ?? base.maxPersonalDocumentsPerMonth,
+    };
+  }, [
+    enforcementEnabled,
+    planTest,
+    bypass,
+    billing?.planId,
+    billing?.personalAddonSeats,
+    billing?.personalDocPack,
+  ]);
 
   const setPlanTestPlan = useCallback(
     async (planId: PaystackPlanId) => {
@@ -267,6 +299,30 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     [user]
   );
 
+  const purchasePersonalAddon = useCallback(
+    async (addon: 'seat' | 'doc_pack') => {
+      if (!user) throw new Error('Not signed in');
+      const token = await user.getIdToken();
+      const billingPath = STRIPE_BILLING_PATH_LIVE;
+      const res = await fetch(apiUrl(`${billingPath}/personal-addon`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ addon }),
+      });
+      const { json, errorMessage } = await parseStripeFetchResponse(res);
+      if (!json) throw new Error(errorMessage || 'Addon purchase failed');
+      if (!res.ok) throw new Error(errorMessage || 'Addon purchase failed');
+      return {
+        message: typeof json.message === 'string' ? json.message : 'Addon updated',
+        alreadyActive: json.alreadyActive === true,
+      };
+    },
+    [user]
+  );
+
   const value: SubscriptionContextValue = {
     enforcementEnabled,
     loading,
@@ -282,6 +338,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     startCheckout,
     openCustomerPortal,
     cancelSubscription,
+    purchasePersonalAddon,
   };
 
   return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;

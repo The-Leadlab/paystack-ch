@@ -9,6 +9,7 @@ import Stripe from "stripe";
 import {
   isSelfServePlan,
   parsePaystackPlanId,
+  productLineForPlan,
   stripePriceIdForPlan,
   type PaystackPlanId,
 } from "../shared/planCatalog.js";
@@ -107,6 +108,7 @@ export function trialDays(): number {
 }
 
 function planDisplayName(planId: PaystackPlanId): string {
+  if (planId === "personal") return "Paystack Personal";
   if (planId === "business") return "Paystack Business";
   if (planId === "unlimited") return "Paystack Unlimited";
   if (planId === "enterprise") return "Paystack Enterprise";
@@ -221,17 +223,23 @@ export async function runCreateCheckoutSessionGuest(
   try {
     const origin = publicAppOriginFromHeaders(headers);
     const testQs = useTest ? "&stripe_test=1" : "";
-    const metadata = { planId: checkoutPlanId, pendingFirebaseLink: "1" };
+    const metadata = {
+      planId: checkoutPlanId,
+      productLine: productLineForPlan(checkoutPlanId),
+      pendingFirebaseLink: "1",
+    };
     await assertRecurringChfPrice(stripe, lineItem);
+    const cancelBase =
+      checkoutPlanId === "personal"
+        ? `${origin}/start-trial?product=personal`
+        : `${origin}/start-trial?plan=${checkoutPlanId}`;
     const session = await stripe.checkout.sessions.create(
       buildSubscriptionCheckoutParams({
         lineItem,
         planId: checkoutPlanId,
         origin,
         successUrl: `${origin}/sign-up?checkout=success&session_id={CHECKOUT_SESSION_ID}${testQs}`,
-        cancelUrl: useTest
-          ? `${origin}/start-trial?plan=${checkoutPlanId}&stripe_test=1&checkout=cancel`
-          : `${origin}/start-trial?plan=${checkoutPlanId}&checkout=cancel`,
+        cancelUrl: useTest ? `${cancelBase}&stripe_test=1&checkout=cancel` : `${cancelBase}&checkout=cancel`,
         metadata,
       })
     );

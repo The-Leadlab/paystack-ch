@@ -21,6 +21,10 @@ import {
   UserCheck,
   Building2,
   Receipt,
+  PiggyBank,
+  Target,
+  Bell,
+  LayoutDashboard,
 } from "lucide-react";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 
@@ -47,6 +51,18 @@ export default function ModulesSection() {
           { icon: Users, name: t("landingModCore4Name"), status: "live" as const, description: t("landingModCore4Desc") },
           { icon: Calendar, name: t("landingModCore5Name"), status: "live" as const, description: t("landingModCore5Desc") },
           { icon: BarChart3, name: t("landingModCore6Name"), status: "live" as const, description: t("landingModCore6Desc") },
+        ],
+      },
+      {
+        id: "personal",
+        label: t("landingModulesTabPersonal"),
+        items: [
+          { icon: LayoutDashboard, name: t("landingModPer1Name"), status: "live" as const, description: t("landingModPer1Desc") },
+          { icon: Wallet, name: t("landingModPer2Name"), status: "live" as const, description: t("landingModPer2Desc") },
+          { icon: Target, name: t("landingModPer3Name"), status: "live" as const, description: t("landingModPer3Desc") },
+          { icon: Bell, name: t("landingModPer4Name"), status: "live" as const, description: t("landingModPer4Desc") },
+          { icon: PiggyBank, name: t("landingModPer5Name"), status: "live" as const, description: t("landingModPer5Desc") },
+          { icon: FileText, name: t("landingModPer6Name"), status: "live" as const, description: t("landingModPer6Desc") },
         ],
       },
       {

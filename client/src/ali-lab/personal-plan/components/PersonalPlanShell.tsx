@@ -7,6 +7,7 @@ import { PersonalPlanKpiStrip } from "./PersonalPlanKpiStrip";
 import { PersonalPlanMobileNav, PersonalPlanSidebar } from "./PersonalPlanSidebar";
 import { PersonalSessionBar } from "./PersonalSessionBar";
 import { PersonalTransactionModal } from "./PersonalTransactionModal";
+import { PersonalBillingAddons } from "./PersonalBillingAddons";
 import { AliLabAuthBanner } from "../../components/AliLabAuthBanner";
 import type { PersonalPlanSurface } from "../personalPlanNav";
 import { useLabLanguage } from "../../context/LabLanguageContext";
@@ -57,6 +58,7 @@ function PersonalPlanShellInner({
         <PersonalPlanHeader title={title} />
         <div className="p-4 md:p-16 space-y-6 max-w-[1400px]">
           {showKpi ? <PersonalPlanKpiStrip month={month} /> : null}
+          {surface === "app" && featureId === "overview" ? <PersonalBillingAddons /> : null}
           {children}
         </div>
       </main>

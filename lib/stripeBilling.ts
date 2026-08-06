@@ -7,6 +7,8 @@ import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
 import {
   isSelfServePlan,
   parsePaystackPlanId,
+  productLineForPlan,
+  entitlementsForPlan,
   type PaystackPlanId,
 } from "../shared/planCatalog.js";
 
@@ -34,6 +36,12 @@ import { verifyFirebaseUser } from "./verifyFirebaseIdToken.js";
 import { serverStripeUseTestMode } from "./stripeMode.js";
 import { notifyAdminsNewUser } from "./newUserNotify.js";
 import { getAuth } from "firebase-admin/auth";
+import {
+  matchAddonPriceIds,
+  personalAddonsFromSubscription,
+  resolvePersonalAddonPriceId,
+  type PersonalAddonKind,
+} from "./personalAddons.js";
 
 export type { HeaderMap } from "./stripeCore.js";
 export { getStripe, getStripeTest, publicAppOriginFromHeaders, trialDays } from "./stripeCore.js";
@@ -51,6 +59,8 @@ export async function syncSubscriptionToFirestore(
   const customerId =
     typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id ?? null;
   const planId = resolvePlanIdFromStripeSubscription(subscription, useTestPrices);
+  const basePersonalDocs = entitlementsForPlan(planId).maxPersonalDocumentsPerMonth;
+  const addons = personalAddonsFromSubscription(subscription, basePersonalDocs);
   await db
     .collection("users")
     .doc(uid)
@@ -60,6 +70,9 @@ export async function syncSubscriptionToFirestore(
         subscriptionId: subscription.id,
         subscriptionStatus: subscription.status,
         planId,
+        productLine: productLineForPlan(planId),
+        personalAddonSeats: addons.personalAddonSeats,
+        personalDocPack: addons.personalDocPack,
         trialEndsAt:
           subscription.trial_end != null
             ? Timestamp.fromMillis(subscription.trial_end * 1000)
@@ -84,6 +97,9 @@ async function markSubscriptionCanceled(uid: string): Promise<void> {
         subscriptionStatus: "canceled",
         subscriptionId: null,
         planId: null,
+        productLine: null,
+        personalAddonSeats: 0,
+        personalDocPack: false,
         trialEndsAt: null,
         currentPeriodEnd: null,
         cancelAtPeriodEnd: false,
@@ -374,8 +390,8 @@ export async function runCreateCheckoutSession(
     const { uid, email: verifiedEmail } = await verifyFirebaseUser(m[1]);
     const email = verifiedEmail || undefined;
     const origin = publicAppOriginFromHeaders(headers);
-    const appPath = "/app";
-    const metadata = { firebaseUid: uid, planId: checkoutPlanId };
+    const appPath = checkoutPlanId === "personal" ? "/app/personal/overview" : "/app";
+    const metadata = { firebaseUid: uid, planId: checkoutPlanId, productLine: productLineForPlan(checkoutPlanId) };
     await assertRecurringChfPrice(stripe, lineItem);
     const session = await stripe.checkout.sessions.create(
       buildSubscriptionCheckoutParams({
@@ -576,6 +592,157 @@ export async function runCancelSubscription(
   } catch (e) {
     console.error("[stripe] cancel-subscription:", e);
     const msg = e instanceof Error ? e.message : "Cancel subscription failed";
+    const status = (e as { status?: number }).status;
+    return {
+      status: typeof status === "number" ? status : 500,
+      json: { error: msg },
+    };
+  }
+}
+
+/**
+ * Add a Personal seat (CHF 5) or doc pack (CHF 8) to the caller's existing subscription.
+ */
+export async function runPersonalAddonCheckout(
+  authorization: string | undefined,
+  body: { addon?: string } | undefined,
+  headers: HeaderMap,
+  useTestStripe = false
+): Promise<{ status: number; json: Record<string, unknown> }> {
+  const stripe = useTestStripe ? getStripeTest() : getStripe();
+  if (!stripe) {
+    return {
+      status: 503,
+      json: { error: useTestStripe ? "Stripe test mode not configured" : "Stripe not configured" },
+    };
+  }
+  if (!isAllowedBrowserOrigin(headers)) {
+    return { status: 403, json: { error: "Origin not allowed" } };
+  }
+
+  const addonRaw = String(body?.addon || "").toLowerCase().trim();
+  const kind: PersonalAddonKind | null =
+    addonRaw === "seat" || addonRaw === "extra_seat"
+      ? "seat"
+      : addonRaw === "doc_pack" || addonRaw === "docs" || addonRaw === "docpack"
+        ? "doc_pack"
+        : null;
+  if (!kind) {
+    return { status: 400, json: { error: "addon must be 'seat' or 'doc_pack'" } };
+  }
+
+  const m = (authorization || "").match(/^Bearer\s+(.+)$/i);
+  if (!m) {
+    return { status: 401, json: { error: "Missing Authorization Bearer token" } };
+  }
+
+  try {
+    const { uid } = await verifyFirebaseUser(m[1]);
+    if (!hasFirebaseAdminCredentials()) {
+      return { status: 503, json: { error: "Firebase Admin is not configured." } };
+    }
+    ensureFirebaseAdmin();
+    const snap = await getFirestore().collection("users").doc(uid).get();
+    const planId = parsePaystackPlanId(snap.get("planId"));
+    if (planId !== "personal") {
+      return {
+        status: 400,
+        json: { error: "Personal add-ons require an active Personal subscription." },
+      };
+    }
+    const subscriptionId = (snap.get("subscriptionId") as string | undefined)?.trim() || "";
+    if (!subscriptionId) {
+      return { status: 400, json: { error: "No active subscription on file." } };
+    }
+
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+      expand: ["items.data.price.product"],
+    });
+    if (subscription.status === "canceled") {
+      return { status: 400, json: { error: "Subscription is canceled." } };
+    }
+
+    const matched = await matchAddonPriceIds(stripe, subscription, useTestStripe);
+    const priceId = await resolvePersonalAddonPriceId(stripe, kind, useTestStripe);
+
+    if (kind === "doc_pack" && matched.personalDocPack) {
+      await syncSubscriptionToFirestore(uid, subscription, useTestStripe);
+      return {
+        status: 200,
+        json: {
+          ok: true,
+          alreadyActive: true,
+          addon: kind,
+          message: "Doc pack is already active (100 personal documents / month).",
+        },
+      };
+    }
+
+    if (kind === "seat") {
+      const existingSeat = subscription.items.data.find((item) => {
+        const pid = typeof item.price === "string" ? item.price : item.price?.id;
+        return pid === matched.seatPriceId;
+      });
+      if (existingSeat) {
+        const updated = await stripe.subscriptions.update(subscriptionId, {
+          items: [
+            {
+              id: existingSeat.id,
+              quantity: (existingSeat.quantity || 1) + 1,
+            },
+          ],
+          proration_behavior: "create_prorations",
+          metadata: {
+            ...subscription.metadata,
+            firebaseUid: uid,
+            planId: "personal",
+            productLine: "personal",
+          },
+        });
+        await syncSubscriptionToFirestore(uid, updated, useTestStripe);
+        return {
+          status: 200,
+          json: {
+            ok: true,
+            addon: kind,
+            personalAddonSeats: (existingSeat.quantity || 1) + 1,
+            message: "Extra seat added. You will be billed CHF 5/mo per extra seat.",
+          },
+        };
+      }
+    }
+
+    const updated = await stripe.subscriptions.update(subscriptionId, {
+      items: [{ price: priceId, quantity: 1 }],
+      proration_behavior: "create_prorations",
+      metadata: {
+        ...subscription.metadata,
+        firebaseUid: uid,
+        planId: "personal",
+        productLine: "personal",
+      },
+    });
+    await syncSubscriptionToFirestore(uid, updated, useTestStripe);
+    const refreshed = personalAddonsFromSubscription(
+      updated,
+      entitlementsForPlan("personal").maxPersonalDocumentsPerMonth
+    );
+    return {
+      status: 200,
+      json: {
+        ok: true,
+        addon: kind,
+        personalAddonSeats: refreshed.personalAddonSeats,
+        personalDocPack: refreshed.personalDocPack,
+        message:
+          kind === "seat"
+            ? "Extra seat added. You will be billed CHF 5/mo per extra seat."
+            : "Doc pack activated: 100 personal documents per month (CHF 8/mo).",
+      },
+    };
+  } catch (e) {
+    console.error("[stripe] personal-addon:", e);
+    const msg = e instanceof Error ? e.message : "Personal addon failed";
     const status = (e as { status?: number }).status;
     return {
       status: typeof status === "number" ? status : 500,
