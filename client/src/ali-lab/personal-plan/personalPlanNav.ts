@@ -20,7 +20,7 @@ export type PersonalPlanNavItem = {
   mobilePrimary?: boolean;
 };
 
-/** Primary nav — same features in lab (`/ali`) and production personal (`/app/personal`). */
+/** Primary nav — same features in lab (`/ali`) and production personal (`/personal`). */
 export const PERSONAL_PLAN_NAV: PersonalPlanNavItem[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard, featureId: "overview", mobilePrimary: true },
   { id: "budget", label: "Budget", icon: Wallet, featureId: "budgeting", mobilePrimary: true },
@@ -33,7 +33,7 @@ export const PERSONAL_PLAN_NAV: PersonalPlanNavItem[] = [
 export const PERSONAL_PLAN_DEFAULT_FEATURE = "overview";
 
 export function personalFeaturePath(featureId: string, surface: PersonalPlanSurface): string {
-  const base = surface === "app" ? "/app/personal" : "/ali";
+  const base = surface === "app" ? "/personal" : "/ali";
   return `${base}/${featureId}`;
 }
 
@@ -52,10 +52,42 @@ export function isNavActive(item: PersonalPlanNavItem, featureId: string | undef
   return item.featureId === featureId;
 }
 
+/** Restaurant / platform dashboard (never under /personal). */
 export function businessAppPath(): string {
   return "/app";
 }
 
+/** Production personal home (separated from /app). */
+export function personalAppHomePath(): string {
+  return personalFeaturePath(PERSONAL_PLAN_DEFAULT_FEATURE, "app");
+}
+
 export function personalHomePath(surface: PersonalPlanSurface): string {
   return personalFeaturePath(PERSONAL_PLAN_DEFAULT_FEATURE, surface);
+}
+
+/** True for `/personal/*` and legacy `/app/personal/*`. */
+export function isPersonalAppPath(path: string): boolean {
+  return (
+    path === "/personal" ||
+    path.startsWith("/personal/") ||
+    path === "/app/personal" ||
+    path.startsWith("/app/personal/")
+  );
+}
+
+/** Map legacy `/app/personal/...` → `/personal/...`. */
+export function canonicalizePersonalPath(path: string): string | null {
+  if (path === "/app/personal") return "/personal/overview";
+  if (path.startsWith("/app/personal/")) {
+    return `/personal/${path.slice("/app/personal/".length)}` || "/personal/overview";
+  }
+  if (path === "/personal") return "/personal/overview";
+  return null;
+}
+
+/** Feature id from `/personal/:id` or legacy `/app/personal/:id`. */
+export function personalFeatureIdFromPath(path: string): string | undefined {
+  const m = path.match(/^\/(?:app\/)?personal\/([^/?#]+)/);
+  return m?.[1];
 }

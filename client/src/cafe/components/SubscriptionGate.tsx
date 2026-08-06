@@ -1,21 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { CreditCard, Home, Loader2, LogOut } from 'lucide-react';
-import { useSearch } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useLanguage } from '../context/LanguageContext';
-import { SELECTED_PLAN_STORAGE_KEY, parsePaystackPlanId, type PaystackPlanId } from '@shared/planCatalog';
+import {
+  SELECTED_PLAN_STORAGE_KEY,
+  isPersonalPlan,
+  parsePaystackPlanId,
+  type PaystackPlanId,
+} from '@shared/planCatalog';
+import { isPersonalAppPath } from '@/ali-lab/personal-plan/personalPlanNav';
 import { PlanMarketingPanel, PLAN_ENTERPRISE_SALES_MAILTO } from './PlanMarketingPanel';
 import { productionSiteHomeUrl } from '../lib/firebaseEmailAction';
 import { formatCustomerCheckoutError } from '../lib/formatCustomerCheckoutError';
 
 /**
  * When VITE_SUBSCRIPTION_ENABLED=true, blocks the dashboard until Stripe subscription is trialing or active.
+ * Personal product (`/personal` or selected plan personal) only offers the Personal tier.
  */
 export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   const { signOut } = useAuth();
   const { t } = useLanguage();
   const search = useSearch();
+  const [location] = useLocation();
   const { enforcementEnabled, loading, billing, inGoodStanding, startCheckout, openCustomerPortal } =
     useSubscription();
   const [busy, setBusy] = useState(false);
@@ -24,15 +32,36 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
     const qs = search.startsWith('?') ? search.slice(1) : search;
     return new URLSearchParams(qs).get('subscription') === 'success';
   });
+  const personalProduct =
+    isPersonalAppPath(location) ||
+    (typeof sessionStorage !== 'undefined' &&
+      parsePaystackPlanId(sessionStorage.getItem(SELECTED_PLAN_STORAGE_KEY)) === 'personal');
   const [chosenPlan, setChosenPlan] = useState<PaystackPlanId | null>(() => {
-    if (typeof sessionStorage === 'undefined') return 'starter';
+    if (typeof sessionStorage === 'undefined') return personalProduct ? 'personal' : 'starter';
     const raw = sessionStorage.getItem(SELECTED_PLAN_STORAGE_KEY);
     const p = parsePaystackPlanId(raw);
+    if (personalProduct || isPersonalPlan(p)) return 'personal';
     if (p && p !== 'enterprise') return p;
     return 'starter';
   });
   const st = billing?.subscriptionStatus;
   const needsPaymentMethodFix = st === 'past_due' || st === 'unpaid';
+
+  const selectPlan = (id: PaystackPlanId) => {
+    if (typeof sessionStorage !== 'undefined') {
+      if (id === 'enterprise') sessionStorage.removeItem(SELECTED_PLAN_STORAGE_KEY);
+      else sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, id);
+    }
+    setChosenPlan(id);
+  };
+
+  useEffect(() => {
+    if (!personalProduct) return;
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, 'personal');
+    }
+    setChosenPlan('personal');
+  }, [personalProduct]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -53,14 +82,6 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
       }
     }
   }, [activating, inGoodStanding]);
-
-  const selectPlan = (id: PaystackPlanId) => {
-    if (typeof sessionStorage !== 'undefined') {
-      if (id === 'enterprise') sessionStorage.removeItem(SELECTED_PLAN_STORAGE_KEY);
-      else sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, id);
-    }
-    setChosenPlan(id);
-  };
 
   if (!enforcementEnabled) {
     return <>{children}</>;
@@ -87,6 +108,7 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
       : '';
 
   const planLabel = (id: PaystackPlanId) => {
+    if (id === 'personal') return t('planPersonalName');
     if (id === 'starter') return t('planStarterName');
     if (id === 'business') return t('planBusinessName');
     if (id === 'unlimited') return t('planUnlimitedName');
@@ -94,6 +116,9 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   };
 
   const showPlanPicker = !needsPaymentMethodFix;
+  const pickerPlans: PaystackPlanId[] = personalProduct
+    ? ['personal']
+    : ['starter', 'business', 'unlimited', 'enterprise'];
 
   return (
     <div className="subscription-gate cafe-theme-dark min-h-[100dvh] min-h-screen bg-[#1a1d23] flex items-center justify-center px-4 py-8 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] touch-manipulation text-[#e8eaed]">
@@ -110,8 +135,8 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
         {showPlanPicker ? (
           <div className="text-left space-y-3">
             <p className="text-[10px] font-black uppercase tracking-widest text-[#c5cad1]">{t('subscriptionPickPlan')}</p>
-            <div className="grid grid-cols-2 gap-2">
-              {(['starter', 'business', 'unlimited', 'enterprise'] as const).map((id) => (
+            <div className={`grid gap-2 ${pickerPlans.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+              {pickerPlans.map((id) => (
                 <button
                   key={id}
                   type="button"

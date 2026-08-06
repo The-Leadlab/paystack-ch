@@ -974,7 +974,7 @@ export function RestaurantDashboard() {
           restaurantPlanIncludesPersonalBridge(billing?.planId) ||
           isPersonalPlan(billing?.planId) ? (
             <Link
-              href="/app/personal/overview"
+              href="/personal/overview"
               className="ba-sidebar-link-btn ba-sidebar-link-btn--accent"
             >
               <Wallet className="w-3 h-3 shrink-0" />

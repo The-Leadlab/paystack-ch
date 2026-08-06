@@ -22,7 +22,7 @@ import { personalRowsToLedger } from "../lib/personalLedgerAdapt";
 import { db } from "@/cafe/lib/firebase";
 import { useWorkspaceOptional } from "@/cafe/context/WorkspaceContext";
 
-/** Personal money ledger for all /app/personal and /ali personal-plan tabs. */
+/** Personal money ledger for all /personal and /ali personal-plan tabs. */
 export function usePersonalBudgetLedger(month?: string) {
   const workspace = useWorkspaceOptional();
   const ownerUid = workspace?.dataOwnerUid ?? null;

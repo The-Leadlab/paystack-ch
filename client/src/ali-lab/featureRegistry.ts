@@ -21,7 +21,7 @@ export const ALI_LAB_FEATURES: AliLabFeature[] = [
     competitors: "YNAB, BudgetCH",
     priority: "high",
     status: "ready",
-    promoteTo: "Personal dashboard home at /app/personal",
+    promoteTo: "Personal dashboard home at /personal",
     summary: "Month at a glance — quick actions, recent transactions, links to every personal module",
   },
   {

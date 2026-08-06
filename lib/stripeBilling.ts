@@ -390,7 +390,7 @@ export async function runCreateCheckoutSession(
     const { uid, email: verifiedEmail } = await verifyFirebaseUser(m[1]);
     const email = verifiedEmail || undefined;
     const origin = publicAppOriginFromHeaders(headers);
-    const appPath = checkoutPlanId === "personal" ? "/app/personal/overview" : "/app";
+    const appPath = checkoutPlanId === "personal" ? "/personal/overview" : "/app";
     const metadata = { firebaseUid: uid, planId: checkoutPlanId, productLine: productLineForPlan(checkoutPlanId) };
     await assertRecurringChfPrice(stripe, lineItem);
     const session = await stripe.checkout.sessions.create(

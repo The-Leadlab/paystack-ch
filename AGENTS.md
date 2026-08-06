@@ -37,7 +37,7 @@ Paystack.ch is a Swiss restaurant/hospitality financial management SaaS (React 1
 
 ### Ali feature lab (`/ali`)
 
-Password-gated sandbox for competitor-gap features (budgeting, goals, bills, etc.). **Open Banking / live bank sync (`bank-sync`) stay out of scope.** Manual **personal bank-statement file upload** (CSV/PDF → personal IndexedDB ledger on `/app/personal` overview) is allowed — see `docs/PERSONAL_FINANCE_STATEMENT_SUPER_PROMPT.md`. Do not route personal imports through restaurant Revenue.
+Password-gated sandbox for competitor-gap features (budgeting, goals, bills, etc.). **Open Banking / live bank sync (`bank-sync`) stay out of scope.** Manual **personal bank-statement file upload** (CSV/PDF → personal IndexedDB ledger on `/personal` overview) is allowed — see `docs/PERSONAL_FINANCE_STATEMENT_SUPER_PROMPT.md`. Do not route personal imports through restaurant Revenue.
 
 **Personal product (CHF 20):** see `docs/PERSONAL_PRODUCT_SUPER_PROMPT.md` — separate Stripe plan, seats (1 invite free + CHF 5 extras), doc pack (CHF 8 → 100), admin Platform vs Personal lists, landing Business|Personal tabs.
 

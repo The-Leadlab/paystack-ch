@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Redirect, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/cafe/context/AuthContext";
 import { SessionProvider } from "@/cafe/context/SessionContext";
@@ -25,7 +25,14 @@ import {
   SELECTED_PLAN_STORAGE_KEY,
   type PaystackPlanId,
 } from "@shared/planCatalog";
+import {
+  canonicalizePersonalPath,
+  isPersonalAppPath,
+  personalAppHomePath,
+} from "@/ali-lab/personal-plan/personalPlanNav";
 import type { User } from "firebase/auth";
+
+export { useCanOpenBusinessDashboard } from "@/cafe/hooks/useProductLineAccess";
 
 const RestaurantDashboard = lazy(() =>
   import("@/cafe/components/RestaurantDashboard").then((m) => ({ default: m.RestaurantDashboard }))
@@ -33,44 +40,22 @@ const RestaurantDashboard = lazy(() =>
 
 const PersonalAppPage = lazy(() => import("./PersonalAppPage"));
 
-function isPersonalAppPath(path: string): boolean {
-  return path === "/app/personal" || path.startsWith("/app/personal/");
-}
-
 function canAccessPersonalWorkspace(
   user: User | null | undefined,
   planId: PaystackPlanId | null | undefined
 ): boolean {
-  if (isPersonalFinancesAccessUser(user)) return true;
+  if (isPersonalFinancesAccessUser(user ?? null)) return true;
   if (isPersonalPlan(planId)) return true;
   if (restaurantPlanIncludesPersonalBridge(planId)) return true;
   return false;
 }
 
-/** Blocks /app/personal unless personal plan, Unlimited bridge, or ops allowlist. */
-function PersonalWorkspaceGate({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const { billing, loading } = useSubscription();
-  const [location] = useLocation();
-  if (!isPersonalAppPath(location)) return <>{children}</>;
-  if (loading) return <DashboardLoadingShell />;
-  if (!canAccessPersonalWorkspace(user, billing?.planId)) {
-    return <Redirect to="/app" />;
-  }
-  return <>{children}</>;
-}
-
-/** Personal-only subscribers stay on /app/personal, not restaurant modules. */
-function RestaurantWorkspaceGate({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const { billing, loading } = useSubscription();
-  const [location] = useLocation();
-  if (isPersonalAppPath(location)) return <>{children}</>;
-  if (loading) return <DashboardLoadingShell />;
-  if (isPersonalPlan(billing?.planId) && !isPersonalFinancesAccessUser(user)) {
-    return <Redirect to="/app/personal/overview" />;
-  }
-  return <>{children}</>;
+/** Personal-only: no restaurant /app. Ops allowlist may use both. */
+function isPersonalOnlySubscriber(
+  user: User | null | undefined,
+  planId: PaystackPlanId | null | undefined
+): boolean {
+  return isPersonalPlan(planId) && !isPersonalFinancesAccessUser(user ?? null);
 }
 
 /** Accepts ?team_invite=TOKEN once after sign-in. */
@@ -108,7 +93,8 @@ function TeamInviteAcceptEffect() {
 }
 
 /**
- * Firebase-authenticated dashboard — Business (`/app`) and Personal (`/app/personal/*`).
+ * Business (`/app`) and Personal (`/personal`) are separate product shells.
+ * Legacy `/app/personal/*` redirects to `/personal/*`.
  */
 export default function PlatformPage() {
   if (!firebaseReady) {
@@ -122,11 +108,15 @@ function PlatformContent() {
   const { user, loading } = useAuth();
   const search = useSearch();
   const [location] = useLocation();
-  const personal = isPersonalAppPath(location);
 
   useEffect(() => {
     const qs = search.startsWith("?") ? search.slice(1) : search;
-    const plan = parsePaystackPlanId(new URLSearchParams(qs).get("plan"));
+    const params = new URLSearchParams(qs);
+    const product = (params.get("product") || "").toLowerCase();
+    if (product === "personal" && typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, "personal");
+    }
+    const plan = parsePaystackPlanId(params.get("plan"));
     if (plan && isSelfServePlan(plan) && typeof sessionStorage !== "undefined") {
       sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, plan);
     }
@@ -137,7 +127,9 @@ function PlatformContent() {
   }
 
   if (!user) {
-    const qs = encodeURIComponent(location.startsWith("/app") ? location : "/app");
+    const qs = encodeURIComponent(
+      location.startsWith("/app") || location.startsWith("/personal") ? location : "/app"
+    );
     return <Redirect to={`/sign-in?redirect=${qs}`} />;
   }
 
@@ -147,34 +139,74 @@ function PlatformContent() {
     return <EmailVerificationGate />;
   }
 
-  if (location === "/app/personal") {
-    return <Redirect to="/app/personal/overview" />;
+  const legacyPersonal = canonicalizePersonalPath(location);
+  if (legacyPersonal && legacyPersonal !== location) {
+    return <Redirect to={legacyPersonal} />;
   }
 
   return (
     <WorkspaceProvider>
       <SubscriptionProvider>
-      <SessionProvider>
-        <EmployeeProvider>
-          <FinanceProvider>
-            <POSProvider>
-              <DocumentProvider>
-                <TeamInviteAcceptEffect />
-                <SubscriptionGate>
-                  <PersonalWorkspaceGate>
-                    <RestaurantWorkspaceGate>
-                      <Suspense fallback={<DashboardLoadingShell />}>
-                        {personal ? <PersonalAppPage /> : <RestaurantDashboard />}
-                      </Suspense>
-                    </RestaurantWorkspaceGate>
-                  </PersonalWorkspaceGate>
-                </SubscriptionGate>
-              </DocumentProvider>
-            </POSProvider>
-          </FinanceProvider>
-        </EmployeeProvider>
-      </SessionProvider>
+        <TeamInviteAcceptEffect />
+        <SubscriptionGate>
+          <ProductLineShell />
+        </SubscriptionGate>
       </SubscriptionProvider>
     </WorkspaceProvider>
   );
 }
+
+/**
+ * After billing is known: route Personal vs Business into different provider trees
+ * so Personal does not mount restaurant POS / employees / etc.
+ */
+function ProductLineShell() {
+  const { user } = useAuth();
+  const { billing, loading } = useSubscription();
+  const [location] = useLocation();
+  const personalPath = isPersonalAppPath(location);
+
+  if (loading) {
+    return <DashboardLoadingShell />;
+  }
+
+  const personalOnly = isPersonalOnlySubscriber(user, billing?.planId);
+
+  if (personalOnly && !personalPath) {
+    return <Redirect to={personalAppHomePath()} />;
+  }
+
+  if (personalPath) {
+    if (!canAccessPersonalWorkspace(user, billing?.planId)) {
+      return <Redirect to="/app" />;
+    }
+    return (
+      <SessionProvider>
+        <FinanceProvider>
+          <DocumentProvider>
+            <Suspense fallback={<DashboardLoadingShell />}>
+              <PersonalAppPage />
+            </Suspense>
+          </DocumentProvider>
+        </FinanceProvider>
+      </SessionProvider>
+    );
+  }
+
+  return (
+    <SessionProvider>
+      <EmployeeProvider>
+        <FinanceProvider>
+          <POSProvider>
+            <DocumentProvider>
+              <Suspense fallback={<DashboardLoadingShell />}>
+                <RestaurantDashboard />
+              </Suspense>
+            </DocumentProvider>
+          </POSProvider>
+        </FinanceProvider>
+      </EmployeeProvider>
+    </SessionProvider>
+  );
+}
+

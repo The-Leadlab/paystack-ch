@@ -6,6 +6,7 @@ import {
   PERSONAL_PLAN_NAV,
   businessAppPath,
   isNavActive,
+  personalAppHomePath,
   personalHomePath,
   personalPlanNavHref,
   type PersonalPlanSurface,
@@ -13,6 +14,7 @@ import {
 import { ALI_LAB_FEATURES } from "../../featureRegistry";
 import { logoutAliLab } from "@/lib/aliLabGateClient";
 import { usePersonalPlan } from "../context/PersonalPlanContext";
+import { useCanOpenBusinessDashboard } from "@/cafe/hooks/useProductLineAccess";
 
 const SECONDARY_FEATURE_IDS = new Set([
   "automation-rules",
@@ -25,10 +27,12 @@ function PersonalPlanMoreSheet({
   surface,
   featureId,
   onClose,
+  showBusinessLink,
 }: {
   surface: PersonalPlanSurface;
   featureId: string | undefined;
   onClose: () => void;
+  showBusinessLink: boolean;
 }) {
   const { openTransaction } = usePersonalPlan();
   const secondary = PERSONAL_PLAN_NAV.filter((item) => !item.mobilePrimary && item.featureId !== "overview");
@@ -77,18 +81,20 @@ function PersonalPlanMoreSheet({
           Add transaction
         </button>
         {surface === "app" ? (
-          <Link
-            href={businessAppPath()}
-            onClick={onClose}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--pp-on-surface)]"
-          >
-            <Briefcase className="size-4" />
-            Business dashboard
-          </Link>
+          showBusinessLink ? (
+            <Link
+              href={businessAppPath()}
+              onClick={onClose}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--pp-on-surface)]"
+            >
+              <Briefcase className="size-4" />
+              Business dashboard
+            </Link>
+          ) : null
         ) : (
           <>
             <Link
-              href="/app/personal/overview"
+              href={personalAppHomePath()}
               onClick={onClose}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--pp-on-surface)]"
             >
@@ -123,6 +129,7 @@ export function PersonalPlanSidebar({
   surface?: PersonalPlanSurface;
 }) {
   const { openTransaction } = usePersonalPlan();
+  const showBusinessLink = useCanOpenBusinessDashboard();
   const lockLab = async () => {
     await logoutAliLab();
     window.location.href = "/ali-gate";
@@ -204,7 +211,7 @@ export function PersonalPlanSidebar({
               Business /app
             </Link>
             <Link
-              href="/app/personal/overview"
+              href={personalAppHomePath()}
               className="flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
             >
               <Briefcase className="size-4" />
@@ -219,7 +226,7 @@ export function PersonalPlanSidebar({
               Lock lab
             </button>
           </>
-        ) : (
+        ) : showBusinessLink ? (
           <Link
             href={businessAppPath()}
             className="flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
@@ -227,7 +234,7 @@ export function PersonalPlanSidebar({
             <Briefcase className="size-4" />
             Business dashboard
           </Link>
-        )}
+        ) : null}
       </div>
     </aside>
   );
@@ -242,6 +249,7 @@ export function PersonalPlanMobileNav({
 }) {
   const { openTransaction } = usePersonalPlan();
   const [moreOpen, setMoreOpen] = useState(false);
+  const showBusinessLink = useCanOpenBusinessDashboard();
   const primary = PERSONAL_PLAN_NAV.filter((item) => item.mobilePrimary);
 
   return (
@@ -282,7 +290,12 @@ export function PersonalPlanMobileNav({
         </button>
       </nav>
       {moreOpen ? (
-        <PersonalPlanMoreSheet surface={surface} featureId={featureId} onClose={() => setMoreOpen(false)} />
+        <PersonalPlanMoreSheet
+          surface={surface}
+          featureId={featureId}
+          onClose={() => setMoreOpen(false)}
+          showBusinessLink={showBusinessLink}
+        />
       ) : null}
     </>
   );

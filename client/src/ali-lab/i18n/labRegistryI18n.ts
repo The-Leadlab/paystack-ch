@@ -14,22 +14,22 @@ const REGISTRY: Record<string, RegistryEntry> = {
     en: {
       title: "Personal overview",
       summary: "Your month at a glance — income, expenses, savings, quick actions, and recent transactions linked to Business.",
-      promoteTo: "Personal dashboard home at /app/personal",
+      promoteTo: "Personal dashboard home at /personal",
     },
     fr: {
       title: "Vue d'ensemble",
       summary: "Votre mois en un coup d'œil — revenus, dépenses, épargne, actions rapides et transactions récentes liées au Business.",
-      promoteTo: "Accueil du tableau de bord personnel (/app/personal)",
+      promoteTo: "Accueil du tableau de bord personnel (/personal)",
     },
     de: {
       title: "Persönliche Übersicht",
       summary: "Ihr Monat auf einen Blick — Einnahmen, Ausgaben, Ersparnisse, Schnellaktionen und letzte Transaktionen (mit Business verknüpft).",
-      promoteTo: "Startseite persönliches Dashboard (/app/personal)",
+      promoteTo: "Startseite persönliches Dashboard (/personal)",
     },
     it: {
       title: "Panoramica personale",
       summary: "Il mese a colpo d'occhio — entrate, spese, risparmi, azioni rapide e transazioni recenti collegate al Business.",
-      promoteTo: "Home dashboard personale (/app/personal)",
+      promoteTo: "Home dashboard personale (/personal)",
     },
   },
   budgeting: {

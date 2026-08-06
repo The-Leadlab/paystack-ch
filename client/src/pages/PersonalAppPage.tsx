@@ -1,20 +1,23 @@
-import { useRoute } from "wouter";
 import { getAliLabFeature } from "@/ali-lab/featureRegistry";
-import { PERSONAL_PLAN_DEFAULT_FEATURE } from "@/ali-lab/personal-plan/personalPlanNav";
+import {
+  PERSONAL_PLAN_DEFAULT_FEATURE,
+  personalFeatureIdFromPath,
+} from "@/ali-lab/personal-plan/personalPlanNav";
 import { AliLabFeaturePanel } from "@/ali-lab/AliLabFeaturePanels";
 import { labFeatureCopy } from "@/ali-lab/i18n/labRegistryI18n";
 import { LabLanguageProvider, useLabLanguage } from "@/ali-lab/context/LabLanguageContext";
 import { PersonalPlanShell } from "@/ali-lab/personal-plan/components/PersonalPlanShell";
+import { useLocation } from "wouter";
 
 const KPI_HIDDEN_FEATURES = new Set(["forecasting", "investments", "goals", "bill-reminders"]);
 
 function PersonalAppContent() {
-  const [, params] = useRoute("/app/personal/:featureId");
+  const [location] = useLocation();
   const { lang } = useLabLanguage();
-  const featureId = params?.featureId;
+  const featureId = personalFeatureIdFromPath(location) ?? PERSONAL_PLAN_DEFAULT_FEATURE;
   const feature = getAliLabFeature(featureId) ?? getAliLabFeature(PERSONAL_PLAN_DEFAULT_FEATURE)!;
   const activeCopy = labFeatureCopy(feature.id, lang);
-  const showKpi = !featureId || !KPI_HIDDEN_FEATURES.has(featureId);
+  const showKpi = !KPI_HIDDEN_FEATURES.has(feature.id);
 
   return (
     <PersonalPlanShell

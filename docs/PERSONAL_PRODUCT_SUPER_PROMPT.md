@@ -19,7 +19,7 @@ Use this when shipping **Paystack Personal** as its own paid product (separate f
 | Line | Plan IDs | Entry | App shell |
 |------|----------|-------|-----------|
 | **Restaurant / Platform** | `starter`, `business`, `unlimited`, `enterprise` | `/start-trial?plan=…` or landing Business pricing | `/app` |
-| **Personal** | `personal` | `/start-trial?product=personal` (or `/start-personal`) | `/app/personal/*` |
+| **Personal** | `personal` | `/start-trial?product=personal` (or `/start-personal`) | `/personal/*` (legacy `/app/personal/*` redirects) |
 
 Firestore `users/{uid}` should carry:
 
@@ -42,9 +42,9 @@ Restaurant catalog **unchanged**: Starter 29 / Business 59 / Unlimited 499.
 
 ### Access rules
 
-1. **Personal-only subscriber** (`planId === "personal"`): full `/app/personal/*`; **no** restaurant modules on `/app` (redirect to personal or a soft “Business plans” upsell).
+1. **Personal-only subscriber** (`planId === "personal"`): full `/personal/*`; **no** restaurant modules on `/app` (redirect to personal or a soft “Business plans” upsell).
 2. **Restaurant subscriber** (starter/business/unlimited): `/app` as today.
-3. **Unlimited restaurant**: show a clear control (“Open personal finances”) → `/app/personal` **without** requiring a second Personal subscription (bridge entitlement). Still subject to personal doc caps unless Unlimited later gets a higher personal doc entitlement (default keep 35 unless product says otherwise).
+3. **Unlimited restaurant**: show a clear control (“Open personal finances”) → `/personal` **without** requiring a second Personal subscription (bridge entitlement). Still subject to personal doc caps unless Unlimited later gets a higher personal doc entitlement (default keep 35 unless product says otherwise).
 4. Remove email allowlist as the *only* gate once Personal Stripe + Unlimited bridge ship; keep allowlist as **ops bypass** only.
 5. Team invites on Personal: enforce seat math (2 included; 3rd person needs paid seat addon).
 
@@ -114,7 +114,7 @@ Create matching Products/Prices in Stripe Dashboard (CHF, recurring monthly) bef
 - Portal + cancel work for personal subscriptions.
 
 ### Phase 3 — App separation + Unlimited bridge
-- Gate `/app` vs `/app/personal` by product line + Unlimited bridge.
+- Gate `/app` vs `/personal` by product line + Unlimited bridge.
 - Billing UI for personal (cancel, upgrade doc pack, add seat).
 - Dashboard control for Unlimited → Personal.
 - Invite: first invite free within seat 2; block or checkout for seat 3+ at CHF 5.
@@ -161,7 +161,7 @@ Rules:
 1. Do not break restaurant Starter/Business/Unlimited checkout or entitlements.
 2. Personal is planId "personal" at CHF 20; seats 2 included; extra seat CHF 5; doc pack CHF 8 → 100 docs.
 3. Separate Stripe price env vars; never reuse restaurant price IDs for personal.
-4. Unlimited restaurant may open /app/personal; personal-only must not get full restaurant /app.
+4. Unlimited restaurant may open /personal; personal-only must not get full restaurant /app.
 5. Admin: Platform vs Personal; active users above inactive.
 6. Currency detection is display-first; Stripe stays CHF until multi-currency prices exist.
 7. Lead Lab on Checkout → document Stripe Dashboard branding; fix product names in code if wrong.
@@ -177,7 +177,7 @@ Rules:
 - [ ] Catalog exposes personal @ 20 CHF and addon constants
 - [ ] Personal Checkout trial CHF 0 today, then 20/mo (with Price ID configured)
 - [ ] Personal cancel during trial → no charge
-- [ ] Personal-only user lands in `/app/personal`, not restaurant modules
+- [x] Personal-only user lands in `/personal`, not restaurant modules
 - [ ] Unlimited user sees Personal entry and can open it
 - [ ] Invite #1 succeeds without seat addon; invite #2 requires CHF 5 path when seats would exceed 2
 - [ ] Doc pack sets personal cap to 100

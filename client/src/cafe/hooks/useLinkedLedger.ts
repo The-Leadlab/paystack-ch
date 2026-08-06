@@ -9,7 +9,7 @@ import {
 } from "@/ali-lab/utils/ledgerTotals";
 
 /**
- * Single ledger hook for Business (/app) and Personal (/app/personal, /ali).
+ * Single ledger hook for Business (/app) and Personal (/personal, /ali).
  * Reads the same Firestore income/expenses + session filter as RestaurantDashboard.
  */
 export function useLinkedLedger(month?: string) {

@@ -9,7 +9,7 @@ import { PersonalSessionBar } from "./PersonalSessionBar";
 import { PersonalTransactionModal } from "./PersonalTransactionModal";
 import { PersonalBillingAddons } from "./PersonalBillingAddons";
 import { AliLabAuthBanner } from "../../components/AliLabAuthBanner";
-import type { PersonalPlanSurface } from "../personalPlanNav";
+import { personalAppHomePath, type PersonalPlanSurface } from "../personalPlanNav";
 import { useLabLanguage } from "../../context/LabLanguageContext";
 import { usePersonalBudgetLedger } from "../../hooks/usePersonalBudgetLedger";
 
@@ -29,6 +29,7 @@ function PersonalPlanShellInner({
   const { month } = usePersonalPlan();
   const { t } = useLabLanguage();
   const ledger = usePersonalBudgetLedger(month);
+  const personalHome = personalAppHomePath();
 
   return (
     <div className="personal-plan-shell">
@@ -37,14 +38,14 @@ function PersonalPlanShellInner({
         {surface !== "app" ? (
           <AliLabAuthBanner
             variant="personal"
-            signInRedirect={surface === "app" ? "/app/personal/overview" : "/ali/overview"}
+            signInRedirect={surface === "app" ? personalHome : "/ali/overview"}
           />
         ) : null}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--pp-outline-variant)] bg-[var(--pp-surface-container)] px-4 md:px-16 py-2 text-[11px] text-[var(--pp-on-surface-variant)]">
           <span>
             {t("personalTabsBanner")}{" "}
             <Link
-              href={surface === "app" ? "/app/personal/overview" : "/ali/overview"}
+              href={surface === "app" ? personalHome : "/ali/overview"}
               className="text-[var(--pp-primary)] font-semibold underline-offset-2 hover:underline"
             >
               {t("stmtUploadCta")}

@@ -5,7 +5,7 @@
  *
  * Product lines:
  * - Restaurant: starter / business / unlimited / enterprise → `/app`
- * - Personal: personal → `/app/personal` (see docs/PERSONAL_PRODUCT_SUPER_PROMPT.md)
+ * - Personal: personal → `/personal` (legacy `/app/personal` redirects; see docs/PERSONAL_PRODUCT_SUPER_PROMPT.md)
  *
  * Unit economics (CHF/mo, indicative — verify against Google Cloud + Firebase bills):
  * Model: gemini-2.5-flash via server proxy; ~CHF 0.08–0.15/doc (simple), CHF 0.20–0.40+ (multi-page PDF / 2nd pass).

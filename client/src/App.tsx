@@ -48,6 +48,8 @@ function Router() {
       <Route path={"/auth/action"} component={AuthActionPage} />
       <Route path={"/login"} component={SignInPage} />
       <Route path={"/signup"} component={SignUpPage} />
+      <Route path={"/personal/:featureId"} component={CafeShellRoute} />
+      <Route path={"/personal"} component={CafeShellRoute} />
       <Route path={"/app/personal/:featureId"} component={CafeShellRoute} />
       <Route path={"/app/personal"} component={CafeShellRoute} />
       <Route path={"/app"} component={CafeShellRoute} />
