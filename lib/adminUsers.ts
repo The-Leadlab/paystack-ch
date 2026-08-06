@@ -29,6 +29,8 @@ export type AdminUserSummary = {
   currentPeriodEnd: string | null;
   planTestMode: boolean;
   usageThisMonth: number | null;
+  /** Platform admin: in-app /admin shortcut + ops privileges. */
+  appAdmin: boolean;
 };
 
 export type AdminUserDetail = AdminUserSummary & {
@@ -118,6 +120,7 @@ function summaryFromAuthAndBilling(
     currentPeriodEnd: tsToIso(billing?.currentPeriodEnd),
     planTestMode: billing?.planTestMode === true,
     usageThisMonth: usageForCurrentMonth(usage),
+    appAdmin: billing?.appAdmin === true || record.customClaims?.appAdmin === true,
   };
 }
 
@@ -414,6 +417,7 @@ export type AdminUserAction =
   | { action: "enable_user" }
   | { action: "delete_user" }
   | { action: "set_plan"; planId: PaystackPlanId | null; planTestMode?: boolean }
+  | { action: "set_app_admin"; enabled: boolean }
   | { action: "resend_verification" }
   | { action: "link_stripe_by_email" }
   | {
@@ -652,6 +656,25 @@ export async function runAdminUserAction(
         message: body.planId
           ? `Plan set to ${body.planId}${body.planTestMode ? " (test mode)" : ""}.`
           : "Plan cleared.",
+      };
+    }
+
+    case "set_app_admin": {
+      const enabled = body.enabled === true;
+      const existing = (record.customClaims ?? {}) as Record<string, unknown>;
+      await auth.setCustomUserClaims(uid, { ...existing, appAdmin: enabled });
+      await db.collection("users").doc(uid).set(
+        {
+          appAdmin: enabled,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+      return {
+        ok: true,
+        message: enabled
+          ? "User is now a platform admin (Admin panel link in /app). They may need to sign out and back in."
+          : "Platform admin access removed.",
       };
     }
 

@@ -961,7 +961,7 @@ export function RestaurantDashboard() {
 
         {/* Pinned bottom: billing + logout (sessions scroll above) */}
         <div className="ba-sidebar-foot shrink-0 border-t border-cdlp-border bg-cdlp-black space-y-1.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
-          {isAdminAppAccessUser(user) ? (
+          {isAdminAppAccessUser(user, { appAdmin: billing?.appAdmin }) ? (
             <Link
               href="/admin"
               className="ba-sidebar-link-btn ba-sidebar-link-btn--accent"

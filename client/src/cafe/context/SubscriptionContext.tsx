@@ -32,6 +32,7 @@ type UserBillingSnapshot = {
   currentPeriodEnd: Date | null;
   personalAddonSeats: number;
   personalDocPack: boolean;
+  appAdmin: boolean;
 };
 
 type SubscriptionContextValue = {
@@ -72,12 +73,15 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const { user } = useAuth();
   const workspace = useWorkspaceOptional();
   const enforcementEnabled = parseBoolEnv(import.meta.env.VITE_SUBSCRIPTION_ENABLED);
-  const bypass = useMemo(() => isSubscriptionOrVerificationBypassUser(user), [user]);
   const planTest = useMemo(() => isPlanTestUser(user), [user]);
   const [loading, setLoading] = useState(true);
   const [billing, setBilling] = useState<UserBillingSnapshot | null>(null);
   const [documentsUsedThisMonth, setDocumentsUsedThisMonth] = useState(0);
   const [personalDocumentsUsedThisMonth, setPersonalDocumentsUsedThisMonth] = useState(0);
+  const bypass = useMemo(
+    () => isSubscriptionOrVerificationBypassUser(user) || billing?.appAdmin === true,
+    [user, billing?.appAdmin]
+  );
 
   useEffect(() => {
     if (!user || !db) {
@@ -107,6 +111,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             currentPeriodEnd: null,
             personalAddonSeats: 0,
             personalDocPack: false,
+            appAdmin: false,
           });
           setDocumentsUsedThisMonth(0);
           setPersonalDocumentsUsedThisMonth(0);
@@ -130,6 +135,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
                 ? Math.max(0, Math.floor(d.personalAddonSeats))
                 : 0,
             personalDocPack: d.personalDocPack === true,
+            appAdmin: d.appAdmin === true,
           });
           const usage = d.usage as Record<string, unknown> | undefined;
           const month = currentMonthKey();
@@ -154,6 +160,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           currentPeriodEnd: null,
           personalAddonSeats: 0,
           personalDocPack: false,
+          appAdmin: false,
         });
         setDocumentsUsedThisMonth(0);
         setPersonalDocumentsUsedThisMonth(0);

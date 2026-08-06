@@ -17,6 +17,7 @@ export type AdminUserSummary = {
   currentPeriodEnd: string | null;
   planTestMode: boolean;
   usageThisMonth: number | null;
+  appAdmin: boolean;
 };
 
 export type AdminUserDetail = AdminUserSummary & {
@@ -109,6 +110,7 @@ export type AdminUserActionBody =
   | { action: "enable_user" }
   | { action: "delete_user" }
   | { action: "set_plan"; planId: string | null; planTestMode?: boolean }
+  | { action: "set_app_admin"; enabled: boolean }
   | { action: "resend_verification" }
   | { action: "link_stripe_by_email" }
   | {

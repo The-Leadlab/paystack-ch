@@ -55,8 +55,13 @@ export function isAdminAppAccessEmail(email: string | null | undefined): boolean
   return Boolean(normalized && adminAppAccessEmails().includes(normalized));
 }
 
-export function isAdminAppAccessUser(user: User | null): boolean {
-  return isAdminAppAccessEmail(user?.email);
+export function isAdminAppAccessUser(
+  user: User | null,
+  opts?: { appAdmin?: boolean | null }
+): boolean {
+  if (isAdminAppAccessEmail(user?.email)) return true;
+  if (opts?.appAdmin === true) return true;
+  return false;
 }
 
 export function personalFinancesAccessEmails(): string[] {

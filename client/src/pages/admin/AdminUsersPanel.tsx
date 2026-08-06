@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronRight, Loader2, Plus, RefreshCw, Search, Users } from "lucide-react";
+import { ChevronRight, Loader2, Plus, RefreshCw, Search, Shield, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import {
   listAdminUsers,
+  runAdminUserAction,
   type AdminUserSummary,
 } from "@/lib/adminUsersClient";
 import { AdminUserDetailPanel } from "./AdminUserDetailPanel";
@@ -28,16 +29,18 @@ function formatDate(iso: string | null): string {
 
 type ProductTab = "platform" | "personal";
 
-function isActiveBilling(user: AdminUserSummary): boolean {
+/** Stripe trial / paid / past_due — not “must pay”. Free accounts without Stripe are “no subscription”. */
+function hasLiveStripeSubscription(user: AdminUserSummary): boolean {
   if (user.disabled) return false;
   const st = (user.subscriptionStatus || "").toLowerCase();
   return st === "active" || st === "trialing" || st === "past_due";
 }
 
-function sortActiveFirst(a: AdminUserSummary, b: AdminUserSummary): number {
-  const aActive = isActiveBilling(a) ? 0 : 1;
-  const bActive = isActiveBilling(b) ? 0 : 1;
-  if (aActive !== bActive) return aActive - bActive;
+function sortSubscribedFirst(a: AdminUserSummary, b: AdminUserSummary): number {
+  const aLive = hasLiveStripeSubscription(a) ? 0 : 1;
+  const bLive = hasLiveStripeSubscription(b) ? 0 : 1;
+  if (aLive !== bLive) return aLive - bLive;
+  if (a.appAdmin !== b.appAdmin) return a.appAdmin ? -1 : 1;
   return (a.email || a.uid).localeCompare(b.email || b.uid);
 }
 
@@ -54,6 +57,7 @@ export function AdminUsersPanel() {
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [productTab, setProductTab] = useState<ProductTab>("platform");
+  const [adminBusyUid, setAdminBusyUid] = useState<string | null>(null);
 
   const loadUsers = useCallback(async (term?: string) => {
     setLoading(true);
@@ -78,16 +82,29 @@ export function AdminUsersPanel() {
     setSelectedUid(uid);
   };
 
-  const { activeUsers, inactiveUsers, tabCount } = useMemo(() => {
+  const toggleAppAdmin = async (user: AdminUserSummary, enabled: boolean) => {
+    setAdminBusyUid(user.uid);
+    setError(null);
+    try {
+      await runAdminUserAction(user.uid, { action: "set_app_admin", enabled });
+      setUsers((prev) => prev.map((u) => (u.uid === user.uid ? { ...u, appAdmin: enabled } : u)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAdminBusyUid(null);
+    }
+  };
+
+  const { subscribedUsers, noSubUsers, tabCount } = useMemo(() => {
     const filtered = users.filter((u) =>
       productTab === "personal" ? isPersonalUser(u) : !isPersonalUser(u)
     );
-    const sorted = [...filtered].sort(sortActiveFirst);
-    const active = sorted.filter(isActiveBilling);
-    const inactive = sorted.filter((u) => !isActiveBilling(u));
+    const sorted = [...filtered].sort(sortSubscribedFirst);
+    const subscribed = sorted.filter(hasLiveStripeSubscription);
+    const noSub = sorted.filter((u) => !hasLiveStripeSubscription(u));
     return {
-      activeUsers: active,
-      inactiveUsers: inactive,
+      subscribedUsers: subscribed,
+      noSubUsers: noSub,
       tabCount: filtered.length,
     };
   }, [users, productTab]);
@@ -102,44 +119,72 @@ export function AdminUsersPanel() {
     );
   }
 
-  const renderUserCard = (user: AdminUserSummary) => (
-    <button
-      key={user.uid}
-      type="button"
-      className="w-full text-left p-4 space-y-2.5 active:bg-muted/40 transition-colors touch-manipulation"
-      onClick={() => openUser(user.uid)}
+  const adminToggle = (user: AdminUserSummary) => (
+    <label
+      className="inline-flex items-center gap-2 cursor-pointer select-none"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="font-medium text-foreground break-all">{user.email ?? "—"}</div>
-          <div className="text-[10px] text-muted-foreground font-mono mt-1 break-all line-clamp-1">{user.uid}</div>
+      <input
+        type="checkbox"
+        className="size-4 rounded border-border accent-[var(--brand-red,#c41e3a)]"
+        checked={user.appAdmin === true}
+        disabled={adminBusyUid === user.uid}
+        onChange={(e) => void toggleAppAdmin(user, e.target.checked)}
+        aria-label={t("adminUsersMakeAdmin")}
+      />
+      <span className="text-[11px] font-display font-semibold uppercase tracking-wide text-muted-foreground hidden sm:inline">
+        {user.appAdmin ? t("adminUsersIsAdmin") : t("adminUsersMakeAdmin")}
+      </span>
+      {adminBusyUid === user.uid ? <Loader2 className="size-3.5 animate-spin text-muted-foreground" /> : null}
+      {user.appAdmin ? <Shield className="size-3.5 text-brand-red sm:hidden" /> : null}
+    </label>
+  );
+
+  const renderUserCard = (user: AdminUserSummary) => (
+    <div
+      key={user.uid}
+      className="w-full text-left p-4 space-y-2.5 transition-colors touch-manipulation border-b last:border-0"
+    >
+      <button type="button" className="w-full text-left active:bg-muted/40 rounded-md -m-1 p-1" onClick={() => openUser(user.uid)}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="font-medium text-foreground break-all">{user.email ?? "—"}</div>
+            <div className="text-[10px] text-muted-foreground font-mono mt-1 break-all line-clamp-1">{user.uid}</div>
+          </div>
+          <ChevronRight className="size-4 text-muted-foreground shrink-0 mt-0.5" />
         </div>
-        <ChevronRight className="size-4 text-muted-foreground shrink-0 mt-0.5" />
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {user.planId ? (
-          <span className="font-display text-[10px] font-bold uppercase text-muted-foreground">{user.planId}</span>
-        ) : null}
-        <span
-          className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${subscriptionStatusClass(user.subscriptionStatus)}`}
-        >
-          {user.subscriptionStatus ?? "none"}
-        </span>
-        {user.disabled ? (
-          <Badge variant="destructive" className="text-[10px]">
-            {t("adminUsersDisabled")}
-          </Badge>
-        ) : null}
-        {user.planTestMode ? (
-          <Badge variant="outline" className="text-[10px]">
-            {t("adminUsersTestMode")}
-          </Badge>
-        ) : null}
-      </div>
-      <p className="text-[11px] text-muted-foreground">
-        {t("adminUsersColLastSignIn")}: {formatDate(user.lastSignInAt)}
-      </p>
-    </button>
+        <div className="flex flex-wrap items-center gap-2 mt-2">
+          {user.planId ? (
+            <span className="font-display text-[10px] font-bold uppercase text-muted-foreground">{user.planId}</span>
+          ) : null}
+          <span
+            className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${subscriptionStatusClass(user.subscriptionStatus)}`}
+          >
+            {user.subscriptionStatus ?? "none"}
+          </span>
+          {user.disabled ? (
+            <Badge variant="destructive" className="text-[10px]">
+              {t("adminUsersDisabled")}
+            </Badge>
+          ) : null}
+          {user.planTestMode ? (
+            <Badge variant="outline" className="text-[10px]">
+              {t("adminUsersTestMode")}
+            </Badge>
+          ) : null}
+          {user.appAdmin ? (
+            <Badge variant="secondary" className="text-[10px]">
+              {t("adminUsersIsAdmin")}
+            </Badge>
+          ) : null}
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-2">
+          {t("adminUsersColLastSignIn")}: {formatDate(user.lastSignInAt)}
+        </p>
+      </button>
+      <div className="pt-1 border-t border-border/60">{adminToggle(user)}</div>
+    </div>
   );
 
   const renderUserRow = (user: AdminUserSummary) => (
@@ -179,6 +224,9 @@ export function AdminUsersPanel() {
             <Badge variant="destructive">{t("adminUsersDisabled")}</Badge>
           ) : null}
         </div>
+      </td>
+      <td className="py-3.5 px-4 align-top" onClick={(e) => e.stopPropagation()}>
+        {adminToggle(user)}
       </td>
       <td className="py-3.5 px-4 align-top text-muted-foreground">
         {user.emailVerified ? t("adminUsersYes") : t("adminUsersNo")}
@@ -290,28 +338,28 @@ export function AdminUsersPanel() {
       ) : (
         <>
           <div className="md:hidden space-y-4">
-            {activeUsers.length > 0 ? (
-              <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden divide-y divide-border">
+            {subscribedUsers.length > 0 ? (
+              <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
                 <p className="px-4 py-2 text-[10px] font-display font-bold uppercase tracking-wider text-muted-foreground bg-muted/40">
-                  {t("adminUsersSectionActive")} ({activeUsers.length})
+                  {t("adminUsersSectionActive")} ({subscribedUsers.length})
                 </p>
-                {activeUsers.map(renderUserCard)}
+                {subscribedUsers.map(renderUserCard)}
               </div>
             ) : null}
-            {inactiveUsers.length > 0 ? (
-              <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden divide-y divide-border">
+            {noSubUsers.length > 0 ? (
+              <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
                 <p className="px-4 py-2 text-[10px] font-display font-bold uppercase tracking-wider text-muted-foreground bg-muted/40">
-                  {t("adminUsersSectionInactive")} ({inactiveUsers.length})
+                  {t("adminUsersSectionInactive")} ({noSubUsers.length})
                 </p>
-                {inactiveUsers.map(renderUserCard)}
+                {noSubUsers.map(renderUserCard)}
               </div>
             ) : null}
           </div>
 
           <div className="hidden md:block space-y-4">
             {[
-              { title: t("adminUsersSectionActive"), rows: activeUsers },
-              { title: t("adminUsersSectionInactive"), rows: inactiveUsers },
+              { title: t("adminUsersSectionActive"), rows: subscribedUsers },
+              { title: t("adminUsersSectionInactive"), rows: noSubUsers },
             ].map((section) =>
               section.rows.length === 0 ? null : (
                 <div key={section.title} className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
@@ -319,7 +367,7 @@ export function AdminUsersPanel() {
                     {section.title} ({section.rows.length})
                   </p>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm min-w-[720px]">
+                    <table className="w-full text-sm min-w-[820px]">
                       <thead>
                         <tr className="border-b bg-muted/50">
                           <th className="py-3.5 px-4 text-left font-display text-[11px] uppercase tracking-wider text-muted-foreground min-w-[220px]">
@@ -330,6 +378,9 @@ export function AdminUsersPanel() {
                           </th>
                           <th className="py-3.5 px-4 text-left font-display text-[11px] uppercase tracking-wider text-muted-foreground w-32">
                             {t("adminUsersColStatus")}
+                          </th>
+                          <th className="py-3.5 px-4 text-left font-display text-[11px] uppercase tracking-wider text-muted-foreground w-36">
+                            {t("adminUsersColAdmin")}
                           </th>
                           <th className="py-3.5 px-4 text-left font-display text-[11px] uppercase tracking-wider text-muted-foreground w-24">
                             {t("adminUsersColVerified")}
