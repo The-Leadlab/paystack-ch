@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Lock, Plus, Briefcase, MoreHorizontal } from "lucide-react";
+import { Lock, Plus, Briefcase, MoreHorizontal, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   PERSONAL_PLAN_NAV,
@@ -80,6 +80,16 @@ function PersonalPlanMoreSheet({
           <Plus className="size-4" />
           Add transaction
         </button>
+        {surface === "app" ? (
+          <Link
+            href={`${personalAppHomePath()}#invite`}
+            onClick={onClose}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--pp-on-surface)]"
+          >
+            <UserPlus className="size-4" />
+            Invite
+          </Link>
+        ) : null}
         {surface === "app" ? (
           showBusinessLink ? (
             <Link
@@ -193,6 +203,15 @@ export function PersonalPlanSidebar({
       </nav>
 
       <div className="mt-auto space-y-1 pt-4 border-t border-[var(--pp-outline-variant)]">
+        {surface === "app" ? (
+          <Link
+            href={`${personalAppHomePath()}#invite`}
+            className="w-full mb-2 flex items-center justify-center gap-2 py-2.5 border border-[var(--pp-outline-variant)] text-[var(--pp-on-surface)] rounded-lg text-xs font-bold hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)] transition-colors"
+          >
+            <UserPlus className="size-4" />
+            Invite
+          </Link>
+        ) : null}
         <button
           type="button"
           onClick={() => openTransaction()}

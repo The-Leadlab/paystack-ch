@@ -170,13 +170,28 @@ async function createInvite(
     return { status: 403, json: { error: "Only the workspace owner can send invites." } };
   }
 
+  const ownerSnap = await getFirestore().collection("users").doc(ownerUid).get();
+  const ownerPlanId = parsePaystackPlanId(ownerSnap.get("planId"));
   const maxSeats = await ownerPlanSeats(ownerUid);
   if (maxSeats != null && maxSeats <= 1) {
-    return { status: 403, json: { error: "Your plan allows 1 seat (owner only). Upgrade to Business to invite teammates." } };
+    return {
+      status: 403,
+      json: {
+        error: "Your plan allows 1 seat (owner only). Upgrade to Business to invite teammates.",
+        code: "PLAN_NO_INVITES",
+      },
+    };
   }
   const used = await countSeatsUsed(ownerUid);
   if (maxSeats != null && used >= maxSeats) {
-    return { status: 403, json: { error: `Seat limit reached (${used}/${maxSeats}). Upgrade or remove a member.` } };
+    return {
+      status: 403,
+      json: {
+        error: `Seat limit reached (${used}/${maxSeats}). Upgrade or remove a member.`,
+        code: "SEAT_LIMIT",
+        seats: { used, max: maxSeats },
+      },
+    };
   }
 
   const roleRaw = String(body.role || "editor").toLowerCase();
@@ -209,7 +224,8 @@ async function createInvite(
   });
 
   const origin = publicAppOriginFromHeaders(headers);
-  const acceptUrl = `${origin}/app?team_invite=${encodeURIComponent(rawToken)}`;
+  const acceptPath = ownerPlanId === "personal" ? "/personal" : "/app";
+  const acceptUrl = `${origin}${acceptPath}?team_invite=${encodeURIComponent(rawToken)}`;
 
   try {
     await sendResendEmail({

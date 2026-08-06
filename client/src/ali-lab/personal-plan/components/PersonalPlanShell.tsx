@@ -1,17 +1,14 @@
 import type { ReactNode } from "react";
-import { Link } from "wouter";
 import "../personalPlan.css";
-import { PersonalPlanProvider, usePersonalPlan } from "../context/PersonalPlanContext";
+import { PersonalPlanProvider } from "../context/PersonalPlanContext";
 import { PersonalPlanHeader } from "./PersonalPlanHeader";
 import { PersonalPlanKpiStrip } from "./PersonalPlanKpiStrip";
 import { PersonalPlanMobileNav, PersonalPlanSidebar } from "./PersonalPlanSidebar";
-import { PersonalSessionBar } from "./PersonalSessionBar";
 import { PersonalTransactionModal } from "./PersonalTransactionModal";
 import { PersonalBillingAddons } from "./PersonalBillingAddons";
+import { PersonalInvitePanel } from "./PersonalInvitePanel";
 import { AliLabAuthBanner } from "../../components/AliLabAuthBanner";
 import { personalAppHomePath, type PersonalPlanSurface } from "../personalPlanNav";
-import { useLabLanguage } from "../../context/LabLanguageContext";
-import { usePersonalBudgetLedger } from "../../hooks/usePersonalBudgetLedger";
 
 function PersonalPlanShellInner({
   featureId,
@@ -26,10 +23,8 @@ function PersonalPlanShellInner({
   surface?: PersonalPlanSurface;
   children: ReactNode;
 }) {
-  const { month } = usePersonalPlan();
-  const { t } = useLabLanguage();
-  const ledger = usePersonalBudgetLedger(month);
   const personalHome = personalAppHomePath();
+  const showOverviewExtras = surface === "app" && featureId === "overview";
 
   return (
     <div className="personal-plan-shell">
@@ -41,25 +36,11 @@ function PersonalPlanShellInner({
             signInRedirect={surface === "app" ? personalHome : "/ali/overview"}
           />
         ) : null}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--pp-outline-variant)] bg-[var(--pp-surface-container)] px-4 md:px-16 py-2 text-[11px] text-[var(--pp-on-surface-variant)]">
-          <span>
-            {t("personalTabsBanner")}{" "}
-            <Link
-              href={surface === "app" ? personalHome : "/ali/overview"}
-              className="text-[var(--pp-primary)] font-semibold underline-offset-2 hover:underline"
-            >
-              {t("stmtUploadCta")}
-            </Link>
-          </span>
-          {!ledger.hasData && !ledger.loading ? (
-            <span>{t("personalTabsEmptyHint")}</span>
-          ) : null}
-        </div>
-        <PersonalSessionBar month={month} />
         <PersonalPlanHeader title={title} />
         <div className="p-4 md:p-16 space-y-6 max-w-[1400px]">
-          {showKpi ? <PersonalPlanKpiStrip month={month} /> : null}
-          {surface === "app" && featureId === "overview" ? <PersonalBillingAddons /> : null}
+          {showKpi ? <PersonalPlanKpiStrip month={undefined} /> : null}
+          {showOverviewExtras ? <PersonalInvitePanel /> : null}
+          {showOverviewExtras ? <PersonalBillingAddons /> : null}
           {children}
         </div>
       </main>
