@@ -147,6 +147,7 @@ Create matching Products/Prices in Stripe Dashboard (CHF, recurring monthly) bef
 - [x] `POST /api/stripe/personal-addon` — add seat or doc pack on existing Personal subscription
 - [x] Personal overview add-on UI; seats respect `personalAddonSeats` in invites
 - [x] Modules landing tab for Personal features
+- [x] Platform tour tabs: Revenue, Expenses, Personal (+ new landing imagery)
 - [ ] Wire `formatMoney` across all restaurant dashboard surfaces (helper ready; personal UI uses detection)
 - [ ] Create live Stripe Price IDs in Dashboard (ops)
 

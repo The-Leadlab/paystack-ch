@@ -123,6 +123,7 @@ const translations = {
     heroDescription:
       'Upload any document - invoice, receipt, payslip - and let AI extract, categorize, and organize your financial data. Income, expenses, salaries, and reports in one platform.',
     heroStartTrial: 'Start Free Trial',
+    heroStartPersonal: 'Try Personal',
     heroWatchDemo: 'Watch Demo',
     heroStatAccuracy: 'OCR Accuracy',
     heroStatSpeed: 'Faster Processing',
@@ -758,19 +759,25 @@ const translations = {
     landingPlatformTitle1: 'See it',
     landingPlatformTitleItalic: 'in action',
     landingPlatformSubtitle:
-      'Real screenshots from a production deployment — not mockups. This is the platform Swiss businesses use today.',
+      'Business Revenue & Expenses hubs plus the Personal household workspace — see the surfaces Swiss teams use today.',
     landingPlatformV1Label: 'Dashboard',
     landingPlatformV1Title: 'Financial overview at a glance',
     landingPlatformV1Desc:
       'See your complete financial picture — revenue, expenses, salaries, and balance — updated in real time. Upload documents directly, track processing status, and monitor VAT in one unified view.',
     landingPlatformV1Alt:
       'Paystack.ch Dashboard — financial overview with revenue, expenses, salaries, VAT tracking, and document upload queue',
-    landingPlatformV2Label: 'Revenue & POS',
+    landingPlatformV2Label: 'Revenue',
     landingPlatformV2Title: 'Income tracking & Z-readings',
     landingPlatformV2Desc:
       'Track all revenue streams with auto-generated Z-readings from daily income data. Supports manual entry, photo upload, and AI auto-generation with Swiss VAT calculation (8.1%) and payment split estimation.',
     landingPlatformV2Alt:
       'Paystack.ch Revenue module — Z-reading generation with auto-generate, manual entry, and photo upload options',
+    landingPlatformV5Label: 'Expenses',
+    landingPlatformV5Title: 'Supplier spend under control',
+    landingPlatformV5Desc:
+      'Classify supplier invoices, track spend by category, and keep personal household costs out of the restaurant ledger. Interval KPIs and a live expenses table for every session.',
+    landingPlatformV5Alt:
+      'Paystack.ch Expenses hub — spend KPIs, category filters, and supplier expense ledger in CHF',
     landingPlatformV3Label: 'Reports',
     landingPlatformV3Title: 'Monthly revenue analysis',
     landingPlatformV3Desc:
@@ -783,6 +790,12 @@ const translations = {
       'All processed documents organized by supplier, employee, or POS report. See document counts and total amounts per entity at a glance. Search, filter, and drill into any supplier\'s complete history.',
     landingPlatformV4Alt:
       'Paystack.ch Document Library — supplier cards showing document counts and total amounts in CHF',
+    landingPlatformV6Label: 'Personal',
+    landingPlatformV6Title: 'Household finances, separate workspace',
+    landingPlatformV6Desc:
+      'Budgets, goals, bills, and statement uploads in a Personal product at CHF 20/mo — completely separate from the restaurant dashboard, with an Unlimited bridge when you need both.',
+    landingPlatformV6Alt:
+      'Paystack.ch Personal — household overview with income, expenses, savings KPIs and statement upload',
     landingPlatformWlTitle: 'White-label ready',
     landingPlatformWlBody:
       'Each deployment can be tailored to your business — logo, colors, and domain. This example shows a live deployment for Café de la Place.',
@@ -1134,6 +1147,7 @@ const translations = {
     heroDescription:
       'Importez n\'importe quel document - facture, recu, fiche de paie - et laissez l\'IA extraire, categoriser et organiser vos donnees financieres. Revenus, depenses, salaires et rapports sur une seule plateforme.',
     heroStartTrial: 'Demarrer l\'essai gratuit',
+    heroStartPersonal: 'Essayer Personnel',
     heroWatchDemo: 'Voir la demo',
     heroStatAccuracy: 'Precision OCR',
     heroStatSpeed: 'Traitement plus rapide',
@@ -1768,19 +1782,25 @@ const translations = {
     landingPlatformTitle1: 'Voyez-la',
     landingPlatformTitleItalic: 'en action',
     landingPlatformSubtitle:
-      'Vraies captures d\'un deploiement en production — pas de maquettes. La plateforme utilisee aujourd\'hui par des entreprises suisses.',
+      'Hubs Revenus et Depenses business, plus l\'espace Personnel pour le menage — les surfaces utilisees aujourd\'hui en Suisse.',
     landingPlatformV1Label: 'Tableau de bord',
     landingPlatformV1Title: 'Vue financiere en un coup d\'oeil',
     landingPlatformV1Desc:
       'Revenus, depenses, salaires et solde en temps reel. Import de documents, suivi du traitement et TVA dans une vue unifiee.',
     landingPlatformV1Alt:
       'Paystack.ch — tableau de bord avec revenus, depenses, salaires, TVA et file d\'attente des documents',
-    landingPlatformV2Label: 'Revenus et POS',
+    landingPlatformV2Label: 'Revenus',
     landingPlatformV2Title: 'Suivi des revenus et Z de caisse',
     landingPlatformV2Desc:
       'Tous les flux de revenus avec Z generees depuis les donnees quotidiennes. Saisie manuelle, photo et generation IA avec TVA suisse (7,7 %) et repartition des paiements.',
     landingPlatformV2Alt:
       'Paystack.ch — module Revenus avec generation Z, saisie manuelle et import photo',
+    landingPlatformV5Label: 'Depenses',
+    landingPlatformV5Title: 'Depenses fournisseurs sous controle',
+    landingPlatformV5Desc:
+      'Classez les factures fournisseurs, suivez les depenses par categorie et gardez le menage hors du ledger restaurant. KPIs par periode et tableau des depenses en direct.',
+    landingPlatformV5Alt:
+      'Paystack.ch — hub Depenses avec KPIs, filtres et ledger fournisseurs en CHF',
     landingPlatformV3Label: 'Rapports',
     landingPlatformV3Title: 'Analyse mensuelle des revenus',
     landingPlatformV3Desc:
@@ -1793,6 +1813,12 @@ const translations = {
       'Documents par fournisseur, employe ou rapport POS. Comptes et montants par entite. Recherche, filtres et historique complet.',
     landingPlatformV4Alt:
       'Paystack.ch — bibliotheque avec cartes fournisseur et totaux en CHF',
+    landingPlatformV6Label: 'Personnel',
+    landingPlatformV6Title: 'Finances du menage, espace separe',
+    landingPlatformV6Desc:
+      'Budgets, objectifs, factures et import de releves dans le produit Personnel a CHF 20/mois — separe du tableau de bord restaurant, avec pont Unlimited si vous avez besoin des deux.',
+    landingPlatformV6Alt:
+      'Paystack.ch Personnel — vue menage avec KPIs revenus, depenses, epargne et import de releves',
     landingPlatformWlTitle: 'Pret pour marque blanche',
     landingPlatformWlBody:
       'Chaque deploiement peut etre adapte — logo, couleurs et domaine. Cet exemple montre un deploiement live pour Cafe de la Place.',

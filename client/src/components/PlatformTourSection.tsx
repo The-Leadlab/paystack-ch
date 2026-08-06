@@ -1,7 +1,7 @@
 /*
  * Palette F — "Jet d'Eau" Light Theme
  * Platform Tour: Tabbed showcase of real platform screenshots.
- * Dashboard, Revenue & Z-Readings, Reports, Documents views.
+ * Dashboard, Revenue, Expenses, Reports, Documents, Personal.
  */
 
 import { useMemo, useState } from "react";
@@ -10,7 +10,14 @@ import ScrollReveal from "./ScrollReveal";
 import SectionLabel from "./SectionLabel";
 import { LandingScreenshot } from "./LandingScreenshot";
 import type { LandingScreenKey } from "@/const/landingScreens";
-import { LayoutDashboard, TrendingUp, BarChart3, FolderOpen } from "lucide-react";
+import {
+  LayoutDashboard,
+  TrendingUp,
+  Wallet,
+  BarChart3,
+  FolderOpen,
+  PiggyBank,
+} from "lucide-react";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 
 export default function PlatformTourSection() {
@@ -39,6 +46,15 @@ export default function PlatformTourSection() {
           alt: t("landingPlatformV2Alt"),
         },
         {
+          id: "expenses",
+          label: t("landingPlatformV5Label"),
+          icon: Wallet,
+          title: t("landingPlatformV5Title"),
+          description: t("landingPlatformV5Desc"),
+          screen: "expenses" as LandingScreenKey,
+          alt: t("landingPlatformV5Alt"),
+        },
+        {
           id: "reports",
           label: t("landingPlatformV3Label"),
           icon: BarChart3,
@@ -55,6 +71,15 @@ export default function PlatformTourSection() {
           description: t("landingPlatformV4Desc"),
           screen: "documents" as LandingScreenKey,
           alt: t("landingPlatformV4Alt"),
+        },
+        {
+          id: "personal",
+          label: t("landingPlatformV6Label"),
+          icon: PiggyBank,
+          title: t("landingPlatformV6Title"),
+          description: t("landingPlatformV6Desc"),
+          screen: "personal" as LandingScreenKey,
+          alt: t("landingPlatformV6Alt"),
         },
       ] as const,
     [language, t]

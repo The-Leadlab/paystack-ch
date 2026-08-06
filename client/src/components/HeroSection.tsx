@@ -85,6 +85,16 @@ export default function HeroSection() {
                 variant="outline"
                 className="font-display rounded-lg px-7 h-12 text-sm gap-2 border-border hover:border-brand-red/40 hover:text-brand-red bg-transparent"
               >
+                <Link href="/start-trial?product=personal" className="inline-flex items-center gap-2">
+                  {t("heroStartPersonal")}
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="font-display rounded-lg px-7 h-12 text-sm gap-2 border-border hover:border-brand-red/40 hover:text-brand-red bg-transparent"
+              >
                 <a href="#platform" className="inline-flex items-center gap-2">
                   <Play size={14} />
                   {t("heroWatchDemo")}
