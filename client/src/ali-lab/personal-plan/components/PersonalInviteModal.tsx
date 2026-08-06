@@ -56,12 +56,20 @@ export function PersonalInviteModal() {
         },
         body: JSON.stringify(body),
       });
-      const json = (await res.json().catch(() => ({}))) as Record<string, unknown> & {
-        error?: string;
-        code?: string;
-      };
+      const raw = await res.text();
+      let json: Record<string, unknown> = {};
+      try {
+        json = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+      } catch {
+        json = {};
+      }
       if (!res.ok) {
-        const e = new Error(json.error || "Request failed") as TeamApiError;
+        const message =
+          (typeof json.error === "string" && json.error) ||
+          (typeof json.message === "string" && json.message) ||
+          (raw && raw.length < 200 && !raw.trimStart().startsWith("<") ? raw : null) ||
+          `Request failed (${res.status})`;
+        const e = new Error(message) as TeamApiError;
         e.code = typeof json.code === "string" ? json.code : undefined;
         throw e;
       }
@@ -184,21 +192,26 @@ export function PersonalInviteModal() {
   const atLimit =
     seats != null && seats.max != null && seats.used >= seats.max && seats.max > 0;
 
+  const fieldClass =
+    "pp-input flex-1 h-10 px-3 text-sm text-[var(--pp-on-surface)] placeholder:text-[var(--pp-on-surface-variant)] placeholder:opacity-80";
+
   return (
     <Dialog open={inviteOpen} onOpenChange={(open) => (!open ? closeInvite() : undefined)}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="personal-plan-shell bg-[var(--pp-surface-container)] border-[var(--pp-outline-variant)] text-[var(--pp-on-surface)] max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-[var(--pp-primary)]">
             <UserPlus className="w-4 h-4" />
             {t("personalInviteTitle")}
           </DialogTitle>
-          <DialogDescription>{t("personalInviteBody")}</DialogDescription>
+          <DialogDescription className="text-[var(--pp-on-surface-variant)]">
+            {t("personalInviteBody")}
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 pt-1">
+        <div className="space-y-4 pt-1 text-[var(--pp-on-surface)]">
           {!isOwner && data?.memberOf ? (
-            <div className="rounded-lg border border-border p-3 space-y-2">
-              <p className="text-xs">
+            <div className="rounded-lg border border-[var(--pp-outline-variant)] p-3 space-y-2">
+              <p className="text-xs text-[var(--pp-on-surface)]">
                 {t("billingTeamMemberBanner")
                   .replace("{owner}", ownerEmail || data.memberOf.ownerEmail || "—")
                   .replace("{role}", role || data.memberOf.role)}
@@ -207,7 +220,7 @@ export function PersonalInviteModal() {
                 type="button"
                 disabled={busy}
                 onClick={() => void leave()}
-                className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-50"
+                className="text-xs font-semibold text-[var(--pp-error)] hover:underline disabled:opacity-50"
               >
                 {t("billingTeamLeaveCta")}
               </button>
@@ -215,14 +228,14 @@ export function PersonalInviteModal() {
           ) : null}
 
           {loading ? (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs text-[var(--pp-on-surface-variant)]">
               <Loader2 className="w-4 h-4 animate-spin" />
               …
             </div>
           ) : isOwner ? (
             <>
               {seats ? (
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <p className="text-xs text-[var(--pp-on-surface-variant)] flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5" />
                   {seats.max == null
                     ? t("billingTeamSeatsUnlimited").replace("{used}", String(seats.used))
@@ -232,15 +245,15 @@ export function PersonalInviteModal() {
                 </p>
               ) : null}
 
-              {msg ? <p className="text-xs text-emerald-600 font-medium">{msg}</p> : null}
-              {err ? <p className="text-xs text-red-500 font-medium">{err}</p> : null}
+              {msg ? <p className="text-xs text-[var(--pp-secondary)] font-medium">{msg}</p> : null}
+              {err ? <p className="text-xs text-[var(--pp-error)] font-medium">{err}</p> : null}
 
               {(needsSeat || atLimit) && email.trim() ? (
                 <button
                   type="button"
                   disabled={busy || !email.trim()}
                   onClick={() => void buySeatThenInvite()}
-                  className="w-full h-10 rounded-md bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full h-10 rounded-md bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] text-xs font-bold uppercase tracking-wider disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   {t("personalInvitePaySeatCta").replace("{price}", seatPrice)}
@@ -256,12 +269,12 @@ export function PersonalInviteModal() {
                     setNeedsSeat(false);
                   }}
                   placeholder={t("billingTeamInviteEmail")}
-                  className="flex-1 h-10 px-3 rounded-md border border-input bg-background text-sm"
+                  className={fieldClass}
                 />
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as "editor" | "viewer")}
-                  className="h-10 px-3 rounded-md border border-input bg-background text-sm"
+                  className="pp-input h-10 px-3 text-sm text-[var(--pp-on-surface)]"
                   aria-label={t("billingTeamRole")}
                 >
                   <option value="editor">{t("billingTeamRoleEditor")}</option>
@@ -271,7 +284,7 @@ export function PersonalInviteModal() {
                   type="button"
                   disabled={busy || !email.trim()}
                   onClick={() => void sendInvite()}
-                  className="h-10 px-4 rounded-md bg-secondary text-secondary-foreground text-xs font-bold uppercase tracking-wider disabled:opacity-50 flex items-center justify-center gap-2 shrink-0"
+                  className="h-10 px-4 rounded-md bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] text-xs font-bold uppercase tracking-wider disabled:opacity-50 flex items-center justify-center gap-2 shrink-0"
                 >
                   {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                   {t("personalInviteCta")}
@@ -279,22 +292,22 @@ export function PersonalInviteModal() {
               </div>
 
               {data && data.invites.length === 0 && data.members.length === 0 ? (
-                <p className="text-xs text-muted-foreground">{t("personalInviteEmpty")}</p>
+                <p className="text-xs text-[var(--pp-on-surface-variant)]">{t("personalInviteEmpty")}</p>
               ) : null}
 
               {data?.invites.map((inv) => (
                 <div
                   key={inv.id}
-                  className="flex items-center justify-between gap-2 text-xs border-t border-border pt-3"
+                  className="flex items-center justify-between gap-2 text-xs border-t border-[var(--pp-outline-variant)] pt-3"
                 >
-                  <span className="truncate">
+                  <span className="truncate text-[var(--pp-on-surface)]">
                     {inv.email} · {t("billingTeamPending")} · {inv.role}
                   </span>
                   <button
                     type="button"
                     disabled={busy}
                     onClick={() => void revoke(inv.id)}
-                    className="text-red-600 font-semibold hover:underline disabled:opacity-50 shrink-0"
+                    className="text-[var(--pp-error)] font-semibold hover:underline disabled:opacity-50 shrink-0"
                   >
                     {t("billingTeamRevoke")}
                   </button>
@@ -304,16 +317,16 @@ export function PersonalInviteModal() {
               {data?.members.map((m) => (
                 <div
                   key={m.uid}
-                  className="flex items-center justify-between gap-2 text-xs border-t border-border pt-3"
+                  className="flex items-center justify-between gap-2 text-xs border-t border-[var(--pp-outline-variant)] pt-3"
                 >
-                  <span className="truncate">
+                  <span className="truncate text-[var(--pp-on-surface)]">
                     {m.email} · {t("billingTeamActive")} · {m.role}
                   </span>
                   <button
                     type="button"
                     disabled={busy}
                     onClick={() => void remove(m.uid)}
-                    className="text-red-600 font-semibold hover:underline disabled:opacity-50 shrink-0"
+                    className="text-[var(--pp-error)] font-semibold hover:underline disabled:opacity-50 shrink-0"
                   >
                     {t("billingTeamRemove")}
                   </button>
@@ -321,7 +334,7 @@ export function PersonalInviteModal() {
               ))}
             </>
           ) : !data?.memberOf ? (
-            <p className="text-xs text-muted-foreground">{t("personalInviteOwnerOnly")}</p>
+            <p className="text-xs text-[var(--pp-on-surface-variant)]">{t("personalInviteOwnerOnly")}</p>
           ) : null}
         </div>
       </DialogContent>

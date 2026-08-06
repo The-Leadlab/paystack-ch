@@ -198,12 +198,12 @@ service cloud.firestore {
     /**
      * Membership docs are written by Admin SDK only (invite accept).
      * Members may read their own membership doc for client WorkspaceContext.
+     * Use `get` (not `read`) so missing docs still allow owners to listen —
+     * `resource.data` on a non-existent doc fails the whole rule otherwise.
      */
     match /workspaceMembers/{memberUid} {
-      allow read: if signedIn() && (
-        memberUid == ownerUid() ||
-        resource.data.ownerUid == ownerUid()
-      );
+      allow get: if signedIn() && memberUid == ownerUid();
+      allow list: if signedIn() && resource.data.ownerUid == ownerUid();
       allow write: if false;
     }
 

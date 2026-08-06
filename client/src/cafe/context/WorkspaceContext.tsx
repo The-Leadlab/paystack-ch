@@ -59,7 +59,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       },
       (err) => {
-        console.error("Workspace membership snapshot:", err);
+        // Missing membership doc used to fail rules when resource.data was evaluated.
+        // Fall back to owner scope; avoid noisy console for expected permission-denied.
+        if (import.meta.env.DEV) {
+          console.warn("Workspace membership snapshot:", err);
+        }
         setOwnerUid(user.uid);
         setRole("owner");
         setOwnerEmail(user.email ?? null);
