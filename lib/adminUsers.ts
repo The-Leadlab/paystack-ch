@@ -209,6 +209,57 @@ async function resolveStripeForCustomer(
   return null;
 }
 
+/**
+ * Cancel any live Stripe subscription and clear chargeable billing fields.
+ * Used when promoting to appAdmin or enabling planTestMode so Stripe cannot charge next cycle.
+ */
+async function stopStripeBillingForUser(
+  uid: string,
+  billing: Record<string, unknown> | null
+): Promise<{ canceled: boolean; message: string }> {
+  const db = getFirestore();
+  const subscriptionId =
+    typeof billing?.subscriptionId === "string" ? billing.subscriptionId : null;
+
+  let canceled = false;
+  if (subscriptionId) {
+    const resolved = await resolveStripeForSubscription(subscriptionId);
+    if (resolved) {
+      try {
+        const live = await resolved.stripe.subscriptions.retrieve(subscriptionId);
+        if (live.status !== "canceled") {
+          await resolved.stripe.subscriptions.cancel(subscriptionId, {
+            invoice_now: false,
+            prorate: false,
+          });
+          canceled = true;
+        }
+      } catch {
+        /* already gone or inaccessible — still clear Firestore */
+      }
+    }
+  }
+
+  await db.collection("users").doc(uid).set(
+    {
+      subscriptionStatus: "none",
+      subscriptionId: null,
+      trialEndsAt: null,
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  return {
+    canceled,
+    message: canceled
+      ? "Stripe subscription canceled immediately — no further charges."
+      : "No live Stripe subscription to cancel (Firestore billing cleared).",
+  };
+}
+
 async function findStripeCustomerByEmail(
   email: string
 ): Promise<{ stripe: Stripe; customerId: string; useTest: boolean } | null> {
@@ -640,13 +691,25 @@ export async function runAdminUserAction(
     }
 
     case "set_plan": {
+      const testMode = body.planTestMode === true;
+      let stripeNote = "";
+      if (testMode) {
+        const stop = await stopStripeBillingForUser(uid, billing);
+        stripeNote = ` ${stop.message}`;
+      }
       await db.collection("users").doc(uid).set(
         {
           planId: body.planId,
-          planTestMode: body.planTestMode === true,
-          ...(body.planId
-            ? { subscriptionStatus: "active" }
-            : { subscriptionStatus: "none", planId: null }),
+          planTestMode: testMode,
+          ...(testMode
+            ? {
+                // Simulated entitlements only — Stripe already cleared above.
+                subscriptionStatus: body.planId ? "none" : "none",
+                subscriptionId: null,
+              }
+            : body.planId
+              ? { subscriptionStatus: "active" }
+              : { subscriptionStatus: "none", planId: null }),
           updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
@@ -654,18 +717,32 @@ export async function runAdminUserAction(
       return {
         ok: true,
         message: body.planId
-          ? `Plan set to ${body.planId}${body.planTestMode ? " (test mode)" : ""}.`
-          : "Plan cleared.",
+          ? `Plan set to ${body.planId}${testMode ? " (test mode — Stripe will not charge)." : ""}.${stripeNote}`
+          : `Plan cleared.${stripeNote}`,
       };
     }
 
     case "set_app_admin": {
       const enabled = body.enabled === true;
+      let stripeNote = "";
+      if (enabled) {
+        const stop = await stopStripeBillingForUser(uid, billing);
+        stripeNote = ` ${stop.message}`;
+      }
       const existing = (record.customClaims ?? {}) as Record<string, unknown>;
       await auth.setCustomUserClaims(uid, { ...existing, appAdmin: enabled });
       await db.collection("users").doc(uid).set(
         {
           appAdmin: enabled,
+          ...(enabled
+            ? {
+                subscriptionStatus: "none",
+                subscriptionId: null,
+                trialEndsAt: null,
+                currentPeriodEnd: null,
+                cancelAtPeriodEnd: false,
+              }
+            : {}),
           updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
@@ -673,7 +750,7 @@ export async function runAdminUserAction(
       return {
         ok: true,
         message: enabled
-          ? "User is now a platform admin (Admin panel link in /app). They may need to sign out and back in."
+          ? `User is now a platform admin. Stripe will not charge them.${stripeNote} They may need to sign out and back in.`
           : "Platform admin access removed.",
       };
     }

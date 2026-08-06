@@ -718,11 +718,15 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                     className="font-display bg-brand-red text-white hover:bg-brand-red/90 shrink-0"
                     disabled={actionBusy !== null}
                     onClick={() =>
-                      void runAction("setPlan", {
-                        action: "set_plan",
-                        planId: planOverride === "none" ? null : planOverride,
-                        planTestMode,
-                      })
+                      void runAction(
+                        "setPlan",
+                        {
+                          action: "set_plan",
+                          planId: planOverride === "none" ? null : planOverride,
+                          planTestMode,
+                        },
+                        planTestMode ? t("adminUserConfirmTestMode") : undefined
+                      )
                     }
                   >
                     {actionBusy === "setPlan" ? (

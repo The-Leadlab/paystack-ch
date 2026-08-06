@@ -47,6 +47,7 @@ Password-gated sandbox for competitor-gap features (budgeting, goals, bills, etc
 - **Password:** `ALI_LAB_PASSWORD` in `.env` (see `.env.example`; default `ali123*`)
 - **Super prompt:** `docs/ALI_LAB_SUPER_PROMPT.md`
 - **Team invites:** `docs/TEAM_INVITE_SUPER_PROMPT.md` — email invites + shared dashboard seats (`maxTeamSeats`)
+- **Admin bulk / no-charge admin:** `docs/ADMIN_BULK_BILLING_SUPER_PROMPT.md` — stop Stripe when Admin/test mode; bulk select
 - **Capacity (2000 VUs):** `docs/CAPACITY_2000_USERS_SUPER_PROMPT.md` — `pnpm test:capacity` / `node scripts/capacity-test-2000.mjs`
 - **Capacity results:** `docs/CAPACITY_2000_USERS_RESULTS.md` — last documented 2000-VU run
 - **i18n super prompt:** `docs/I18N_SUPER_PROMPT.md` — landing `/`, `/app`, `/ali` translation audit and fixes

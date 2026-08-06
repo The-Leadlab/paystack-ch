@@ -192,14 +192,19 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     if (workspace && !workspace.loading && !workspace.isOwner && workspace.dataOwnerUid) {
       return true;
     }
+    // Admin-granted simulated plan (no Stripe)
+    if (billing?.planTestMode === true && billing?.planId) return true;
     const st = billing?.subscriptionStatus;
     return st === 'trialing' || st === 'active';
-  }, [bypass, enforcementEnabled, billing?.subscriptionStatus, workspace]);
+  }, [bypass, enforcementEnabled, billing?.subscriptionStatus, billing?.planTestMode, billing?.planId, workspace]);
 
   const entitlements = useMemo((): PlanEntitlements => {
     if (!enforcementEnabled) return UNRESTRICTED_ENTITLEMENTS;
     if (planTest) return entitlementsForPlan(billing?.planId ?? 'starter');
     if (bypass) return UNRESTRICTED_ENTITLEMENTS;
+    if (billing?.planTestMode === true && billing?.planId) {
+      return entitlementsForPlan(billing.planId);
+    }
     const base = entitlementsForPlan(billing?.planId ?? undefined);
     const seats = effectiveTeamSeats(billing?.planId, billing?.personalAddonSeats ?? 0);
     const personalDocs = personalDocumentsLimit({
@@ -216,6 +221,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     planTest,
     bypass,
     billing?.planId,
+    billing?.planTestMode,
     billing?.personalAddonSeats,
     billing?.personalDocPack,
   ]);
