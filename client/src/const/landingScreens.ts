@@ -1,13 +1,7 @@
 /**
- * Landing / marketing screenshots. Add files under `client/public/landing/`:
- * - screenshot-dashboard.png
- * - screenshot-reports.png
- * - screenshot-revenue-pos.png
- * - screenshot-expenses.jpg
- * - screenshot-documents.png
- * - screenshot-personal.jpg
- *
- * If a file is missing, `LandingScreenshot` falls back to prior bundled paths when deployed.
+ * Landing / marketing screenshots under `client/public/landing/`.
+ * V3 business app imagery (Dashboard, Revenue, Expenses, Reports, Documents).
+ * Cache-bust by changing filenames when replacing shots.
  */
 export type LandingScreenKey =
   | "dashboard"
@@ -22,27 +16,27 @@ export const LANDING_SCREENSHOTS: Record<
   { primary: string; fallback: string }
 > = {
   dashboard: {
-    primary: "/landing/screenshot-dashboard.png",
-    fallback: "/manus-storage/Image28.04.2026at01.15_01_307b72f8.png",
+    primary: "/landing/screenshot-dashboard.jpg",
+    fallback: "/landing/screenshot-dashboard.jpg",
   },
   reports: {
-    primary: "/landing/screenshot-reports.png",
-    fallback: "/manus-storage/Image28.04.2026at01.15(1)_1cbde1c4.png",
+    primary: "/landing/screenshot-reports.jpg",
+    fallback: "/landing/screenshot-dashboard.jpg",
   },
   revenue: {
-    primary: "/landing/screenshot-revenue-pos.png",
-    fallback: "/manus-storage/Image28.04.2026at01.15(2)_7be623da.png",
+    primary: "/landing/screenshot-revenue-pos.jpg",
+    fallback: "/landing/screenshot-dashboard.jpg",
   },
   expenses: {
     primary: "/landing/screenshot-expenses.jpg",
-    fallback: "/landing/screenshot-reports.png",
+    fallback: "/landing/screenshot-revenue-pos.jpg",
   },
   documents: {
-    primary: "/landing/screenshot-documents.png",
-    fallback: "/manus-storage/Image28.04.2026at01.15_b2574f4b.png",
+    primary: "/landing/screenshot-documents.jpg",
+    fallback: "/landing/screenshot-dashboard.jpg",
   },
   personal: {
     primary: "/landing/screenshot-personal.jpg",
-    fallback: "/landing/screenshot-dashboard.png",
+    fallback: "/landing/screenshot-dashboard.jpg",
   },
 };
