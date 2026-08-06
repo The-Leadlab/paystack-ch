@@ -23,6 +23,9 @@ type PersonalPlanContextValue = {
   transactionPrefill: TransactionPrefill | null;
   openTransaction: (prefill?: TransactionPrefill) => void;
   closeTransaction: () => void;
+  inviteOpen: boolean;
+  openInvite: () => void;
+  closeInvite: () => void;
 };
 
 const PersonalPlanContext = createContext<PersonalPlanContextValue | null>(null);
@@ -37,6 +40,7 @@ export function PersonalPlanProvider({
   const [month, setMonth] = useState(currentMonthKey);
   const [transactionOpen, setTransactionOpen] = useState(false);
   const [transactionPrefill, setTransactionPrefill] = useState<TransactionPrefill | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const openTransaction = useCallback((prefill?: TransactionPrefill) => {
     setTransactionPrefill(prefill ?? null);
@@ -48,6 +52,9 @@ export function PersonalPlanProvider({
     setTransactionPrefill(null);
   }, []);
 
+  const openInvite = useCallback(() => setInviteOpen(true), []);
+  const closeInvite = useCallback(() => setInviteOpen(false), []);
+
   const value = useMemo(
     () => ({
       month,
@@ -57,8 +64,21 @@ export function PersonalPlanProvider({
       transactionPrefill,
       openTransaction,
       closeTransaction,
+      inviteOpen,
+      openInvite,
+      closeInvite,
     }),
-    [month, surface, transactionOpen, transactionPrefill, openTransaction, closeTransaction]
+    [
+      month,
+      surface,
+      transactionOpen,
+      transactionPrefill,
+      openTransaction,
+      closeTransaction,
+      inviteOpen,
+      openInvite,
+      closeInvite,
+    ]
   );
 
   return <PersonalPlanContext.Provider value={value}>{children}</PersonalPlanContext.Provider>;

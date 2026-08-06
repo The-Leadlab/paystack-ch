@@ -34,7 +34,7 @@ function PersonalPlanMoreSheet({
   onClose: () => void;
   showBusinessLink: boolean;
 }) {
-  const { openTransaction } = usePersonalPlan();
+  const { openTransaction, openInvite } = usePersonalPlan();
   const secondary = PERSONAL_PLAN_NAV.filter((item) => !item.mobilePrimary && item.featureId !== "overview");
 
   return (
@@ -81,14 +81,17 @@ function PersonalPlanMoreSheet({
           Add transaction
         </button>
         {surface === "app" ? (
-          <Link
-            href={`${personalAppHomePath()}#invite`}
-            onClick={onClose}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--pp-on-surface)]"
+          <button
+            type="button"
+            onClick={() => {
+              openInvite();
+              onClose();
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--pp-on-surface)]"
           >
             <UserPlus className="size-4" />
             Invite
-          </Link>
+          </button>
         ) : null}
         {surface === "app" ? (
           showBusinessLink ? (
@@ -138,7 +141,7 @@ export function PersonalPlanSidebar({
   featureId: string | undefined;
   surface?: PersonalPlanSurface;
 }) {
-  const { openTransaction } = usePersonalPlan();
+  const { openTransaction, openInvite } = usePersonalPlan();
   const showBusinessLink = useCanOpenBusinessDashboard();
   const lockLab = async () => {
     await logoutAliLab();
@@ -204,13 +207,14 @@ export function PersonalPlanSidebar({
 
       <div className="mt-auto space-y-1 pt-4 border-t border-[var(--pp-outline-variant)]">
         {surface === "app" ? (
-          <Link
-            href={`${personalAppHomePath()}#invite`}
+          <button
+            type="button"
+            onClick={() => openInvite()}
             className="w-full mb-2 flex items-center justify-center gap-2 py-2.5 border border-[var(--pp-outline-variant)] text-[var(--pp-on-surface)] rounded-lg text-xs font-bold hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)] transition-colors"
           >
             <UserPlus className="size-4" />
             Invite
-          </Link>
+          </button>
         ) : null}
         <button
           type="button"
