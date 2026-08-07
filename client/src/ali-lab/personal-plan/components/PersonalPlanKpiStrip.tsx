@@ -13,19 +13,24 @@ function KpiCell({
   value: string;
   tone: "positive" | "negative" | "neutral" | "tertiary";
 }) {
-  const color =
+  const bar =
     tone === "positive"
-      ? "text-[var(--pp-secondary)]"
+      ? "bg-[var(--pp-secondary)]"
       : tone === "negative"
-        ? "text-[var(--pp-error)]"
+        ? "bg-[var(--pp-error)]"
         : tone === "tertiary"
-          ? "text-[var(--pp-tertiary)]"
-          : "text-[var(--pp-on-surface)]";
+          ? "bg-[var(--pp-tertiary)]"
+          : "bg-[var(--pp-on-surface-variant)]";
 
   return (
-    <GlassCard className="p-4 md:p-5 flex flex-col gap-1">
+    <GlassCard className="p-3.5 md:p-4 flex flex-col gap-2 min-h-[6.5rem] justify-between">
       <span className="pp-kpi-label">{label}</span>
-      <span className={`text-xl md:text-2xl font-semibold pp-tabular ${color}`}>{value}</span>
+      <span className="text-lg md:text-xl font-bold tracking-tight pp-tabular text-[var(--pp-on-surface)]">
+        {value}
+      </span>
+      <div className="h-0.5 w-full rounded-full bg-[var(--pp-surface-highest)] overflow-hidden">
+        <div className={`h-full w-2/5 ${bar}`} />
+      </div>
     </GlassCard>
   );
 }

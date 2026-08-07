@@ -106,7 +106,7 @@ function PersonalPlanShellInner({
       <main
         className={cn(
           "min-h-screen pb-24 md:pb-8 transition-[margin] duration-200",
-          collapsed ? "md:ml-16" : "md:ml-64"
+          collapsed ? "md:ml-14" : "md:ml-52"
         )}
       >
         {surface !== "app" ? (

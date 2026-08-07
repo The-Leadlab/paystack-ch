@@ -22,6 +22,7 @@ import { ALI_LAB_FEATURES } from "../../featureRegistry";
 import { logoutAliLab } from "@/lib/aliLabGateClient";
 import { usePersonalPlan } from "../context/PersonalPlanContext";
 import { useCanOpenBusinessDashboard } from "@/cafe/hooks/useProductLineAccess";
+import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/const/branding";
 
 const SECONDARY_FEATURE_IDS = new Set([
   "automation-rules",
@@ -51,7 +52,7 @@ function PersonalPlanMoreSheet({
       onClick={onClose}
     >
       <div
-        className="absolute bottom-20 left-4 right-4 pp-glass-panel rounded-2xl p-3 space-y-1"
+        className="absolute bottom-20 left-4 right-4 pp-glass-panel p-3 space-y-1"
         onClick={(e) => e.stopPropagation()}
       >
         {secondary.map((item) => {
@@ -62,13 +63,12 @@ function PersonalPlanMoreSheet({
               href={personalPlanNavHref(item, surface)}
               onClick={onClose}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium",
-                isNavActive(item, featureId)
-                  ? "text-[var(--pp-primary)] bg-[var(--pp-surface-highest)]"
-                  : "text-[var(--pp-on-surface)]"
+                "pp-nav-btn",
+                isNavActive(item, featureId) && "pp-nav-active"
               )}
+              data-active={isNavActive(item, featureId)}
             >
-              <Icon className="size-4" />
+              <Icon className="size-3.5 shrink-0" />
               {item.label}
             </Link>
           );
@@ -79,9 +79,9 @@ function PersonalPlanMoreSheet({
             openTransaction();
             onClose();
           }}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--pp-on-surface)]"
+          className="pp-sidebar-action pp-sidebar-action--primary mt-1"
         >
-          <Plus className="size-4" />
+          <Plus className="size-3.5" />
           Add transaction
         </button>
         {surface === "app" ? (
@@ -89,9 +89,9 @@ function PersonalPlanMoreSheet({
             <Link
               href={businessAppPath()}
               onClick={onClose}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--pp-on-surface)]"
+              className="pp-sidebar-action pp-sidebar-action--accent mt-1"
             >
-              <Briefcase className="size-4" />
+              <Briefcase className="size-3.5" />
               Business dashboard
             </Link>
           ) : null
@@ -100,9 +100,9 @@ function PersonalPlanMoreSheet({
             <Link
               href={personalAppHomePath()}
               onClick={onClose}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--pp-on-surface)]"
+              className="pp-sidebar-action pp-sidebar-action--muted mt-1"
             >
-              <Briefcase className="size-4" />
+              <Briefcase className="size-3.5" />
               Production personal
             </Link>
             <button
@@ -113,9 +113,9 @@ function PersonalPlanMoreSheet({
                   window.location.href = "/ali-gate";
                 });
               }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--pp-on-surface)]"
+              className="pp-sidebar-action pp-sidebar-action--muted"
             >
-              <Lock className="size-4" />
+              <Lock className="size-3.5" />
               Lock lab
             </button>
           </>
@@ -147,23 +147,31 @@ export function PersonalPlanSidebar({
     <aside
       data-tour="personal-sidebar"
       className={cn(
-        "hidden md:flex flex-col fixed left-0 top-0 h-screen z-50 bg-[var(--pp-surface-low)] border-r border-[var(--pp-outline-variant)] gap-2 transition-[width] duration-200",
-        collapsed ? "w-16 p-2" : "w-64 p-6"
+        "pp-sidebar hidden md:flex flex-col fixed left-0 top-0 h-screen z-50 gap-1.5 transition-[width] duration-200",
+        collapsed ? "pp-sidebar--rail w-14 px-1.5 py-3" : "w-52 px-3 py-4"
       )}
     >
-      <div className={cn("flex items-center mb-4", collapsed ? "flex-col gap-2" : "justify-between gap-2")}>
+      <div
+        className={cn(
+          "flex items-center mb-2 shrink-0",
+          collapsed ? "flex-col gap-1.5" : "justify-between gap-1"
+        )}
+      >
         <Link
           href={personalHomePath(surface)}
-          className={cn("flex items-center hover:opacity-90 min-w-0", collapsed ? "justify-center" : "gap-3 px-1")}
+          className={cn("flex items-center hover:opacity-90 min-w-0", collapsed ? "justify-center" : "gap-2")}
           title="Paystack Personal"
         >
-          <div className="w-10 h-10 bg-[var(--pp-primary-container)] rounded-lg flex items-center justify-center shrink-0">
-            <span className="text-[var(--pp-on-primary)] text-lg font-bold">P</span>
-          </div>
+          <img
+            src={BRAND_LOGO_SRC}
+            alt="Paystack.ch"
+            width={BRAND_LOGO_SIZE}
+            height={BRAND_LOGO_SIZE}
+            className={cn("object-contain shrink-0", collapsed ? "h-7 w-7" : "h-8 w-auto max-w-[120px]")}
+          />
           {!collapsed ? (
             <div className="min-w-0">
-              <h1 className="text-base font-bold text-[var(--pp-primary)] tracking-tight truncate">Paystack</h1>
-              <p className="text-[11px] text-[var(--pp-on-surface-variant)] opacity-70">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--pp-on-surface-variant)] truncate">
                 {surface === "app" ? "Personal" : "Lab · Personal"}
               </p>
             </div>
@@ -174,16 +182,16 @@ export function PersonalPlanSidebar({
             type="button"
             data-tour="sidebar-collapse"
             onClick={onToggleCollapsed}
-            className="p-2 rounded-lg text-[var(--pp-on-surface-variant)] hover:bg-[var(--pp-surface-highest)] hover:text-[var(--pp-on-surface)]"
+            className="p-1.5 rounded border border-[var(--pp-border)] text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-primary)]"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand" : "Collapse"}
           >
-            {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+            {collapsed ? <PanelLeftOpen className="size-3.5" /> : <PanelLeftClose className="size-3.5" />}
           </button>
         ) : null}
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden" aria-label="Personal navigation">
         {PERSONAL_PLAN_NAV.map((item) => {
           const active = isNavActive(item, featureId);
           const Icon = item.icon;
@@ -193,34 +201,25 @@ export function PersonalPlanSidebar({
               href={personalPlanNavHref(item, surface)}
               title={item.label}
               data-tour={`nav-${item.featureId}`}
-              className={cn(
-                "flex items-center rounded-lg text-xs font-semibold tracking-wide transition-all duration-200",
-                collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-4 py-2.5",
-                active
-                  ? "pp-nav-active"
-                  : "text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)]"
-              )}
+              data-active={active}
+              className={cn("pp-nav-btn", collapsed && "pp-nav-btn--rail", active && "pp-nav-active")}
             >
-              <Icon className="size-4 shrink-0" />
+              <Icon className="size-3.5 shrink-0" />
               {!collapsed ? <span>{item.label}</span> : null}
             </Link>
           );
         })}
         {surface === "lab" && !collapsed ? (
           <>
-            <p className="px-4 pt-4 pb-1 text-[10px] uppercase tracking-widest text-[var(--pp-on-surface-variant)] opacity-60">
+            <p className="px-2 pt-3 pb-1 text-[9px] uppercase tracking-widest text-[var(--pp-on-surface-variant)] opacity-60">
               Lab
             </p>
             {ALI_LAB_FEATURES.filter((f) => SECONDARY_FEATURE_IDS.has(f.id)).map((f) => (
               <Link
                 key={f.id}
                 href={`/ali/${f.id}`}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-2 rounded-lg text-xs transition-colors",
-                  featureId === f.id
-                    ? "text-[var(--pp-primary)] bg-[var(--pp-surface-highest)]"
-                    : "text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)]"
-                )}
+                data-active={featureId === f.id}
+                className={cn("pp-nav-btn", featureId === f.id && "pp-nav-active")}
               >
                 <span className="truncate">{f.title}</span>
               </Link>
@@ -229,43 +228,37 @@ export function PersonalPlanSidebar({
         ) : null}
       </nav>
 
-      <div className="mt-auto space-y-1 pt-4 border-t border-[var(--pp-outline-variant)]">
+      <div className="mt-auto space-y-1.5 pt-3 border-t border-[var(--pp-border)] shrink-0">
         <button
           type="button"
           data-tour="add-transaction"
           onClick={() => openTransaction()}
           title="Add transaction"
           className={cn(
-            "w-full flex items-center justify-center gap-2 py-2.5 bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] rounded-lg text-xs font-bold hover:opacity-90 transition-opacity",
-            collapsed ? "mb-1 px-0" : "mb-3"
+            "pp-sidebar-action pp-sidebar-action--primary",
+            collapsed && "pp-sidebar-action--rail"
           )}
         >
-          <Plus className="size-4" />
+          <Plus className="size-3.5 shrink-0" />
           {!collapsed ? <span>Add transaction</span> : null}
         </button>
         {surface === "lab" ? (
           !collapsed ? (
             <>
-              <Link
-                href={businessAppPath()}
-                className="flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
-              >
-                <Briefcase className="size-4" />
+              <Link href={businessAppPath()} className="pp-sidebar-action pp-sidebar-action--muted">
+                <Briefcase className="size-3.5 shrink-0" />
                 Business /app
               </Link>
-              <Link
-                href={personalAppHomePath()}
-                className="flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
-              >
-                <Briefcase className="size-4" />
+              <Link href={personalAppHomePath()} className="pp-sidebar-action pp-sidebar-action--muted">
+                <Briefcase className="size-3.5 shrink-0" />
                 Production personal
               </Link>
               <button
                 type="button"
                 onClick={() => void lockLab()}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
+                className="pp-sidebar-action pp-sidebar-action--muted"
               >
-                <Lock className="size-4" />
+                <Lock className="size-3.5 shrink-0" />
                 Lock lab
               </button>
             </>
@@ -274,9 +267,9 @@ export function PersonalPlanSidebar({
               type="button"
               onClick={() => void lockLab()}
               title="Lock lab"
-              className="w-full flex justify-center p-2.5 text-[var(--pp-on-surface-variant)] hover:bg-[var(--pp-surface-highest)] rounded-lg"
+              className="pp-sidebar-action pp-sidebar-action--muted pp-sidebar-action--rail"
             >
-              <Lock className="size-4" />
+              <Lock className="size-3.5" />
             </button>
           )
         ) : showBusinessLink ? (
@@ -285,11 +278,11 @@ export function PersonalPlanSidebar({
             title="Business dashboard"
             data-tour="business-link"
             className={cn(
-              "flex items-center text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors",
-              collapsed ? "justify-center p-2.5" : "gap-3 px-4 py-2.5"
+              "pp-sidebar-action pp-sidebar-action--accent",
+              collapsed && "pp-sidebar-action--rail"
             )}
           >
-            <Briefcase className="size-4" />
+            <Briefcase className="size-3.5 shrink-0" />
             {!collapsed ? <span>Business dashboard</span> : null}
           </Link>
         ) : null}
@@ -312,7 +305,10 @@ export function PersonalPlanMobileNav({
 
   return (
     <>
-      <nav className="md:hidden fixed bottom-4 left-4 right-4 h-14 pp-glass-panel rounded-full flex items-center justify-around px-1 z-50">
+      <nav
+        className="pp-mobile-nav md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-stretch justify-between gap-1 px-1 pb-[env(safe-area-inset-bottom)] pt-1"
+        aria-label="Personal mobile navigation"
+      >
         {primary.map((item) => {
           const active = isNavActive(item, featureId);
           const Icon = item.icon;
@@ -320,31 +316,32 @@ export function PersonalPlanMobileNav({
             <Link
               key={item.id}
               href={personalPlanNavHref(item, surface)}
-              className={cn(
-                "p-2 rounded-full transition-colors",
-                active ? "text-[var(--pp-primary)]" : "text-[var(--pp-on-surface-variant)]"
-              )}
+              data-active={active}
+              className="pp-mobile-nav-btn"
               aria-label={item.label}
             >
-              <Icon className="size-5" style={active ? { fill: "currentColor", opacity: 0.2 } : undefined} />
+              <Icon className="size-5 shrink-0" aria-hidden />
+              <span className="leading-tight text-center px-0.5">{item.label}</span>
             </Link>
           );
         })}
         <button
           type="button"
           onClick={() => openTransaction()}
-          className="p-2.5 rounded-full bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] -mt-6 shadow-lg"
+          className="pp-mobile-nav-btn pp-mobile-nav-fab max-w-[3.5rem]"
           aria-label="Add transaction"
         >
           <Plus className="size-5" />
+          <span>Add</span>
         </button>
         <button
           type="button"
           onClick={() => setMoreOpen(true)}
-          className="p-2 rounded-full text-[var(--pp-on-surface-variant)]"
+          className="pp-mobile-nav-btn"
           aria-label="More"
         >
           <MoreHorizontal className="size-5" />
+          <span>More</span>
         </button>
       </nav>
       {moreOpen ? (
