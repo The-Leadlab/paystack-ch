@@ -6,6 +6,7 @@ import { useLabLanguage } from "../../context/LabLanguageContext";
 import { usePersonalBudgetLedger } from "../../hooks/usePersonalBudgetLedger";
 import { usePersonalPlan } from "../context/PersonalPlanContext";
 import type { LabLang } from "../../i18n/labStrings";
+import { PersonalSessionsControl } from "./PersonalSessionsControl";
 
 const LANGS: LabLang[] = ["en", "fr", "de", "it"];
 
@@ -61,6 +62,7 @@ export function PersonalPlanHeader({ title }: { title?: string }) {
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
+        <PersonalSessionsControl />
         {switchable && toggleTheme ? (
           <button
             type="button"

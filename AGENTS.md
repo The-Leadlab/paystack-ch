@@ -58,3 +58,5 @@ Password-gated sandbox for competitor-gap features (budgeting, goals, bills, etc
 ### Personal Google Drive
 
 Personal statement uploads (when Drive is connected) go under **`Paystack Documents / Personal / YYYY-MM-DD /`**. Connect from `/personal/overview`. Spec: `docs/PERSONAL_E2E_DRIVE_SUPER_PROMPT.md`. Sample fixtures: `fixtures/personal/`. Seed (needs Admin JSON): `npx tsx scripts/seed-personal-ali-e2e.mjs`.
+
+Personal **Sessions** control (header, next to theme): organize uploads and skip duplicate Drive backups. Full AI fill across tabs: `docs/PERSONAL_AI_SESSIONS_SUPER_PROMPT.md`.

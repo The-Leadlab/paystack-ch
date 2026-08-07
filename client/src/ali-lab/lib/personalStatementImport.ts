@@ -342,7 +342,7 @@ export async function parsePersonalStatementFile(file: File): Promise<PersonalSt
     let aiPreview: PersonalStatementPreview | null = null;
 
     try {
-      const analysis = await analyzeBankStatement(file, "CHF");
+      const analysis = await analyzeBankStatement(file, "CHF", undefined, { preferInline: true });
       aiPreview = draftsFromBankAnalysis(name, analysis);
       if (aiPreview.rows.length) return aiPreview;
       issues.push(...(aiPreview.issues.length ? aiPreview.issues : ["AI returned no transactions."]));

@@ -194,6 +194,14 @@ service cloud.firestore {
       );
       allow create: if createOwnedByUser();
     }
+    /** Personal upload sessions (optional cloud mirror; primary store is IndexedDB). */
+    match /personal_sessions/{id} {
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
+      allow create: if createOwnedByUser();
+    }
 
     /**
      * Membership docs are written by Admin SDK only (invite accept).

@@ -44,6 +44,14 @@ const en: Dict = {
     "When Google Drive is connected, statement files are also saved under Paystack Documents / Personal / date.",
   stmtMonthJumpHint:
     "After import, the month picker jumps to the statement month so totals are not stuck on an empty month.",
+  personalSessions: "Sessions",
+  personalSessionsHint:
+    "Create a session per upload batch. Drive backups skip files already synced in that session.",
+  personalSessionCreate: "New session",
+  personalSessionRename: "Rename",
+  personalSessionNamePrompt: "Session name",
+  personalSessionRenamePrompt: "Rename session",
+  personalSessionDeleteConfirm: "Delete session “{name}”? Imports already saved stay in your ledger.",
   stmtAddTx: "Add transaction",
   stmtEmptyHint: "Upload a statement or add a transaction to populate your personal budget.",
   stmtExplore: "Explore",
@@ -283,6 +291,14 @@ const fr: Dict = {
     "Quand Google Drive est connecté, les relevés sont aussi enregistrés sous Paystack Documents / Personal / date.",
   stmtMonthJumpHint:
     "Après import, le sélecteur de mois passe au mois du relevé pour éviter des totaux à zéro.",
+  personalSessions: "Sessions",
+  personalSessionsHint:
+    "Créez une session par lot d'uploads. Drive ignore les fichiers déjà synchronisés dans cette session.",
+  personalSessionCreate: "Nouvelle session",
+  personalSessionRename: "Renommer",
+  personalSessionNamePrompt: "Nom de la session",
+  personalSessionRenamePrompt: "Renommer la session",
+  personalSessionDeleteConfirm: "Supprimer la session « {name} » ? Les imports restent dans le ledger.",
   stmtAddTx: "Ajouter une transaction",
   stmtEmptyHint: "Importez un relevé ou ajoutez une transaction pour remplir votre budget.",
   stmtExplore: "Explorer",

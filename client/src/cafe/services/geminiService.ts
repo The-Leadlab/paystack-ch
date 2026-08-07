@@ -1573,51 +1573,80 @@ Return JSON only.`;
 export const analyzeBankStatement = async (
   file: File,
   targetCurrency: string = 'CHF',
-  existingStorage?: { fileUrl?: string; storagePath?: string }
+  existingStorage?: { fileUrl?: string; storagePath?: string },
+  options?: { preferInline?: boolean }
 ): Promise<BankStatementAnalysis> => {
-  const storageRef = await ensureDocumentStorageForAi(file, existingStorage);
+  const INLINE_MAX_BYTES = 3_500_000;
+  const preferInline = options?.preferInline === true && file.size > 0 && file.size <= INLINE_MAX_BYTES;
+
+  let storageRef: Awaited<ReturnType<typeof ensureDocumentStorageForAi>> = null;
+  if (!preferInline) {
+    try {
+      storageRef = await ensureDocumentStorageForAi(file, existingStorage);
+    } catch (uploadErr) {
+      // Personal uploads often hit Storage rule/Admin mismatches; continue with inline bytes.
+      console.warn('ensureDocumentStorageForAi failed; using inline Gemini payload:', uploadErr);
+      storageRef = null;
+    }
+  }
+
   const model = resolveBankStatementModel();
+  const prompt = `Extract the full multi-page transaction ledger from this bank statement (${targetCurrency}).
+You MUST extract every transaction you can read: date, description, amount, and whether it is INCOME or EXPENSE.
+Also find opening balance and final balance (solde) when present.
+For Swiss household statements, keep merchant names (Migros, Coop, Swisscom, Serafe, rent/loyer, pillar 3a, etc.).`;
 
-  return withRetry(async () => {
-    const response = await generateGeminiForDocumentFile(
-      file,
-      storageRef,
-      `Extract the full multi-page transaction ledger from this bank statement. You MUST find the opening balance and final balance (solde).`,
-      model,
-      {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            transactions: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  date: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  amount: { type: Type.NUMBER },
-                  type: { type: Type.STRING, enum: ["INCOME", "EXPENSE"] },
-                  category: { type: Type.STRING }
-                },
-                required: ["date", "description", "amount", "type"]
-              }
+  const runOnce = async (ref: typeof storageRef) =>
+    withRetry(async () => {
+      const response = await generateGeminiForDocumentFile(
+        file,
+        ref,
+        prompt,
+        model,
+        {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              transactions: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    date: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    amount: { type: Type.NUMBER },
+                    type: { type: Type.STRING, enum: ["INCOME", "EXPENSE"] },
+                    category: { type: Type.STRING }
+                  },
+                  required: ["date", "description", "amount", "type"]
+                }
+              },
+              calculatedTotalIncome: { type: Type.NUMBER },
+              calculatedTotalExpense: { type: Type.NUMBER },
+              openingBalance: { type: Type.NUMBER },
+              finalBalance: { type: Type.NUMBER },
+              currency: { type: Type.STRING },
+              period: { type: Type.STRING }
             },
-            calculatedTotalIncome: { type: Type.NUMBER },
-            calculatedTotalExpense: { type: Type.NUMBER },
-            openingBalance: { type: Type.NUMBER },
-            finalBalance: { type: Type.NUMBER },
-            currency: { type: Type.STRING },
-            period: { type: Type.STRING }
+            required: ["transactions", "calculatedTotalIncome", "calculatedTotalExpense", "currency"]
           },
-          required: ["transactions", "calculatedTotalIncome", "calculatedTotalExpense", "currency"]
-        },
-        maxOutputTokens: resolveMaxOutputTokens(24576),
-      }
-    );
+          maxOutputTokens: resolveMaxOutputTokens(24576),
+        }
+      );
 
-    const text = response.text;
-    if (!text) throw new Error("Empty response from AI engine");
-    return parseModelJsonResponse<BankStatementAnalysis>(text, "analyze-bank-statement");
-  });
+      const text = response.text;
+      if (!text) throw new Error("Empty response from AI engine");
+      return parseModelJsonResponse<BankStatementAnalysis>(text, "analyze-bank-statement");
+    });
+
+  try {
+    return await runOnce(storageRef);
+  } catch (firstErr) {
+    if (storageRef) {
+      console.warn('Storage-backed bank statement AI failed; retrying inline:', firstErr);
+      return await runOnce(null);
+    }
+    throw firstErr;
+  }
 };

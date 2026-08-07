@@ -86,6 +86,12 @@ export function useAliLabPersist<T extends { id: string }>(
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    const onLab = () => void refresh();
+    window.addEventListener("ali-lab-data-changed", onLab);
+    return () => window.removeEventListener("ali-lab-data-changed", onLab);
+  }, [refresh]);
+
   const add = useCallback(
     async (data: Omit<T, "id">) => {
       if (!canWrite) throw new Error("Read-only access");

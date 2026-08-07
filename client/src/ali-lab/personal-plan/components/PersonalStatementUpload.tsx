@@ -10,7 +10,12 @@ import {
   parsePersonalStatementFile,
   personalStatementTemplateCsv,
 } from "../../lib/personalStatementImport";
+import { enrichPersonalFromStatement } from "../../lib/personalStatementEnrich";
 import { backupPersonalStatementToGoogleDrive } from "../../lib/personalStatementDriveBackup";
+import {
+  ensureDefaultPersonalSession,
+  recordPersonalSessionImport,
+} from "../../lib/personalSessionsStore";
 import { downloadTextFile } from "@/cafe/lib/revenueImport";
 import { formatChfDisplay } from "../formatChfDisplay";
 import { GlassCard } from "./GlassCard";
@@ -22,6 +27,10 @@ import { usePersonalPlan } from "../context/PersonalPlanContext";
 type Props = {
   onImported: (meta?: { month?: string; rowCount?: number }) => void;
 };
+
+function isPermissionError(msg: string): boolean {
+  return /missing or insufficient permissions|permission-denied|permission_denied|unauthorized/i.test(msg);
+}
 
 export function PersonalStatementUpload({ onImported }: Props) {
   const { t } = useLabLanguage();
@@ -78,6 +87,7 @@ export function PersonalStatementUpload({ onImported }: Props) {
     const failures: string[] = [];
     let jumpMonth: string | null = null;
     const ownerUid = workspace?.dataOwnerUid || auth?.currentUser?.uid || undefined;
+    const session = await ensureDefaultPersonalSession();
 
     try {
       for (let i = 0; i < toProcess.length; i += 1) {
@@ -101,25 +111,61 @@ export function PersonalStatementUpload({ onImported }: Props) {
             preview.rows.map((r) => ({ ...r, selected: true }))
           );
           setPhase("saving");
-          const record = ledger.commitStatementCloud
-            ? await ledger.commitStatementCloud(filled, {
-                fileName: preview.fileName,
-                source: preview.source,
-              })
-            : await commitPersonalStatementDrafts(filled, {
+
+          let record;
+          try {
+            record = ledger.commitStatementCloud
+              ? await ledger.commitStatementCloud(filled, {
+                  fileName: preview.fileName,
+                  source: preview.source,
+                })
+              : await commitPersonalStatementDrafts(filled, {
+                  fileName: preview.fileName,
+                  source: preview.source,
+                });
+          } catch (commitErr) {
+            const msg = commitErr instanceof Error ? commitErr.message : String(commitErr);
+            if (isPermissionError(msg)) {
+              record = await commitPersonalStatementDrafts(filled, {
                 fileName: preview.fileName,
                 source: preview.source,
               });
+              toast.message("Saved on this device (cloud sync blocked by permissions).");
+            } else {
+              throw commitErr;
+            }
+          }
+
           totalRows += record.rowCount;
           totalIncome += record.incomeTotal;
           totalExpense += record.expenseTotal;
           const monthKey = dominantMonthFromDrafts(filled);
           if (monthKey) jumpMonth = monthKey;
+
+          await recordPersonalSessionImport(session.id, record.id);
           await incrementPersonalDocumentUsage();
+
+          const enrich = await enrichPersonalFromStatement(ownerUid, filled, {
+            month: monthKey || undefined,
+          });
+          if (enrich.billsAdded || enrich.goalsAdded || enrich.holdingsAdded || enrich.budgetsTouched) {
+            toast.success(
+              `AI filled · bills +${enrich.billsAdded} · goals +${enrich.goalsAdded} · investments +${enrich.holdingsAdded} · budgets +${enrich.budgetsTouched}`
+            );
+            window.dispatchEvent(new Event("ali-lab-data-changed"));
+          }
+
           const statementDate =
             filled.find((r) => r.selected && /^\d{4}-\d{2}-\d{2}/.test(r.date))?.date ||
             new Date().toISOString().slice(0, 10);
-          void backupPersonalStatementToGoogleDrive(file, ownerUid, { documentDate: statementDate });
+          const driveStatus = await backupPersonalStatementToGoogleDrive(file, ownerUid, {
+            documentDate: statementDate,
+            sessionId: session.id,
+          });
+          if (driveStatus === "skipped-duplicate") {
+            toast.message("Google Drive: file already backed up in this session.");
+          }
+
           ledger.bump();
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
