@@ -221,7 +221,7 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
   const totalAnnual = upcoming.reduce((s, b) => s + b.annualChf, 0);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" data-tour="panel-bills">
       <GlassCard className="p-4 flex flex-wrap items-center gap-3">
         <Receipt className="size-5 text-[var(--pp-primary)] shrink-0" />
         <p className="text-sm">

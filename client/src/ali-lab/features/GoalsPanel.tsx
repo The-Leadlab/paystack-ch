@@ -116,7 +116,7 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" data-tour="panel-goals">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <GlassCard className="px-4 py-2 text-xs text-[var(--pp-on-surface-variant)]">
           {t("goalsSurplusLabel")}:{" "}

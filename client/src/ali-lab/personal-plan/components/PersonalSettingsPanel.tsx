@@ -39,7 +39,7 @@ export function PersonalSettingsPanel() {
   const used = Math.max(ledger.totalImportCount, personalDocumentsUsedThisMonth);
 
   return (
-    <div className="space-y-5 max-w-2xl">
+    <div className="space-y-5 max-w-2xl" data-tour="panel-settings">
       <GlassCard className="p-4 space-y-3">
         <p className="text-sm font-semibold">Sessions</p>
         <p className="text-[11px] text-[var(--pp-on-surface-variant)]">
@@ -112,10 +112,17 @@ export function PersonalSettingsPanel() {
           <p className="text-sm font-semibold">Help</p>
           <button
             type="button"
-            onClick={() => requestProductTour(PERSONAL_TOUR_DONE_KEY)}
+            onClick={() => requestProductTour(PERSONAL_TOUR_DONE_KEY, "short")}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--pp-outline-variant)] text-xs font-bold hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)]"
           >
-            Restart product tour
+            Restart short tour
+          </button>
+          <button
+            type="button"
+            onClick={() => requestProductTour(PERSONAL_TOUR_DONE_KEY, "long")}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--pp-outline-variant)] text-xs font-bold hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)]"
+          >
+            Restart long tour
           </button>
           <button
             type="button"

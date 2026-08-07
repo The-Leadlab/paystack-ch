@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import "../personalPlan.css";
 import { PersonalPlanProvider } from "../context/PersonalPlanContext";
 import { PersonalPlanHeader } from "./PersonalPlanHeader";
@@ -20,10 +21,14 @@ import {
 } from "@/components/onboarding/OnboardingStepShell";
 import {
   PERSONAL_TOUR_DONE_KEY,
-  PERSONAL_TOUR_STEPS,
+  PERSONAL_TOUR_LENGTH_KEY,
   ProductTourOverlay,
+  shouldForceProductGuides,
+  type TourLength,
+  type TourNavigate,
   useProductTour,
 } from "@/components/product-tour";
+import { useAuth } from "@/cafe/context/AuthContext";
 import { cn } from "@/lib/utils";
 
 function PersonalPlanShellInner({
@@ -40,20 +45,47 @@ function PersonalPlanShellInner({
   children: ReactNode;
 }) {
   const personalHome = personalAppHomePath();
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  const forceGuides = shouldForceProductGuides(user?.email);
   const { collapsed, toggle } = usePersistedSidebarCollapsed(PERSONAL_SIDEBAR_COLLAPSED_KEY);
   const [showOnboarding, setShowOnboarding] = useState(
-    () => surface === "app" && !readOnboardingDone(PERSONAL_ONBOARDING_KEY)
+    () => surface === "app" && (forceGuides || !readOnboardingDone(PERSONAL_ONBOARDING_KEY))
   );
+
+  useEffect(() => {
+    if (surface === "app" && shouldForceProductGuides(user?.email)) {
+      setShowOnboarding(true);
+    }
+  }, [user?.email, surface]);
+
+  const onNavigate = useCallback(
+    (nav: TourNavigate) => {
+      if (nav.kind === "personal-path") setLocation(nav.path);
+    },
+    [setLocation]
+  );
+
   const tour = useProductTour({
     storageKey: PERSONAL_TOUR_DONE_KEY,
-    steps: PERSONAL_TOUR_STEPS,
+    lengthKey: PERSONAL_TOUR_LENGTH_KEY,
+    surface: "personal",
     enabled: surface === "app" && !showOnboarding,
+    force: forceGuides,
     autoStartDelayMs: 800,
+    onNavigate,
   });
+
+  const handleOnboardingDone = (length: TourLength) => {
+    setShowOnboarding(false);
+    if (length === "short" || length === "long") {
+      window.setTimeout(() => tour.start(length), 400);
+    }
+  };
 
   return (
     <div className="personal-plan-shell">
-      {showOnboarding ? <PersonalOnboardingWizard onDone={() => setShowOnboarding(false)} /> : null}
+      {showOnboarding ? <PersonalOnboardingWizard onDone={handleOnboardingDone} /> : null}
       {tour.active && tour.current ? (
         <ProductTourOverlay
           step={tour.current}

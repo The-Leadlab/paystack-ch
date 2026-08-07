@@ -54,9 +54,12 @@ import {
 } from '@/components/onboarding/OnboardingStepShell';
 import {
   BUSINESS_TOUR_DONE_KEY,
-  BUSINESS_TOUR_STEPS,
+  BUSINESS_TOUR_LENGTH_KEY,
   ProductTourOverlay,
   requestProductTour,
+  shouldForceProductGuides,
+  type TourLength,
+  type TourNavigate,
   useProductTour,
 } from '@/components/product-tour';
 
@@ -186,15 +189,39 @@ export function RestaurantDashboard() {
   const [showSidebar, setShowSidebar] = useState(false);
   const { collapsed: sidebarCollapsed, toggle: toggleSidebarCollapsed } =
     usePersistedSidebarCollapsed(BUSINESS_SIDEBAR_COLLAPSED_KEY);
+  const forceGuides = shouldForceProductGuides(user?.email);
   const [showBusinessOnboarding, setShowBusinessOnboarding] = useState(
-    () => !readOnboardingDone(BUSINESS_ONBOARDING_KEY)
+    () => forceGuides || !readOnboardingDone(BUSINESS_ONBOARDING_KEY)
   );
+
+  useEffect(() => {
+    if (shouldForceProductGuides(user?.email)) {
+      setShowBusinessOnboarding(true);
+    }
+  }, [user?.email]);
+
+  const onTourNavigate = useCallback((nav: TourNavigate) => {
+    if (nav.kind === 'biz-tab') {
+      setActiveTab(nav.tab as BusinessTab);
+    }
+  }, []);
+
   const businessTour = useProductTour({
     storageKey: BUSINESS_TOUR_DONE_KEY,
-    steps: BUSINESS_TOUR_STEPS,
+    lengthKey: BUSINESS_TOUR_LENGTH_KEY,
+    surface: 'business',
     enabled: !showBusinessOnboarding,
+    force: forceGuides,
     autoStartDelayMs: 900,
+    onNavigate: onTourNavigate,
   });
+
+  const handleBusinessOnboardingDone = (length: TourLength) => {
+    setShowBusinessOnboarding(false);
+    if (length === 'short' || length === 'long') {
+      window.setTimeout(() => businessTour.start(length), 400);
+    }
+  };
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [showAddIncome, setShowAddIncome] = useState(false);
   const [showAddExpense, setShowAddExpense] = useState(false);
@@ -747,7 +774,7 @@ export function RestaurantDashboard() {
   return (
     <div className="ba-v3 min-h-[100dvh] min-h-screen bg-cdlp-dark flex flex-col touch-manipulation overscroll-y-contain">
       {showBusinessOnboarding ? (
-        <BusinessOnboardingWizard onDone={() => setShowBusinessOnboarding(false)} />
+        <BusinessOnboardingWizard onDone={handleBusinessOnboardingDone} />
       ) : null}
       {businessTour.active && businessTour.current ? (
         <ProductTourOverlay
@@ -817,7 +844,7 @@ export function RestaurantDashboard() {
         ba-sidebar fixed md:relative inset-y-0 left-0 z-50 bg-cdlp-black border-r border-cdlp-border flex flex-col
         h-[100dvh] max-h-[100dvh] transform transition-transform duration-300 ease-in-out
         ${showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        ${sidebarCollapsed ? 'ba-sidebar--rail' : ''}
+        ${sidebarCollapsed ? 'ba-sidebar--rail ba-sidebar--collapsed' : ''}
       `}
       >
         {/* Desktop: logo + nav */}
@@ -884,7 +911,7 @@ export function RestaurantDashboard() {
           {!sidebarCollapsed ? (
             <button
               type="button"
-              onClick={() => requestProductTour(BUSINESS_TOUR_DONE_KEY)}
+              onClick={() => requestProductTour(BUSINESS_TOUR_DONE_KEY, 'short')}
               className="ba-sidebar-action-btn"
             >
               Restart tour
@@ -1111,7 +1138,7 @@ export function RestaurantDashboard() {
       {/* Main Content */}
       <main
         id="main-dashboard-content"
-        className="flex-1 flex flex-col overflow-hidden"
+        className="flex-1 min-w-0 flex flex-col overflow-hidden"
         aria-label={t('financialDashboard')}
       >
         {/* Tab Content */}
@@ -1154,15 +1181,35 @@ export function RestaurantDashboard() {
             />
           )}
           {activeTab === 'revenue' && showRevenueTab ? (
-            <POSManager onNavigateTab={switchTab} onNavigateToDocument={handleNavigateToDocument} />
+            <div data-tour="biz-revenue-panel">
+              <POSManager onNavigateTab={switchTab} onNavigateToDocument={handleNavigateToDocument} />
+            </div>
           ) : null}
           {activeTab === 'expenses' && showRevenueTab ? (
-            <ExpensesManager onNavigateTab={switchTab} onNavigateToDocument={handleNavigateToDocument} />
+            <div data-tour="biz-expenses-panel">
+              <ExpensesManager onNavigateTab={switchTab} onNavigateToDocument={handleNavigateToDocument} />
+            </div>
           ) : null}
-          {activeTab === 'invoices' && <InvoiceMakerPanel />}
-          {activeTab === 'reports' && <ReportsPlaceholder />}
-          {activeTab === 'documents' && <DocumentsTab selectedDocument={selectedDocumentFromFinance} onClearSelection={() => setSelectedDocumentFromFinance(null)} />}
-          {activeTab === 'billing' ? <BillingPlanPanel onDriveSync={syncFromGoogleDrive} /> : null}
+          {activeTab === 'invoices' && (
+            <div data-tour="biz-invoices-panel">
+              <InvoiceMakerPanel />
+            </div>
+          )}
+          {activeTab === 'reports' && (
+            <div data-tour="biz-reports-panel">
+              <ReportsPlaceholder />
+            </div>
+          )}
+          {activeTab === 'documents' && (
+            <div data-tour="biz-documents-panel">
+              <DocumentsTab selectedDocument={selectedDocumentFromFinance} onClearSelection={() => setSelectedDocumentFromFinance(null)} />
+            </div>
+          )}
+          {activeTab === 'billing' ? (
+            <div data-tour="biz-billing-panel">
+              <BillingPlanPanel onDriveSync={syncFromGoogleDrive} />
+            </div>
+          ) : null}
         </div>
       </main>
 
@@ -1842,7 +1889,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           n.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         return (
           <>
-            <div className="ba-kpi-grid-4">
+            <div className="ba-kpi-grid-4" data-tour="biz-dashboard-kpi">
               <BusinessKpiCard
                 label={t('income')}
                 value={fmtKpi(totalIncome)}
@@ -1873,7 +1920,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
               />
             </div>
 
-            <div className="ba-kpi-grid-3">
+            <div className="ba-kpi-grid-3" data-tour="biz-dashboard-vat">
               <BusinessKpiCard
                 label={t('vatReceivedLabel')}
                 value={fmtKpi(vatReceived)}
@@ -1910,10 +1957,11 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
         </div>
       )}
       {currentSession && (
-        <div className="space-y-2">
+        <div className="space-y-2" data-tour="biz-dashboard-docs">
           <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"
+              data-tour="biz-sync-ledger"
               onClick={() => void onResyncLedger?.()}
               className="text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded border border-cdlp-border text-cdlp-muted hover:text-cdlp-gold hover:border-cdlp-gold transition-colors"
               title={t('dashResyncLedgerHint') || 'Rebuild income/expenses from completed documents'}

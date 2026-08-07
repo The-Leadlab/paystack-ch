@@ -96,7 +96,7 @@ export function ForecastingPanel({ feature: _feature }: { feature: AliLabFeature
   }, [points, summary, startBalance]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" data-tour="panel-forecasting">
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         <section className="xl:col-span-9 space-y-6">
           <GlassCard panel className="p-5 md:p-8 relative overflow-hidden">

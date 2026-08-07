@@ -383,7 +383,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" data-tour="panel-budgeting">
       <div className="flex flex-wrap gap-2 items-center text-xs">
         <select
           className="pp-input rounded px-2 py-1"

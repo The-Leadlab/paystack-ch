@@ -2828,6 +2828,7 @@ export const DocumentProcessor: React.FC<{
   return (
     <div 
       className="space-y-6"
+      data-tour="biz-doc-processor"
       onDragEnter={(e) => { e.preventDefault(); dragCounter.current++; setIsDragging(true); }}
       onDragOver={(e) => e.preventDefault()}
       onDragLeave={() => { dragCounter.current--; if (dragCounter.current === 0) setIsDragging(false); }}
@@ -2855,6 +2856,7 @@ export const DocumentProcessor: React.FC<{
         <label
           className={`ba-upload-zone w-full mb-4 ${documentLimitReached ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
           data-drag={isDragging && !documentLimitReached}
+          data-tour="biz-doc-upload"
         >
           {documentLimitReached ? <Ban className="w-6 h-6 text-red-400" /> : <Upload className="w-6 h-6 text-cdlp-muted" />}
           <span className="text-xs font-bold uppercase tracking-wider">

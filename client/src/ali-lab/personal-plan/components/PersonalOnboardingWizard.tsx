@@ -13,29 +13,43 @@ import {
   fetchGoogleDriveStatus,
 } from "@/cafe/lib/googleDriveClient";
 import { personalAppHomePath } from "@/ali-lab/personal-plan/personalPlanNav";
+import {
+  PERSONAL_TOUR_DONE_KEY,
+  PERSONAL_TOUR_LENGTH_KEY,
+  type TourLength,
+  writeTourDone,
+  writeTourLength,
+} from "@/components/product-tour";
 
 type Goal = "save" | "track" | "both" | null;
 
-const STEPS = 5;
+const STEPS = 6;
 
-export function PersonalOnboardingWizard({ onDone }: { onDone: () => void }) {
+export function PersonalOnboardingWizard({
+  onDone,
+}: {
+  onDone: (tourLength: TourLength) => void;
+}) {
   const { openInvite, surface } = usePersonalPlan();
   const [step, setStep] = useState(0);
   const [goal, setGoal] = useState<Goal>(null);
   const [busy, setBusy] = useState(false);
   const [driveConnected, setDriveConnected] = useState(false);
+  const [tourLength, setTourLength] = useState<TourLength | null>(null);
 
-  const finish = () => {
+  const finish = (length: TourLength) => {
     try {
       window.localStorage.setItem(
         PERSONAL_ONBOARDING_PREFS_KEY,
-        JSON.stringify({ goal, driveConnected, at: new Date().toISOString() })
+        JSON.stringify({ goal, driveConnected, tourLength: length, at: new Date().toISOString() })
       );
     } catch {
       /* ignore */
     }
+    writeTourLength(PERSONAL_TOUR_LENGTH_KEY, length);
+    if (length === "skip") writeTourDone(PERSONAL_TOUR_DONE_KEY);
     writeOnboardingDone(PERSONAL_ONBOARDING_KEY);
-    onDone();
+    onDone(length);
   };
 
   const connectDrive = async () => {
@@ -63,7 +77,7 @@ export function PersonalOnboardingWizard({ onDone }: { onDone: () => void }) {
         subtitle="Set up your household money view in a minute — or skip and explore."
         primaryLabel="Continue"
         onPrimary={() => setStep(1)}
-        onSkip={finish}
+        onSkip={() => finish("skip")}
       >
         <p className="text-xs text-white/50">Bank statements, budgets, and goals stay separate from Business.</p>
       </OnboardingStepShell>
@@ -79,7 +93,7 @@ export function PersonalOnboardingWizard({ onDone }: { onDone: () => void }) {
         primaryLabel="Continue"
         primaryDisabled={!goal}
         onPrimary={() => setStep(2)}
-        onSkip={finish}
+        onSkip={() => finish("skip")}
       >
         <div className="space-y-2">
           <ChoiceCard
@@ -147,19 +161,54 @@ export function PersonalOnboardingWizard({ onDone }: { onDone: () => void }) {
       </OnboardingStepShell>
     );
   }
+  if (step === 4) {
+    return (
+      <OnboardingStepShell
+        stepIndex={4}
+        stepCount={STEPS}
+        title="Upload a bank statement"
+        subtitle="CSV or PDF on Overview — AI fills categories when available."
+        primaryLabel="Continue"
+        onPrimary={() => setStep(5)}
+        onSkip={() => setStep(5)}
+      >
+        <div className="rounded-xl border border-white/15 px-4 py-3 flex items-center gap-3 text-sm">
+          <Upload className="size-5 text-white/70" />
+          You can upload anytime from Overview.
+        </div>
+      </OnboardingStepShell>
+    );
+  }
   return (
     <OnboardingStepShell
-      stepIndex={4}
+      stepIndex={5}
       stepCount={STEPS}
-      title="Upload a bank statement"
-      subtitle="CSV or PDF on Overview — AI fills categories when available."
-      primaryLabel="Go to Overview"
-      onPrimary={finish}
-      onSkip={finish}
+      title="Product tour?"
+      subtitle="Short covers the essentials. Long walks every tab and key features inside."
+      primaryLabel={tourLength === "skip" ? "Open Overview" : "Start tour"}
+      primaryDisabled={!tourLength}
+      onPrimary={() => finish(tourLength || "short")}
+      onSkip={() => finish("skip")}
     >
-      <div className="rounded-xl border border-white/15 px-4 py-3 flex items-center gap-3 text-sm">
-        <Upload className="size-5 text-white/70" />
-        You can upload anytime from Overview.
+      <div className="space-y-2">
+        <ChoiceCard
+          selected={tourLength === "short"}
+          title="Short tutorial"
+          description="Overview, upload, Budget, Settings, sidebar (~1 min)"
+          onClick={() => setTourLength("short")}
+        />
+        <ChoiceCard
+          selected={tourLength === "long"}
+          title="Long tutorial"
+          description="Each tab and the main features inside"
+          onClick={() => setTourLength("long")}
+        />
+        <ChoiceCard
+          selected={tourLength === "skip"}
+          title="No tutorial"
+          description="Go straight to Overview — you can restart later in Settings"
+          onClick={() => setTourLength("skip")}
+        />
       </div>
     </OnboardingStepShell>
   );
