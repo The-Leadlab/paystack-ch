@@ -1,0 +1,41 @@
+%PDF-1.4
+1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj
+2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj
+3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>endobj
+4 0 obj<< /Length 830 >>stream
+BT
+/F1 11 Tf
+50 780 Td
+14 TL
+(UBS Personal Account Statement) Tj
+T* (Account: CH93 0076 2011 6238 5295 7) Tj
+T* (Period: 01.07.2026 - 31.07.2026) Tj
+T* (Currency: CHF) Tj
+T* () Tj
+T* (Date        Description                    Amount) Tj
+T* (01.07.2026  Salary ACME SA                 5200.00) Tj
+T* (03.07.2026  Migros groceries                -86.40) Tj
+T* (05.07.2026  Swisscom bill                   -69.90) Tj
+T* (08.07.2026  Coop Lausanne                   -54.20) Tj
+T* (10.07.2026  Rent loft Geneva              -1850.00) Tj
+T* (12.07.2026  Serafe media fee                -25.00) Tj
+T* (15.07.2026  Dividend Swissquote             120.50) Tj
+T* (18.07.2026  Uber Eats                       -32.80) Tj
+T* (22.07.2026  Pillar 3a VIAC                 -200.00) Tj
+T* (28.07.2026  Family gift contribution        150.00) Tj
+ET
+endstream
+endobj
+5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000056 00000 n 
+0000000111 00000 n 
+0000000235 00000 n 
+0000001114 00000 n 
+trailer<< /Size 6 /Root 1 0 R >>
+startxref
+1180
+%%EOF
