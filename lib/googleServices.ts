@@ -15,6 +15,9 @@ const GOOGLE_DRIVE_SCOPE =
   "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly";
 const GOOGLE_DRIVE_FOLDER_NAME = "Paystack Documents";
 const GOOGLE_DRIVE_UNCATEGORIZED_FOLDER_NAME = "Uncategorised";
+const GOOGLE_DRIVE_PERSONAL_FOLDER_NAME = "Personal";
+
+export type DriveWorkspace = "business" | "personal";
 
 export type GoogleServicesResult =
   | { status: number; redirectUrl: string }
@@ -86,7 +89,23 @@ function resolveGoogleDriveRedirectUri(): string {
 
 const STATE_TTL_MS = 10 * 60 * 1000;
 
-export type OAuthState = { uid: string; nonce: string; expiresAt: number };
+export type OAuthState = { uid: string; nonce: string; expiresAt: number; returnPath?: string };
+
+/** Safe in-app path for post-OAuth redirect (personal Overview, billing, etc.). */
+export function sanitizeOAuthReturnPath(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const path = raw.trim();
+  if (!path.startsWith("/") || path.startsWith("//") || path.includes("://")) return undefined;
+  if (path.length > 200 || /[\s<>"]/.test(path)) return undefined;
+  return path.split("?")[0] || undefined;
+}
+
+/** Calendar date folder under Personal/ — YYYY-MM-DD from document date or upload day. */
+export function computePersonalDateFolderName(date: Date = new Date()): string {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+}
 
 function stateSigningSecret(): string {
   const secret = process.env.GOOGLE_DRIVE_STATE_SECRET?.trim();
@@ -100,11 +119,13 @@ function stateSigningSecret(): string {
 }
 
 /** HMAC-signed so a forged or tampered state (e.g. claiming another user's uid) is rejected. */
-export function createOAuthState(uid: string): string {
+export function createOAuthState(uid: string, returnPath?: string): string {
+  const safeReturn = sanitizeOAuthReturnPath(returnPath);
   const payload = JSON.stringify({
     uid,
     nonce: nanoid(),
     expiresAt: Date.now() + STATE_TTL_MS,
+    ...(safeReturn ? { returnPath: safeReturn } : {}),
   } satisfies OAuthState);
   const sig = createHmac("sha256", stateSigningSecret()).update(payload).digest("base64url");
   return Buffer.from(JSON.stringify({ payload, sig }), "utf8").toString("base64url");
@@ -132,11 +153,13 @@ export function decodeOAuthState(state: string): OAuthState {
   if (!inner.uid || !inner.nonce || typeof inner.expiresAt !== "number") throw invalid();
   if (inner.expiresAt < Date.now()) throw invalid();
 
-  return inner;
+  const returnPath = sanitizeOAuthReturnPath(inner.returnPath);
+  return returnPath ? { ...inner, returnPath } : { uid: inner.uid, nonce: inner.nonce, expiresAt: inner.expiresAt };
 }
 
 export async function startGoogleDriveOAuth(
-  authorization: string | undefined
+  authorization: string | undefined,
+  body?: { returnPath?: unknown }
 ): Promise<GoogleServicesResult> {
   let uid: string;
   try {
@@ -154,7 +177,10 @@ export async function startGoogleDriveOAuth(
     authUrl.searchParams.set("scope", GOOGLE_DRIVE_SCOPE);
     authUrl.searchParams.set("access_type", "offline");
     authUrl.searchParams.set("prompt", "consent");
-    authUrl.searchParams.set("state", createOAuthState(uid));
+    authUrl.searchParams.set(
+      "state",
+      createOAuthState(uid, sanitizeOAuthReturnPath(body?.returnPath))
+    );
 
     return { status: 302, redirectUrl: authUrl.toString() };
   } catch (error) {
@@ -285,6 +311,9 @@ async function resetDriveFolderCaches(
   const googleDrive: Record<string, unknown> = {
     weekFolders: FieldValue.delete(),
     uncategorizedFolderId: FieldValue.delete(),
+    personalFolderId: FieldValue.delete(),
+    personalDateFolders: FieldValue.delete(),
+    personalUncategorizedFolderId: FieldValue.delete(),
   };
   if (next?.folderId) googleDrive.folderId = next.folderId;
   if (next?.clearUploadedDocuments) googleDrive.uploadedDocuments = FieldValue.delete();
@@ -427,6 +456,9 @@ export type GoogleDriveConnection = {
   uploadedDocuments: Record<string, unknown>;
   weekFolders: Record<string, string>;
   uncategorizedFolderId: string | null;
+  personalFolderId: string | null;
+  personalDateFolders: Record<string, string>;
+  personalUncategorizedFolderId: string | null;
 };
 
 /** An already-uploaded document's Drive file id, plus whether it was filed into its correct week
@@ -466,6 +498,9 @@ async function getGoogleDriveConnection(uid: string): Promise<GoogleDriveConnect
             uploadedDocuments?: unknown;
             weekFolders?: unknown;
             uncategorizedFolderId?: unknown;
+            personalFolderId?: unknown;
+            personalDateFolders?: unknown;
+            personalUncategorizedFolderId?: unknown;
           };
         }
       | undefined
@@ -484,6 +519,14 @@ async function getGoogleDriveConnection(uid: string): Promise<GoogleDriveConnect
   for (const [key, value] of Object.entries(weekFoldersRaw)) {
     if (typeof value === "string") weekFolders[key] = value;
   }
+  const personalDateRaw =
+    googleDrive.personalDateFolders && typeof googleDrive.personalDateFolders === "object"
+      ? (googleDrive.personalDateFolders as Record<string, unknown>)
+      : {};
+  const personalDateFolders: Record<string, string> = {};
+  for (const [key, value] of Object.entries(personalDateRaw)) {
+    if (typeof value === "string") personalDateFolders[key] = value;
+  }
 
   return {
     refreshToken: googleDrive.refreshToken,
@@ -492,6 +535,12 @@ async function getGoogleDriveConnection(uid: string): Promise<GoogleDriveConnect
     weekFolders,
     uncategorizedFolderId:
       typeof googleDrive.uncategorizedFolderId === "string" ? googleDrive.uncategorizedFolderId : null,
+    personalFolderId: typeof googleDrive.personalFolderId === "string" ? googleDrive.personalFolderId : null,
+    personalDateFolders,
+    personalUncategorizedFolderId:
+      typeof googleDrive.personalUncategorizedFolderId === "string"
+        ? googleDrive.personalUncategorizedFolderId
+        : null,
   };
 }
 
@@ -553,9 +602,11 @@ export type DriveUploadFile = {
    * so a retried/duplicated request doesn't create a second copy in Drive. */
   sourceId: string;
   /** The document's own date, as extracted by AI processing (ISO or Swiss/European format).
-   * When present and parseable, the upload is filed directly into that week's subfolder;
-   * otherwise it lands in the "Uncategorised" folder. */
+   * Business: week subfolder when parseable, else Uncategorised.
+   * Personal: Personal/{YYYY-MM-DD}/ using document date or upload day. */
   documentDate?: string;
+  /** Default business (week folders). Personal → Paystack Documents/Personal/{date}/. */
+  workspace?: DriveWorkspace;
 };
 
 async function uploadFileToDrive(accessToken: string, folderId: string, file: DriveUploadFile): Promise<string> {
@@ -617,12 +668,13 @@ export async function saveDocumentToDrive(
       return { status: 200, json: { skipped: true } };
     }
 
+    const workspace: DriveWorkspace = file.workspace === "personal" ? "personal" : "business";
     const parsedDate = file.documentDate ? parseDocumentDate(file.documentDate) : null;
     const hasValidDate = parsedDate !== null && !Number.isNaN(parsedDate.getTime());
 
     const existing = normalizeUploadedDocumentEntry(connection.uploadedDocuments[driveUploadKey(file.sourceId)]);
     if (existing) {
-      if (existing.categorized || !hasValidDate) {
+      if (workspace === "personal" || existing.categorized || !hasValidDate) {
         return { status: 200, json: { uploaded: true, fileId: existing.fileId, alreadyUploaded: true } };
       }
       // A previous attempt backed this up before a date was known (processing had failed, or no
@@ -672,19 +724,16 @@ export async function saveDocumentToDrive(
 
     let accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
     let rootFolderId = await ensureValidRootFolder(uid, accessToken, connection.folderId);
-    const weekName = hasValidDate ? computeWeekFolderName(parsedDate as Date) : null;
 
     const uploadOnce = async (token: string, rootId: string) => {
-      const targetFolderId =
-        weekName != null
-          ? await getOrCreateWeekFolder(
-              uid,
-              token,
-              rootId,
-              weekName,
-              connection.weekFolders[driveUploadKey(weekName)]
-            )
-          : await getOrCreateUncategorizedFolder(uid, token, rootId, connection.uncategorizedFolderId);
+      const targetFolderId = await resolveDriveUploadFolder(
+        uid,
+        token,
+        rootId,
+        connection,
+        workspace,
+        hasValidDate ? (parsedDate as Date) : null
+      );
       return uploadFileToDrive(token, targetFolderId, file);
     };
 
@@ -693,24 +742,39 @@ export async function saveDocumentToDrive(
       fileId = await uploadOnce(accessToken, rootFolderId);
     } catch (error) {
       if ((error as { status?: number }).status === 401) {
-        // Access token expired/invalid between issuance and use: fetch a fresh one and retry
-        // exactly once. A second 401 (or invalid_grant) propagates to the outer catch rather than looping.
         accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
         rootFolderId = await ensureValidRootFolder(uid, accessToken, rootFolderId);
         fileId = await uploadOnce(accessToken, rootFolderId);
       } else if (isDriveNotFoundError(error)) {
-        // User deleted the Drive folder (or a week subfolder). Recreate root + caches, retry once.
         accessToken = await refreshAccessTokenOrMarkDisconnected(uid, connection.refreshToken);
         rootFolderId = await ensureValidRootFolder(uid, accessToken, null);
         connection.weekFolders = {};
         connection.uncategorizedFolderId = null;
+        connection.personalFolderId = null;
+        connection.personalDateFolders = {};
+        connection.personalUncategorizedFolderId = null;
         fileId = await uploadOnce(accessToken, rootFolderId);
       } else {
         throw error;
       }
     }
-    await recordDriveUpload(uid, file.sourceId, fileId, hasValidDate);
-    return { status: 200, json: { uploaded: true, fileId } };
+    const categorized = workspace === "personal" ? true : hasValidDate;
+    await recordDriveUpload(uid, file.sourceId, fileId, categorized);
+    return {
+      status: 200,
+      json: {
+        uploaded: true,
+        fileId,
+        workspace,
+        ...(workspace === "personal"
+          ? {
+              personalPath: `Personal/${computePersonalDateFolderName(
+                hasValidDate && parsedDate ? parsedDate : new Date()
+              )}`,
+            }
+          : {}),
+      },
+    };
   } catch (error) {
     const status = (error as { status?: number }).status || 400;
     return { status, json: { error: (error as Error).message } };
@@ -757,6 +821,92 @@ async function findDriveFolderByName(
     });
   }
   return data.files?.[0]?.id ?? null;
+}
+
+async function recordPersonalFolderId(uid: string, folderId: string): Promise<void> {
+  ensureFirebaseAdmin();
+  await getFirestore()
+    .collection("users")
+    .doc(uid)
+    .set({ googleDrive: { personalFolderId: folderId } }, { merge: true });
+}
+
+async function recordPersonalDateFolder(uid: string, dateName: string, folderId: string): Promise<void> {
+  ensureFirebaseAdmin();
+  await getFirestore()
+    .collection("users")
+    .doc(uid)
+    .set(
+      { googleDrive: { personalDateFolders: { [driveUploadKey(dateName)]: folderId } } },
+      { merge: true }
+    );
+}
+
+/** Paystack Documents / Personal — shared root for all personal statement backups. */
+async function getOrCreatePersonalFolder(
+  uid: string,
+  accessToken: string,
+  rootFolderId: string,
+  cachedFolderId?: string | null
+): Promise<string> {
+  if (cachedFolderId) return cachedFolderId;
+  const existing = await findDriveFolderByName(accessToken, GOOGLE_DRIVE_PERSONAL_FOLDER_NAME, rootFolderId);
+  const folderId =
+    existing ?? (await createDriveFolder(accessToken, GOOGLE_DRIVE_PERSONAL_FOLDER_NAME, rootFolderId));
+  await recordPersonalFolderId(uid, folderId);
+  return folderId;
+}
+
+async function getOrCreatePersonalDateFolder(
+  uid: string,
+  accessToken: string,
+  personalFolderId: string,
+  dateName: string,
+  cachedFolderId?: string | null
+): Promise<string> {
+  if (cachedFolderId) return cachedFolderId;
+  const existing = await findDriveFolderByName(accessToken, dateName, personalFolderId);
+  const folderId = existing ?? (await createDriveFolder(accessToken, dateName, personalFolderId));
+  await recordPersonalDateFolder(uid, dateName, folderId);
+  return folderId;
+}
+
+async function resolveDriveUploadFolder(
+  uid: string,
+  accessToken: string,
+  rootFolderId: string,
+  connection: GoogleDriveConnection,
+  workspace: DriveWorkspace,
+  documentDate: Date | null
+): Promise<string> {
+  if (workspace === "personal") {
+    const personalRootId = await getOrCreatePersonalFolder(
+      uid,
+      accessToken,
+      rootFolderId,
+      connection.personalFolderId
+    );
+    const dateName = computePersonalDateFolderName(documentDate ?? new Date());
+    return getOrCreatePersonalDateFolder(
+      uid,
+      accessToken,
+      personalRootId,
+      dateName,
+      connection.personalDateFolders[driveUploadKey(dateName)]
+    );
+  }
+
+  if (documentDate) {
+    const weekName = computeWeekFolderName(documentDate);
+    return getOrCreateWeekFolder(
+      uid,
+      accessToken,
+      rootFolderId,
+      weekName,
+      connection.weekFolders[driveUploadKey(weekName)]
+    );
+  }
+  return getOrCreateUncategorizedFolder(uid, accessToken, rootFolderId, connection.uncategorizedFolderId);
 }
 
 async function getWeekFolderId(uid: string, weekName: string): Promise<string | null> {
@@ -872,6 +1022,8 @@ export type SaveUploadedDocumentRequest = {
   fileUrl?: unknown;
   filename?: unknown;
   mimeType?: unknown;
+  workspace?: unknown;
+  documentDate?: unknown;
 };
 
 /** Called right after a document lands in Firebase Storage — fetches those same bytes and
@@ -905,8 +1057,17 @@ export async function saveUploadedDocumentToDrive(
     const { bytes, mimeType: fetchedMime } = await fetchStorageBytes(fileUrl, MAX_STORAGE_UPLOAD_BYTES);
     const mimeType =
       (typeof body.mimeType === "string" && body.mimeType.trim()) || fetchedMime || "application/octet-stream";
+    const workspace = body.workspace === "personal" ? "personal" : "business";
+    const documentDate = typeof body.documentDate === "string" ? body.documentDate.trim() : "";
 
-    return await saveDocumentToDrive(uid, { bytes, filename, mimeType, sourceId: storagePath });
+    return await saveDocumentToDrive(uid, {
+      bytes,
+      filename,
+      mimeType,
+      sourceId: storagePath,
+      workspace,
+      ...(documentDate ? { documentDate } : {}),
+    });
   } catch (error) {
     const status = (error as { status?: number }).status || 400;
     return { status, json: { error: (error as Error).message } };

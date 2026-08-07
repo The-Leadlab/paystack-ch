@@ -54,3 +54,7 @@ Password-gated sandbox for competitor-gap features (budgeting, goals, bills, etc
 - **Registry:** `client/src/ali-lab/featureRegistry.ts`
 - **Local API:** run `pnpm dev:stripe-server` so Vite can proxy `POST /api/ali/verify`; otherwise use `VITE_ALI_LAB_PASSWORD` dev fallback after gate
 - **Production:** set `ALI_LAB_PASSWORD` in Vercel (same value for Edge middleware + `/api/ali/verify`). After login, the SPA checks `GET /api/ali/session` — do not rely on `sessionStorage` on www.paystack.ch
+
+### Personal Google Drive
+
+Personal statement uploads (when Drive is connected) go under **`Paystack Documents / Personal / YYYY-MM-DD /`**. Connect from `/personal/overview`. Spec: `docs/PERSONAL_E2E_DRIVE_SUPER_PROMPT.md`. Sample fixtures: `fixtures/personal/`. Seed (needs Admin JSON): `npx tsx scripts/seed-personal-ali-e2e.mjs`.

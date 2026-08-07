@@ -28,8 +28,11 @@ function parseDriveErrorReason(raw: string | null): GoogleDriveErrorReason | nul
 
 export function GoogleDriveConnectPanel({
   onDriveSync,
+  returnPath,
 }: {
   onDriveSync?: () => Promise<{ count: number }>;
+  /** Where to land after OAuth (e.g. `/personal/overview`). Defaults to `/app`. */
+  returnPath?: string;
 }) {
   const [status, setStatus] = useState<GoogleDriveStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
@@ -85,7 +88,7 @@ export function GoogleDriveConnectPanel({
   const handleConnect = async () => {
     setBusy(true);
     try {
-      await connectGoogleDrive();
+      await connectGoogleDrive(returnPath ? { returnPath } : undefined);
       // No further code runs on success — connectGoogleDrive navigates away.
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));

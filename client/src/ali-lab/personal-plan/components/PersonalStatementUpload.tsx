@@ -8,10 +8,13 @@ import {
   parsePersonalStatementFile,
   personalStatementTemplateCsv,
 } from "../../lib/personalStatementImport";
+import { backupPersonalStatementToGoogleDrive } from "../../lib/personalStatementDriveBackup";
 import { downloadTextFile } from "@/cafe/lib/revenueImport";
 import { formatChfDisplay } from "../formatChfDisplay";
 import { GlassCard } from "./GlassCard";
 import { useSubscription } from "@/cafe/context/SubscriptionContext";
+import { useWorkspaceOptional } from "@/cafe/context/WorkspaceContext";
+import { auth } from "@/cafe/lib/firebase";
 
 type Props = {
   onImported: () => void;
@@ -20,6 +23,7 @@ type Props = {
 export function PersonalStatementUpload({ onImported }: Props) {
   const { t } = useLabLanguage();
   const ledger = usePersonalBudgetLedger();
+  const workspace = useWorkspaceOptional();
   const {
     enforcementEnabled,
     entitlements,
@@ -66,6 +70,7 @@ export function PersonalStatementUpload({ onImported }: Props) {
     let totalIncome = 0;
     let totalExpense = 0;
     const failures: string[] = [];
+    const ownerUid = workspace?.dataOwnerUid || auth?.currentUser?.uid || undefined;
 
     try {
       for (let i = 0; i < toProcess.length; i += 1) {
@@ -96,6 +101,10 @@ export function PersonalStatementUpload({ onImported }: Props) {
           totalIncome += record.incomeTotal;
           totalExpense += record.expenseTotal;
           await incrementPersonalDocumentUsage();
+          const statementDate =
+            filled.find((r) => r.selected && /^\d{4}-\d{2}-\d{2}/.test(r.date))?.date ||
+            new Date().toISOString().slice(0, 10);
+          void backupPersonalStatementToGoogleDrive(file, ownerUid, { documentDate: statementDate });
           ledger.bump();
         } catch (e) {
           failures.push(`${file.name}: ${e instanceof Error ? e.message : String(e)}`);

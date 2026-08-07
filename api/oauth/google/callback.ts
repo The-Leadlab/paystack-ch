@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { completeGoogleDriveOAuth } from "../../../lib/googleServices.js";
+import { completeGoogleDriveOAuth, decodeOAuthState } from "../../../lib/googleServices.js";
 import { publicAppOriginFromHeaders } from "../../../lib/stripeCore.js";
 import {
   googleDriveCallbackRedirect,
@@ -19,14 +19,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const state = typeof req.query.state === "string" ? req.query.state : "";
   const oauthError = typeof req.query.error === "string" ? req.query.error : "";
 
+  let returnPath = "/app";
+  if (state) {
+    try {
+      returnPath = decodeOAuthState(state).returnPath || "/app";
+    } catch {
+      // Fall through; completeGoogleDriveOAuth will reject invalid state.
+    }
+  }
+
   if (oauthError) {
     const reason = resolveGoogleDriveErrorReason(oauthError);
-    redirect(res, googleDriveCallbackRedirect(origin, false, reason));
+    redirect(res, googleDriveCallbackRedirect(origin, false, reason, returnPath));
     return;
   }
 
   if (!code || !state) {
-    redirect(res, googleDriveCallbackRedirect(origin, false, "unknown"));
+    redirect(res, googleDriveCallbackRedirect(origin, false, "unknown", returnPath));
     return;
   }
 
@@ -36,13 +45,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       const errMsg = "json" in out && typeof out.json.error === "string" ? out.json.error : "unknown";
       console.error("[api] google drive callback failed:", out.status, errMsg);
       const reason = resolveGoogleDriveErrorReason(errMsg);
-      redirect(res, googleDriveCallbackRedirect(origin, false, reason));
+      redirect(res, googleDriveCallbackRedirect(origin, false, reason, returnPath));
       return;
     }
-    redirect(res, googleDriveCallbackRedirect(origin, true));
+    redirect(res, googleDriveCallbackRedirect(origin, true, undefined, returnPath));
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error("[api] google drive callback:", errMsg);
-    redirect(res, googleDriveCallbackRedirect(origin, false, resolveGoogleDriveErrorReason(errMsg)));
+    redirect(res, googleDriveCallbackRedirect(origin, false, resolveGoogleDriveErrorReason(errMsg), returnPath));
   }
 }

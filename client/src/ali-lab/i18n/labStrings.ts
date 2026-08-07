@@ -40,6 +40,8 @@ const en: Dict = {
   stmtCancelPreview: "Cancel",
   stmtOverviewTitle: "Your month at a glance",
   stmtIsolatedNote: "Personal budget only — separate from Business Revenue calculations.",
+  stmtDriveBackupNote:
+    "When Google Drive is connected, statement files are also saved under Paystack Documents / Personal / date.",
   stmtAddTx: "Add transaction",
   stmtEmptyHint: "Upload a statement or add a transaction to populate your personal budget.",
   stmtExplore: "Explore",
@@ -275,6 +277,8 @@ const fr: Dict = {
   stmtCancelPreview: "Annuler",
   stmtOverviewTitle: "Votre mois en un coup d'œil",
   stmtIsolatedNote: "Budget personnel uniquement — séparé des calculs Revenue Business.",
+  stmtDriveBackupNote:
+    "Quand Google Drive est connecté, les relevés sont aussi enregistrés sous Paystack Documents / Personal / date.",
   stmtAddTx: "Ajouter une transaction",
   stmtEmptyHint: "Importez un relevé ou ajoutez une transaction pour remplir votre budget.",
   stmtExplore: "Explorer",

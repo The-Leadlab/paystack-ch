@@ -43,9 +43,17 @@ export function googleDriveErrorUserMessage(reason: GoogleDriveErrorReason): str
 export function googleDriveCallbackRedirect(
   origin: string,
   ok: boolean,
-  reason?: GoogleDriveErrorReason
+  reason?: GoogleDriveErrorReason,
+  returnPath = "/app"
 ): string {
   const params = new URLSearchParams({ googleDrive: ok ? "connected" : "error" });
   if (!ok && reason) params.set("googleDriveReason", reason);
-  return `${origin}/app?${params.toString()}`;
+  const path =
+    typeof returnPath === "string" &&
+    returnPath.startsWith("/") &&
+    !returnPath.startsWith("//") &&
+    !returnPath.includes("://")
+      ? returnPath.split("?")[0] || "/app"
+      : "/app";
+  return `${origin}${path}?${params.toString()}`;
 }

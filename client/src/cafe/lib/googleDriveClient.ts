@@ -24,10 +24,16 @@ export async function fetchGoogleDriveStatus(): Promise<GoogleDriveStatus> {
 }
 
 /** Redirects the browser to Google's consent screen — does not return on success. */
-export async function connectGoogleDrive(): Promise<void> {
+export async function connectGoogleDrive(opts?: { returnPath?: string }): Promise<void> {
   const res = await fetch(apiUrl("/api/oauth/google/start"), {
     method: "POST",
-    headers: { Authorization: await authHeader() },
+    headers: {
+      Authorization: await authHeader(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      ...(opts?.returnPath ? { returnPath: opts.returnPath } : {}),
+    }),
     cache: "no-store",
   });
   const json = await res.json().catch(() => ({}));
@@ -76,6 +82,8 @@ export type DriveBackupPayload = {
    * present, the backup is filed directly into that week's subfolder; otherwise it lands in
    * "Uncategorised". Omit when processing failed or no date could be determined. */
   documentDate?: string;
+  /** business (default) = week folders; personal = Paystack Documents/Personal/{YYYY-MM-DD}/ */
+  workspace?: "business" | "personal";
 };
 
 /** Fire-and-forget backup of a platform upload to the user's Drive folder — called once AI

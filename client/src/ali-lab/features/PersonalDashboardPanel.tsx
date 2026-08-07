@@ -9,6 +9,7 @@ import { GlassCard } from "../personal-plan/components/GlassCard";
 import { PersonalRecentLedger } from "../personal-plan/components/PersonalRecentLedger";
 import { PersonalStatementUpload } from "../personal-plan/components/PersonalStatementUpload";
 import { PersonalSavingsCoach } from "../personal-plan/components/PersonalSavingsCoach";
+import { PersonalGoogleDrivePanel } from "../personal-plan/components/PersonalGoogleDrivePanel";
 import {
   PERSONAL_PLAN_NAV,
   personalPlanNavHref,
@@ -94,6 +95,8 @@ export function PersonalDashboardPanel({ feature }: { feature: AliLabFeature }) 
       </div>
 
       <PersonalStatementUpload onImported={() => void budget.refresh()} />
+
+      <PersonalGoogleDrivePanel />
 
       <PersonalSavingsCoach month={month} totals={h} rows={budget.rows} />
 

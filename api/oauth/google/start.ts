@@ -12,7 +12,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       res.status(405).json({ error: "Method not allowed" });
       return;
     }
-    const out = await startGoogleDriveOAuth(req.headers.authorization);
+    const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
+    const out = await startGoogleDriveOAuth(req.headers.authorization, body);
     stripeCorsApplyHeaders(req, res);
     if ("redirectUrl" in out) {
       res.status(200).json({ redirectUrl: out.redirectUrl });
