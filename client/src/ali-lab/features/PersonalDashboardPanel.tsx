@@ -96,6 +96,28 @@ export function PersonalDashboardPanel({ feature }: { feature: AliLabFeature }) 
 
       <PersonalStatementUpload onImported={() => void budget.refresh()} />
 
+      {budget.imports.length > 0 ? (
+        <GlassCard className="p-4 space-y-2">
+          <p className="text-sm font-semibold">Uploaded statements</p>
+          <p className="text-[11px] text-[var(--pp-on-surface-variant)]">
+            Saved in this session · {budget.totalImportCount} total across all sessions
+          </p>
+          <ul className="space-y-1.5 max-h-40 overflow-auto">
+            {budget.imports.slice(0, 12).map((imp) => (
+              <li
+                key={imp.id}
+                className="flex items-center justify-between gap-2 text-xs border-t border-[var(--pp-outline-variant)] pt-1.5 first:border-0 first:pt-0"
+              >
+                <span className="truncate font-medium">{imp.fileName}</span>
+                <span className="shrink-0 text-[var(--pp-on-surface-variant)] pp-tabular">
+                  {imp.rowCount} rows · {formatChfDisplay(imp.incomeTotal - imp.expenseTotal)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </GlassCard>
+      ) : null}
+
       <PersonalGoogleDrivePanel />
 
       <PersonalSavingsCoach month={month} totals={h} rows={budget.rows} />

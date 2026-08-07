@@ -25,6 +25,8 @@ export type PersonalBudgetTx = {
   incomeCat: PersonalIncomeCategory;
   source: "statement" | "manual";
   importId?: string;
+  /** Personal upload session (IndexedDB sessions control). */
+  sessionId?: string;
   createdAt: string;
 };
 
@@ -36,6 +38,7 @@ export type PersonalImportRecord = {
   rowCount: number;
   incomeTotal: number;
   expenseTotal: number;
+  sessionId?: string;
 };
 
 function openDb(): Promise<IDBDatabase> {
@@ -127,42 +130,43 @@ export async function deletePersonalTransaction(id: string): Promise<void> {
   }
 }
 
-export async function commitPersonalStatementDrafts(
+export type PersonalStatementCommitResult = {
+  record: PersonalImportRecord;
+  rows: PersonalBudgetTx[];
+};
+
+export function buildPersonalStatementCommit(
   drafts: PersonalStatementDraft[],
-  meta: { fileName: string; source: "csv" | "pdf" | "image" }
-): Promise<PersonalImportRecord> {
+  meta: { fileName: string; source: "csv" | "pdf" | "image"; sessionId?: string }
+): PersonalStatementCommitResult {
   const selected = drafts.filter((d) => d.selected && d.amount > 0);
   const importId = `pim_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const importedAt = new Date().toISOString();
   let incomeTotal = 0;
   let expenseTotal = 0;
+  const rows: PersonalBudgetTx[] = [];
 
-  const db = await openDb();
-  try {
-    const tx = db.transaction([STORE_TX, STORE_IMPORTS], "readwrite");
-    const txStore = tx.objectStore(STORE_TX);
-    const importStore = tx.objectStore(STORE_IMPORTS);
+  for (let i = 0; i < selected.length; i += 1) {
+    const d = selected[i];
+    if (d.kind === "income") incomeTotal += d.amount;
+    else expenseTotal += d.amount;
+    rows.push({
+      id: `ptx_${Date.now().toString(36)}_${i}_${Math.random().toString(36).slice(2, 9)}`,
+      date: d.date,
+      description: d.description,
+      amount: d.amount,
+      kind: d.kind,
+      expenseCat: d.expenseCat,
+      incomeCat: d.incomeCat,
+      source: "statement",
+      importId,
+      sessionId: meta.sessionId,
+      createdAt: importedAt,
+    });
+  }
 
-    for (let i = 0; i < selected.length; i += 1) {
-      const d = selected[i];
-      if (d.kind === "income") incomeTotal += d.amount;
-      else expenseTotal += d.amount;
-      const row: PersonalBudgetTx = {
-        id: `ptx_${Date.now().toString(36)}_${i}_${Math.random().toString(36).slice(2, 9)}`,
-        date: d.date,
-        description: d.description,
-        amount: d.amount,
-        kind: d.kind,
-        expenseCat: d.expenseCat,
-        incomeCat: d.incomeCat,
-        source: "statement",
-        importId,
-        createdAt: importedAt,
-      };
-      txStore.put(row);
-    }
-
-    const record: PersonalImportRecord = {
+  return {
+    record: {
       id: importId,
       fileName: meta.fileName,
       source: meta.source,
@@ -170,15 +174,37 @@ export async function commitPersonalStatementDrafts(
       rowCount: selected.length,
       incomeTotal,
       expenseTotal,
-    };
-    importStore.put(record);
+      sessionId: meta.sessionId,
+    },
+    rows,
+  };
+}
 
+export async function commitPersonalStatementDrafts(
+  drafts: PersonalStatementDraft[],
+  meta: { fileName: string; source: "csv" | "pdf" | "image"; sessionId?: string }
+): Promise<PersonalStatementCommitResult> {
+  const built = buildPersonalStatementCommit(drafts, meta);
+  await upsertPersonalImportLocal(built.record, built.rows);
+  return built;
+}
+
+/** Upsert an already-committed import + rows into IndexedDB (cloud → local mirror). */
+export async function upsertPersonalImportLocal(
+  record: PersonalImportRecord,
+  rows: PersonalBudgetTx[]
+): Promise<void> {
+  const db = await openDb();
+  try {
+    const tx = db.transaction([STORE_TX, STORE_IMPORTS], "readwrite");
+    tx.objectStore(STORE_IMPORTS).put(record);
+    const store = tx.objectStore(STORE_TX);
+    for (const row of rows) store.put(row);
     await new Promise<void>((resolve, reject) => {
       tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error || new Error("Commit failed"));
+      tx.onerror = () => reject(tx.error || new Error("Upsert failed"));
     });
     notifyPersonalBudgetChanged();
-    return record;
   } finally {
     db.close();
   }

@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import { CheckCircle2, FileUp, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useLabLanguage } from "../../context/LabLanguageContext";
-import { commitPersonalStatementDrafts } from "../../lib/personalBudgetStore";
 import { usePersonalBudgetLedger } from "../../hooks/usePersonalBudgetLedger";
 import { refinePersonalDraftsWithAi } from "../../lib/personalAiAssist";
 import {
@@ -23,14 +22,11 @@ import { useSubscription } from "@/cafe/context/SubscriptionContext";
 import { useWorkspaceOptional } from "@/cafe/context/WorkspaceContext";
 import { auth } from "@/cafe/lib/firebase";
 import { usePersonalPlan } from "../context/PersonalPlanContext";
+import { PERSONAL_BASE_DOC_LIMIT } from "@shared/planCatalog";
 
 type Props = {
   onImported: (meta?: { month?: string; rowCount?: number }) => void;
 };
-
-function isPermissionError(msg: string): boolean {
-  return /missing or insufficient permissions|permission-denied|permission_denied|unauthorized/i.test(msg);
-}
 
 export function PersonalStatementUpload({ onImported }: Props) {
   const { t } = useLabLanguage();
@@ -38,7 +34,6 @@ export function PersonalStatementUpload({ onImported }: Props) {
   const { setMonth } = usePersonalPlan();
   const workspace = useWorkspaceOptional();
   const {
-    enforcementEnabled,
     entitlements,
     personalDocumentsUsedThisMonth,
     incrementPersonalDocumentUsage,
@@ -50,11 +45,11 @@ export function PersonalStatementUpload({ onImported }: Props) {
   const [err, setErr] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const personalCap = entitlements.maxPersonalDocumentsPerMonth;
-  const personalAtCap =
-    enforcementEnabled &&
-    personalCap != null &&
-    personalDocumentsUsedThisMonth >= personalCap;
+  /** Hard ceiling across all personal sessions (default 35). */
+  const personalCap = entitlements.maxPersonalDocumentsPerMonth ?? PERSONAL_BASE_DOC_LIMIT;
+  const usedAcrossSessions = Math.max(ledger.totalImportCount, personalDocumentsUsedThisMonth);
+  const remainingSlots = Math.max(0, personalCap - usedAcrossSessions);
+  const personalAtCap = remainingSlots <= 0;
 
   const onFiles = async (fileList: FileList | null) => {
     const files = fileList ? Array.from(fileList) : [];
@@ -63,20 +58,16 @@ export function PersonalStatementUpload({ onImported }: Props) {
     setSuccess(null);
 
     if (personalAtCap) {
-      const msg = `Personal plan allows up to ${personalCap} document upload(s) this month.`;
+      const msg = `Personal plan allows up to ${personalCap} document upload(s) across all sessions.`;
       setErr(msg);
       toast.error(msg);
       return;
     }
 
-    const remaining =
-      enforcementEnabled && personalCap != null
-        ? Math.max(0, personalCap - personalDocumentsUsedThisMonth)
-        : files.length;
-    const toProcess = files.slice(0, remaining);
+    const toProcess = files.slice(0, remainingSlots);
     if (toProcess.length < files.length) {
       setErr(
-        `Only ${remaining} personal upload(s) left this month (cap ${personalCap}). Processing first ${toProcess.length} file(s).`
+        `Only ${remainingSlots} personal upload(s) left (cap ${personalCap} across all sessions). Processing first ${toProcess.length} file(s).`
       );
     }
 
@@ -112,29 +103,12 @@ export function PersonalStatementUpload({ onImported }: Props) {
           );
           setPhase("saving");
 
-          let record;
-          try {
-            record = ledger.commitStatementCloud
-              ? await ledger.commitStatementCloud(filled, {
-                  fileName: preview.fileName,
-                  source: preview.source,
-                })
-              : await commitPersonalStatementDrafts(filled, {
-                  fileName: preview.fileName,
-                  source: preview.source,
-                });
-          } catch (commitErr) {
-            const msg = commitErr instanceof Error ? commitErr.message : String(commitErr);
-            if (isPermissionError(msg)) {
-              record = await commitPersonalStatementDrafts(filled, {
-                fileName: preview.fileName,
-                source: preview.source,
-              });
-              toast.message("Saved on this device (cloud sync blocked by permissions).");
-            } else {
-              throw commitErr;
-            }
-          }
+          const built = await ledger.commitStatement(filled, {
+            fileName: preview.fileName,
+            source: preview.source,
+            sessionId: session.id,
+          });
+          const record = built.record;
 
           totalRows += record.rowCount;
           totalIncome += record.incomeTotal;
@@ -184,6 +158,7 @@ export function PersonalStatementUpload({ onImported }: Props) {
         setSuccess(msg);
         toast.success(msg);
         onImported({ month: jumpMonth || undefined, rowCount: totalRows });
+        await ledger.refresh();
       }
       if (failures.length) {
         setErr(failures.slice(0, 4).join(" · ") + (failures.length > 4 ? ` (+${failures.length - 4})` : ""));
@@ -215,9 +190,7 @@ export function PersonalStatementUpload({ onImported }: Props) {
           <p className="text-sm font-semibold">{t("stmtUploadTitle")}</p>
           <p className="text-[11px] text-[var(--pp-on-surface-variant)] mt-1 max-w-xl">
             {t("stmtAiUploadHint")}
-            {enforcementEnabled && personalCap != null
-              ? ` · ${personalDocumentsUsedThisMonth}/${personalCap} uploads this month`
-              : null}
+            {` · ${usedAcrossSessions}/${personalCap} uploads across all sessions`}
           </p>
           <p className="text-[11px] text-[var(--pp-on-surface-variant)] mt-1">{t("stmtMonthJumpHint")}</p>
         </div>

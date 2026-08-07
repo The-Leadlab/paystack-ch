@@ -1,5 +1,7 @@
 /** Personal import sessions (IndexedDB) — organize statement uploads + Drive dedupe keys. */
 
+export const PERSONAL_SESSION_CHANGED = "paystack-personal-session-changed";
+
 const DB_NAME = "paystack-personal-sessions";
 const DB_VERSION = 1;
 const STORE = "sessions";

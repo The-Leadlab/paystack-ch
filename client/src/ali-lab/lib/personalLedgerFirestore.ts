@@ -12,7 +12,12 @@ import {
   where,
   type Firestore,
 } from "firebase/firestore";
-import type { PersonalBudgetTx, PersonalImportRecord } from "./personalBudgetStore";
+import type {
+  PersonalBudgetTx,
+  PersonalImportRecord,
+  PersonalStatementCommitResult,
+} from "./personalBudgetStore";
+import { buildPersonalStatementCommit } from "./personalBudgetStore";
 import type { PersonalStatementDraft } from "./personalStatementImport";
 
 export const PERSONAL_TX_COLLECTION = "personal_transactions";
@@ -45,6 +50,7 @@ export async function listPersonalTransactionsFs(
       incomeCat: data.incomeCat,
       source: data.source === "statement" ? "statement" : "manual",
       importId: typeof data.importId === "string" ? data.importId : undefined,
+      sessionId: typeof data.sessionId === "string" ? data.sessionId : undefined,
       createdAt: String(data.createdAt || new Date().toISOString()),
     } as PersonalBudgetTx;
   });
@@ -68,6 +74,7 @@ export async function listPersonalImportsFs(
       rowCount: Number(data.rowCount) || 0,
       incomeTotal: Number(data.incomeTotal) || 0,
       expenseTotal: Number(data.expenseTotal) || 0,
+      sessionId: typeof data.sessionId === "string" ? data.sessionId : undefined,
     } satisfies PersonalImportRecord;
   });
   return rows.sort((a, b) => b.importedAt.localeCompare(a.importedAt));
@@ -111,52 +118,32 @@ export async function deletePersonalTransactionFs(firestore: Firestore, id: stri
   await deleteDoc(doc(firestore, PERSONAL_TX_COLLECTION, id));
 }
 
-export async function commitPersonalStatementDraftsFs(
+/** Mirror an already-built local commit into Firestore (same ids for invitees). */
+export async function mirrorPersonalStatementCommitFs(
   firestore: Firestore,
   ownerUid: string,
-  drafts: PersonalStatementDraft[],
-  meta: { fileName: string; source: "csv" | "pdf" | "image" }
+  built: PersonalStatementCommitResult
 ): Promise<PersonalImportRecord> {
-  const selected = drafts.filter((d) => d.selected && d.amount > 0);
-  const importId = `pim_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-  const importedAt = new Date().toISOString();
-  let incomeTotal = 0;
-  let expenseTotal = 0;
-
-  for (let i = 0; i < selected.length; i += 1) {
-    const d = selected[i];
-    if (d.kind === "income") incomeTotal += d.amount;
-    else expenseTotal += d.amount;
-    const row: PersonalBudgetTx = {
-      id: `ptx_${Date.now().toString(36)}_${i}_${Math.random().toString(36).slice(2, 9)}`,
-      date: d.date,
-      description: d.description,
-      amount: d.amount,
-      kind: d.kind,
-      expenseCat: d.expenseCat,
-      incomeCat: d.incomeCat,
-      source: "statement",
-      importId,
-      createdAt: importedAt,
-    };
+  for (const row of built.rows) {
     await setDoc(doc(firestore, PERSONAL_TX_COLLECTION, row.id), {
       ...stripUndefined(row as unknown as Record<string, unknown>),
       restaurantId: ownerUid,
     });
   }
-
-  const record: PersonalImportRecord = {
-    id: importId,
-    fileName: meta.fileName,
-    source: meta.source,
-    importedAt,
-    rowCount: selected.length,
-    incomeTotal,
-    expenseTotal,
-  };
-  await setDoc(doc(firestore, PERSONAL_IMPORTS_COLLECTION, importId), {
-    ...record,
+  await setDoc(doc(firestore, PERSONAL_IMPORTS_COLLECTION, built.record.id), {
+    ...stripUndefined(built.record as unknown as Record<string, unknown>),
     restaurantId: ownerUid,
   });
-  return record;
+  return built.record;
+}
+
+export async function commitPersonalStatementDraftsFs(
+  firestore: Firestore,
+  ownerUid: string,
+  drafts: PersonalStatementDraft[],
+  meta: { fileName: string; source: "csv" | "pdf" | "image"; sessionId?: string }
+): Promise<PersonalStatementCommitResult> {
+  const built = buildPersonalStatementCommit(drafts, meta);
+  await mirrorPersonalStatementCommitFs(firestore, ownerUid, built);
+  return built;
 }

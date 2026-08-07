@@ -463,7 +463,7 @@ const translations = {
     personalAddonError: 'Could not update add-on. Try again or open the billing portal.',
     personalInviteTitle: 'Invite someone',
     personalInviteBody:
-      'Share your personal finances with one household member for free. Extra people need a paid seat (CHF 5/mo).',
+      'Invite household members to see your personal Overview, Budget, Reports, and uploaded statements (same shared wallet). One free seat; extra people need a paid seat (CHF 5/mo).',
     personalInviteCta: 'Send invite',
     personalInviteEmpty: 'No one invited yet. Add an email above.',
     personalInviteOwnerOnly: 'Only the account owner can send invites.',
@@ -1528,7 +1528,7 @@ const translations = {
     personalAddonError: 'Impossible de mettre a jour l\'option. Reessayez ou ouvrez le portail.',
     personalInviteTitle: 'Inviter quelqu\'un',
     personalInviteBody:
-      'Partagez vos finances personnelles avec un membre du foyer gratuitement. Chaque personne supplementaire : siege payant (CHF 5/mois).',
+      'Invitez des membres du foyer a voir votre Overview, Budget, Rapports et releves (meme portefeuille partage). Un siege gratuit ; personnes supplementaires : CHF 5/mois.',
     personalInviteCta: 'Envoyer l\'invitation',
     personalInviteEmpty: 'Personne invitee pour l\'instant. Ajoutez un e-mail ci-dessus.',
     personalInviteOwnerOnly: 'Seul le proprietaire du compte peut envoyer des invitations.',

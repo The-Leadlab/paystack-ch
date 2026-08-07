@@ -5,11 +5,16 @@ import {
   deletePersonalSession,
   ensureDefaultPersonalSession,
   listPersonalSessions,
+  PERSONAL_SESSION_CHANGED,
   renamePersonalSession,
   setCurrentPersonalSessionId,
   type PersonalSession,
 } from "../../lib/personalSessionsStore";
 import { useLabLanguage } from "../../context/LabLanguageContext";
+
+function notifySessionChanged() {
+  window.dispatchEvent(new Event(PERSONAL_SESSION_CHANGED));
+}
 
 export function PersonalSessionsControl() {
   const { t } = useLabLanguage();
@@ -34,6 +39,7 @@ export function PersonalSessionsControl() {
     try {
       await setCurrentPersonalSessionId(id);
       setCurrentId(id);
+      notifySessionChanged();
       setOpen(false);
     } finally {
       setBusy(false);
@@ -48,6 +54,7 @@ export function PersonalSessionsControl() {
       const row = await addPersonalSession(name.trim());
       await refresh();
       setCurrentId(row.id);
+      notifySessionChanged();
       setOpen(false);
     } finally {
       setBusy(false);
@@ -72,6 +79,7 @@ export function PersonalSessionsControl() {
     try {
       await deletePersonalSession(s.id);
       await refresh();
+      notifySessionChanged();
     } finally {
       setBusy(false);
     }
