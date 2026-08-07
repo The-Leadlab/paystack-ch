@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { TrendingUp } from "lucide-react";
 import type { AliLabFeature } from "../featureRegistry";
-import { useLabFeatureText } from "../hooks/useLabFeatureText";
 import { useLabLanguage } from "../context/LabLanguageContext";
 import { usePersonalBudgetLedger } from "../hooks/usePersonalBudgetLedger";
 import { buildCashForecast } from "../utils/forecastFromLedger";
@@ -12,13 +11,11 @@ const CHART_W = 640;
 const CHART_H = 280;
 const PAD = { top: 24, right: 16, bottom: 36, left: 56 };
 
-export function ForecastingPanel({ feature }: { feature: AliLabFeature }) {
+export function ForecastingPanel({ feature: _feature }: { feature: AliLabFeature }) {
   const { t } = useLabLanguage();
-  const { summary: featureSummary } = useLabFeatureText(feature);
   const ledger = usePersonalBudgetLedger();
   const [startBalance, setStartBalance] = useState(0);
   const [useLedgerStart, setUseLedgerStart] = useState(true);
-  const [horizon, setHorizon] = useState<"90d" | "12m">("90d");
 
   const ledgerBalance = ledger.household.balance;
 
@@ -99,22 +96,14 @@ export function ForecastingPanel({ feature }: { feature: AliLabFeature }) {
   }, [points, summary, startBalance]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">{t("reportsTitle")}</h2>
-        <p className="text-sm text-[var(--pp-on-surface-variant)] mt-2 max-w-2xl">
-          {t("reportsIntro")}
-        </p>
-        <p className="text-xs text-[var(--pp-on-surface-variant)] mt-1">{featureSummary}</p>
-      </div>
-
+    <div className="space-y-5">
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         <section className="xl:col-span-9 space-y-6">
           <GlassCard panel className="p-5 md:p-8 relative overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-4 gap-4 relative z-10">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-[var(--pp-on-surface-variant)] mb-1">
-                  {t("reportsProjected")}
+                  {t("reportsProjected")} · 90 days
                 </p>
                 <h3 className="text-3xl md:text-4xl font-bold pp-tabular">
                   {summary ? formatChfDisplay(summary.end) : "—"}
@@ -129,30 +118,8 @@ export function ForecastingPanel({ feature }: { feature: AliLabFeature }) {
                       <TrendingUp className="size-4" />
                       {formatChfDisplay(summary.avgDailyNet)}/day
                     </span>
-                    <span className="text-[var(--pp-on-surface-variant)] text-xs">{t("reportsFromLedger")}</span>
                   </p>
                 )}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setHorizon("90d")}
-                  className={`px-4 py-2 rounded text-xs font-semibold border ${
-                    horizon === "90d"
-                      ? "bg-[var(--pp-surface-highest)] border-[var(--pp-outline-variant)]"
-                      : "text-[var(--pp-on-surface-variant)] border-transparent"
-                  }`}
-                >
-                  90 days
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  title="12-month forecast coming soon"
-                  className="px-4 py-2 rounded text-xs font-semibold text-[var(--pp-on-surface-variant)] opacity-50 cursor-not-allowed"
-                >
-                  12 months
-                </button>
               </div>
             </div>
 

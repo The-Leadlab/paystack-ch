@@ -12,29 +12,51 @@ type RegistryEntry = Record<LabLang, FeatureCopy>;
 const REGISTRY: Record<string, RegistryEntry> = {
   overview: {
     en: {
-      title: "Personal overview",
-      summary: "Your month at a glance — income, expenses, savings, quick actions, and recent transactions linked to Business.",
+      title: "Overview",
+      summary: "Month income, expenses, and recent activity.",
       promoteTo: "Personal dashboard home at /personal",
     },
     fr: {
-      title: "Vue d'ensemble",
-      summary: "Votre mois en un coup d'œil — revenus, dépenses, épargne, actions rapides et transactions récentes liées au Business.",
+      title: "Aperçu",
+      summary: "Revenus, dépenses et activité du mois.",
       promoteTo: "Accueil du tableau de bord personnel (/personal)",
     },
     de: {
-      title: "Persönliche Übersicht",
-      summary: "Ihr Monat auf einen Blick — Einnahmen, Ausgaben, Ersparnisse, Schnellaktionen und letzte Transaktionen (mit Business verknüpft).",
+      title: "Übersicht",
+      summary: "Einnahmen, Ausgaben und Aktivität des Monats.",
       promoteTo: "Startseite persönliches Dashboard (/personal)",
     },
     it: {
-      title: "Panoramica personale",
-      summary: "Il mese a colpo d'occhio — entrate, spese, risparmi, azioni rapide e transazioni recenti collegate al Business.",
+      title: "Panoramica",
+      summary: "Entrate, spese e attività del mese.",
       promoteTo: "Home dashboard personale (/personal)",
+    },
+  },
+  settings: {
+    en: {
+      title: "Settings",
+      summary: "Sessions, language, Drive, invite, and billing.",
+      promoteTo: "Personal Settings at /personal/settings",
+    },
+    fr: {
+      title: "Réglages",
+      summary: "Sessions, langue, Drive, invitation et facturation.",
+      promoteTo: "Réglages personnels (/personal/settings)",
+    },
+    de: {
+      title: "Einstellungen",
+      summary: "Sitzungen, Sprache, Drive, Einladung und Abrechnung.",
+      promoteTo: "Persönliche Einstellungen (/personal/settings)",
+    },
+    it: {
+      title: "Impostazioni",
+      summary: "Sessioni, lingua, Drive, inviti e fatturazione.",
+      promoteTo: "Impostazioni personali (/personal/settings)",
     },
   },
   budgeting: {
     en: {
-      title: "Budgeting (budget vs actual)",
+      title: "Budget",
       summary:
         "Household budgets vs live expenses — bills, rent, groceries, going out, shopping, savings/invest; income expected (salary, assets, contributions)",
       promoteTo: "New Budget tab in personal dashboard (/app)",
@@ -60,7 +82,7 @@ const REGISTRY: Record<string, RegistryEntry> = {
   },
   "bill-reminders": {
     en: {
-      title: "Bill reminders",
+      title: "Bills",
       summary: "Your household bills — due dates, receipt photos, AI fill, overdue highlight",
       promoteTo: "Notifications + recurring bills collection",
     },
@@ -82,7 +104,7 @@ const REGISTRY: Record<string, RegistryEntry> = {
   },
   goals: {
     en: {
-      title: "Goal tracking",
+      title: "Savings",
       summary: "Create savings & debt goals, contribute any CHF amount, apply monthly surplus",
       promoteTo: "Dashboard widget + Firestore goals collection",
     },
@@ -126,7 +148,7 @@ const REGISTRY: Record<string, RegistryEntry> = {
   },
   forecasting: {
     en: {
-      title: "Forecasting & cash flow",
+      title: "Reports",
       summary: "90-day balance projection from ledger history",
       promoteTo: "Reports tab extension",
     },
@@ -214,7 +236,7 @@ const REGISTRY: Record<string, RegistryEntry> = {
   },
   investments: {
     en: {
-      title: "Investment tracking",
+      title: "Investments",
       summary: "Holdings with cost basis, P/L, allocation %, and price updates",
       promoteTo: "Optional module under Reports",
     },

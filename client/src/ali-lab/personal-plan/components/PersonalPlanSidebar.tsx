@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Lock, Plus, Briefcase, MoreHorizontal, UserPlus } from "lucide-react";
+import { Lock, Plus, Briefcase, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   PERSONAL_PLAN_NAV,
@@ -34,7 +34,7 @@ function PersonalPlanMoreSheet({
   onClose: () => void;
   showBusinessLink: boolean;
 }) {
-  const { openTransaction, openInvite } = usePersonalPlan();
+  const { openTransaction } = usePersonalPlan();
   const secondary = PERSONAL_PLAN_NAV.filter((item) => !item.mobilePrimary && item.featureId !== "overview");
 
   return (
@@ -47,9 +47,6 @@ function PersonalPlanMoreSheet({
         className="absolute bottom-20 left-4 right-4 pp-glass-panel rounded-2xl p-3 space-y-1"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="px-3 py-1 text-[10px] uppercase tracking-widest text-[var(--pp-on-surface-variant)]">
-          More
-        </p>
         {secondary.map((item) => {
           const Icon = item.icon;
           return (
@@ -80,19 +77,6 @@ function PersonalPlanMoreSheet({
           <Plus className="size-4" />
           Add transaction
         </button>
-        {surface === "app" ? (
-          <button
-            type="button"
-            onClick={() => {
-              openInvite();
-              onClose();
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--pp-on-surface)]"
-          >
-            <UserPlus className="size-4" />
-            Invite
-          </button>
-        ) : null}
         {surface === "app" ? (
           showBusinessLink ? (
             <Link
@@ -141,7 +125,7 @@ export function PersonalPlanSidebar({
   featureId: string | undefined;
   surface?: PersonalPlanSurface;
 }) {
-  const { openTransaction, openInvite } = usePersonalPlan();
+  const { openTransaction } = usePersonalPlan();
   const showBusinessLink = useCanOpenBusinessDashboard();
   const lockLab = async () => {
     await logoutAliLab();
@@ -157,7 +141,7 @@ export function PersonalPlanSidebar({
         <div className="min-w-0">
           <h1 className="text-base font-bold text-[var(--pp-primary)] tracking-tight truncate">Paystack</h1>
           <p className="text-[11px] text-[var(--pp-on-surface-variant)] opacity-70">
-            {surface === "app" ? "Personal finances" : "Private Wealth"}
+            {surface === "app" ? "Personal" : "Lab · Personal"}
           </p>
         </div>
       </Link>
@@ -185,7 +169,7 @@ export function PersonalPlanSidebar({
         {surface === "lab" ? (
           <>
             <p className="px-4 pt-4 pb-1 text-[10px] uppercase tracking-widest text-[var(--pp-on-surface-variant)] opacity-60">
-              Lab prototypes
+              Lab
             </p>
             {ALI_LAB_FEATURES.filter((f) => SECONDARY_FEATURE_IDS.has(f.id)).map((f) => (
               <Link
@@ -206,16 +190,6 @@ export function PersonalPlanSidebar({
       </nav>
 
       <div className="mt-auto space-y-1 pt-4 border-t border-[var(--pp-outline-variant)]">
-        {surface === "app" ? (
-          <button
-            type="button"
-            onClick={() => openInvite()}
-            className="w-full mb-2 flex items-center justify-center gap-2 py-2.5 border border-[var(--pp-outline-variant)] text-[var(--pp-on-surface)] rounded-lg text-xs font-bold hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)] transition-colors"
-          >
-            <UserPlus className="size-4" />
-            Invite
-          </button>
-        ) : null}
         <button
           type="button"
           onClick={() => openTransaction()}

@@ -106,6 +106,15 @@ export const ALI_LAB_FEATURES: AliLabFeature[] = [
     promoteTo: "Optional module under Reports",
     summary: "Holdings with cost basis, P/L, allocation %, and price updates",
   },
+  {
+    id: "settings",
+    title: "Settings",
+    competitors: "YNAB, BudgetCH",
+    priority: "high",
+    status: "ready",
+    promoteTo: "Personal Settings at /personal/settings",
+    summary: "Sessions, language, theme, Google Drive, invite, billing add-ons",
+  },
 ];
 
 export function isExcludedAliLabFeature(id: string): boolean {

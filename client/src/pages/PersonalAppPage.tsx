@@ -9,7 +9,13 @@ import { LabLanguageProvider, useLabLanguage } from "@/ali-lab/context/LabLangua
 import { PersonalPlanShell } from "@/ali-lab/personal-plan/components/PersonalPlanShell";
 import { useLocation } from "wouter";
 
-const KPI_HIDDEN_FEATURES = new Set(["forecasting", "investments", "goals", "bill-reminders"]);
+const KPI_HIDDEN_FEATURES = new Set([
+  "forecasting",
+  "investments",
+  "goals",
+  "bill-reminders",
+  "settings",
+]);
 
 function PersonalAppContent() {
   const [location] = useLocation();

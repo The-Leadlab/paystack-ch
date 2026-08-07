@@ -35,7 +35,7 @@ function recurrenceLabel(recurrence: LabBill["recurrence"], t: (k: string) => st
 const DEMO_BILL_IDS = new Set(["seed-1", "seed-2"]);
 
 export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
-  const { t, summary } = useLabFeatureText(feature);
+  const { t } = useLabFeatureText(feature);
   const { month, openTransaction } = usePersonalPlan();
   const ledger = usePersonalBudgetLedger(month);
   const { items, add, remove, update, setItems, uid, loading } = useAliLabPersist<LabBill>(
@@ -221,17 +221,11 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
   const totalAnnual = upcoming.reduce((s, b) => s + b.annualChf, 0);
 
   return (
-    <div className="space-y-6">
-      <section>
-        <h2 className="text-2xl font-bold">{t("billsTitle")}</h2>
-        <p className="text-sm text-[var(--pp-on-surface-variant)] mt-2">{summary}</p>
-      </section>
-
-      <GlassCard className="p-4 flex flex-wrap items-center gap-4">
+    <div className="space-y-5">
+      <GlassCard className="p-4 flex flex-wrap items-center gap-3">
         <Receipt className="size-5 text-[var(--pp-primary)] shrink-0" />
-        <p className="text-sm text-[var(--pp-on-surface-variant)]">
-          {t("annualCost")}: <strong className="text-[var(--pp-on-surface)]">{formatChfDisplay(totalAnnual)}</strong>{" "}
-          {t("committedRecurringSuffix")}
+        <p className="text-sm">
+          {t("annualCost")}: <strong className="pp-tabular">{formatChfDisplay(totalAnnual)}</strong>
         </p>
       </GlassCard>
 

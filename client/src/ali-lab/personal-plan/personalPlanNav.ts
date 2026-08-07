@@ -6,6 +6,7 @@ import {
   PiggyBank,
   TrendingUp,
   Receipt,
+  Settings,
   FlaskConical,
 } from "lucide-react";
 
@@ -28,6 +29,7 @@ export const PERSONAL_PLAN_NAV: PersonalPlanNavItem[] = [
   { id: "savings", label: "Savings", icon: PiggyBank, featureId: "goals", mobilePrimary: true },
   { id: "investments", label: "Investments", icon: TrendingUp, featureId: "investments" },
   { id: "bills", label: "Bills", icon: Receipt, featureId: "bill-reminders", mobilePrimary: true },
+  { id: "settings", label: "Settings", icon: Settings, featureId: "settings" },
 ];
 
 export const PERSONAL_PLAN_DEFAULT_FEATURE = "overview";

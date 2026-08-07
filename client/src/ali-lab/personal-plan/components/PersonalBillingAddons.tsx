@@ -8,7 +8,7 @@ import { formatMoney, detectDisplayCurrency } from "@shared/displayCurrency";
 /** In-app Personal add-ons: extra seat + 100-doc pack. Shown on personal overview when plan is personal. */
 export function PersonalBillingAddons() {
   const { t } = useLanguage();
-  const { billing, entitlements, purchasePersonalAddon, openCustomerPortal } = useSubscription();
+  const { billing, purchasePersonalAddon, openCustomerPortal } = useSubscription();
   const [busy, setBusy] = useState<"seat" | "doc_pack" | "portal" | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -18,8 +18,6 @@ export function PersonalBillingAddons() {
   const currency = detectDisplayCurrency();
   const seatPrice = formatMoney(PERSONAL_EXTRA_SEAT_CHF, currency);
   const packPrice = formatMoney(PERSONAL_DOC_PACK_CHF, currency);
-  const docCap = entitlements.maxPersonalDocumentsPerMonth;
-  const seats = entitlements.maxTeamSeats;
 
   const buy = async (addon: "seat" | "doc_pack") => {
     setBusy(addon);
@@ -47,14 +45,9 @@ export function PersonalBillingAddons() {
 
   return (
     <section className="rounded-xl border border-[var(--pp-outline-variant)] bg-[var(--pp-surface-container)] p-4 md:p-6 space-y-4">
-      <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--pp-on-surface)]">
+      <h2 className="text-sm font-semibold text-[var(--pp-on-surface)]">
         {t("personalAddonTitle")}
       </h2>
-      <p className="text-xs text-[var(--pp-on-surface-variant)] leading-relaxed">
-        {t("personalAddonBody")
-          .replace("{seats}", seats == null ? "∞" : String(seats))
-          .replace("{docs}", docCap == null ? "∞" : String(docCap))}
-      </p>
       {msg ? <p className="text-xs text-emerald-600 font-medium">{msg}</p> : null}
       {err ? <p className="text-xs text-red-500 font-medium">{err}</p> : null}
 

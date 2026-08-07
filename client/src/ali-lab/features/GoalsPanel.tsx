@@ -116,29 +116,19 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
   };
 
   return (
-    <div className="space-y-6">
-      <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-        <div>
-          <span className="text-[var(--pp-primary)] text-xs font-semibold uppercase tracking-[0.2em]">
-            {t("goalsEyebrow")}
-          </span>
-          <h2 className="text-2xl md:text-4xl font-bold mt-2">{t("goalsTitle")}</h2>
-          <p className="text-[var(--pp-on-surface-variant)] text-sm mt-2 max-w-xl">{t("goalsIntro")}</p>
-        </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <GlassCard className="px-4 py-2 text-xs text-[var(--pp-on-surface-variant)]">
-          {t("goalsSurplusLabel")} ({month}):{" "}
+          {t("goalsSurplusLabel")}:{" "}
           <strong className="text-[var(--pp-secondary)]">{formatChfDisplay(surplus)}</strong>
         </GlassCard>
-      </section>
+      </div>
 
       <GlassCard
         className={`p-4 transition-shadow ${formHighlight ? "ring-2 ring-[var(--pp-primary)] shadow-lg" : ""}`}
         id="goal-form"
       >
         <div ref={formRef}>
-          <p className="text-xs font-semibold text-[var(--pp-primary)] uppercase tracking-wide mb-2">
-            {t("goalFormLabel")}
-          </p>
           <div className="flex flex-wrap gap-2">
             <input
               ref={nameRef}

@@ -104,13 +104,9 @@ export function PersonalGoogleDrivePanel() {
           <Cloud className="size-4 text-[var(--pp-primary)]" />
         </div>
         <div>
-          <p className="text-sm font-semibold">Google Drive (personal)</p>
-          <p className="text-[11px] text-[var(--pp-on-surface-variant)] mt-1 leading-relaxed max-w-2xl">
-            Connect once to back up bank statements under{" "}
-            <span className="font-medium text-[var(--pp-on-surface)]">
-              Paystack Documents / Personal / YYYY-MM-DD
-            </span>
-            . Same Google account as business Drive; personal files stay in the Personal folder.
+          <p className="text-sm font-semibold">Google Drive</p>
+          <p className="text-[11px] text-[var(--pp-on-surface-variant)] mt-1">
+            Back up statements to Paystack Documents / Personal / date
           </p>
         </div>
       </div>
@@ -138,7 +134,7 @@ export function PersonalGoogleDrivePanel() {
         <div className="flex flex-wrap gap-2">
           <span className="inline-flex items-center gap-1.5 text-xs text-[var(--pp-tertiary)] font-semibold">
             <Cloud className="size-3.5" />
-            Connected — personal uploads sync to Drive
+            Connected
           </span>
           <button
             type="button"

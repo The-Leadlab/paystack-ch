@@ -146,7 +146,6 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   const { t } = useLabFeatureText(feature);
   const { month, surface } = usePersonalPlan();
   const ledger = usePersonalBudgetLedger(month);
-  const { loading: finLoading } = ledger;
   const [mode, setMode] = useState<LabBudgetMode>("traditional");
   const [draftBudgets, setDraftBudgets] = useState<Record<string, string>>({});
   const [dirtyKeys, setDirtyKeys] = useState<Record<string, boolean>>({});
@@ -157,7 +156,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   draftBudgetsRef.current = draftBudgets;
   const billsHref = personalFeaturePath("bill-reminders", surface);
 
-  const { items: saved, update, add, uid, syncError } = useAliLabPersist<BudgetRow>(
+  const { items: saved, update, add, syncError } = useAliLabPersist<BudgetRow>(
     labCollections.budgets,
     "budgets",
     []
@@ -381,14 +380,8 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   };
 
   return (
-    <div className="space-y-6">
-      <section>
-        <h2 className="text-2xl font-bold">{t("budgetTitle")}</h2>
-        <p className="text-sm text-[var(--pp-on-surface-variant)] mt-2 max-w-2xl">{t("budgetIntro")}</p>
-        <p className="text-xs text-[var(--pp-on-surface-variant)] mt-1">{t("budgetSpentExplain")}</p>
-      </section>
-
-      <div className="flex flex-wrap gap-3 items-center text-xs">
+    <div className="space-y-5">
+      <div className="flex flex-wrap gap-2 items-center text-xs">
         <select
           className="pp-input rounded px-2 py-1"
           value={mode}
@@ -398,11 +391,9 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
           <option value="traditional">{t("traditional")}</option>
           <option value="zero-based">{t("zeroBased")}</option>
         </select>
-        {finLoading && <span className="text-[var(--pp-on-surface-variant)]">{t("loadingLedger")}</span>}
-        {!uid && <span className="text-[var(--pp-primary)]">{t("localBudgetCache")}</span>}
         {syncError ? (
           <span className="text-[var(--pp-error)]" title={syncError}>
-            Saved on this device — cloud sync failed
+            Cloud sync failed
           </span>
         ) : null}
         <button
@@ -411,7 +402,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
           className="flex items-center gap-1.5 bg-[var(--pp-primary)]/10 text-[var(--pp-primary)] font-semibold px-3 py-1 rounded-full hover:bg-[var(--pp-primary)]/20 transition-colors"
         >
           <Wand2 className="size-3.5" />
-          Suggest from history
+          Suggest
         </button>
         <button
           type="button"

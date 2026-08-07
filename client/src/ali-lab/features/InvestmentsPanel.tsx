@@ -10,7 +10,7 @@ import { GlassCard } from "../personal-plan/components/GlassCard";
 import { formatChfDisplay } from "../personal-plan/formatChfDisplay";
 
 export function InvestmentsPanel({ feature }: { feature: AliLabFeature }) {
-  const { t, summary } = useLabFeatureText(feature);
+  const { t } = useLabFeatureText(feature);
   const ledger = usePersonalBudgetLedger();
   const { items, add, remove, update } = useAliLabPersist<LabHolding>(labCollections.holdings, "holdings", []);
   const [symbol, setSymbol] = useState("");
@@ -85,9 +85,7 @@ export function InvestmentsPanel({ feature }: { feature: AliLabFeature }) {
   };
 
   return (
-    <div className="space-y-6">
-      <p className="text-sm text-[var(--pp-on-surface-variant)]">{summary}</p>
-
+    <div className="space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <GlassCard className="p-5 h-32 flex flex-col justify-between">
           <span className="text-[11px] uppercase tracking-wider text-[var(--pp-on-surface-variant)]">
@@ -115,12 +113,11 @@ export function InvestmentsPanel({ feature }: { feature: AliLabFeature }) {
         </GlassCard>
       </div>
 
-      {vsOperating != null && Number.isFinite(vsOperating) && (
+      {vsOperating != null && Number.isFinite(vsOperating) ? (
         <p className="text-xs text-[var(--pp-on-surface-variant)]">
-          Portfolio vs household balance: <strong>{vsOperating.toFixed(1)}%</strong> of session net (
-          {formatChfDisplay(ledger.household.balance)})
+          {vsOperating.toFixed(0)}% of household balance
         </p>
-      )}
+      ) : null}
 
       <GlassCard className="p-4 space-y-2">
         <div className="flex flex-wrap gap-2">

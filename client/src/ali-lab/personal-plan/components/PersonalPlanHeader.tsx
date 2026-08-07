@@ -1,21 +1,14 @@
 import { useMemo } from "react";
-import { Moon, RefreshCw, Sun } from "lucide-react";
-import { useTheme } from "@/contexts/ThemeContext";
-import { useLanguage } from "@/cafe/context/LanguageContext";
+import { RefreshCw } from "lucide-react";
 import { useLabLanguage } from "../../context/LabLanguageContext";
 import { usePersonalBudgetLedger } from "../../hooks/usePersonalBudgetLedger";
 import { usePersonalPlan } from "../context/PersonalPlanContext";
-import type { LabLang } from "../../i18n/labStrings";
-import { PersonalSessionsControl } from "./PersonalSessionsControl";
 
-const LANGS: LabLang[] = ["en", "fr", "de", "it"];
-
+/** Slim sticky bar — month + refresh. Language / theme / sessions live in Settings. */
 export function PersonalPlanHeader({ title }: { title?: string }) {
-  const { lang, setLang, t: labT } = useLabLanguage();
+  const { lang, t: labT } = useLabLanguage();
   const { month, setMonth } = usePersonalPlan();
   const ledger = usePersonalBudgetLedger(month);
-  const { theme, toggleTheme, switchable } = useTheme();
-  const { t } = useLanguage();
 
   const monthLabel = useMemo(() => {
     const [y, m] = month.split("-").map(Number);
@@ -26,66 +19,33 @@ export function PersonalPlanHeader({ title }: { title?: string }) {
   }, [month, lang]);
 
   return (
-    <header className="sticky top-0 z-40 flex justify-between items-center h-16 px-4 md:px-16 bg-[var(--pp-surface)] border-b border-[var(--pp-outline-variant)]">
-      <div className="flex items-center gap-4 md:gap-6 min-w-0">
+    <header className="sticky top-0 z-40 flex justify-between items-center h-14 px-4 md:px-16 bg-[var(--pp-surface)]/95 backdrop-blur border-b border-[var(--pp-outline-variant)]">
+      <div className="flex items-center gap-3 md:gap-5 min-w-0">
         {title ? (
           <h2 className="text-base md:text-lg font-semibold text-[var(--pp-primary)] truncate">{title}</h2>
         ) : null}
-        <div className="flex items-center gap-3">
-          <label className="text-[11px] text-[var(--pp-on-surface-variant)]">
-            {labT("month")}{" "}
-            <input
-              type="month"
-              className="pp-input px-2 py-1 text-xs font-bold text-[var(--pp-primary)] border-b-2 border-[var(--pp-primary)] bg-transparent rounded-none ml-1"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-            />
-          </label>
-          <span className="hidden md:inline text-sm text-[var(--pp-on-surface-variant)]">{monthLabel}</span>
-          <div className="flex gap-1">
-            {LANGS.map((l) => (
-              <button
-                key={l}
-                type="button"
-                onClick={() => setLang(l)}
-                className={`text-[11px] font-semibold uppercase px-1.5 py-0.5 rounded transition-colors ${
-                  lang === l
-                    ? "text-[var(--pp-primary)] border-b border-[var(--pp-primary)]"
-                    : "text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)]"
-                }`}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
-        </div>
+        <label className="flex items-center gap-2 text-[11px] text-[var(--pp-on-surface-variant)]">
+          <span className="sr-only">{labT("month")}</span>
+          <input
+            type="month"
+            className="pp-input px-2 py-1 text-xs font-bold text-[var(--pp-primary)] border-b-2 border-[var(--pp-primary)] bg-transparent rounded-none"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            aria-label={labT("month")}
+          />
+          <span className="hidden sm:inline text-sm text-[var(--pp-on-surface-variant)]">{monthLabel}</span>
+        </label>
       </div>
 
-      <div className="flex items-center gap-3 shrink-0">
-        <PersonalSessionsControl />
-        {switchable && toggleTheme ? (
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[var(--pp-outline-variant)] text-[10px] font-bold uppercase tracking-wide text-[var(--pp-on-surface-variant)] hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)]"
-            aria-label={theme === "dark" ? t("themeAriaLight") : t("themeAriaDark")}
-          >
-            {theme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
-            <span className="hidden sm:inline">
-              {theme === "dark" ? t("themeLabelLight") : t("themeLabelDark")}
-            </span>
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className="p-2 rounded-full hover:bg-[var(--pp-surface-high)] transition-colors text-[var(--pp-on-surface-variant)]"
-          onClick={() => void ledger.refresh()}
-          disabled={ledger.loading}
-          aria-label="Refresh personal budget"
-        >
-          <RefreshCw className={`size-4 ${ledger.loading ? "animate-spin" : ""}`} />
-        </button>
-      </div>
+      <button
+        type="button"
+        className="p-2 rounded-full hover:bg-[var(--pp-surface-high)] transition-colors text-[var(--pp-on-surface-variant)]"
+        onClick={() => void ledger.refresh()}
+        disabled={ledger.loading}
+        aria-label="Refresh"
+      >
+        <RefreshCw className={`size-4 ${ledger.loading ? "animate-spin" : ""}`} />
+      </button>
     </header>
   );
 }

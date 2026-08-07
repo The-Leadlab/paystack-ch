@@ -5,7 +5,6 @@ import { PersonalPlanHeader } from "./PersonalPlanHeader";
 import { PersonalPlanKpiStrip } from "./PersonalPlanKpiStrip";
 import { PersonalPlanMobileNav, PersonalPlanSidebar } from "./PersonalPlanSidebar";
 import { PersonalTransactionModal } from "./PersonalTransactionModal";
-import { PersonalBillingAddons } from "./PersonalBillingAddons";
 import { PersonalInviteModal } from "./PersonalInviteModal";
 import { AliLabAuthBanner } from "../../components/AliLabAuthBanner";
 import { personalAppHomePath, type PersonalPlanSurface } from "../personalPlanNav";
@@ -24,7 +23,6 @@ function PersonalPlanShellInner({
   children: ReactNode;
 }) {
   const personalHome = personalAppHomePath();
-  const showOverviewExtras = surface === "app" && featureId === "overview";
 
   return (
     <div className="personal-plan-shell">
@@ -37,9 +35,8 @@ function PersonalPlanShellInner({
           />
         ) : null}
         <PersonalPlanHeader title={title} />
-        <div className="p-4 md:p-16 space-y-6 max-w-[1400px]">
+        <div className="p-4 md:p-12 space-y-5 max-w-[1400px]">
           {showKpi ? <PersonalPlanKpiStrip /> : null}
-          {showOverviewExtras ? <PersonalBillingAddons /> : null}
           {children}
         </div>
       </main>

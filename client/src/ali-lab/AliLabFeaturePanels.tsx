@@ -9,6 +9,7 @@ import { AutomationRulesPanel } from "./features/AutomationRulesPanel";
 import { SharedAccessPanel } from "./features/SharedAccessPanel";
 import { OfflinePanel } from "./features/OfflinePanel";
 import { InvestmentsPanel } from "./features/InvestmentsPanel";
+import { PersonalSettingsPanel } from "./personal-plan/components/PersonalSettingsPanel";
 
 export function AliLabFeaturePanel({ feature }: { feature: AliLabFeature }) {
   switch (feature.id) {
@@ -32,6 +33,8 @@ export function AliLabFeaturePanel({ feature }: { feature: AliLabFeature }) {
       return <OfflinePanel feature={feature} />;
     case "investments":
       return <InvestmentsPanel feature={feature} />;
+    case "settings":
+      return <PersonalSettingsPanel />;
     default:
       return null;
   }

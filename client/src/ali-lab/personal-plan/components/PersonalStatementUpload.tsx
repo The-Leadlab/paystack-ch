@@ -188,11 +188,9 @@ export function PersonalStatementUpload({ onImported }: Props) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">{t("stmtUploadTitle")}</p>
-          <p className="text-[11px] text-[var(--pp-on-surface-variant)] mt-1 max-w-xl">
-            {t("stmtAiUploadHint")}
-            {` · ${usedAcrossSessions}/${personalCap} uploads across all sessions`}
+          <p className="text-[11px] text-[var(--pp-on-surface-variant)] mt-1">
+            {usedAcrossSessions}/{personalCap} uploads
           </p>
-          <p className="text-[11px] text-[var(--pp-on-surface-variant)] mt-1">{t("stmtMonthJumpHint")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
