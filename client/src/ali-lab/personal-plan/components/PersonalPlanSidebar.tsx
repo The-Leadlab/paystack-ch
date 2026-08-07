@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Lock, Plus, Briefcase, MoreHorizontal } from "lucide-react";
+import {
+  Lock,
+  Plus,
+  Briefcase,
+  MoreHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   PERSONAL_PLAN_NAV,
@@ -121,9 +128,13 @@ function PersonalPlanMoreSheet({
 export function PersonalPlanSidebar({
   featureId,
   surface = "lab",
+  collapsed = false,
+  onToggleCollapsed,
 }: {
   featureId: string | undefined;
   surface?: PersonalPlanSurface;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }) {
   const { openTransaction } = usePersonalPlan();
   const showBusinessLink = useCanOpenBusinessDashboard();
@@ -133,20 +144,46 @@ export function PersonalPlanSidebar({
   };
 
   return (
-    <aside className="hidden md:flex flex-col fixed left-0 top-0 h-screen w-64 z-50 bg-[var(--pp-surface-low)] border-r border-[var(--pp-outline-variant)] p-6 gap-2">
-      <Link href={personalHomePath(surface)} className="flex items-center gap-3 px-1 mb-6 hover:opacity-90">
-        <div className="w-10 h-10 bg-[var(--pp-primary-container)] rounded-lg flex items-center justify-center shrink-0">
-          <span className="text-[var(--pp-on-primary)] text-lg font-bold">P</span>
-        </div>
-        <div className="min-w-0">
-          <h1 className="text-base font-bold text-[var(--pp-primary)] tracking-tight truncate">Paystack</h1>
-          <p className="text-[11px] text-[var(--pp-on-surface-variant)] opacity-70">
-            {surface === "app" ? "Personal" : "Lab · Personal"}
-          </p>
-        </div>
-      </Link>
+    <aside
+      data-tour="personal-sidebar"
+      className={cn(
+        "hidden md:flex flex-col fixed left-0 top-0 h-screen z-50 bg-[var(--pp-surface-low)] border-r border-[var(--pp-outline-variant)] gap-2 transition-[width] duration-200",
+        collapsed ? "w-16 p-2" : "w-64 p-6"
+      )}
+    >
+      <div className={cn("flex items-center mb-4", collapsed ? "flex-col gap-2" : "justify-between gap-2")}>
+        <Link
+          href={personalHomePath(surface)}
+          className={cn("flex items-center hover:opacity-90 min-w-0", collapsed ? "justify-center" : "gap-3 px-1")}
+          title="Paystack Personal"
+        >
+          <div className="w-10 h-10 bg-[var(--pp-primary-container)] rounded-lg flex items-center justify-center shrink-0">
+            <span className="text-[var(--pp-on-primary)] text-lg font-bold">P</span>
+          </div>
+          {!collapsed ? (
+            <div className="min-w-0">
+              <h1 className="text-base font-bold text-[var(--pp-primary)] tracking-tight truncate">Paystack</h1>
+              <p className="text-[11px] text-[var(--pp-on-surface-variant)] opacity-70">
+                {surface === "app" ? "Personal" : "Lab · Personal"}
+              </p>
+            </div>
+          ) : null}
+        </Link>
+        {onToggleCollapsed ? (
+          <button
+            type="button"
+            data-tour="sidebar-collapse"
+            onClick={onToggleCollapsed}
+            className="p-2 rounded-lg text-[var(--pp-on-surface-variant)] hover:bg-[var(--pp-surface-highest)] hover:text-[var(--pp-on-surface)]"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand" : "Collapse"}
+          >
+            {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+          </button>
+        ) : null}
+      </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto">
+      <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden">
         {PERSONAL_PLAN_NAV.map((item) => {
           const active = isNavActive(item, featureId);
           const Icon = item.icon;
@@ -154,19 +191,22 @@ export function PersonalPlanSidebar({
             <Link
               key={item.id}
               href={personalPlanNavHref(item, surface)}
+              title={item.label}
+              data-tour={`nav-${item.featureId}`}
               className={cn(
-                "flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-semibold tracking-wide transition-all duration-200",
+                "flex items-center rounded-lg text-xs font-semibold tracking-wide transition-all duration-200",
+                collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-4 py-2.5",
                 active
                   ? "pp-nav-active"
                   : "text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)]"
               )}
             >
               <Icon className="size-4 shrink-0" />
-              <span>{item.label}</span>
+              {!collapsed ? <span>{item.label}</span> : null}
             </Link>
           );
         })}
-        {surface === "lab" ? (
+        {surface === "lab" && !collapsed ? (
           <>
             <p className="px-4 pt-4 pb-1 text-[10px] uppercase tracking-widest text-[var(--pp-on-surface-variant)] opacity-60">
               Lab
@@ -192,44 +232,65 @@ export function PersonalPlanSidebar({
       <div className="mt-auto space-y-1 pt-4 border-t border-[var(--pp-outline-variant)]">
         <button
           type="button"
+          data-tour="add-transaction"
           onClick={() => openTransaction()}
-          className="w-full mb-3 flex items-center justify-center gap-2 py-2.5 bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] rounded-lg text-xs font-bold hover:opacity-90 transition-opacity"
+          title="Add transaction"
+          className={cn(
+            "w-full flex items-center justify-center gap-2 py-2.5 bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] rounded-lg text-xs font-bold hover:opacity-90 transition-opacity",
+            collapsed ? "mb-1 px-0" : "mb-3"
+          )}
         >
           <Plus className="size-4" />
-          Add transaction
+          {!collapsed ? <span>Add transaction</span> : null}
         </button>
         {surface === "lab" ? (
-          <>
-            <Link
-              href={businessAppPath()}
-              className="flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
-            >
-              <Briefcase className="size-4" />
-              Business /app
-            </Link>
-            <Link
-              href={personalAppHomePath()}
-              className="flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
-            >
-              <Briefcase className="size-4" />
-              Production personal
-            </Link>
+          !collapsed ? (
+            <>
+              <Link
+                href={businessAppPath()}
+                className="flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
+              >
+                <Briefcase className="size-4" />
+                Business /app
+              </Link>
+              <Link
+                href={personalAppHomePath()}
+                className="flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
+              >
+                <Briefcase className="size-4" />
+                Production personal
+              </Link>
+              <button
+                type="button"
+                onClick={() => void lockLab()}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
+              >
+                <Lock className="size-4" />
+                Lock lab
+              </button>
+            </>
+          ) : (
             <button
               type="button"
               onClick={() => void lockLab()}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
+              title="Lock lab"
+              className="w-full flex justify-center p-2.5 text-[var(--pp-on-surface-variant)] hover:bg-[var(--pp-surface-highest)] rounded-lg"
             >
               <Lock className="size-4" />
-              Lock lab
             </button>
-          </>
+          )
         ) : showBusinessLink ? (
           <Link
             href={businessAppPath()}
-            className="flex items-center gap-3 px-4 py-2.5 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors"
+            title="Business dashboard"
+            data-tour="business-link"
+            className={cn(
+              "flex items-center text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] hover:bg-[var(--pp-surface-highest)] rounded-lg text-xs transition-colors",
+              collapsed ? "justify-center p-2.5" : "gap-3 px-4 py-2.5"
+            )}
           >
             <Briefcase className="size-4" />
-            Business dashboard
+            {!collapsed ? <span>Business dashboard</span> : null}
           </Link>
         ) : null}
       </div>

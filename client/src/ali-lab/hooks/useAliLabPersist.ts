@@ -1,13 +1,36 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/cafe/context/AuthContext";
 import { useWorkspaceOptional } from "@/cafe/context/WorkspaceContext";
-import { db } from "@/cafe/lib/firebase";
+import { auth, db } from "@/cafe/lib/firebase";
 import {
   addLabDoc,
   loadLabDocs,
   removeLabDoc,
   updateLabDoc,
 } from "../aliLabFirestore";
+
+function isPermissionError(msg: string): boolean {
+  return /missing or insufficient permissions|permission-denied|permission_denied|unauthorized/i.test(
+    msg
+  );
+}
+
+async function withAuthRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (isPermissionError(msg) && auth?.currentUser) {
+      try {
+        await auth.currentUser.getIdToken(true);
+        return await fn();
+      } catch (retryErr) {
+        throw retryErr;
+      }
+    }
+    throw e;
+  }
+}
 
 export function useAliLabPersist<T extends { id: string }>(
   collectionName: string,
@@ -20,10 +43,12 @@ export function useAliLabPersist<T extends { id: string }>(
   const canWrite = workspace?.canWrite !== false;
   const [items, setItems] = useState<T[]>(seed);
   const [loading, setLoading] = useState(true);
+  /** Soft message — local data is authoritative when cloud is unavailable. */
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [cloudAvailable, setCloudAvailable] = useState(true);
+  /** True when last failure was a write (show slightly more emphasis). */
+  const [syncWriteFailed, setSyncWriteFailed] = useState(false);
 
-  /** Callers often pass an inline `seed` literal (new reference every render); read via ref
-   * so it doesn't sit in `refresh`'s deps and destabilize its identity. */
   const seedRef = useRef(seed);
   seedRef.current = seed;
 
@@ -59,12 +84,15 @@ export function useAliLabPersist<T extends { id: string }>(
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    setSyncError(null);
+    setSyncWriteFailed(false);
     const local = readLocal();
     try {
-      const remote = await loadLabDocs<T>(uid, collectionName, localSuffix);
+      const remote = await withAuthRetry(() =>
+        loadLabDocs<T>(uid, collectionName, localSuffix)
+      );
+      setCloudAvailable(true);
+      setSyncError(null);
       if (remote.length > 0) {
-        // Prefer remote, but keep any newer local-only rows (cloud write may have failed).
         const remoteIds = new Set(remote.map((r) => r.id));
         const localOnly = local.filter((r) => !remoteIds.has(r.id));
         const merged = [...remote, ...localOnly];
@@ -76,11 +104,18 @@ export function useAliLabPersist<T extends { id: string }>(
         setItems(seedRef.current);
       }
     } catch (e) {
-      setSyncError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setCloudAvailable(false);
+      // Soft: local is fine — do not alarm on load-only permission failures.
+      if (isPermissionError(msg)) {
+        setSyncError(null);
+      } else {
+        setSyncError(msg);
+      }
       setItems(local.length > 0 ? local : seedRef.current);
     }
     setLoading(false);
-  }, [uid, collectionName, localSuffix, localKey, readLocal, writeLocal]);
+  }, [uid, collectionName, localSuffix, readLocal, writeLocal]);
 
   useEffect(() => {
     void refresh();
@@ -101,8 +136,8 @@ export function useAliLabPersist<T extends { id: string }>(
           : `local_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
       let id = tempId;
       setSyncError(null);
+      setSyncWriteFailed(false);
 
-      // Optimistic local write first so refresh never loses Expected budgets.
       const optimistic = { id, ...data } as T;
       setItems((prev) => {
         const next = [...prev, optimistic];
@@ -111,7 +146,10 @@ export function useAliLabPersist<T extends { id: string }>(
       });
 
       try {
-        id = await addLabDoc(uid, collectionName, data as Record<string, unknown>);
+        id = await withAuthRetry(() =>
+          addLabDoc(uid, collectionName, data as Record<string, unknown>)
+        );
+        setCloudAvailable(true);
         if (id !== tempId) {
           setItems((prev) => {
             const next = prev.map((x) => (x.id === tempId ? ({ ...x, id } as T) : x));
@@ -120,8 +158,10 @@ export function useAliLabPersist<T extends { id: string }>(
           });
         }
       } catch (e) {
-        setSyncError(e instanceof Error ? e.message : String(e));
-        // Keep local row with tempId
+        const msg = e instanceof Error ? e.message : String(e);
+        setCloudAvailable(false);
+        setSyncWriteFailed(true);
+        setSyncError(isPermissionError(msg) ? "cloud-unavailable" : msg);
       }
 
       return { id, ...data } as T;
@@ -133,15 +173,24 @@ export function useAliLabPersist<T extends { id: string }>(
     async (id: string, patch: Partial<T>) => {
       if (!canWrite) throw new Error("Read-only access");
       setSyncError(null);
+      setSyncWriteFailed(false);
       setItems((prev) => {
         const next = prev.map((x) => (x.id === id ? { ...x, ...patch } : x));
         writeLocal(next);
         return next;
       });
       try {
-        if (uid && db) await updateLabDoc(uid, collectionName, id, patch as Record<string, unknown>);
+        if (uid && db) {
+          await withAuthRetry(() =>
+            updateLabDoc(uid, collectionName, id, patch as Record<string, unknown>)
+          );
+          setCloudAvailable(true);
+        }
       } catch (e) {
-        setSyncError(e instanceof Error ? e.message : String(e));
+        const msg = e instanceof Error ? e.message : String(e);
+        setCloudAvailable(false);
+        setSyncWriteFailed(true);
+        setSyncError(isPermissionError(msg) ? "cloud-unavailable" : msg);
       }
     },
     [uid, collectionName, writeLocal, canWrite]
@@ -151,19 +200,44 @@ export function useAliLabPersist<T extends { id: string }>(
     async (id: string) => {
       if (!canWrite) throw new Error("Read-only access");
       setSyncError(null);
+      setSyncWriteFailed(false);
       setItems((prev) => {
         const next = prev.filter((x) => x.id !== id);
         writeLocal(next);
         return next;
       });
       try {
-        if (uid && db) await removeLabDoc(uid, collectionName, id);
+        if (uid && db) {
+          await withAuthRetry(() => removeLabDoc(uid, collectionName, id));
+          setCloudAvailable(true);
+        }
       } catch (e) {
-        setSyncError(e instanceof Error ? e.message : String(e));
+        const msg = e instanceof Error ? e.message : String(e);
+        setCloudAvailable(false);
+        setSyncWriteFailed(true);
+        setSyncError(isPermissionError(msg) ? "cloud-unavailable" : msg);
       }
     },
     [uid, collectionName, writeLocal, canWrite]
   );
 
-  return { items, loading, refresh, add, update, remove, setItems: persistLocal, uid, syncError };
+  const dismissSyncError = useCallback(() => {
+    setSyncError(null);
+    setSyncWriteFailed(false);
+  }, []);
+
+  return {
+    items,
+    loading,
+    refresh,
+    add,
+    update,
+    remove,
+    setItems: persistLocal,
+    uid,
+    syncError,
+    cloudAvailable,
+    syncWriteFailed,
+    dismissSyncError,
+  };
 }

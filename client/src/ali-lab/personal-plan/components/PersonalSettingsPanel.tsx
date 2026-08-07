@@ -14,6 +14,14 @@ import { GlassCard } from "./GlassCard";
 import { PersonalGoogleDrivePanel } from "./PersonalGoogleDrivePanel";
 import { PersonalBillingAddons } from "./PersonalBillingAddons";
 import { PersonalSessionsControl } from "./PersonalSessionsControl";
+import {
+  PERSONAL_TOUR_DONE_KEY,
+  requestProductTour,
+} from "@/components/product-tour";
+import {
+  PERSONAL_ONBOARDING_KEY,
+  resetOnboardingDone,
+} from "@/components/onboarding/OnboardingStepShell";
 
 const LANGS: LabLang[] = ["en", "fr", "de", "it"];
 
@@ -95,6 +103,29 @@ export function PersonalSettingsPanel() {
           >
             <UserPlus className="size-4" />
             Invite
+          </button>
+        </GlassCard>
+      ) : null}
+
+      {surface === "app" ? (
+        <GlassCard className="p-4 space-y-3">
+          <p className="text-sm font-semibold">Help</p>
+          <button
+            type="button"
+            onClick={() => requestProductTour(PERSONAL_TOUR_DONE_KEY)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--pp-outline-variant)] text-xs font-bold hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)]"
+          >
+            Restart product tour
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              resetOnboardingDone(PERSONAL_ONBOARDING_KEY);
+              window.location.reload();
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--pp-outline-variant)] text-xs font-bold text-[var(--pp-on-surface-variant)] hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)]"
+          >
+            Restart onboarding
           </button>
         </GlassCard>
       ) : null}

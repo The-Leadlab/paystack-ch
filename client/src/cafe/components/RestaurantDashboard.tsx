@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'wouter';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings, Wallet, FilePenLine, Mail, Shield, ArrowDownCircle } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings, Wallet, FilePenLine, Mail, Shield, ArrowDownCircle, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { BillingPlanPanel } from './BillingPlanPanel';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
@@ -43,6 +43,22 @@ import { postLedgerFromFinancialData } from '../lib/postLedgerFromFinancialData'
 import { canonicalizeSupplierName } from '../lib/swissDocumentNormalize';
 import { evaluateVatReview } from '../lib/vatReview';
 import { filterBusinessExpenses } from '../lib/personalBleedFilter';
+import {
+  BUSINESS_SIDEBAR_COLLAPSED_KEY,
+  usePersistedSidebarCollapsed,
+} from '@/hooks/usePersistedSidebarCollapsed';
+import { BusinessOnboardingWizard } from './BusinessOnboardingWizard';
+import {
+  BUSINESS_ONBOARDING_KEY,
+  readOnboardingDone,
+} from '@/components/onboarding/OnboardingStepShell';
+import {
+  BUSINESS_TOUR_DONE_KEY,
+  BUSINESS_TOUR_STEPS,
+  ProductTourOverlay,
+  requestProductTour,
+  useProductTour,
+} from '@/components/product-tour';
 
 type Tab = BusinessTab;
 
@@ -168,6 +184,17 @@ export function RestaurantDashboard() {
   }, [isPlanTestUser, subscriptionLoading, billing?.planId]);
 
   const [showSidebar, setShowSidebar] = useState(false);
+  const { collapsed: sidebarCollapsed, toggle: toggleSidebarCollapsed } =
+    usePersistedSidebarCollapsed(BUSINESS_SIDEBAR_COLLAPSED_KEY);
+  const [showBusinessOnboarding, setShowBusinessOnboarding] = useState(
+    () => !readOnboardingDone(BUSINESS_ONBOARDING_KEY)
+  );
+  const businessTour = useProductTour({
+    storageKey: BUSINESS_TOUR_DONE_KEY,
+    steps: BUSINESS_TOUR_STEPS,
+    enabled: !showBusinessOnboarding,
+    autoStartDelayMs: 900,
+  });
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [showAddIncome, setShowAddIncome] = useState(false);
   const [showAddExpense, setShowAddExpense] = useState(false);
@@ -719,6 +746,20 @@ export function RestaurantDashboard() {
 
   return (
     <div className="ba-v3 min-h-[100dvh] min-h-screen bg-cdlp-dark flex flex-col touch-manipulation overscroll-y-contain">
+      {showBusinessOnboarding ? (
+        <BusinessOnboardingWizard onDone={() => setShowBusinessOnboarding(false)} />
+      ) : null}
+      {businessTour.active && businessTour.current ? (
+        <ProductTourOverlay
+          step={businessTour.current}
+          index={businessTour.index}
+          total={businessTour.total}
+          rect={businessTour.rect}
+          onNext={businessTour.goNext}
+          onBack={businessTour.goBack}
+          onSkip={businessTour.skip}
+        />
+      ) : null}
       {showUpgradePrompt && entitlements.maxDocumentsPerMonth != null && (
         <UpgradePromptModal
           documentCap={entitlements.maxDocumentsPerMonth}
@@ -771,63 +812,97 @@ export function RestaurantDashboard() {
 
       {/* Session Sidebar */}
       <div
+        data-tour="business-sidebar"
         className={`
         ba-sidebar fixed md:relative inset-y-0 left-0 z-50 bg-cdlp-black border-r border-cdlp-border flex flex-col
         h-[100dvh] max-h-[100dvh] transform transition-transform duration-300 ease-in-out
         ${showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        ${sidebarCollapsed ? 'ba-sidebar--rail' : ''}
       `}
       >
         {/* Desktop: logo + nav */}
         <div className="hidden md:flex md:flex-col shrink-0 ba-sidebar-head border-b border-cdlp-border">
-          <img
-            src={BRAND_LOGO_SRC}
-            alt="Paystack.ch"
-            width={BRAND_LOGO_SIZE}
-            height={BRAND_LOGO_SIZE}
-            className="h-8 w-auto max-w-[140px] object-contain shrink-0 mb-2"
-          />
+          <div className={`flex items-center gap-1 mb-2 ${sidebarCollapsed ? 'flex-col' : 'justify-between'}`}>
+            <img
+              src={BRAND_LOGO_SRC}
+              alt="Paystack.ch"
+              width={BRAND_LOGO_SIZE}
+              height={BRAND_LOGO_SIZE}
+              className={`object-contain shrink-0 ${sidebarCollapsed ? 'h-7 w-7' : 'h-8 w-auto max-w-[140px]'}`}
+            />
+            <button
+              type="button"
+              data-tour="sidebar-collapse"
+              onClick={toggleSidebarCollapsed}
+              className="p-1.5 rounded border border-cdlp-border text-cdlp-muted hover:text-cdlp-gold"
+              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={sidebarCollapsed ? 'Expand' : 'Collapse'}
+            >
+              {sidebarCollapsed ? (
+                <PanelLeftOpen className="w-3.5 h-3.5" />
+              ) : (
+                <PanelLeftClose className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
 
           <BusinessSidebarNav
             activeTab={activeTab}
             onTabChange={switchTab}
             showRevenueTab={showRevenueTab}
             items={sidebarNavItems}
+            collapsed={sidebarCollapsed}
           />
         </div>
 
         {/* Desktop: account + session actions (below nav so all tabs stay visible) */}
         <div className="hidden md:block shrink-0 ba-sidebar-tools space-y-1.5">
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] text-cdlp-muted truncate min-w-0">{user?.email}</span>
+          {!sidebarCollapsed ? (
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] text-cdlp-muted truncate min-w-0">{user?.email}</span>
+              <button
+                type="button"
+                onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
+                className="shrink-0 px-1.5 py-0.5 rounded border border-cdlp-border text-[9px] font-bold text-cdlp-muted uppercase flex items-center gap-0.5"
+              >
+                <Globe className="w-2.5 h-2.5" />
+                {language === 'en' ? 'ENG' : 'FR'}
+              </button>
+            </div>
+          ) : null}
+
+          {!sidebarCollapsed ? (
             <button
               type="button"
-              onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
-              className="shrink-0 px-1.5 py-0.5 rounded border border-cdlp-border text-[9px] font-bold text-cdlp-muted uppercase flex items-center gap-0.5"
+              onClick={() => setShowMasterReset(true)}
+              className="ba-sidebar-action-btn ba-master-reset"
             >
-              <Globe className="w-2.5 h-2.5" />
-              {language === 'en' ? 'ENG' : 'FR'}
+              <Trash2 className="w-3 h-3 shrink-0" /> {t('dashMasterReset')}
             </button>
-          </div>
+          ) : null}
+
+          {!sidebarCollapsed ? (
+            <button
+              type="button"
+              onClick={() => requestProductTour(BUSINESS_TOUR_DONE_KEY)}
+              className="ba-sidebar-action-btn"
+            >
+              Restart tour
+            </button>
+          ) : null}
 
           <button
             type="button"
-            onClick={() => setShowMasterReset(true)}
-            className="ba-sidebar-action-btn ba-master-reset"
-          >
-            <Trash2 className="w-3 h-3 shrink-0" /> {t('dashMasterReset')}
-          </button>
-
-          <button
-            type="button"
+            data-tour="new-session"
             onClick={handleAddSession}
             disabled={!canAddSession}
-            title={!canAddSession ? sessionLimitMessage : undefined}
-            className="ba-sidebar-action-btn ba-new-session disabled:opacity-40 disabled:cursor-not-allowed"
+            title={!canAddSession ? sessionLimitMessage : t('newSession')}
+            className={`ba-sidebar-action-btn ba-new-session disabled:opacity-40 disabled:cursor-not-allowed ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
           >
             {canAddSession ? <Plus className="w-3 h-3 shrink-0" /> : <Lock className="w-3 h-3 shrink-0" />}{' '}
-            {t('newSession')}
+            {!sidebarCollapsed ? t('newSession') : null}
           </button>
-          {enforcementEnabled && entitlements.maxSessions != null ? (
+          {!sidebarCollapsed && enforcementEnabled && entitlements.maxSessions != null ? (
             <p className="text-[9px] text-cdlp-muted font-bold uppercase tracking-tight">
               {sessions.length}/{entitlements.maxSessions} {t('sessions')}
             </p>
@@ -875,7 +950,34 @@ export function RestaurantDashboard() {
         </div>
 
         {/* Sessions List */}
-        <div className="ba-sidebar-sessions flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+        <div className="ba-sidebar-sessions flex-1 min-h-0 overflow-y-auto custom-scrollbar" data-tour="sessions-list">
+          {sidebarCollapsed ? (
+            <div className="space-y-1.5">
+              {sessions.slice(0, 6).map((session) => {
+                const name = getSessionDisplayName(session);
+                const active = currentSession?.id === session.id && !isAllSessionsView;
+                return (
+                  <button
+                    key={session.id}
+                    type="button"
+                    title={name}
+                    onClick={() => {
+                      setCurrentSession(session);
+                      setShowSidebar(false);
+                    }}
+                    className={`w-full h-8 rounded border text-[10px] font-bold ${
+                      active
+                        ? 'bg-cdlp-gold/10 border-cdlp-gold text-cdlp-gold'
+                        : 'bg-cdlp-card border-cdlp-border text-cdlp-muted'
+                    }`}
+                  >
+                    {(name || '?').slice(0, 1).toUpperCase()}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-[10px] font-bold uppercase text-cdlp-muted tracking-wide">{t('dashRecentSessions')}</h3>
           </div>
@@ -957,6 +1059,8 @@ export function RestaurantDashboard() {
               ))}
             </div>
           )}
+            </>
+          )}
         </div>
 
         {/* Pinned bottom: billing + logout (sessions scroll above) */}
@@ -964,10 +1068,11 @@ export function RestaurantDashboard() {
           {isAdminAppAccessUser(user, { appAdmin: billing?.appAdmin }) ? (
             <Link
               href="/admin"
+              title={t("appAdminPanelLink")}
               className="ba-sidebar-link-btn ba-sidebar-link-btn--accent"
             >
               <Shield className="w-3 h-3 shrink-0" />
-              {t("appAdminPanelLink")}
+              {!sidebarCollapsed ? t("appAdminPanelLink") : null}
             </Link>
           ) : null}
           {isPersonalFinancesAccessUser(user) ||
@@ -975,19 +1080,22 @@ export function RestaurantDashboard() {
           isPersonalPlan(billing?.planId) ? (
             <Link
               href="/personal/overview"
+              data-tour="personal-link"
+              title={t("appPersonalFinancesLink")}
               className="ba-sidebar-link-btn ba-sidebar-link-btn--accent"
             >
               <Wallet className="w-3 h-3 shrink-0" />
-              {t("appPersonalFinancesLink")}
+              {!sidebarCollapsed ? t("appPersonalFinancesLink") : null}
             </Link>
           ) : null}
           <button
             type="button"
             onClick={() => void signOut()}
+            title={t('logout')}
             className="ba-sidebar-link-btn ba-sidebar-link-btn--muted"
           >
             <LogOut className="w-3 h-3 shrink-0" />
-            {t('logout')}
+            {!sidebarCollapsed ? t('logout') : null}
           </button>
         </div>
       </div>

@@ -5,7 +5,7 @@ import {
   doc,
   getDocs,
   query,
-  updateDoc,
+  setDoc,
   where,
 } from "firebase/firestore";
 import { db } from "@/cafe/lib/firebase";
@@ -99,7 +99,15 @@ export async function updateLabDoc(
   data: Record<string, unknown>
 ): Promise<void> {
   if (uid && db) {
-    await updateDoc(doc(db, collectionName, id), forFirestoreWrite(data));
+    // Merge + restaurantId so ownership rules stay satisfied on partial patches.
+    await setDoc(
+      doc(db, collectionName, id),
+      {
+        ...forFirestoreWrite(data),
+        restaurantId: uid,
+      },
+      { merge: true }
+    );
   }
 }
 

@@ -184,7 +184,7 @@ export function PersonalStatementUpload({ onImported }: Props) {
           : null;
 
   return (
-    <GlassCard className="p-4 space-y-3">
+    <GlassCard className="p-4 space-y-3" data-tour="statement-upload">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">{t("stmtUploadTitle")}</p>

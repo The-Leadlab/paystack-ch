@@ -156,11 +156,14 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
   draftBudgetsRef.current = draftBudgets;
   const billsHref = personalFeaturePath("bill-reminders", surface);
 
-  const { items: saved, update, add, syncError } = useAliLabPersist<BudgetRow>(
-    labCollections.budgets,
-    "budgets",
-    []
-  );
+  const {
+    items: saved,
+    update,
+    add,
+    syncError,
+    syncWriteFailed,
+    dismissSyncError,
+  } = useAliLabPersist<BudgetRow>(labCollections.budgets, "budgets", []);
 
   useEffect(() => {
     const modeRow = saved.find((b) => b.month === month && b.category === "__mode__");
@@ -391,10 +394,15 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
           <option value="traditional">{t("traditional")}</option>
           <option value="zero-based">{t("zeroBased")}</option>
         </select>
-        {syncError ? (
-          <span className="text-[var(--pp-error)]" title={syncError}>
-            Cloud sync failed
-          </span>
+        {syncWriteFailed ? (
+          <button
+            type="button"
+            onClick={dismissSyncError}
+            className="text-[11px] text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] underline-offset-2 hover:underline"
+            title={syncError === "cloud-unavailable" ? "Cloud sync unavailable" : syncError || undefined}
+          >
+            Saved on this device
+          </button>
         ) : null}
         <button
           type="button"

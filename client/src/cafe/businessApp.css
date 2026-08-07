@@ -48,6 +48,31 @@
 /* Sidebar shell — compact; nav must not be clipped by tall tool blocks */
 .ba-v3 .ba-sidebar {
   width: 13rem;
+  transition: width 0.2s ease;
+}
+
+.ba-v3 .ba-sidebar.ba-sidebar--collapsed {
+  width: 3.5rem;
+}
+
+.ba-v3 .ba-sidebar.ba-sidebar--rail .ba-sidebar-head {
+  align-items: center;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+}
+
+.ba-v3 .ba-sidebar.ba-sidebar--rail .ba-sidebar-tools,
+.ba-v3 .ba-sidebar.ba-sidebar--rail .ba-sidebar-sessions,
+.ba-v3 .ba-sidebar.ba-sidebar--rail .ba-sidebar-foot {
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+}
+
+.ba-v3 .ba-sidebar-nav-btn.ba-sidebar-nav-btn--rail {
+  justify-content: center;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  gap: 0;
 }
 
 .ba-v3 .ba-sidebar-head {
