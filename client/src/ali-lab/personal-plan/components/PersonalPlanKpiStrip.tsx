@@ -1,6 +1,7 @@
 import { GlassCard } from "./GlassCard";
 import { usePersonalBudgetLedger } from "../../hooks/usePersonalBudgetLedger";
 import { useLabLanguage } from "../../context/LabLanguageContext";
+import { usePersonalPlan } from "../context/PersonalPlanContext";
 import { formatChfDisplay, formatPct } from "../formatChfDisplay";
 
 function KpiCell({
@@ -29,8 +30,9 @@ function KpiCell({
   );
 }
 
-export function PersonalPlanKpiStrip({ month }: { month: string }) {
+export function PersonalPlanKpiStrip() {
   const { t } = useLabLanguage();
+  const { month } = usePersonalPlan();
   const ledger = usePersonalBudgetLedger(month);
   const h = ledger.totals;
 

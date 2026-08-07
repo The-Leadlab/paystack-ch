@@ -42,6 +42,8 @@ const en: Dict = {
   stmtIsolatedNote: "Personal budget only — separate from Business Revenue calculations.",
   stmtDriveBackupNote:
     "When Google Drive is connected, statement files are also saved under Paystack Documents / Personal / date.",
+  stmtMonthJumpHint:
+    "After import, the month picker jumps to the statement month so totals are not stuck on an empty month.",
   stmtAddTx: "Add transaction",
   stmtEmptyHint: "Upload a statement or add a transaction to populate your personal budget.",
   stmtExplore: "Explore",
@@ -279,6 +281,8 @@ const fr: Dict = {
   stmtIsolatedNote: "Budget personnel uniquement — séparé des calculs Revenue Business.",
   stmtDriveBackupNote:
     "Quand Google Drive est connecté, les relevés sont aussi enregistrés sous Paystack Documents / Personal / date.",
+  stmtMonthJumpHint:
+    "Après import, le sélecteur de mois passe au mois du relevé pour éviter des totaux à zéro.",
   stmtAddTx: "Ajouter une transaction",
   stmtEmptyHint: "Importez un relevé ou ajoutez une transaction pour remplir votre budget.",
   stmtExplore: "Explorer",

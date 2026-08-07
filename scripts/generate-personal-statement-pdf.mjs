@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, "..");
 const lines = [
   "UBS Personal Account Statement",
   "Account: CH93 0076 2011 6238 5295 7",
-  "Period: 01.07.2026 - 31.07.2026",
+  "Period: 01.07.2026 - 31.08.2026",
   "Currency: CHF",
   "",
   "Date        Description                    Amount",
@@ -22,13 +22,25 @@ const lines = [
   "18.07.2026  Uber Eats                       -32.80",
   "22.07.2026  Pillar 3a VIAC                 -200.00",
   "28.07.2026  Family gift contribution        150.00",
+  "01.08.2026  Salary ACME SA                 5200.00",
+  "03.08.2026  Migros Ouchy                    -74.20",
+  "04.08.2026  Coop Lausanne                   -92.10",
+  "06.08.2026  Sunrise mobile                  -49.90",
+  "08.08.2026  Swisscom bill                   -69.90",
+  "10.08.2026  Rent loft Geneva              -1850.00",
+  "12.08.2026  Gym Fitness Park                -79.00",
+  "15.08.2026  Dividend Swissquote              95.00",
+  "18.08.2026  Deliveroo dinner                -28.50",
+  "22.08.2026  Pillar 3a VIAC                 -200.00",
+  "25.08.2026  Amazon shopping                -119.90",
+  "28.08.2026  Family gift contribution         80.00",
 ];
 
 function escapePdfText(s) {
   return s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 }
 
-const content = ["BT", "/F1 11 Tf", "50 780 Td", "14 TL"];
+const content = ["BT", "/F1 10 Tf", "40 800 Td", "12 TL"];
 lines.forEach((line, i) => {
   if (i === 0) content.push(`(${escapePdfText(line)}) Tj`);
   else content.push(`T* (${escapePdfText(line)}) Tj`);

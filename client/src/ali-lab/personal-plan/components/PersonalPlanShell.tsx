@@ -38,7 +38,7 @@ function PersonalPlanShellInner({
         ) : null}
         <PersonalPlanHeader title={title} />
         <div className="p-4 md:p-16 space-y-6 max-w-[1400px]">
-          {showKpi ? <PersonalPlanKpiStrip month={undefined} /> : null}
+          {showKpi ? <PersonalPlanKpiStrip /> : null}
           {showOverviewExtras ? <PersonalBillingAddons /> : null}
           {children}
         </div>

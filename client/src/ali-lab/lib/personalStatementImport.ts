@@ -187,6 +187,147 @@ export function parsePersonalStatementCsv(text: string, fileName: string): Perso
   return { fileName, source: "csv", rows, issues, totals };
 }
 
+function totalsFromRows(rows: PersonalStatementDraft[]): { income: number; expense: number } {
+  return rows.reduce(
+    (acc, row) => {
+      if (row.kind === "income") acc.income += row.amount;
+      else acc.expense += row.amount;
+      return acc;
+    },
+    { income: 0, expense: 0 }
+  );
+}
+
+/** Best-effort text pull from simple text PDFs (Tj / TJ operators). */
+export async function extractPdfTextRough(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const raw = new TextDecoder("latin1").decode(bytes);
+  const chunks: string[] = [];
+
+  const tjRe = /\((?:\\.|[^\\)])*\)\s*Tj/g;
+  for (const m of raw.matchAll(tjRe)) {
+    const inner = m[0].replace(/\s*Tj$/, "").slice(1, -1);
+    chunks.push(
+      inner
+        .replace(/\\n/g, "\n")
+        .replace(/\\r/g, "")
+        .replace(/\\t/g, " ")
+        .replace(/\\\(/g, "(")
+        .replace(/\\\)/g, ")")
+        .replace(/\\\\/g, "\\")
+    );
+  }
+
+  const tjArrayRe = /\[(.*?)\]\s*TJ/gs;
+  for (const m of raw.matchAll(tjArrayRe)) {
+    const parts = m[1].match(/\((?:\\.|[^\\)])*\)/g) || [];
+    for (const p of parts) {
+      chunks.push(
+        p
+          .slice(1, -1)
+          .replace(/\\n/g, "\n")
+          .replace(/\\\(/g, "(")
+          .replace(/\\\)/g, ")")
+          .replace(/\\\\/g, "\\")
+      );
+    }
+  }
+
+  return chunks.join("\n");
+}
+
+/** Parse Swiss/EU bank lines: `01.07.2026  Migros ...  -86.40` or ISO + amount. */
+export function parsePersonalStatementPlainText(text: string, fileName: string): PersonalStatementPreview {
+  const issues: string[] = [];
+  const rows: PersonalStatementDraft[] = [];
+  const seen = new Set<string>();
+
+  const lineRe =
+    /(?:^|\n)\s*(\d{1,2}[./]\d{1,2}[./]\d{2,4}|\d{4}-\d{2}-\d{2})\s+(.+?)\s+([-+]?\d{1,7}(?:[',]\d{3})*(?:[.,]\d{1,2})?)\s*(?=\n|$)/g;
+
+  for (const m of text.matchAll(lineRe)) {
+    const dateRaw = m[1];
+    let description = m[2].replace(/\s+/g, " ").trim();
+    // Drop header-ish fragments
+    if (/^(date|description|amount|datum|libell|period|currency|account)\b/i.test(description)) continue;
+    if (/^-{2,}/.test(description)) continue;
+
+    const amt = parseAmount(m[3]);
+    if (!Number.isFinite(amt) || amt === 0) continue;
+    const draft = draftFromParts(dateRaw, description, amt);
+    if (!draft) continue;
+    const key = `${draft.date}|${draft.description}|${draft.amount}|${draft.kind}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push(draft);
+  }
+
+  // CSV-like rows embedded in text
+  if (!rows.length) {
+    for (const line of text.split(/\r?\n/)) {
+      if (!line.includes(",")) continue;
+      const parts = line.split(",").map((p) => p.trim());
+      if (parts.length < 3) continue;
+      if (/^date$/i.test(parts[0])) continue;
+      const amt = parseAmount(parts[parts.length - 1]);
+      if (!Number.isFinite(amt) || amt === 0) continue;
+      const draft = draftFromParts(parts[0], parts.slice(1, -1).join(" "), amt);
+      if (draft) rows.push(draft);
+    }
+  }
+
+  if (!rows.length) {
+    issues.push("Could not read transaction lines from PDF text. Try CSV export or a clearer statement.");
+  }
+
+  return {
+    fileName,
+    source: "pdf",
+    rows,
+    issues,
+    totals: totalsFromRows(rows),
+  };
+}
+
+function draftsFromBankAnalysis(
+  fileName: string,
+  analysis: { transactions?: Array<{ date?: string; description?: string; amount: number; type?: string }> }
+): PersonalStatementPreview {
+  const rows: PersonalStatementDraft[] = [];
+  for (const tx of analysis.transactions || []) {
+    const kind = tx.type === "INCOME" ? "income" : "expense";
+    const signed = kind === "expense" ? -Math.abs(tx.amount) : Math.abs(tx.amount);
+    const draft = draftFromParts(tx.date || "", tx.description || "", signed, kind);
+    if (draft) rows.push(draft);
+  }
+  return {
+    fileName,
+    source: "pdf",
+    rows,
+    issues: rows.length ? [] : ["No transactions extracted from PDF."],
+    totals: totalsFromRows(rows),
+  };
+}
+
+/** Dominant YYYY-MM from draft rows (for month picker jump after import). */
+export function dominantMonthFromDrafts(drafts: PersonalStatementDraft[]): string | null {
+  const counts = new Map<string, number>();
+  for (const d of drafts) {
+    if (!/^\d{4}-\d{2}/.test(d.date)) continue;
+    const key = d.date.slice(0, 7);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  let best: string | null = null;
+  let n = 0;
+  for (const [k, c] of counts) {
+    if (c > n) {
+      best = k;
+      n = c;
+    }
+  }
+  return best;
+}
+
 export async function parsePersonalStatementFile(file: File): Promise<PersonalStatementPreview> {
   const name = file.name || "statement";
   const lower = name.toLowerCase();
@@ -197,39 +338,44 @@ export async function parsePersonalStatementFile(file: File): Promise<PersonalSt
   }
 
   if (lower.endsWith(".pdf") || file.type === "application/pdf") {
+    const issues: string[] = [];
+    let aiPreview: PersonalStatementPreview | null = null;
+
     try {
       const analysis = await analyzeBankStatement(file, "CHF");
-      const rows: PersonalStatementDraft[] = [];
-      for (const tx of analysis.transactions || []) {
-        const kind = tx.type === "INCOME" ? "income" : "expense";
-        const signed = kind === "expense" ? -Math.abs(tx.amount) : Math.abs(tx.amount);
-        const draft = draftFromParts(tx.date || "", tx.description || "", signed, kind);
-        if (draft) rows.push(draft);
-      }
-      const totals = rows.reduce(
-        (acc, row) => {
-          if (row.kind === "income") acc.income += row.amount;
-          else acc.expense += row.amount;
-          return acc;
-        },
-        { income: 0, expense: 0 }
-      );
-      return {
-        fileName: name,
-        source: "pdf",
-        rows,
-        issues: rows.length ? [] : ["No transactions extracted from PDF."],
-        totals,
-      };
+      aiPreview = draftsFromBankAnalysis(name, analysis);
+      if (aiPreview.rows.length) return aiPreview;
+      issues.push(...(aiPreview.issues.length ? aiPreview.issues : ["AI returned no transactions."]));
     } catch (e) {
-      return {
-        fileName: name,
-        source: "pdf",
-        rows: [],
-        issues: [e instanceof Error ? e.message : String(e)],
-        totals: { income: 0, expense: 0 },
-      };
+      issues.push(e instanceof Error ? e.message : String(e));
     }
+
+    try {
+      const text = await extractPdfTextRough(file);
+      const textPreview = parsePersonalStatementPlainText(text, name);
+      if (textPreview.rows.length) {
+        return {
+          ...textPreview,
+          issues: [
+            ...issues.map((i) => `AI: ${i}`),
+            "Used on-device PDF text extraction (AI empty or unavailable).",
+          ],
+        };
+      }
+      issues.push(...textPreview.issues);
+    } catch (e) {
+      issues.push(`PDF text extract: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    return {
+      fileName: name,
+      source: "pdf",
+      rows: [],
+      issues: issues.length
+        ? issues
+        : ["No transactions found. Upload a CSV bank export or a text-based PDF."],
+      totals: { income: 0, expense: 0 },
+    };
   }
 
   if (
@@ -261,20 +407,12 @@ export async function parsePersonalStatementFile(file: File): Promise<PersonalSt
         );
         if (draft) rows.push(draft);
       }
-      const totals = rows.reduce(
-        (acc, row) => {
-          if (row.kind === "income") acc.income += row.amount;
-          else acc.expense += row.amount;
-          return acc;
-        },
-        { income: 0, expense: 0 }
-      );
       return {
         fileName: name,
         source: "image",
         rows,
         issues: rows.length ? [] : ["No amounts found in this photo. Try a clearer shot or a CSV export."],
-        totals,
+        totals: totalsFromRows(rows),
       };
     } catch (e) {
       return {
@@ -299,9 +437,14 @@ export async function parsePersonalStatementFile(file: File): Promise<PersonalSt
 export function personalStatementTemplateCsv(): string {
   return [
     "date,description,amount",
-    "2026-07-01,Salary ACME,5200.00",
+    "2026-07-01,Salary ACME SA,5200.00",
     "2026-07-03,Migros groceries,-86.40",
     "2026-07-05,Swisscom bill,-69.90",
-    "2026-07-10,Rent loft,-1850.00",
+    "2026-07-10,Rent loft Geneva,-1850.00",
+    "2026-08-01,Salary ACME SA,5200.00",
+    "2026-08-04,Coop Lausanne,-92.10",
+    "2026-08-08,Swisscom bill,-69.90",
+    "2026-08-10,Rent loft Geneva,-1850.00",
+    "2026-08-15,Dividend Swissquote,95.00",
   ].join("\n");
 }

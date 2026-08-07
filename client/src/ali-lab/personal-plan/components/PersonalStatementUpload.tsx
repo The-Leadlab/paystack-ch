@@ -1,10 +1,12 @@
 import { useRef, useState } from "react";
 import { CheckCircle2, FileUp, Loader2, Upload } from "lucide-react";
+import { toast } from "sonner";
 import { useLabLanguage } from "../../context/LabLanguageContext";
 import { commitPersonalStatementDrafts } from "../../lib/personalBudgetStore";
 import { usePersonalBudgetLedger } from "../../hooks/usePersonalBudgetLedger";
 import { refinePersonalDraftsWithAi } from "../../lib/personalAiAssist";
 import {
+  dominantMonthFromDrafts,
   parsePersonalStatementFile,
   personalStatementTemplateCsv,
 } from "../../lib/personalStatementImport";
@@ -15,14 +17,16 @@ import { GlassCard } from "./GlassCard";
 import { useSubscription } from "@/cafe/context/SubscriptionContext";
 import { useWorkspaceOptional } from "@/cafe/context/WorkspaceContext";
 import { auth } from "@/cafe/lib/firebase";
+import { usePersonalPlan } from "../context/PersonalPlanContext";
 
 type Props = {
-  onImported: () => void;
+  onImported: (meta?: { month?: string; rowCount?: number }) => void;
 };
 
 export function PersonalStatementUpload({ onImported }: Props) {
   const { t } = useLabLanguage();
   const ledger = usePersonalBudgetLedger();
+  const { setMonth } = usePersonalPlan();
   const workspace = useWorkspaceOptional();
   const {
     enforcementEnabled,
@@ -50,7 +54,9 @@ export function PersonalStatementUpload({ onImported }: Props) {
     setSuccess(null);
 
     if (personalAtCap) {
-      setErr(`Personal plan allows up to ${personalCap} document upload(s) this month.`);
+      const msg = `Personal plan allows up to ${personalCap} document upload(s) this month.`;
+      setErr(msg);
+      toast.error(msg);
       return;
     }
 
@@ -70,6 +76,7 @@ export function PersonalStatementUpload({ onImported }: Props) {
     let totalIncome = 0;
     let totalExpense = 0;
     const failures: string[] = [];
+    let jumpMonth: string | null = null;
     const ownerUid = workspace?.dataOwnerUid || auth?.currentUser?.uid || undefined;
 
     try {
@@ -77,11 +84,17 @@ export function PersonalStatementUpload({ onImported }: Props) {
         const file = toProcess[i];
         setProgress(`${i + 1}/${toProcess.length}: ${file.name}`);
         setPhase("analyzing");
+        toast.message(`Analyzing ${file.name}…`);
         try {
           const preview = await parsePersonalStatementFile(file);
           if (!preview.rows.length) {
-            failures.push(`${file.name}: ${preview.issues[0] || t("stmtAiNoRows")}`);
+            const reason = preview.issues[0] || t("stmtAiNoRows");
+            failures.push(`${file.name}: ${reason}`);
+            toast.error(`${file.name}: ${reason}`);
             continue;
+          }
+          if (preview.issues.some((x) => /on-device PDF text|AI:/i.test(x))) {
+            toast.message("AI unavailable or empty — used PDF text extraction.");
           }
           setPhase("filling");
           const filled = await refinePersonalDraftsWithAi(
@@ -100,6 +113,8 @@ export function PersonalStatementUpload({ onImported }: Props) {
           totalRows += record.rowCount;
           totalIncome += record.incomeTotal;
           totalExpense += record.expenseTotal;
+          const monthKey = dominantMonthFromDrafts(filled);
+          if (monthKey) jumpMonth = monthKey;
           await incrementPersonalDocumentUsage();
           const statementDate =
             filled.find((r) => r.selected && /^\d{4}-\d{2}-\d{2}/.test(r.date))?.date ||
@@ -107,24 +122,28 @@ export function PersonalStatementUpload({ onImported }: Props) {
           void backupPersonalStatementToGoogleDrive(file, ownerUid, { documentDate: statementDate });
           ledger.bump();
         } catch (e) {
-          failures.push(`${file.name}: ${e instanceof Error ? e.message : String(e)}`);
+          const msg = e instanceof Error ? e.message : String(e);
+          failures.push(`${file.name}: ${msg}`);
+          toast.error(`${file.name}: ${msg}`);
         }
       }
 
       if (totalRows > 0) {
-        setSuccess(
-          t("stmtAiImportedBatch")
-            .replace("{files}", String(toProcess.length - failures.length))
-            .replace("{n}", String(totalRows))
-            .replace("{income}", formatChfDisplay(totalIncome))
-            .replace("{expense}", formatChfDisplay(totalExpense))
-        );
-        onImported();
+        if (jumpMonth) setMonth(jumpMonth);
+        const msg = t("stmtAiImportedBatch")
+          .replace("{files}", String(toProcess.length - failures.length))
+          .replace("{n}", String(totalRows))
+          .replace("{income}", formatChfDisplay(totalIncome))
+          .replace("{expense}", formatChfDisplay(totalExpense));
+        setSuccess(msg);
+        toast.success(msg);
+        onImported({ month: jumpMonth || undefined, rowCount: totalRows });
       }
       if (failures.length) {
         setErr(failures.slice(0, 4).join(" · ") + (failures.length > 4 ? ` (+${failures.length - 4})` : ""));
       } else if (totalRows === 0) {
         setErr(t("stmtAiNoRows"));
+        toast.error(t("stmtAiNoRows"));
       }
     } finally {
       setBusy(false);
@@ -154,6 +173,7 @@ export function PersonalStatementUpload({ onImported }: Props) {
               ? ` · ${personalDocumentsUsedThisMonth}/${personalCap} uploads this month`
               : null}
           </p>
+          <p className="text-[11px] text-[var(--pp-on-surface-variant)] mt-1">{t("stmtMonthJumpHint")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button

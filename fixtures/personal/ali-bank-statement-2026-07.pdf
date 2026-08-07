@@ -2,14 +2,14 @@
 1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj
 2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj
 3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>endobj
-4 0 obj<< /Length 830 >>stream
+4 0 obj<< /Length 1538 >>stream
 BT
-/F1 11 Tf
-50 780 Td
-14 TL
+/F1 10 Tf
+40 800 Td
+12 TL
 (UBS Personal Account Statement) Tj
 T* (Account: CH93 0076 2011 6238 5295 7) Tj
-T* (Period: 01.07.2026 - 31.07.2026) Tj
+T* (Period: 01.07.2026 - 31.08.2026) Tj
 T* (Currency: CHF) Tj
 T* () Tj
 T* (Date        Description                    Amount) Tj
@@ -23,6 +23,18 @@ T* (15.07.2026  Dividend Swissquote             120.50) Tj
 T* (18.07.2026  Uber Eats                       -32.80) Tj
 T* (22.07.2026  Pillar 3a VIAC                 -200.00) Tj
 T* (28.07.2026  Family gift contribution        150.00) Tj
+T* (01.08.2026  Salary ACME SA                 5200.00) Tj
+T* (03.08.2026  Migros Ouchy                    -74.20) Tj
+T* (04.08.2026  Coop Lausanne                   -92.10) Tj
+T* (06.08.2026  Sunrise mobile                  -49.90) Tj
+T* (08.08.2026  Swisscom bill                   -69.90) Tj
+T* (10.08.2026  Rent loft Geneva              -1850.00) Tj
+T* (12.08.2026  Gym Fitness Park                -79.00) Tj
+T* (15.08.2026  Dividend Swissquote              95.00) Tj
+T* (18.08.2026  Deliveroo dinner                -28.50) Tj
+T* (22.08.2026  Pillar 3a VIAC                 -200.00) Tj
+T* (25.08.2026  Amazon shopping                -119.90) Tj
+T* (28.08.2026  Family gift contribution         80.00) Tj
 ET
 endstream
 endobj
@@ -34,8 +46,8 @@ xref
 0000000056 00000 n 
 0000000111 00000 n 
 0000000235 00000 n 
-0000001114 00000 n 
+0000001823 00000 n 
 trailer<< /Size 6 /Root 1 0 R >>
 startxref
-1180
+1889
 %%EOF
