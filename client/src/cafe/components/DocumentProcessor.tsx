@@ -41,7 +41,6 @@ import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocume
 import { isLocalDocMirroredInFirestore } from '../lib/dedupeProcessedDocuments';
 import { evaluateVatReview } from '../lib/vatReview';
 import {
-  forgetDocumentFile,
   recallDocumentFile,
   rememberDocumentFile,
 } from '../lib/documentFileMemory';
