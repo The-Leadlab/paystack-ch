@@ -12,7 +12,18 @@ import { FIREBASE_RESUMABLE_UPLOAD_THRESHOLD_BYTES } from '@shared/geminiLimits'
 
 const DOC_CACHE_NAME = 'paystack-doc-cache-v1';
 const CACHE_PREFIX = '/__doc-cache__/';
+/** Large PDFs blow browser Cache/Quota and break Firebase Auth IndexedDB — skip them. */
+const MAX_CACHE_FILE_BYTES = 1_500_000;
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function isQuotaError(error: unknown): boolean {
+  const err = error as { name?: string; message?: string; code?: number };
+  return (
+    err?.name === 'QuotaExceededError' ||
+    String(err?.message || '').includes('QuotaExceeded') ||
+    err?.code === 22
+  );
+}
 
 function isRetriableStorageError(error: unknown): boolean {
   const err = error as { code?: string; message?: string; name?: string };
@@ -84,10 +95,30 @@ function buildCacheKey(id: string): string {
 }
 
 /**
+ * Wipe the document Cache API bucket (frees quota after QuotaExceededError).
+ */
+export async function clearDocumentFileCache(): Promise<void> {
+  if (typeof caches === 'undefined') return;
+  try {
+    await caches.delete(DOC_CACHE_NAME);
+    console.warn('🧹 Cleared local document Cache API bucket to free quota');
+  } catch (error) {
+    console.warn('⚠️ Could not clear document cache:', error);
+  }
+}
+
+/**
  * Store a browser-local backup copy of uploaded files for resilient reprocessing.
+ * Skips large files — they cause QuotaExceededError and break Firebase Auth persistence.
  */
 export async function cacheDocumentFile(id: string, file: File): Promise<void> {
   if (!id || !file || typeof caches === 'undefined') return;
+  if (file.size > MAX_CACHE_FILE_BYTES) {
+    console.log(
+      `ℹ️ Skip Cache API backup for ${(file.size / 1024 / 1024).toFixed(1)} MB file (quota-safe)`
+    );
+    return;
+  }
   try {
     const cache = await caches.open(DOC_CACHE_NAME);
     const body = await file.arrayBuffer();
@@ -101,6 +132,9 @@ export async function cacheDocumentFile(id: string, file: File): Promise<void> {
       })
     );
   } catch (error) {
+    if (isQuotaError(error)) {
+      await clearDocumentFileCache();
+    }
     console.warn('⚠️ Could not cache document locally:', error);
   }
 }

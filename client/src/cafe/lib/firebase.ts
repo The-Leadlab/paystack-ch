@@ -5,7 +5,6 @@ import {
   getAuth,
   getRedirectResult,
   browserLocalPersistence,
-  indexedDBLocalPersistence,
   browserPopupRedirectResolver,
   type Auth,
 } from 'firebase/auth';
@@ -106,9 +105,11 @@ if (firebaseReady) {
   app = initializeApp(firebaseConfig);
   installAuthAssertionGuard();
 
+  // Prefer localStorage persistence — IndexedDB fills up when Cache API stores multi-MB PDFs
+  // and then Auth throws QuotaExceededError / "Auth timed out".
   try {
     auth = initializeAuth(app, {
-      persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+      persistence: browserLocalPersistence,
       popupRedirectResolver: browserPopupRedirectResolver,
     });
   } catch {

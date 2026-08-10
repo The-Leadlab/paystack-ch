@@ -2393,6 +2393,13 @@ export const DocumentProcessor: React.FC<{
   localDocsRef.current = localDocs;
   const allDocsRef = useRef<ProcessedDocument[]>([]);
 
+  // Free Cache API quota once — previous multi-MB PDF backups caused QuotaExceededError / Auth timeout.
+  useEffect(() => {
+    void import('../services/storageService')
+      .then((m) => m.clearDocumentFileCache())
+      .catch(() => undefined);
+  }, []);
+
   /** Documents processed per batch; next batch starts only after the current batch completes. */
   const BATCH_SIZE = resolveDocumentBatchSize();
 
@@ -2691,96 +2698,107 @@ export const DocumentProcessor: React.FC<{
       console.log(`Processing: ${doc.fileName}`);
       step('resolving source file');
 
+      // Prefer the freshest row (may have gained fileUrl after Storage upload finished).
+      const latest =
+        allDocsRef.current.find((d) => d.id === doc.id) ||
+        allDocsRef.current.find((d) => d.fileName === doc.fileName) ||
+        doc;
+
       const fromLocalRow = localDocsRef.current.find(
         (ld) =>
           Boolean(ld.fileRaw) &&
           ((firestoreId && ld.persistedDocumentId === firestoreId) ||
-            (doc.persistedDocumentId && ld.persistedDocumentId === doc.persistedDocumentId) ||
-            (doc.fileHash && ld.fileHash === doc.fileHash) ||
-            (ld.fileName && doc.fileName && ld.fileName === doc.fileName))
+            (latest.persistedDocumentId && ld.persistedDocumentId === latest.persistedDocumentId) ||
+            (latest.fileHash && ld.fileHash === latest.fileHash) ||
+            (ld.fileName && latest.fileName && ld.fileName === latest.fileName))
       )?.fileRaw;
 
       let inputFile: File | undefined =
+        latest.fileRaw ||
         doc.fileRaw ||
         fromLocalRow ||
         recallDocumentFile({
           firestoreId: isFirestoreDoc ? firestoreId : undefined,
-          persistedDocumentId: doc.persistedDocumentId || (isFirestoreDoc ? doc.id : undefined),
-          fileHash: doc.fileHash,
-          fileName: doc.fileName,
+          persistedDocumentId: latest.persistedDocumentId || (isFirestoreDoc ? latest.id : undefined),
+          fileHash: latest.fileHash,
+          fileName: latest.fileName,
         });
       if (inputFile) {
-        step(
-          fromLocalRow && inputFile === fromLocalRow
-            ? 'using localDocs File (no Storage download)'
-            : 'using in-memory / row File (no Storage download)'
-        );
+        step('using local/in-memory File');
       }
-      if (!inputFile && doc.persistedDocumentId) {
+
+      // Optional small-file Cache API (large PDFs are skipped by design).
+      if (!inputFile && (latest.persistedDocumentId || firestoreId)) {
+        const cacheKey = latest.persistedDocumentId || firestoreId!;
         step('reading local Cache API backup');
         const { getCachedDocumentFile } = await import('../services/storageService');
-        inputFile = (await getCachedDocumentFile(doc.persistedDocumentId, doc.fileName)) || undefined;
+        inputFile = (await getCachedDocumentFile(cacheKey, latest.fileName)) || undefined;
       }
-      if (!inputFile && isFirestoreDoc && firestoreId) {
-        step('reading Cache API by Firestore id');
-        const { getCachedDocumentFile } = await import('../services/storageService');
-        inputFile = (await getCachedDocumentFile(firestoreId, doc.fileName)) || undefined;
-      }
-      if (!inputFile && doc.fileDataUrl) {
+
+      if (!inputFile && latest.fileDataUrl) {
         try {
           step('reading fileDataUrl');
-          const dataUrlResp = await fetch(doc.fileDataUrl);
+          const dataUrlResp = await fetch(latest.fileDataUrl);
           const blob = await dataUrlResp.blob();
-          inputFile = new File([blob], doc.fileName, { type: blob.type || 'application/octet-stream' });
+          inputFile = new File([blob], latest.fileName, { type: blob.type || 'application/octet-stream' });
         } catch (dataUrlErr) {
           console.warn('⚠️ fileDataUrl fallback failed:', dataUrlErr);
         }
       }
-      if (!inputFile && doc.fileUrl) {
-        // Last resort — large scanned PDFs often time out here; prefer re-attach.
-        step('downloading from Firebase Storage (last resort)');
+
+      // Durable path (pre-regression): download from Firebase Storage when fileUrl exists.
+      let fileUrl = latest.fileUrl || doc.fileUrl;
+      let storagePath = latest.storagePath || doc.storagePath;
+      if (!inputFile && !fileUrl) {
+        // Brief wait — Storage upload may still be writing fileUrl onto the row.
+        step('waiting briefly for Storage fileUrl');
+        for (let i = 0; i < 10 && !fileUrl; i += 1) {
+          await new Promise((r) => setTimeout(r, 500));
+          const again =
+            allDocsRef.current.find((d) => d.id === doc.id) ||
+            allDocsRef.current.find((d) => d.fileName === doc.fileName);
+          fileUrl = again?.fileUrl;
+          storagePath = again?.storagePath || storagePath;
+          if (again?.fileRaw) {
+            inputFile = again.fileRaw;
+            break;
+          }
+        }
+      }
+      if (!inputFile && fileUrl) {
+        step('downloading from Firebase Storage');
         try {
-          const { downloadDocumentFile, cacheDocumentFile } = await import('../services/storageService');
+          const { downloadDocumentFile } = await import('../services/storageService');
           inputFile = await withStepTimeout(
-            downloadDocumentFile(doc.fileUrl, doc.fileName, doc.storagePath),
-            45_000,
+            downloadDocumentFile(fileUrl, latest.fileName, storagePath),
+            90_000,
             'Storage download'
           );
-          const cacheId = doc.persistedDocumentId || firestoreId;
-          if (inputFile && cacheId) {
-            await cacheDocumentFile(cacheId, inputFile);
-            rememberDocumentFile({
-              file: inputFile,
-              firestoreId: cacheId,
-              fileHash: doc.fileHash,
-              fileName: doc.fileName,
-            });
-          }
         } catch (dlErr: any) {
           throw new Error(
-            `${dlErr?.message || 'Storage download failed'}. Click “Re-attach file” and select the PDF again — processing will use the local file (no Storage download).`
+            `${dlErr?.message || 'Storage download failed'}. Click “Re-attach file” and select the PDF again.`
           );
         }
       }
       if (!inputFile) {
         throw new Error(
-          'Missing source file. Click “Re-attach file” and select the PDF again, then retry.'
+          'Missing source file (not in memory and no Storage URL yet). Re-upload the PDF or use Re-attach file, then retry.'
         );
       }
       step(`source ready (${(inputFile.size / 1024).toFixed(0)} KB)`);
       rememberDocumentFile({
         file: inputFile,
-        firestoreId: doc.persistedDocumentId || firestoreId,
-        fileHash: doc.fileHash,
-        fileName: doc.fileName,
+        firestoreId: latest.persistedDocumentId || firestoreId,
+        fileHash: latest.fileHash,
+        fileName: latest.fileName,
       });
 
-      // Keep a local backup so retries avoid another large Storage download.
-      const cacheId = doc.persistedDocumentId || firestoreId;
+      // Soft cache only (skips large PDFs / quota-safe).
+      const cacheId = latest.persistedDocumentId || firestoreId;
       if (cacheId && inputFile) {
         try {
           const { cacheDocumentFile } = await import('../services/storageService');
-          await cacheDocumentFile(cacheId, inputFile);
+          void cacheDocumentFile(cacheId, inputFile);
         } catch {
           /* non-fatal */
         }
@@ -2799,10 +2817,10 @@ export const DocumentProcessor: React.FC<{
       }
 
       storageForAi =
-        doc.fileUrl && doc.storagePath
-          ? { fileUrl: doc.fileUrl, storagePath: doc.storagePath }
-          : doc.fileUrl
-            ? { fileUrl: doc.fileUrl, storagePath: undefined as string | undefined }
+        fileUrl && storagePath
+          ? { fileUrl, storagePath }
+          : fileUrl
+            ? { fileUrl, storagePath: undefined as string | undefined }
             : undefined;
 
       if (!storageForAi?.storagePath) {

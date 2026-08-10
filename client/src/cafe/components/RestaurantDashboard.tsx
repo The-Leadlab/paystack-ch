@@ -444,50 +444,40 @@ export function RestaurantDashboard() {
       const createdId = newDoc.id;
       console.log('âœ… Document queue-saved with ID:', createdId);
 
-      // Always keep a local backup for resilient reprocessing even if remote storage is unstable/disabled.
-      // Await so processDoc never races a Cache miss right after upload.
+      // In-memory File handoff (survives local→Firestore mirror). Do NOT stuff multi-MB PDFs
+      // into Cache API — that caused QuotaExceededError and broke Firebase Auth.
       if (fileRaw) {
         try {
-          const { cacheDocumentFile } = await import('../services/storageService');
           const { rememberDocumentFile } = await import('../lib/documentFileMemory');
-          await cacheDocumentFile(createdId, fileRaw);
           rememberDocumentFile({
             file: fileRaw,
             firestoreId: createdId,
             fileHash,
             fileName,
           });
-          // Verify cache round-trip immediately
-          const { getCachedDocumentFile } = await import('../services/storageService');
-          const verified = await getCachedDocumentFile(createdId, fileName);
-          if (!verified) {
-            console.warn('⚠️ Cache API write did not round-trip; relying on in-memory File');
-          } else {
-            console.log('✅ Local Cache API backup verified:', createdId);
-          }
+          // Small files only — cacheDocumentFile no-ops large PDFs.
+          const { cacheDocumentFile } = await import('../services/storageService');
+          void cacheDocumentFile(createdId, fileRaw);
         } catch (cacheErr) {
-          console.warn('⚠️ Local cache backup failed:', cacheErr);
+          console.warn('⚠️ Local file remember/cache failed:', cacheErr);
         }
       }
 
-      // Upload to Firebase Storage in the background — do not block queue/process on this.
-      // AI page-split uses the in-memory File; Storage is for persistence / Drive backup.
+      // Await Storage upload (restored) so Firestore rows always have fileUrl before AI runs.
       if (fileRaw && user?.uid && storageUploadEnabledRef.current) {
-        void (async () => {
-          try {
-            console.log('📤 Uploading file to Firebase Storage...');
-            const { uploadDocument } = await import('../services/storageService');
-            const { downloadURL, storagePath } = await uploadDocument(fileRaw, user.uid, fileName);
-            await updateDocumentData(createdId, { fileUrl: downloadURL, storagePath });
-            console.log('✅ File stored for processing:', createdId);
-          } catch (uploadError: any) {
-            console.error('⚠️ Storage upload failed:', uploadError);
-            if (uploadError?.code === 'storage/unauthorized') {
-              storageUploadEnabledRef.current = false;
-              console.warn('Storage upload disabled for this session due to storage/unauthorized.');
-            }
+        try {
+          console.log('📤 Uploading file to Firebase Storage...');
+          const { uploadDocument } = await import('../services/storageService');
+          const { downloadURL, storagePath } = await uploadDocument(fileRaw, user.uid, fileName);
+          await updateDocumentData(createdId, { fileUrl: downloadURL, storagePath });
+          console.log('✅ File stored for processing:', createdId);
+        } catch (uploadError: any) {
+          console.error('⚠️ Storage upload failed:', uploadError);
+          if (uploadError?.code === 'storage/unauthorized') {
+            storageUploadEnabledRef.current = false;
+            console.warn('Storage upload disabled for this session due to storage/unauthorized.');
           }
-        })();
+        }
       }
 
       return createdId;
