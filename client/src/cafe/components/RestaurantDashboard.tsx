@@ -445,35 +445,34 @@ export function RestaurantDashboard() {
       console.log('âœ… Document queue-saved with ID:', createdId);
 
       // Always keep a local backup for resilient reprocessing even if remote storage is unstable/disabled.
+      // Await so processDoc never races a Cache miss right after upload.
       if (fileRaw) {
-        void (async () => {
-          try {
-            const { cacheDocumentFile } = await import('../services/storageService');
-            await cacheDocumentFile(createdId, fileRaw);
-          } catch (cacheErr) {
-            console.warn('âš ï¸ Local cache backup failed:', cacheErr);
-          }
-        })();
+        try {
+          const { cacheDocumentFile } = await import('../services/storageService');
+          await cacheDocumentFile(createdId, fileRaw);
+        } catch (cacheErr) {
+          console.warn('⚠️ Local cache backup failed:', cacheErr);
+        }
       }
 
-      // Upload to Firebase Storage before AI processing (no Vercel body-size cap on Storage).
+      // Upload to Firebase Storage in the background — do not block queue/process on this.
+      // AI page-split uses the in-memory File; Storage is for persistence / Drive backup.
       if (fileRaw && user?.uid && storageUploadEnabledRef.current) {
-        try {
-          console.log('📤 Uploading file to Firebase Storage...');
-          const { uploadDocument } = await import('../services/storageService');
-          const { downloadURL, storagePath } = await uploadDocument(fileRaw, user.uid, fileName);
-          await updateDocumentData(createdId, { fileUrl: downloadURL, storagePath });
-          console.log('✅ File stored for processing:', createdId);
-          // Google Drive backup happens once AI processing concludes (see handleDocumentData /
-          // DocumentProcessor's failure path), so the file can be filed directly into its correct
-          // week folder in one upload instead of uploaded now and moved later.
-        } catch (uploadError: any) {
-          console.error('⚠️ Storage upload failed:', uploadError);
-          if (uploadError?.code === 'storage/unauthorized') {
-            storageUploadEnabledRef.current = false;
-            console.warn('Storage upload disabled for this session due to storage/unauthorized.');
+        void (async () => {
+          try {
+            console.log('📤 Uploading file to Firebase Storage...');
+            const { uploadDocument } = await import('../services/storageService');
+            const { downloadURL, storagePath } = await uploadDocument(fileRaw, user.uid, fileName);
+            await updateDocumentData(createdId, { fileUrl: downloadURL, storagePath });
+            console.log('✅ File stored for processing:', createdId);
+          } catch (uploadError: any) {
+            console.error('⚠️ Storage upload failed:', uploadError);
+            if (uploadError?.code === 'storage/unauthorized') {
+              storageUploadEnabledRef.current = false;
+              console.warn('Storage upload disabled for this session due to storage/unauthorized.');
+            }
           }
-        }
+        })();
       }
 
       return createdId;

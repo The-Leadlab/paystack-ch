@@ -237,12 +237,30 @@ export async function deleteDocument(fileUrl: string): Promise<void> {
   }
 }
 
+async function withAttemptTimeout<T>(fn: () => Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      fn(),
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} attempt timed out after ${ms}ms`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /**
  * Download a stored document and reconstruct it as a File for re-processing.
  * Uses Firebase Storage SDK (authenticated) first, then falls back to fetch.
- * Extra retries help large scanned PDFs that hit storage/retry-limit-exceeded.
+ * Per-attempt timeouts prevent a single hung getBlob from burning the outer budget.
  */
-export async function downloadDocumentFile(fileUrl: string, fileName: string): Promise<File> {
+export async function downloadDocumentFile(
+  fileUrl: string,
+  fileName: string,
+  storagePath?: string
+): Promise<File> {
   if (!fileUrl || typeof fileUrl !== 'string') {
     throw new Error('Invalid file URL');
   }
@@ -250,32 +268,54 @@ export async function downloadDocumentFile(fileUrl: string, fileName: string): P
   const normalized = fileUrl.trim();
   const safeName = fileName || 'document.bin';
   const contentType = guessContentType(safeName);
+  const ATTEMPT_MS = 12_000;
 
   if (storage) {
-    const storageRef =
-      normalized.startsWith('http://') || normalized.startsWith('https://') || normalized.startsWith('gs://')
-        ? ref(storage, normalized)
-        : ref(storage, normalized.replace(/^\/+/, ''));
+    const candidates: string[] = [];
+    if (storagePath && storagePath.trim()) candidates.push(storagePath.trim());
+    candidates.push(normalized);
 
-    // 1) getBlob — often more resilient for multi-MB scanned PDFs than getBytes.
-    try {
-      const blob = await withRetry(() => getBlob(storageRef), 5, 900, isRetriableStorageError);
-      return new File([blob], safeName, { type: blob.type || contentType });
-    } catch (blobError) {
-      console.warn('⚠️ SDK getBlob failed, trying getBytes:', blobError);
-    }
+    for (const candidate of candidates) {
+      const storageRef =
+        candidate.startsWith('http://') || candidate.startsWith('https://') || candidate.startsWith('gs://')
+          ? ref(storage, candidate)
+          : ref(storage, candidate.replace(/^\/+/, ''));
 
-    // 2) getBytes (authenticated byte array).
-    try {
-      const bytes = await withRetry(() => getBytes(storageRef), 5, 900, isRetriableStorageError);
-      return new File([bytes], safeName, { type: contentType });
-    } catch (sdkError) {
-      console.warn('⚠️ SDK getBytes failed, trying fresh download URL:', sdkError);
+      // 1) getBlob — often more resilient for multi-MB scanned PDFs than getBytes.
       try {
-        const freshUrl = await withRetry(() => getDownloadURL(storageRef), 4, 700, isRetriableStorageError);
-        return await fetchAsFile(freshUrl, safeName);
-      } catch (freshUrlError) {
-        console.warn('⚠️ Fresh download URL failed, falling back to stored URL:', freshUrlError);
+        const blob = await withRetry(
+          () => withAttemptTimeout(() => getBlob(storageRef), ATTEMPT_MS, 'getBlob'),
+          3,
+          600,
+          isRetriableStorageError
+        );
+        return new File([blob], safeName, { type: blob.type || contentType });
+      } catch (blobError) {
+        console.warn('⚠️ SDK getBlob failed:', blobError);
+      }
+
+      // 2) getBytes (authenticated byte array).
+      try {
+        const bytes = await withRetry(
+          () => withAttemptTimeout(() => getBytes(storageRef), ATTEMPT_MS, 'getBytes'),
+          2,
+          600,
+          isRetriableStorageError
+        );
+        return new File([bytes], safeName, { type: contentType });
+      } catch (sdkError) {
+        console.warn('⚠️ SDK getBytes failed, trying fresh download URL:', sdkError);
+        try {
+          const freshUrl = await withRetry(
+            () => withAttemptTimeout(() => getDownloadURL(storageRef), 8_000, 'getDownloadURL'),
+            2,
+            400,
+            isRetriableStorageError
+          );
+          return await fetchAsFile(freshUrl, safeName);
+        } catch (freshUrlError) {
+          console.warn('⚠️ Fresh download URL failed for', candidate, freshUrlError);
+        }
       }
     }
   }

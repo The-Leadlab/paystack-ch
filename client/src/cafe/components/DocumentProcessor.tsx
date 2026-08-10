@@ -40,6 +40,11 @@ import { formatIssuerForDisplay, invoicesDetectedIssuer, documentDisplayName, co
 import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
 import { isLocalDocMirroredInFirestore } from '../lib/dedupeProcessedDocuments';
 import { evaluateVatReview } from '../lib/vatReview';
+import {
+  forgetDocumentFile,
+  recallDocumentFile,
+  rememberDocumentFile,
+} from '../lib/documentFileMemory';
 
 // Neural Log Component (from Ypsom)
 const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
@@ -2389,20 +2394,57 @@ export const DocumentProcessor: React.FC<{
   /** Documents processed per batch; next batch starts only after the current batch completes. */
   const BATCH_SIZE = resolveDocumentBatchSize();
 
-  // Combine Firestore documents with local processing documents (no pending+completed twins)
+  // Combine Firestore documents with local processing documents (no pending+completed twins).
+  // Re-attach in-memory File bytes onto Firestore rows so page-split never needs Storage download
+  // right after upload (local mirrors are dropped when Firestore catches up).
   const allDocs = useMemo(() => {
-    const firestoreDocs = documents.map((d) => ({ ...d, source: 'firestore' as const }));
+    const firestoreDocs = documents.map((d) => {
+      const remembered =
+        d.fileRaw ||
+        recallDocumentFile({
+          firestoreId: d.id,
+          persistedDocumentId: d.persistedDocumentId,
+          fileHash: d.fileHash,
+          fileName: d.fileName,
+        });
+      return {
+        ...d,
+        source: 'firestore' as const,
+        ...(remembered ? { fileRaw: remembered } : {}),
+      };
+    });
     const localProcessing = localDocs
       .filter((ld) => !isLocalDocMirroredInFirestore(ld, documents))
       .map((d) => ({ ...d, source: 'local' as const }));
     return [...firestoreDocs, ...localProcessing];
   }, [documents, localDocs]);
 
-  // Drop local mirrors once Firestore has the same file (avoids ghost rows after save)
+  // Drop local mirrors once Firestore has the same file (avoids ghost rows after save).
+  // Preserve File bytes in memory first.
   useEffect(() => {
     setLocalDocs((prev) => {
-      const next = prev.filter((ld) => !isLocalDocMirroredInFirestore(ld, documents));
-      return next.length === prev.length ? prev : next;
+      const next: ProcessedDocument[] = [];
+      let changed = false;
+      for (const ld of prev) {
+        if (isLocalDocMirroredInFirestore(ld, documents)) {
+          if (ld.fileRaw) {
+            const mirror =
+              documents.find((d) => d.id === ld.persistedDocumentId) ||
+              documents.find((d) => ld.fileHash && d.fileHash === ld.fileHash) ||
+              documents.find((d) => d.fileName === ld.fileName);
+            rememberDocumentFile({
+              file: ld.fileRaw,
+              firestoreId: mirror?.id || ld.persistedDocumentId,
+              fileHash: ld.fileHash || mirror?.fileHash,
+              fileName: ld.fileName,
+            });
+          }
+          changed = true;
+          continue;
+        }
+        next.push(ld);
+      }
+      return changed ? next : prev;
     });
   }, [documents]);
 
@@ -2560,6 +2602,17 @@ export const DocumentProcessor: React.FC<{
         };
       })
     );
+
+    for (const doc of news) {
+      if (doc.fileRaw) {
+        rememberDocumentFile({
+          file: doc.fileRaw,
+          firestoreId: doc.persistedDocumentId,
+          fileHash: doc.fileHash,
+          fileName: doc.fileName,
+        });
+      }
+    }
     
     setLocalDocs((p) => [...p, ...news]);
 
@@ -2603,11 +2656,26 @@ export const DocumentProcessor: React.FC<{
       console.log(`Processing: ${doc.fileName}`);
       step('resolving source file');
 
-      let inputFile: File | undefined = doc.fileRaw;
+      let inputFile: File | undefined =
+        doc.fileRaw ||
+        recallDocumentFile({
+          firestoreId: isFirestoreDoc ? firestoreId : undefined,
+          persistedDocumentId: doc.persistedDocumentId || (isFirestoreDoc ? doc.id : undefined),
+          fileHash: doc.fileHash,
+          fileName: doc.fileName,
+        });
+      if (inputFile) {
+        step('using in-memory / row File (no Storage download)');
+      }
       if (!inputFile && doc.persistedDocumentId) {
         step('reading local Cache API backup');
         const { getCachedDocumentFile } = await import('../services/storageService');
         inputFile = (await getCachedDocumentFile(doc.persistedDocumentId, doc.fileName)) || undefined;
+      }
+      if (!inputFile && isFirestoreDoc && firestoreId) {
+        step('reading Cache API by Firestore id');
+        const { getCachedDocumentFile } = await import('../services/storageService');
+        inputFile = (await getCachedDocumentFile(firestoreId, doc.fileName)) || undefined;
       }
       if (!inputFile && doc.fileDataUrl) {
         try {
@@ -2620,28 +2688,50 @@ export const DocumentProcessor: React.FC<{
         }
       }
       if (!inputFile && doc.fileUrl) {
-        // Rehydrate persisted documents after page refresh.
-        step('downloading from Firebase Storage');
-        const { downloadDocumentFile, cacheDocumentFile } = await import('../services/storageService');
-        inputFile = await withStepTimeout(
-          downloadDocumentFile(doc.fileUrl, doc.fileName),
-          60_000,
-          'Storage download'
-        );
-        if (inputFile && doc.persistedDocumentId) {
-          await cacheDocumentFile(doc.persistedDocumentId, inputFile);
+        // Last resort — large scanned PDFs often time out here; prefer re-attach.
+        step('downloading from Firebase Storage (last resort)');
+        try {
+          const { downloadDocumentFile, cacheDocumentFile } = await import('../services/storageService');
+          inputFile = await withStepTimeout(
+            downloadDocumentFile(doc.fileUrl, doc.fileName, doc.storagePath),
+            45_000,
+            'Storage download'
+          );
+          const cacheId = doc.persistedDocumentId || firestoreId;
+          if (inputFile && cacheId) {
+            await cacheDocumentFile(cacheId, inputFile);
+            rememberDocumentFile({
+              file: inputFile,
+              firestoreId: cacheId,
+              fileHash: doc.fileHash,
+              fileName: doc.fileName,
+            });
+          }
+        } catch (dlErr: any) {
+          throw new Error(
+            `${dlErr?.message || 'Storage download failed'}. Click “Re-attach file” and select the PDF again — processing will use the local file (no Storage download).`
+          );
         }
       }
       if (!inputFile) {
-        throw new Error('Missing source file or storage unreachable. Re-upload this document once to create local backup, then retry.');
+        throw new Error(
+          'Missing source file. Click “Re-attach file” and select the PDF again, then retry.'
+        );
       }
       step(`source ready (${(inputFile.size / 1024).toFixed(0)} KB)`);
+      rememberDocumentFile({
+        file: inputFile,
+        firestoreId: doc.persistedDocumentId || firestoreId,
+        fileHash: doc.fileHash,
+        fileName: doc.fileName,
+      });
 
       // Keep a local backup so retries avoid another large Storage download.
-      if (doc.persistedDocumentId && inputFile) {
+      const cacheId = doc.persistedDocumentId || firestoreId;
+      if (cacheId && inputFile) {
         try {
           const { cacheDocumentFile } = await import('../services/storageService');
-          await cacheDocumentFile(doc.persistedDocumentId, inputFile);
+          await cacheDocumentFile(cacheId, inputFile);
         } catch {
           /* non-fatal */
         }
@@ -2851,10 +2941,17 @@ export const DocumentProcessor: React.FC<{
     if (!target) return;
 
     try {
-      if (target.persistedDocumentId) {
+      const cacheId = target.persistedDocumentId || ((target as any).source === 'firestore' ? target.id : undefined);
+      if (cacheId) {
         const { cacheDocumentFile } = await import('../services/storageService');
-        await cacheDocumentFile(target.persistedDocumentId, file);
+        await cacheDocumentFile(cacheId, file);
       }
+      rememberDocumentFile({
+        file,
+        firestoreId: cacheId,
+        fileHash: target.fileHash,
+        fileName: target.fileName,
+      });
 
       await processDoc({
         ...target,
@@ -3145,37 +3242,65 @@ export const DocumentProcessor: React.FC<{
 
                             {doc.status === 'error' && (
                               <>
-                                {canProcessDoc(doc as ProcessedDocument & { source?: 'firestore' | 'local' }) ? (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      void retryDocument(doc as ProcessedDocument & { source?: 'firestore' | 'local' });
-                                    }}
-                                    disabled={Boolean(retryingDocId) || isProcessing}
-                                    className="px-2 py-1 bg-cdlp-gold/20 hover:bg-cdlp-gold/30 disabled:opacity-50 text-cdlp-gold text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
-                                    title={t('dpRetryAiTitle')}
-                                  >
-                                    {retryingDocId === doc.id ? (
-                                      <Loader2 className="w-3 h-3 animate-spin" />
-                                    ) : (
-                                      <RefreshCcw className="w-3 h-3" />
-                                    )}
-                                    <span className="hidden lg:inline">{t('dpProcessAgain')}</span>
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      startReattach(doc.id);
-                                    }}
-                                    disabled={Boolean(retryingDocId) || isProcessing}
-                                    className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/30 disabled:opacity-50 text-blue-400 text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
-                                    title={t('dpReattachProcess')}
-                                  >
-                                    <Upload className="w-3 h-3" />
-                                    <span className="hidden lg:inline">{t('dpReattachProcess')}</span>
-                                  </button>
-                                )}
+                                {(() => {
+                                  const errText = String(doc.error || '');
+                                  const needsReattach =
+                                    /Storage download|Re-attach|Missing source|timed out/i.test(errText) ||
+                                    !recallDocumentFile({
+                                      firestoreId: doc.id,
+                                      persistedDocumentId: doc.persistedDocumentId,
+                                      fileHash: doc.fileHash,
+                                      fileName: doc.fileName,
+                                    });
+                                  const hasLocal =
+                                    Boolean(doc.fileRaw) ||
+                                    Boolean(
+                                      recallDocumentFile({
+                                        firestoreId: doc.id,
+                                        persistedDocumentId: doc.persistedDocumentId,
+                                        fileHash: doc.fileHash,
+                                        fileName: doc.fileName,
+                                      })
+                                    );
+                                  return (
+                                    <>
+                                      {hasLocal && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            void retryDocument(
+                                              doc as ProcessedDocument & { source?: 'firestore' | 'local' }
+                                            );
+                                          }}
+                                          disabled={Boolean(retryingDocId) || isProcessing}
+                                          className="px-2 py-1 bg-cdlp-gold/20 hover:bg-cdlp-gold/30 disabled:opacity-50 text-cdlp-gold text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
+                                          title={t('dpRetryAiTitle')}
+                                        >
+                                          {retryingDocId === doc.id ? (
+                                            <Loader2 className="w-3 h-3 animate-spin" />
+                                          ) : (
+                                            <RefreshCcw className="w-3 h-3" />
+                                          )}
+                                          <span className="hidden lg:inline">{t('dpProcessAgain')}</span>
+                                        </button>
+                                      )}
+                                      {(needsReattach || !hasLocal) && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            startReattach(doc.id);
+                                          }}
+                                          disabled={Boolean(retryingDocId) || isProcessing}
+                                          className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/30 disabled:opacity-50 text-blue-400 text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
+                                          title={t('dpReattachProcess')}
+                                        >
+                                          <Upload className="w-3 h-3" />
+                                          <span className="hidden lg:inline">{t('dpReattachProcess')}</span>
+                                        </button>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </>
                             )}
 
