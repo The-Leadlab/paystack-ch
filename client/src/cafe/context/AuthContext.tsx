@@ -147,6 +147,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!auth) return { error: new Error('Firebase is not configured.') };
     try {
       const provider = new GoogleAuthProvider();
+      // Consume any leftover redirect before opening a new popup (avoids stale onAuthEvent assert).
+      try {
+        const { getRedirectResult } = await import('firebase/auth');
+        await getRedirectResult(auth);
+      } catch {
+        /* ignore */
+      }
       const result = await signInWithPopup(auth, provider);
       const info = getAdditionalUserInfo(result);
       const denied = checkPublicAuthAccess(result.user, {
@@ -160,6 +167,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       return { error: null };
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Stale popup event after a successful session — treat as non-fatal if user is signed in.
+      if (msg.includes('Pending promise was never set') && auth.currentUser) {
+        console.warn('⚠️ Google sign-in hit stale Auth popup event; session already present.');
+        return { error: null };
+      }
       return { error: err instanceof Error ? err : new Error(String(err)) };
     }
   };

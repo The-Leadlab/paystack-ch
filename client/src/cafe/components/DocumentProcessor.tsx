@@ -2574,6 +2574,23 @@ export const DocumentProcessor: React.FC<{
   const processDoc = async (doc: ProcessedDocument & { source?: 'firestore' | 'local' }) => {
     const isFirestoreDoc = (doc as any).source === 'firestore';
     const firestoreId = isFirestoreDoc ? firestoreRecordId(doc) : undefined;
+    const step = (msg: string) => console.log(`📄 [${doc.fileName}] ${msg}`);
+    const withStepTimeout = async <T,>(p: Promise<T>, ms: number, label: string): Promise<T> => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        return await Promise.race([
+          p,
+          new Promise<T>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)),
+              ms
+            );
+          }),
+        ]);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    };
 
     setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'processing', error: undefined } : d));
     if (isFirestoreDoc && firestoreId) {
@@ -2584,14 +2601,17 @@ export const DocumentProcessor: React.FC<{
 
     try {
       console.log(`Processing: ${doc.fileName}`);
+      step('resolving source file');
 
       let inputFile: File | undefined = doc.fileRaw;
       if (!inputFile && doc.persistedDocumentId) {
+        step('reading local Cache API backup');
         const { getCachedDocumentFile } = await import('../services/storageService');
         inputFile = (await getCachedDocumentFile(doc.persistedDocumentId, doc.fileName)) || undefined;
       }
       if (!inputFile && doc.fileDataUrl) {
         try {
+          step('reading fileDataUrl');
           const dataUrlResp = await fetch(doc.fileDataUrl);
           const blob = await dataUrlResp.blob();
           inputFile = new File([blob], doc.fileName, { type: blob.type || 'application/octet-stream' });
@@ -2601,8 +2621,13 @@ export const DocumentProcessor: React.FC<{
       }
       if (!inputFile && doc.fileUrl) {
         // Rehydrate persisted documents after page refresh.
+        step('downloading from Firebase Storage');
         const { downloadDocumentFile, cacheDocumentFile } = await import('../services/storageService');
-        inputFile = await downloadDocumentFile(doc.fileUrl, doc.fileName);
+        inputFile = await withStepTimeout(
+          downloadDocumentFile(doc.fileUrl, doc.fileName),
+          60_000,
+          'Storage download'
+        );
         if (inputFile && doc.persistedDocumentId) {
           await cacheDocumentFile(doc.persistedDocumentId, inputFile);
         }
@@ -2610,6 +2635,7 @@ export const DocumentProcessor: React.FC<{
       if (!inputFile) {
         throw new Error('Missing source file or storage unreachable. Re-upload this document once to create local backup, then retry.');
       }
+      step(`source ready (${(inputFile.size / 1024).toFixed(0)} KB)`);
 
       // Keep a local backup so retries avoid another large Storage download.
       if (doc.persistedDocumentId && inputFile) {
@@ -2641,8 +2667,13 @@ export const DocumentProcessor: React.FC<{
             : undefined;
 
       if (!storageForAi?.storagePath) {
+        step('ensuring Storage upload for AI');
         const { ensureDocumentStorageForAi } = await import('../lib/documentStorageForAi');
-        const uploaded = await ensureDocumentStorageForAi(inputFile, storageForAi);
+        const uploaded = await withStepTimeout(
+          ensureDocumentStorageForAi(inputFile, storageForAi),
+          90_000,
+          'Storage upload'
+        );
         if (uploaded) {
           storageForAi = { fileUrl: uploaded.downloadURL, storagePath: uploaded.storagePath };
           setLocalDocs((prev) =>
@@ -2659,12 +2690,15 @@ export const DocumentProcessor: React.FC<{
             });
           }
         }
+      } else {
+        step('reusing existing Storage path');
       }
 
       const forceDeepPdfReads = billing?.deepPdfInvoiceBeta === true;
       let pdfPageCount = 1;
       let pdfPageSplit = false;
       try {
+        step('pdf page-count / split detect');
         const {
           getPdfPageCount,
           shouldSplitPdfToPageImages,
@@ -2675,15 +2709,17 @@ export const DocumentProcessor: React.FC<{
         try {
           pdfPageCount = await getPdfPageCount(inputFile);
           pdfPageSplit = shouldSplitPdfToPageImages(inputFile, pdfPageCount);
+          step(`pdf pages=${pdfPageCount} split=${pdfPageSplit}`);
         } catch (peekErr) {
           console.warn('⚠️ PDF page-count peek failed:', peekErr);
           // Assume multi-page ticket binder so analyze path still forces split (or times out cleanly).
           pdfPageSplit = ticketLike;
           pdfPageCount = ticketLike ? 5 : 1;
+          step(`pdf peek failed; ticketLike=${ticketLike} assumedPages=${pdfPageCount}`);
         }
         if (ticketLike && pdfPageCount >= 2) pdfPageSplit = true;
-      } catch {
-        /* page peek is best-effort */
+      } catch (modErr) {
+        console.warn('⚠️ pdfPagesToImages module failed:', modErr);
       }
       if (pdfPageSplit) {
         console.log(`🧾 Will page-split ${doc.fileName} (pages≈${pdfPageCount})`);
@@ -2694,6 +2730,7 @@ export const DocumentProcessor: React.FC<{
         pdfPageSplit,
       });
       const timeoutSec = Math.round(processingTimeoutMs / 1000);
+      step(`starting AI (timeout ${timeoutSec}s, pageSplit=${pdfPageSplit})`);
       const abortController = new AbortController();
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => {

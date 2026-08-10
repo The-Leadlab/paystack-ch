@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host",
     "dev:stripe-server": "tsx server/stripeDevServer.ts",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "node scripts/sync-pdf-worker.mjs && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "postinstall": "node scripts/sync-pdf-worker.mjs",
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",
     "check": "tsc --noEmit",

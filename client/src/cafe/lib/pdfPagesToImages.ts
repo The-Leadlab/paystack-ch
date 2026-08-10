@@ -2,18 +2,25 @@
  * Rasterize PDF pages to JPEG Files for per-receipt AI analysis.
  * Used for multi-page ticket/receipt sheets (e.g. Ticket février.pdf).
  *
- * IMPORTANT: Use Vite `?url` for the worker. `new URL('pdfjs-dist/...', import.meta.url)`
- * does NOT rewrite in production and 404s the worker → getDocument hangs forever.
+ * Worker loading (critical for production):
+ * 1. Prefer same-origin static file `/pdf.worker.min.mjs` (copied into client/public)
+ * 2. Fall back to Vite `?url` bundled worker
+ * Never use `new URL('pdfjs-dist/...', import.meta.url)` — Vite does not rewrite it → 404 → hang.
  */
 import * as pdfjs from "pdfjs-dist";
-import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import pdfWorkerBundledUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
+const PUBLIC_WORKER = `${import.meta.env.BASE_URL || "/"}pdf.worker.min.mjs`.replace(
+  /\/{2,}pdf\.worker/,
+  "/pdf.worker"
+);
+
+pdfjs.GlobalWorkerOptions.workerSrc = PUBLIC_WORKER;
 
 const MAX_RENDER_EDGE = 2200;
 const JPEG_QUALITY = 0.86;
-const PAGE_COUNT_TIMEOUT_MS = 20_000;
-const RENDER_TIMEOUT_MS = 120_000;
+const PAGE_COUNT_TIMEOUT_MS = 15_000;
+const RENDER_TIMEOUT_MS = 90_000;
 
 function isPdfFile(file: File): boolean {
   return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
@@ -45,14 +52,48 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): P
   }
 }
 
+async function ensureWorkerSrc(): Promise<void> {
+  const current = pdfjs.GlobalWorkerOptions.workerSrc;
+  if (current && current !== PUBLIC_WORKER) return;
+
+  // Probe public worker; if missing, switch to Vite-bundled URL.
+  try {
+    const res = await fetch(PUBLIC_WORKER, { method: "HEAD", cache: "force-cache" });
+    if (res.ok) {
+      pdfjs.GlobalWorkerOptions.workerSrc = PUBLIC_WORKER;
+      return;
+    }
+  } catch {
+    /* fall through */
+  }
+  console.warn("⚠️ /pdf.worker.min.mjs missing — using bundled worker URL");
+  pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerBundledUrl;
+}
+
 async function loadPdfDocument(data: Uint8Array): Promise<pdfjs.PDFDocumentProxy> {
+  await ensureWorkerSrc();
   // Copy buffer — pdf.js may transfer ownership of the TypedArray to the worker.
   const copy = data.slice();
-  return withTimeout(
-    pdfjs.getDocument({ data: copy }).promise,
-    PAGE_COUNT_TIMEOUT_MS,
-    "PDF.js getDocument"
-  );
+  try {
+    return await withTimeout(
+      pdfjs.getDocument({ data: copy }).promise,
+      PAGE_COUNT_TIMEOUT_MS,
+      "PDF.js getDocument"
+    );
+  } catch (firstErr) {
+    // One retry with bundled worker URL (public path may 404 on some hosts).
+    if (pdfjs.GlobalWorkerOptions.workerSrc !== pdfWorkerBundledUrl) {
+      console.warn("⚠️ PDF.js failed with public worker, retrying bundled worker:", firstErr);
+      pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerBundledUrl;
+      const copy2 = data.slice();
+      return withTimeout(
+        pdfjs.getDocument({ data: copy2 }).promise,
+        PAGE_COUNT_TIMEOUT_MS,
+        "PDF.js getDocument (bundled worker)"
+      );
+    }
+    throw firstErr;
+  }
 }
 
 export async function getPdfPageCount(file: File): Promise<number> {
