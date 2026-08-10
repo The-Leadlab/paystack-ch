@@ -449,7 +449,22 @@ export function RestaurantDashboard() {
       if (fileRaw) {
         try {
           const { cacheDocumentFile } = await import('../services/storageService');
+          const { rememberDocumentFile } = await import('../lib/documentFileMemory');
           await cacheDocumentFile(createdId, fileRaw);
+          rememberDocumentFile({
+            file: fileRaw,
+            firestoreId: createdId,
+            fileHash,
+            fileName,
+          });
+          // Verify cache round-trip immediately
+          const { getCachedDocumentFile } = await import('../services/storageService');
+          const verified = await getCachedDocumentFile(createdId, fileName);
+          if (!verified) {
+            console.warn('⚠️ Cache API write did not round-trip; relying on in-memory File');
+          } else {
+            console.log('✅ Local Cache API backup verified:', createdId);
+          }
         } catch (cacheErr) {
           console.warn('⚠️ Local cache backup failed:', cacheErr);
         }

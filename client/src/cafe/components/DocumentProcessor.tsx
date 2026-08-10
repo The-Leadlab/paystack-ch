@@ -2389,61 +2389,88 @@ export const DocumentProcessor: React.FC<{
   const stopProcessingRef = useRef(false);
   const dragCounter = useRef(0);
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+  const localDocsRef = useRef<ProcessedDocument[]>(localDocs);
+  localDocsRef.current = localDocs;
+  const allDocsRef = useRef<ProcessedDocument[]>([]);
 
   /** Documents processed per batch; next batch starts only after the current batch completes. */
   const BATCH_SIZE = resolveDocumentBatchSize();
 
+  const findLocalFileRaw = (d: ProcessedDocument): File | undefined => {
+    const local = localDocs.find(
+      (ld) =>
+        Boolean(ld.fileRaw) &&
+        ((ld.persistedDocumentId &&
+          (ld.persistedDocumentId === d.id || ld.persistedDocumentId === d.persistedDocumentId)) ||
+          (ld.fileHash && d.fileHash && ld.fileHash === d.fileHash) ||
+          (ld.fileName && d.fileName && ld.fileName === d.fileName))
+    );
+    return (
+      local?.fileRaw ||
+      recallDocumentFile({
+        firestoreId: d.id,
+        persistedDocumentId: d.persistedDocumentId,
+        fileHash: d.fileHash,
+        fileName: d.fileName,
+      })
+    );
+  };
+
   // Combine Firestore documents with local processing documents (no pending+completed twins).
-  // Re-attach in-memory File bytes onto Firestore rows so page-split never needs Storage download
-  // right after upload (local mirrors are dropped when Firestore catches up).
+  // Always rehydrate fileRaw from localDocs / global memory — never require Storage right after upload.
   const allDocs = useMemo(() => {
     const firestoreDocs = documents.map((d) => {
-      const remembered =
-        d.fileRaw ||
-        recallDocumentFile({
-          firestoreId: d.id,
-          persistedDocumentId: d.persistedDocumentId,
-          fileHash: d.fileHash,
-          fileName: d.fileName,
-        });
+      const fileRaw = d.fileRaw || findLocalFileRaw(d);
       return {
         ...d,
         source: 'firestore' as const,
-        ...(remembered ? { fileRaw: remembered } : {}),
+        ...(fileRaw ? { fileRaw } : {}),
       };
     });
     const localProcessing = localDocs
       .filter((ld) => !isLocalDocMirroredInFirestore(ld, documents))
       .map((d) => ({ ...d, source: 'local' as const }));
     return [...firestoreDocs, ...localProcessing];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- findLocalFileRaw closes over localDocs
   }, [documents, localDocs]);
+  allDocsRef.current = allDocs;
 
-  // Drop local mirrors once Firestore has the same file (avoids ghost rows after save).
-  // Preserve File bytes in memory first.
+  // Only drop mirrored locals after Firestore has finished AI (or local has no File left).
+  // Dropping pending locals early was discarding fileRaw → "Missing source file".
   useEffect(() => {
     setLocalDocs((prev) => {
       const next: ProcessedDocument[] = [];
       let changed = false;
       for (const ld of prev) {
-        if (isLocalDocMirroredInFirestore(ld, documents)) {
-          if (ld.fileRaw) {
-            const mirror =
-              documents.find((d) => d.id === ld.persistedDocumentId) ||
-              documents.find((d) => ld.fileHash && d.fileHash === ld.fileHash) ||
-              documents.find((d) => d.fileName === ld.fileName);
-            rememberDocumentFile({
-              file: ld.fileRaw,
-              firestoreId: mirror?.id || ld.persistedDocumentId,
-              fileHash: ld.fileHash || mirror?.fileHash,
-              fileName: ld.fileName,
-            });
-          }
-          changed = true;
+        if (!isLocalDocMirroredInFirestore(ld, documents)) {
+          next.push(ld);
           continue;
         }
-        next.push(ld);
+        const mirror =
+          documents.find((d) => d.id === ld.persistedDocumentId) ||
+          documents.find((d) => ld.fileHash && d.fileHash === ld.fileHash) ||
+          documents.find((d) => d.fileName === ld.fileName);
+        if (ld.fileRaw) {
+          rememberDocumentFile({
+            file: ld.fileRaw,
+            firestoreId: mirror?.id || ld.persistedDocumentId,
+            fileHash: ld.fileHash || mirror?.fileHash,
+            fileName: ld.fileName,
+          });
+        }
+        const fsDone =
+          mirror != null && ['completed', 'needs_review'].includes(String(mirror.status || ''));
+        const keepForFile =
+          Boolean(ld.fileRaw) &&
+          !fsDone &&
+          ['pending', 'processing', 'error', 'skipped'].includes(String(ld.status || 'pending'));
+        if (keepForFile) {
+          next.push(ld);
+          continue;
+        }
+        changed = true;
       }
-      return changed ? next : prev;
+      return changed || next.length !== prev.length ? next : prev;
     });
   }, [documents]);
 
@@ -2617,7 +2644,8 @@ export const DocumentProcessor: React.FC<{
 
     // Auto-start processing when new processable documents are added
     if (news.some(d => d.status === 'pending' && d.fileRaw) && !isProcessing) {
-      setTimeout(() => processAllRef.current?.(), 100);
+      // Wait a beat so Firestore mirror + localDocs merge settle, then process with fileRaw attached.
+      setTimeout(() => processAllRef.current?.(), 400);
     }
   };
 
@@ -2644,7 +2672,15 @@ export const DocumentProcessor: React.FC<{
       }
     };
 
-    setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'processing', error: undefined } : d));
+    setLocalDocs((prev) =>
+      prev.map((d) =>
+        d.id === doc.id ||
+        (firestoreId && d.persistedDocumentId === firestoreId) ||
+        (doc.fileName && d.fileName === doc.fileName)
+          ? { ...d, status: 'processing', error: undefined }
+          : d
+      )
+    );
     if (isFirestoreDoc && firestoreId) {
       await updateDocument(firestoreId, { status: 'processing', error: undefined });
     }
@@ -2655,8 +2691,18 @@ export const DocumentProcessor: React.FC<{
       console.log(`Processing: ${doc.fileName}`);
       step('resolving source file');
 
+      const fromLocalRow = localDocsRef.current.find(
+        (ld) =>
+          Boolean(ld.fileRaw) &&
+          ((firestoreId && ld.persistedDocumentId === firestoreId) ||
+            (doc.persistedDocumentId && ld.persistedDocumentId === doc.persistedDocumentId) ||
+            (doc.fileHash && ld.fileHash === doc.fileHash) ||
+            (ld.fileName && doc.fileName && ld.fileName === doc.fileName))
+      )?.fileRaw;
+
       let inputFile: File | undefined =
         doc.fileRaw ||
+        fromLocalRow ||
         recallDocumentFile({
           firestoreId: isFirestoreDoc ? firestoreId : undefined,
           persistedDocumentId: doc.persistedDocumentId || (isFirestoreDoc ? doc.id : undefined),
@@ -2664,7 +2710,11 @@ export const DocumentProcessor: React.FC<{
           fileName: doc.fileName,
         });
       if (inputFile) {
-        step('using in-memory / row File (no Storage download)');
+        step(
+          fromLocalRow && inputFile === fromLocalRow
+            ? 'using localDocs File (no Storage download)'
+            : 'using in-memory / row File (no Storage download)'
+        );
       }
       if (!inputFile && doc.persistedDocumentId) {
         step('reading local Cache API backup');
@@ -2985,10 +3035,42 @@ export const DocumentProcessor: React.FC<{
       BATCH_SIZE,
       () => stopProcessingRef.current,
       async (doc) => {
+        const latest =
+          allDocsRef.current.find((d) => d.id === doc.id) ||
+          allDocsRef.current.find(
+            (d) => doc.fileName && d.fileName === doc.fileName && isQueuedStatus(d.status)
+          ) ||
+          doc;
+        const fileRaw =
+          latest.fileRaw ||
+          localDocsRef.current.find(
+            (ld) =>
+              Boolean(ld.fileRaw) &&
+              ((ld.persistedDocumentId &&
+                (ld.persistedDocumentId === latest.id ||
+                  ld.persistedDocumentId === latest.persistedDocumentId)) ||
+                (ld.fileHash && latest.fileHash && ld.fileHash === latest.fileHash) ||
+                ld.fileName === latest.fileName)
+          )?.fileRaw ||
+          recallDocumentFile({
+            firestoreId: latest.id,
+            persistedDocumentId: latest.persistedDocumentId,
+            fileHash: latest.fileHash,
+            fileName: latest.fileName,
+          });
         setLocalDocs((prev) =>
-          prev.map((d) => (d.id === doc.id ? { ...d, status: 'pending', error: undefined } : d))
+          prev.map((d) =>
+            d.id === latest.id ||
+            d.persistedDocumentId === latest.id ||
+            (latest.fileName && d.fileName === latest.fileName)
+              ? { ...d, status: 'pending', error: undefined }
+              : d
+          )
         );
-        await processDoc(doc);
+        await processDoc({
+          ...latest,
+          ...(fileRaw ? { fileRaw } : {}),
+        } as ProcessedDocument & { source?: 'firestore' | 'local' });
       }
     );
 

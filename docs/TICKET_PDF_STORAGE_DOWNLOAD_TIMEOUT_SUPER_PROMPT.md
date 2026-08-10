@@ -37,7 +37,15 @@ Page-split **requires** local bytes (pdf.js). Re-downloading a 3.5MB scan from S
 - [ ] Storage download only if memory + cache miss; fails fast with re-attach message
 - [ ] Auth assertion does not force a Storage round-trip
 
-## Out of scope
+## Follow-up (re-upload still Missing source file)
 
-- Server-side Poppler
-- Changing Firebase project / CORS console settings (app-side resilience first)
+Even after memory registry: Vite can duplicate the module Map across chunks, and
+mirrored **local** rows (holding `fileRaw`) were dropped as soon as Firestore
+had the pending twin — before the user clicked **Start processing**.
+
+Additional fix:
+- Store Files on `globalThis.__paystackDocFiles`
+- Keep File-bearing local rows until Firestore status is completed/needs_review
+- Merge `fileRaw` from `localDocs` onto Firestore rows in `allDocs`
+- `processAll` re-resolves File from `allDocsRef` / `localDocsRef` / memory right before `processDoc`
+
