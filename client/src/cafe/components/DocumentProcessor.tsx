@@ -2665,11 +2665,28 @@ export const DocumentProcessor: React.FC<{
       let pdfPageCount = 1;
       let pdfPageSplit = false;
       try {
-        const { getPdfPageCount, shouldSplitPdfToPageImages } = await import('../lib/pdfPagesToImages');
-        pdfPageCount = await getPdfPageCount(inputFile);
-        pdfPageSplit = shouldSplitPdfToPageImages(inputFile, pdfPageCount);
+        const {
+          getPdfPageCount,
+          shouldSplitPdfToPageImages,
+          looksLikeMultiTicketPdf,
+        } = await import('../lib/pdfPagesToImages');
+        // Name heuristic first so we never block AI on a stuck PDF.js worker.
+        const ticketLike = looksLikeMultiTicketPdf(inputFile);
+        try {
+          pdfPageCount = await getPdfPageCount(inputFile);
+          pdfPageSplit = shouldSplitPdfToPageImages(inputFile, pdfPageCount);
+        } catch (peekErr) {
+          console.warn('⚠️ PDF page-count peek failed:', peekErr);
+          // Assume multi-page ticket binder so analyze path still forces split (or times out cleanly).
+          pdfPageSplit = ticketLike;
+          pdfPageCount = ticketLike ? 5 : 1;
+        }
+        if (ticketLike && pdfPageCount >= 2) pdfPageSplit = true;
       } catch {
         /* page peek is best-effort */
+      }
+      if (pdfPageSplit) {
+        console.log(`🧾 Will page-split ${doc.fileName} (pages≈${pdfPageCount})`);
       }
       const processingTimeoutMs = resolveDocumentProcessingTimeoutMs(inputFile, {
         forceDeepPdfReads,
@@ -2696,7 +2713,11 @@ export const DocumentProcessor: React.FC<{
           // Page-split path uploads each JPEG itself; avoid forcing the whole PDF through Gemini Storage.
           pdfPageSplit ? undefined : storageForAi,
           abortController.signal,
-          { forceDeepPdfReads, forcePdfPageSplit: pdfPageSplit }
+          {
+            forceDeepPdfReads,
+            // Force split for ticket-named binders even if page peek failed.
+            forcePdfPageSplit: pdfPageSplit,
+          }
         ),
         timeoutPromise,
       ]);

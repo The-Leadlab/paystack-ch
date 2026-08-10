@@ -1,6 +1,6 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import type { Analytics } from 'firebase/analytics';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, getRedirectResult, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
@@ -75,4 +75,10 @@ if (firebaseReady) {
   db = getFirestore(app);
   storage = getStorage(app);
   scheduleFirebaseAnalytics(app);
+
+  // Clear stale popup/redirect auth events so the Auth event manager does not throw
+  // "INTERNAL ASSERTION FAILED: Pending promise was never set" later in the session.
+  if (typeof window !== 'undefined') {
+    void getRedirectResult(auth).catch(() => undefined);
+  }
 }

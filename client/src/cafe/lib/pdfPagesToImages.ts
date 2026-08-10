@@ -1,26 +1,64 @@
 /**
  * Rasterize PDF pages to JPEG Files for per-receipt AI analysis.
  * Used for multi-page ticket/receipt sheets (e.g. Ticket février.pdf).
+ *
+ * IMPORTANT: Use Vite `?url` for the worker. `new URL('pdfjs-dist/...', import.meta.url)`
+ * does NOT rewrite in production and 404s the worker → getDocument hangs forever.
  */
 import * as pdfjs from "pdfjs-dist";
+import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-// Vite: bundle the worker next to the module.
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
 const MAX_RENDER_EDGE = 2200;
 const JPEG_QUALITY = 0.86;
+const PAGE_COUNT_TIMEOUT_MS = 20_000;
+const RENDER_TIMEOUT_MS = 120_000;
 
 function isPdfFile(file: File): boolean {
   return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 }
 
+function ticketReceiptHaystack(file: File, userHint?: string): string {
+  return `${file.name} ${userHint || ""}`.toLowerCase();
+}
+
+/** Name/hint looks like a multi-ticket / POS receipt binder (no page count needed). */
+export function looksLikeMultiTicketPdf(file: File, userHint?: string): boolean {
+  if (!isPdfFile(file)) return false;
+  return /ticket|tickets|receipt|recipt|z2|caisse|till\b|pos|fevrier|février|multi[-\s]?ticket|bulk\s*ticket/.test(
+    ticketReceiptHaystack(file, userHint)
+  );
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function loadPdfDocument(data: Uint8Array): Promise<pdfjs.PDFDocumentProxy> {
+  // Copy buffer — pdf.js may transfer ownership of the TypedArray to the worker.
+  const copy = data.slice();
+  return withTimeout(
+    pdfjs.getDocument({ data: copy }).promise,
+    PAGE_COUNT_TIMEOUT_MS,
+    "PDF.js getDocument"
+  );
+}
+
 export async function getPdfPageCount(file: File): Promise<number> {
   if (!isPdfFile(file)) return 1;
   const data = new Uint8Array(await file.arrayBuffer());
-  const doc = await pdfjs.getDocument({ data }).promise;
+  const doc = await loadPdfDocument(data);
   try {
     return Math.max(1, doc.numPages || 1);
   } finally {
@@ -39,10 +77,7 @@ export function shouldSplitPdfToPageImages(
 ): boolean {
   if (!isPdfFile(file) || pageCount < 2) return false;
   if (force) return true;
-  const hay = `${file.name} ${userHint || ""}`.toLowerCase();
-  return /ticket|tickets|receipt|recipt|z2|caisse|till\b|pos|fevrier|février|multi[-\s]?ticket|bulk\s*ticket/.test(
-    hay
-  );
+  return looksLikeMultiTicketPdf(file, userHint);
 }
 
 async function canvasToJpegFile(
@@ -66,35 +101,38 @@ export async function renderPdfPagesToJpegFiles(
   if (!isPdfFile(file)) return [file];
 
   const data = new Uint8Array(await file.arrayBuffer());
-  const doc = await pdfjs.getDocument({ data }).promise;
+  const doc = await loadPdfDocument(data);
   const base = file.name.replace(/\.pdf$/i, "") || "page";
   const out: File[] = [];
 
   try {
-    for (let pageNum = 1; pageNum <= doc.numPages; pageNum += 1) {
-      if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-      const page = await doc.getPage(pageNum);
-      const unscaled = page.getViewport({ scale: 1 });
-      const scale = Math.min(2.2, MAX_RENDER_EDGE / Math.max(unscaled.width, unscaled.height));
-      const viewport = page.getViewport({ scale: Math.max(1, scale) });
+    const renderAll = async () => {
+      for (let pageNum = 1; pageNum <= doc.numPages; pageNum += 1) {
+        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+        const page = await doc.getPage(pageNum);
+        const unscaled = page.getViewport({ scale: 1 });
+        const scale = Math.min(2.2, MAX_RENDER_EDGE / Math.max(unscaled.width, unscaled.height));
+        const viewport = page.getViewport({ scale: Math.max(1, scale) });
 
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.floor(viewport.width));
-      canvas.height = Math.max(1, Math.floor(viewport.height));
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Canvas 2D unavailable for PDF page render.");
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.floor(viewport.width));
+        canvas.height = Math.max(1, Math.floor(viewport.height));
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas 2D unavailable for PDF page render.");
 
-      await page.render({ canvasContext: ctx, viewport }).promise;
-      const pageFile = await canvasToJpegFile(
-        canvas,
-        `${base}-p${String(pageNum).padStart(3, "0")}.jpg`
-      );
-      out.push(pageFile);
-      page.cleanup();
-    }
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        const pageFile = await canvasToJpegFile(
+          canvas,
+          `${base}-p${String(pageNum).padStart(3, "0")}.jpg`
+        );
+        out.push(pageFile);
+        page.cleanup();
+      }
+      return out;
+    };
+
+    return await withTimeout(renderAll(), RENDER_TIMEOUT_MS, "PDF page rasterize");
   } finally {
     await doc.destroy().catch(() => undefined);
   }
-
-  return out;
 }

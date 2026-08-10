@@ -225,6 +225,7 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
+          if (id.includes("pdfjs-dist")) return "pdfjs";
           if (id.includes("framer-motion")) return "motion";
           if (id.includes("firebase")) return "firebase";
           if (id.includes("recharts") || id.includes("xlsx")) return "reports";
@@ -232,6 +233,9 @@ export default defineConfig({
         },
       },
     },
+  },
+  optimizeDeps: {
+    include: ["pdfjs-dist"],
   },
   server: {
     port: 3000,

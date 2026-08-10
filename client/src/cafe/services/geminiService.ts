@@ -18,6 +18,7 @@ import {
 import { prepareDocumentForAi } from "../lib/prepareDocumentForAi";
 import {
   getPdfPageCount,
+  looksLikeMultiTicketPdf,
   renderPdfPagesToJpegFiles,
   shouldSplitPdfToPageImages,
 } from "../lib/pdfPagesToImages";
@@ -1370,11 +1371,19 @@ export const analyzeFinancialDocument = async (
   // Ticket/receipt multi-page sheets → one JPEG per page → analyze one-by-one.
   if (isPdf && !options?.skipPdfPageSplit && typeof document !== "undefined") {
     try {
+      const ticketLike =
+        options?.forcePdfPageSplit === true || looksLikeMultiTicketPdf(file, userHint);
       const pageCount = await getPdfPageCount(file);
       const split =
         shouldSplitPdfToPageImages(file, pageCount, userHint, options?.forcePdfPageSplit === true) &&
         !/pay\s*slip|salary|lohn|bulletin\s*de\s*salaire/i.test(`${file.name} ${userHint || ""}`);
-      if (split) {
+      // forcePdfPageSplit from DocumentProcessor when name matched but page peek was flaky
+      const doSplit =
+        split ||
+        (ticketLike &&
+          pageCount >= 2 &&
+          !/pay\s*slip|salary|lohn|bulletin\s*de\s*salaire/i.test(`${file.name} ${userHint || ""}`));
+      if (doSplit) {
         console.log(`🧾 PDF page-split: ${file.name} → ${pageCount} page image(s)`);
         const images = await renderPdfPagesToJpegFiles(file, signal);
         const pageResults: FinancialData[] = [];

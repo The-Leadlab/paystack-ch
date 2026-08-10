@@ -42,7 +42,8 @@ Files like **Ticket février.pdf** are multi-page scanned sheets (POS tickets / 
 
 | Console noise | Meaning |
 |---------------|---------|
-| `@firebase/auth … Pending promise was never set` | Known Auth SDK race; not the document failure |
+| `@firebase/auth … Pending promise was never set` | Stale popup/redirect Auth event; cleared via `getRedirectResult` on init |
+| Stuck **EN COURS** with only `Processing:` log | PDF.js worker URL 404 in production (`new URL('pdfjs-dist/…')` not rewritten by Vite) — fixed with `?url` import + timeouts |
 | `storage/retry-limit-exceeded` → `Failed to fetch` | Large PDF re-download timed out — mitigated by page-split + download hardening + Cache API |
 
 ## Sample

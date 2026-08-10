@@ -122,9 +122,21 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
       let pdfPageCount = 1;
       let pdfPageSplit = false;
       try {
-        const { getPdfPageCount, shouldSplitPdfToPageImages } = await import('../lib/pdfPagesToImages');
-        pdfPageCount = await getPdfPageCount(fileItem.file);
-        pdfPageSplit = shouldSplitPdfToPageImages(fileItem.file, pdfPageCount);
+        const {
+          getPdfPageCount,
+          shouldSplitPdfToPageImages,
+          looksLikeMultiTicketPdf,
+        } = await import('../lib/pdfPagesToImages');
+        const ticketLike = looksLikeMultiTicketPdf(fileItem.file);
+        try {
+          pdfPageCount = await getPdfPageCount(fileItem.file);
+          pdfPageSplit = shouldSplitPdfToPageImages(fileItem.file, pdfPageCount);
+        } catch (peekErr) {
+          console.warn('⚠️ PDF page-count peek failed:', peekErr);
+          pdfPageSplit = ticketLike;
+          pdfPageCount = ticketLike ? 5 : 1;
+        }
+        if (ticketLike && pdfPageCount >= 2) pdfPageSplit = true;
       } catch {
         /* best-effort */
       }
