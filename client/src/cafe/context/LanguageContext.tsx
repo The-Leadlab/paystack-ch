@@ -315,6 +315,9 @@ const translations = {
     adminUsersNo: 'No',
     adminUsersDisabled: 'Disabled',
     adminUsersTestMode: 'Test mode',
+    adminUsersDeepPdfBeta: 'Deep PDF invoice beta',
+    adminUsersDeepPdfBetaHelp:
+      'Force exhaustive multi-page invoice + product line extraction on every PDF upload for this user.',
     adminUserDetailTitle: 'User details',
     adminUserSectionAccount: 'Account',
     adminUserSectionBilling: 'Billing & subscription',
@@ -1380,6 +1383,9 @@ const translations = {
     adminUsersNo: 'Non',
     adminUsersDisabled: 'Desactive',
     adminUsersTestMode: 'Mode test',
+    adminUsersDeepPdfBeta: 'Beta factures PDF multi-pages',
+    adminUsersDeepPdfBetaHelp:
+      'Force l\'extraction exhaustive multi-factures et des lignes articles sur chaque PDF pour cet utilisateur.',
     adminUserDetailTitle: 'Details utilisateur',
     adminUserSectionAccount: 'Compte',
     adminUserSectionBilling: 'Facturation et abonnement',

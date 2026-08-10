@@ -2359,7 +2359,7 @@ export const DocumentProcessor: React.FC<{
   openDocumentId?: string | null,
   onOpenDocumentHandled?: () => void,
 }> = ({ documents, updateDocument, onDeleteDocument, onDocumentQueued, onDataExtracted, onDocumentUpdated, openDocumentId, onOpenDocumentHandled }) => {
-  const { enforcementEnabled, entitlements, documentsUsedThisMonth } = useSubscription();
+  const { enforcementEnabled, entitlements, documentsUsedThisMonth, billing } = useSubscription();
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
   const docStatusLabel = (status: string) => {
@@ -2648,7 +2648,8 @@ export const DocumentProcessor: React.FC<{
         }
       }
 
-      const processingTimeoutMs = resolveDocumentProcessingTimeoutMs(inputFile);
+      const forceDeepPdfReads = billing?.deepPdfInvoiceBeta === true;
+      const processingTimeoutMs = resolveDocumentProcessingTimeoutMs(inputFile, { forceDeepPdfReads });
       const timeoutSec = Math.round(processingTimeoutMs / 1000);
       const abortController = new AbortController();
       const timeoutPromise = new Promise<never>((_, reject) =>
@@ -2667,7 +2668,8 @@ export const DocumentProcessor: React.FC<{
           reportingCurrency,
           undefined,
           storageForAi,
-          abortController.signal
+          abortController.signal,
+          { forceDeepPdfReads }
         ),
         timeoutPromise,
       ]);

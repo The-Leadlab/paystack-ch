@@ -94,6 +94,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
   const [couponId, setCouponId] = useState("");
   const [planOverride, setPlanOverride] = useState<PaystackPlanId | "none">("none");
   const [planTestMode, setPlanTestMode] = useState(false);
+  const [deepPdfInvoiceBeta, setDeepPdfInvoiceBeta] = useState(false);
   const [linkResult, setLinkResult] = useState<string | null>(null);
 
   const [editDisplayName, setEditDisplayName] = useState("");
@@ -112,6 +113,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
       setUser(detail);
       setPlanOverride((detail.planId as PaystackPlanId) ?? "none");
       setPlanTestMode(detail.planTestMode);
+      setDeepPdfInvoiceBeta(detail.deepPdfInvoiceBeta === true);
       setEditDisplayName(detail.displayName ?? "");
       setEditEmail(detail.email ?? "");
       setEditPassword("");
@@ -743,6 +745,28 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                     onChange={(e) => setPlanTestMode(e.target.checked)}
                   />
                   {t("adminUsersTestMode")}
+                </label>
+                <label className="flex items-start gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={deepPdfInvoiceBeta}
+                    disabled={actionBusy !== null}
+                    onChange={(e) => {
+                      const enabled = e.target.checked;
+                      setDeepPdfInvoiceBeta(enabled);
+                      void runAction("deepPdfBeta", {
+                        action: "set_deep_pdf_invoice_beta",
+                        enabled,
+                      });
+                    }}
+                  />
+                  <span>
+                    <span className="font-medium">{t("adminUsersDeepPdfBeta")}</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      {t("adminUsersDeepPdfBetaHelp")}
+                    </span>
+                  </span>
                 </label>
               </div>
             </TabsContent>

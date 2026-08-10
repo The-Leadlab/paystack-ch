@@ -33,6 +33,8 @@ type UserBillingSnapshot = {
   personalAddonSeats: number;
   personalDocPack: boolean;
   appAdmin: boolean;
+  /** Admin beta: force deep multi-page invoice extraction. */
+  deepPdfInvoiceBeta: boolean;
 };
 
 type SubscriptionContextValue = {
@@ -112,6 +114,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             personalAddonSeats: 0,
             personalDocPack: false,
             appAdmin: false,
+            deepPdfInvoiceBeta: false,
           });
           setDocumentsUsedThisMonth(0);
           setPersonalDocumentsUsedThisMonth(0);
@@ -136,6 +139,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
                 : 0,
             personalDocPack: d.personalDocPack === true,
             appAdmin: d.appAdmin === true,
+            deepPdfInvoiceBeta: d.deepPdfInvoiceBeta === true,
           });
           const usage = d.usage as Record<string, unknown> | undefined;
           const month = currentMonthKey();
@@ -161,6 +165,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           personalAddonSeats: 0,
           personalDocPack: false,
           appAdmin: false,
+          deepPdfInvoiceBeta: false,
         });
         setDocumentsUsedThisMonth(0);
         setPersonalDocumentsUsedThisMonth(0);

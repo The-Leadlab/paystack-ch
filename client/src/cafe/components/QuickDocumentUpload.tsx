@@ -4,6 +4,7 @@ import { resolveDocumentProcessingTimeoutMs } from '../lib/documentProcessingTim
 import { analyzeFinancialDocument } from '../services/geminiService';
 import { enrichFinancialDataWithSwissAccount } from '../services/swissAccountClassifierService';
 import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
+import { useSubscription } from '../context/SubscriptionContext';
 import type { FinancialData } from '../types';
 
 type ProcessingFile = {
@@ -21,6 +22,7 @@ type QuickDocumentUploadProps = {
 };
 
 export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocumentUploadProps) {
+  const { billing } = useSubscription();
   const [files, setFiles] = useState<ProcessingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -116,7 +118,8 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
     try {
       console.log(`Calling Gemini AI for: ${fileItem.name}`);
       
-      const timeoutMs = resolveDocumentProcessingTimeoutMs(fileItem.file);
+      const forceDeepPdfReads = billing?.deepPdfInvoiceBeta === true;
+      const timeoutMs = resolveDocumentProcessingTimeoutMs(fileItem.file, { forceDeepPdfReads });
       const timeoutSec = Math.round(timeoutMs / 1000);
       const abortController = new AbortController();
       const timeoutPromise = new Promise((_, reject) =>
@@ -129,7 +132,14 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
       );
 
       let data = (await Promise.race([
-        analyzeFinancialDocument(fileItem.file, 'CHF', undefined, undefined, abortController.signal),
+        analyzeFinancialDocument(
+          fileItem.file,
+          'CHF',
+          undefined,
+          undefined,
+          abortController.signal,
+          { forceDeepPdfReads }
+        ),
         timeoutPromise,
       ])) as any;
       try {

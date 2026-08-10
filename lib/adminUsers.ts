@@ -31,6 +31,8 @@ export type AdminUserSummary = {
   usageThisMonth: number | null;
   /** Platform admin: in-app /admin shortcut + ops privileges. */
   appAdmin: boolean;
+  /** Force deep multi-page / multi-invoice PDF extraction. */
+  deepPdfInvoiceBeta: boolean;
 };
 
 export type AdminUserDetail = AdminUserSummary & {
@@ -121,6 +123,7 @@ function summaryFromAuthAndBilling(
     planTestMode: billing?.planTestMode === true,
     usageThisMonth: usageForCurrentMonth(usage),
     appAdmin: billing?.appAdmin === true || record.customClaims?.appAdmin === true,
+    deepPdfInvoiceBeta: billing?.deepPdfInvoiceBeta === true,
   };
 }
 
@@ -469,6 +472,7 @@ export type AdminUserAction =
   | { action: "delete_user" }
   | { action: "set_plan"; planId: PaystackPlanId | null; planTestMode?: boolean }
   | { action: "set_app_admin"; enabled: boolean }
+  | { action: "set_deep_pdf_invoice_beta"; enabled: boolean }
   | { action: "resend_verification" }
   | { action: "link_stripe_by_email" }
   | {
@@ -752,6 +756,23 @@ export async function runAdminUserAction(
         message: enabled
           ? `User is now a platform admin. Stripe will not charge them.${stripeNote} They may need to sign out and back in.`
           : "Platform admin access removed.",
+      };
+    }
+
+    case "set_deep_pdf_invoice_beta": {
+      const enabled = body.enabled === true;
+      await db.collection("users").doc(uid).set(
+        {
+          deepPdfInvoiceBeta: enabled,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+      return {
+        ok: true,
+        message: enabled
+          ? "Deep PDF invoice beta enabled — multi-page binders use exhaustive + product recovery passes."
+          : "Deep PDF invoice beta disabled.",
       };
     }
 

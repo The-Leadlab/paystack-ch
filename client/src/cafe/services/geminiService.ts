@@ -255,6 +255,7 @@ type ExhaustiveInvoicePass = {
     pageRange?: string;
     issuer?: string;
     date?: string;
+    documentNumber?: string;
     totalAmount?: number;
     originalCurrency?: string;
     documentType?: string;
@@ -262,6 +263,7 @@ type ExhaustiveInvoicePass = {
     vatAmount?: number;
     vatRate?: number;
     netAmount?: number;
+    lineItems?: BankTransaction[];
   }>;
   lineItems?: BankTransaction[];
 };
@@ -272,24 +274,37 @@ async function extractInvoiceBreakdownExhaustive(
   mimeType: string,
   model: string,
   userHint?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  retryHint?: string
 ): Promise<ExhaustiveInvoicePass | null> {
   const hintSection = userHint ? `USER HINT: "${userHint}".` : "";
+  const retrySection = retryHint ? `\nRETRY: ${retryHint}\n` : "";
   const promptText = `You are auditing a multi-page PDF that may contain MULTIPLE separate invoices or receipts bound together.
-${hintSection}
-
+${hintSection}${retrySection}
 MANDATORY:
-1. Read EVERY page from first to last. Never assume a single invoice.
+1. Read EVERY page from first to last. Never assume a single invoice. Do not stop after page 1–2.
 2. Return one subDocuments entry per DISTINCT invoice/receipt (different issuer, invoice number, or dated block). Do NOT create a subDocuments entry per product line item — line items belong inside an invoice, not as separate invoices.
-3. NEVER stop after the first page or first two invoices.
+3. NEVER stop after the first page or first two invoices — binders often have 5–30 invoices.
 4. If one invoice spans multiple pages, merge into ONE entry with pageRange like "3-4".
 5. Extract per-invoice: issuer = supplier trade name ONLY (never append invoice/ref numbers to issuer). Put invoice/ref in documentNumber when available. date = printed invoice date converted to YYYY-MM-DD (Swiss DD.MM.YYYY → YYYY-MM-DD). NEVER use today's/upload date. Also extract pageRange, originalCurrency, netAmount, vatAmount (TVA CHF), vatRate, totalAmount (gross TTC including VAT). If TVA is printed in a multi-rate table, sum column TVA into vatAmount.
-6. lineItems: one EXPENSE row per sub-invoice (amount = that invoice gross total, description = clean issuer name + pages — no "| REF").
-7. After extraction, verify detectedInvoiceCount matches len(subDocuments); if not, fix before returning.
-8. JSON only: no raw newlines or unescaped " inside strings; keep descriptions short.
-9. DISTINCT-INVOICE RULE: invoices with different dates/page blocks are separate entries, even if supplier and amounts look similar.
+6. Top-level lineItems: one EXPENSE rollup row per sub-invoice (amount = that invoice gross total, description = clean issuer name + pages — no "| REF").
+7. Nested subDocuments[].lineItems: when an invoice has an item table, include product rows (description, amount, quantity, unitPrice). Prefer completeness.
+8. After extraction, verify detectedInvoiceCount matches len(subDocuments); if not, fix before returning.
+9. JSON only: no raw newlines or unescaped " inside strings; keep descriptions short.
+10. DISTINCT-INVOICE RULE: invoices with different dates/page blocks/invoice numbers are separate entries, even if supplier and amounts look similar.
 
 Return JSON only matching schema.`;
+
+  const lineItemProps = {
+    date: { type: Type.STRING },
+    description: { type: Type.STRING },
+    amount: { type: Type.NUMBER },
+    type: { type: Type.STRING, enum: ["INCOME", "EXPENSE"] },
+    category: { type: Type.STRING },
+    quantity: { type: Type.NUMBER },
+    unitPrice: { type: Type.NUMBER },
+    notes: { type: Type.STRING },
+  };
 
   const exhaustiveConfig = {
         responseMimeType: "application/json",
@@ -305,6 +320,7 @@ Return JSON only matching schema.`;
                   pageRange: { type: Type.STRING },
                   issuer: { type: Type.STRING },
                   date: { type: Type.STRING },
+                  documentNumber: { type: Type.STRING },
                   totalAmount: { type: Type.NUMBER },
                   originalCurrency: { type: Type.STRING },
                   documentType: { type: Type.STRING },
@@ -312,6 +328,14 @@ Return JSON only matching schema.`;
                   vatAmount: { type: Type.NUMBER },
                   vatRate: { type: Type.NUMBER },
                   netAmount: { type: Type.NUMBER },
+                  lineItems: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: lineItemProps,
+                      required: ["description", "amount", "type", "category"],
+                    },
+                  },
                 },
                 required: ["issuer", "totalAmount", "originalCurrency", "expenseCategory"]
               }
@@ -840,8 +864,14 @@ function maxPageMentionedInSubDocs(parsed: FinancialData): number {
   return max;
 }
 
-function shouldRunExhaustivePdfPass(file: File, parsed: FinancialData, userHint?: string): boolean {
+function shouldRunExhaustivePdfPass(
+  file: File,
+  parsed: FinancialData,
+  userHint?: string,
+  forceDeep = false
+): boolean {
   if (isPaySlipFinancialData(parsed, file)) return false;
+  if (forceDeep) return true;
 
   const hint = (userHint || '').toLowerCase();
   const name = (file.name || '').toLowerCase();
@@ -861,12 +891,15 @@ function shouldRunExhaustivePdfPass(file: File, parsed: FinancialData, userHint?
   const extractedSubDocs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments.length : 0;
   const lineCount = Array.isArray(parsed.lineItems) ? parsed.lineItems.length : 0;
   const maxPage = maxPageMentionedInSubDocs(parsed);
-  // Multi-page binders are often 200KB–few MB; Gemini frequently stops after 2–3 invoices.
-  const likelyMultiPagePdf = file.size > 120_000;
-  const pageCoverageGap = maxPage > 0 && maxPage > extractedSubDocs + 1;
+  // Multi-page binders are often ~80KB+; Gemini frequently stops after 2–3 invoices.
+  const likelyMultiPagePdf = file.size >= 80_000;
+  const pageCoverageGap = maxPage >= 4 && maxPage > extractedSubDocs + 1;
 
-  // Do NOT skip when first pass already found 2+ invoices — that was under-extracting
-  // 7-page binders down to 2 invoices. Re-scan whenever pages or size suggest more.
+  // Large PDF with few invoices — always re-scan (under-extraction of binders).
+  if (likelyMultiPagePdf && extractedSubDocs <= 3) {
+    return true;
+  }
+
   if (extractedSubDocs >= 2 && (likelyMultiPagePdf || pageCoverageGap)) {
     return true;
   }
@@ -904,7 +937,7 @@ function countProductLineItems(data: FinancialData): number {
  * True when the model likely collapsed an itemized invoice into a single total row
  * (or returned no product lines at all).
  */
-function needsProductLineItemPass(file: File, parsed: FinancialData): boolean {
+function needsProductLineItemPass(file: File, parsed: FinancialData, forceDeep = false): boolean {
   if (isPaySlipFinancialData(parsed, file)) return false;
   const docType = String(parsed.documentType || '');
   if (
@@ -916,9 +949,49 @@ function needsProductLineItemPass(file: File, parsed: FinancialData): boolean {
     return false;
   }
 
+  if (forceDeep) {
+    // Deep beta: recover products whenever any invoice block lacks nested product rows.
+    const subs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments : [];
+    if (subs.length === 0) {
+      return countProductLineItems(parsed) < 2 && Math.abs(Number(parsed.totalAmount || 0)) > 0;
+    }
+    return subs.some((sub) => {
+      const total = Math.abs(Number((sub as FinancialData).totalAmount || 0));
+      const nested = Array.isArray((sub as FinancialData).lineItems)
+        ? ((sub as FinancialData).lineItems as BankTransaction[])
+        : [];
+      const productNested = nested.filter((i) => {
+        const notes = (i.notes || '').toLowerCase();
+        if (notes.includes('vat amount') || notes.includes('vat %')) return false;
+        if (/\(pages?\s+/i.test(i.description || '')) return false;
+        return true;
+      });
+      return total > 0 && productNested.length < 2;
+    });
+  }
+
   const productCount = countProductLineItems(parsed);
   const total = Math.abs(Number(parsed.totalAmount || 0));
   if (productCount === 0 && total > 0) return true;
+
+  // Multi-invoice binder: any sub with money but no nested products.
+  const subs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments : [];
+  if (subs.length >= 2) {
+    const missingNested = subs.some((sub) => {
+      const subTotal = Math.abs(Number((sub as FinancialData).totalAmount || 0));
+      const nested = Array.isArray((sub as FinancialData).lineItems)
+        ? ((sub as FinancialData).lineItems as BankTransaction[])
+        : [];
+      const productNested = nested.filter((i) => {
+        const notes = (i.notes || '').toLowerCase();
+        if (notes.includes('vat amount') || notes.includes('vat %')) return false;
+        if (/\(pages?\s+/i.test(i.description || '')) return false;
+        return true;
+      });
+      return subTotal > 0 && productNested.length === 0;
+    });
+    if (missingNested) return true;
+  }
 
   if (productCount === 1) {
     const candidates = [
@@ -1073,20 +1146,75 @@ function mergeProductLineItemsIntoData(
     };
   }
 
-  // True multi-invoice: attach all recovered products onto first sub that lacks nested items,
-  // and keep top-level as invoice rollups (do not replace rollups with products).
-  const repairedSubs = subs.map((sub, idx) => {
+  // True multi-invoice: distribute products across subs by date/issuer match when possible.
+  const used = new Set<number>();
+  const repairedSubs = subs.map((sub) => {
     const nested = Array.isArray((sub as FinancialData).lineItems)
       ? ((sub as FinancialData).lineItems as BankTransaction[])
       : [];
-    if (nested.length >= 2) return sub;
-    if (idx === 0) return { ...(sub as FinancialData), lineItems: products };
+    const productNested = nested.filter((i) => {
+      const notes = (i.notes || '').toLowerCase();
+      if (notes.includes('vat amount') || notes.includes('vat %')) return false;
+      if (/\(pages?\s+/i.test(i.description || '')) return false;
+      return true;
+    });
+    if (productNested.length >= 2) return sub;
+
+    const issuer = String((sub as FinancialData).issuer || '').trim().toLowerCase();
+    const date = String((sub as FinancialData).date || '').trim();
+    const matched: BankTransaction[] = [];
+    products.forEach((p, idx) => {
+      if (used.has(idx)) return;
+      const pDate = String(p.date || '').trim();
+      const pDesc = String(p.description || '').toLowerCase();
+      const dateOk = !date || !pDate || pDate === date;
+      const issuerOk = !issuer || pDesc.includes(issuer) || issuer.includes(pDesc.slice(0, 12));
+      if (dateOk && (issuerOk || (!issuer && dateOk))) {
+        matched.push(p);
+        used.add(idx);
+      }
+    });
+
+    if (matched.length >= 2) {
+      return { ...(sub as FinancialData), lineItems: matched };
+    }
+    return sub;
+  });
+
+  // Leftover / unmatched products → first sub still missing nested products
+  const leftovers = products.filter((_, idx) => !used.has(idx));
+  const withLeftovers = repairedSubs.map((sub, idx) => {
+    if (leftovers.length === 0) return sub;
+    const nested = Array.isArray((sub as FinancialData).lineItems)
+      ? ((sub as FinancialData).lineItems as BankTransaction[])
+      : [];
+    const productNested = nested.filter((i) => {
+      const notes = (i.notes || '').toLowerCase();
+      if (notes.includes('vat amount') || notes.includes('vat %')) return false;
+      if (/\(pages?\s+/i.test(i.description || '')) return false;
+      return true;
+    });
+    if (productNested.length >= 2) return sub;
+    if (idx === repairedSubs.findIndex((s) => {
+      const n = Array.isArray((s as FinancialData).lineItems)
+        ? ((s as FinancialData).lineItems as BankTransaction[])
+        : [];
+      const pn = n.filter((i) => {
+        const notes = (i.notes || '').toLowerCase();
+        if (notes.includes('vat amount') || notes.includes('vat %')) return false;
+        if (/\(pages?\s+/i.test(i.description || '')) return false;
+        return true;
+      });
+      return pn.length < 2;
+    })) {
+      return { ...(sub as FinancialData), lineItems: [...productNested, ...leftovers] };
+    }
     return sub;
   });
 
   return {
     ...data,
-    subDocuments: repairedSubs as FinancialData[],
+    subDocuments: withLeftovers as FinancialData[],
     aiInterpretation: sanitizeLooseText(
       `${data.aiInterpretation || ''} Extracted ${products.length} product line items on invoice blocks.`.trim(),
       400
@@ -1160,12 +1288,18 @@ function applySwissVatWarnings(data: FinancialData): FinancialData {
 }
 
 
+export type AnalyzeFinancialDocumentOptions = {
+  /** Admin beta: always run exhaustive + product recovery for non-payslip PDFs. */
+  forceDeepPdfReads?: boolean;
+};
+
 export const analyzeFinancialDocument = async (
   file: File,
   targetCurrency: string = 'CHF',
   userHint?: string,
   existingStorage?: { fileUrl?: string; storagePath?: string },
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options?: AnalyzeFinancialDocumentOptions
 ): Promise<FinancialData> => {
   if (file.size > MAX_GEMINI_ANALYSIS_BYTES) {
     throw new Error(
@@ -1486,10 +1620,48 @@ Return JSON only.`;
     normalized = repairPaySlipMultiInvoiceBlocks(normalized, file);
     normalized = syncGrandTotalsFromSubDocuments(normalized);
 
-    // Second-pass exhaustive extraction is expensive; keep it for likely multi-invoice files only.
+    const forceDeep = options?.forceDeepPdfReads === true;
     const isPdf = mimeType === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    if (isPdf && shouldRunExhaustivePdfPass(file, normalized, userHint)) {
-      const exhaustive = await extractInvoiceBreakdownExhaustive(
+
+    // Second-pass exhaustive extraction for multi-invoice binders (or deep beta).
+    if (isPdf && shouldRunExhaustivePdfPass(file, normalized, userHint, forceDeep)) {
+      const applyExhaustive = (exhaustive: ExhaustiveInvoicePass, label: string) => {
+        if (!exhaustive.subDocuments || exhaustive.subDocuments.length === 0) return false;
+        const currentSubCount = Array.isArray(normalized.subDocuments) ? normalized.subDocuments.length : 0;
+        const currentMaxPage = maxPageMentionedInSubDocs(normalized);
+        const exhaustiveSubCount = exhaustive.subDocuments.length;
+        const exhaustiveMaxPage = maxPageMentionedInSubDocs({
+          ...normalized,
+          subDocuments: exhaustive.subDocuments as FinancialData[],
+        });
+        const betterCoverage = exhaustiveMaxPage > currentMaxPage;
+        const shouldTake =
+          forceDeep ||
+          exhaustiveSubCount > currentSubCount ||
+          betterCoverage ||
+          (exhaustiveSubCount > 0 && exhaustiveSubCount === currentSubCount);
+
+        if (!shouldTake) return false;
+
+        normalized = normalizeMultiInvoiceData({
+          ...normalized,
+          subDocuments: exhaustive.subDocuments as any,
+          lineItems:
+            Array.isArray(exhaustive.lineItems) && exhaustive.lineItems.length > 0
+              ? exhaustive.lineItems
+              : normalized.lineItems,
+          issuer:
+            String(exhaustive.subDocuments[0]?.issuer || normalized.issuer || 'Unknown').trim() ||
+            'Unknown',
+        });
+        console.log(
+          `📚 Exhaustive pass (${label}): ${currentSubCount} -> ${exhaustiveSubCount} invoices` +
+            (betterCoverage ? ` (pages → ${exhaustiveMaxPage})` : '')
+        );
+        return true;
+      };
+
+      let exhaustive = await extractInvoiceBreakdownExhaustive(
         file,
         storageRef,
         mimeType,
@@ -1497,46 +1669,41 @@ Return JSON only.`;
         userHint,
         signal
       );
-      if (exhaustive?.subDocuments && exhaustive.subDocuments.length > 0) {
-        const currentSubCount = Array.isArray(normalized.subDocuments) ? normalized.subDocuments.length : 0;
-        const exhaustiveSubCount = exhaustive.subDocuments.length;
-        if (exhaustiveSubCount > currentSubCount) {
-          normalized = normalizeMultiInvoiceData({
-            ...normalized,
-            subDocuments: exhaustive.subDocuments as any,
-            lineItems: (Array.isArray(exhaustive.lineItems) && exhaustive.lineItems.length > 0)
-              ? exhaustive.lineItems
-              : normalized.lineItems,
-            issuer: String(exhaustive.subDocuments[0]?.issuer || normalized.issuer || 'Unknown').trim() || 'Unknown',
-          });
-          console.log(`📚 Exhaustive pass increased invoice blocks: ${currentSubCount} -> ${exhaustiveSubCount}`);
-        } else if (exhaustiveSubCount > 0 && exhaustiveSubCount === currentSubCount) {
-          normalized = normalizeMultiInvoiceData({
-            ...normalized,
-            subDocuments: exhaustive.subDocuments as any,
-            lineItems: (Array.isArray(exhaustive.lineItems) && exhaustive.lineItems.length > 0)
-              ? exhaustive.lineItems
-              : normalized.lineItems,
-          });
-          console.log(`📚 Exhaustive pass refreshed ${exhaustiveSubCount} invoice blocks`);
-        }
+      if (exhaustive) applyExhaustive(exhaustive, 'primary');
 
-        const claimed = Number(exhaustive.detectedInvoiceCount || 0);
-        const got = Array.isArray(normalized.subDocuments) ? normalized.subDocuments.length : 0;
-        if (claimed > got) {
-          const alerts = new Set(Array.isArray(normalized.forensicAlerts) ? normalized.forensicAlerts : []);
-          alerts.add(
-            `Invoice count mismatch: model reported ${claimed} invoices but only ${got} were extracted. Re-process or review pages manually.`
-          );
-          normalized = { ...normalized, forensicAlerts: Array.from(alerts) };
+      let claimed = Number(exhaustive?.detectedInvoiceCount || 0);
+      let got = Array.isArray(normalized.subDocuments) ? normalized.subDocuments.length : 0;
+      if (claimed > got) {
+        const retry = await extractInvoiceBreakdownExhaustive(
+          file,
+          storageRef,
+          mimeType,
+          model,
+          userHint,
+          signal,
+          `You previously reported ${claimed} invoices but only returned ${got}. Re-read EVERY remaining page and return ALL distinct invoices — do not stop early.`
+        );
+        if (retry) {
+          applyExhaustive(retry, 'retry-missed');
+          exhaustive = retry;
+          claimed = Number(retry.detectedInvoiceCount || claimed);
+          got = Array.isArray(normalized.subDocuments) ? normalized.subDocuments.length : 0;
         }
+      }
+
+      if (claimed > got) {
+        const alerts = new Set(Array.isArray(normalized.forensicAlerts) ? normalized.forensicAlerts : []);
+        alerts.add(
+          `Invoice count mismatch: model reported ${claimed} invoices but only ${got} were extracted. Re-process or review pages manually.`
+        );
+        normalized = { ...normalized, forensicAlerts: Array.from(alerts) };
       }
     } else if (isPdf) {
       console.log('⏩ Skipping exhaustive PDF pass (single-document fast path)');
     }
 
-    // Recover product lines when first pass collapsed an itemized invoice to a total-only row.
-    if (isPdf && needsProductLineItemPass(file, normalized)) {
+    // Recover product lines when collapsed to totals, missing on sub-invoices, or deep beta.
+    if (isPdf && needsProductLineItemPass(file, normalized, forceDeep)) {
       console.log('🧾 Running product line-items recovery pass…');
       const products = await extractProductLineItemsPass(
         file,
