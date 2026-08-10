@@ -16,7 +16,17 @@ function notifySessionChanged() {
   window.dispatchEvent(new Event(PERSONAL_SESSION_CHANGED));
 }
 
-export function PersonalSessionsControl() {
+export function PersonalSessionsControl({
+  compact = false,
+  iconOnly = false,
+  align = "right",
+}: {
+  /** Icon-first chip for sidebar / tight chrome */
+  compact?: boolean;
+  /** Icon only (collapsed rail) */
+  iconOnly?: boolean;
+  align?: "left" | "right";
+}) {
   const { t } = useLabLanguage();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -32,6 +42,12 @@ export function PersonalSessionsControl() {
 
   useEffect(() => {
     void refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    const onChanged = () => void refresh();
+    window.addEventListener(PERSONAL_SESSION_CHANGED, onChanged);
+    return () => window.removeEventListener(PERSONAL_SESSION_CHANGED, onChanged);
   }, [refresh]);
 
   const select = async (id: string) => {
@@ -91,19 +107,36 @@ export function PersonalSessionsControl() {
     <div className="relative">
       <button
         type="button"
+        data-tour="personal-sessions"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[var(--pp-outline-variant)] text-[10px] font-bold uppercase tracking-wide text-[var(--pp-on-surface-variant)] hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)]"
+        title={current?.name || t("personalSessions")}
+        className={
+          compact || iconOnly
+            ? `inline-flex items-center justify-center gap-1 min-h-8 rounded border border-[var(--pp-border)] text-[9px] font-bold uppercase tracking-wider text-[var(--pp-on-surface-variant)] hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)] ${
+                iconOnly ? "w-8 px-0" : "px-2"
+              }`
+            : "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[var(--pp-outline-variant)] text-[10px] font-bold uppercase tracking-wide text-[var(--pp-on-surface-variant)] hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)]"
+        }
         aria-expanded={open}
         aria-haspopup="dialog"
+        aria-label={t("personalSessions")}
       >
-        {busy ? <Loader2 className="size-3.5 animate-spin" /> : <FolderKanban className="size-3.5" />}
-        <span className="hidden sm:inline max-w-[9rem] truncate">
-          {current?.name || t("personalSessions")}
-        </span>
+        {busy ? <Loader2 className="size-3.5 animate-spin" /> : <FolderKanban className="size-3.5 shrink-0" />}
+        {iconOnly ? null : compact ? (
+          <span className="max-w-[4.5rem] truncate">{t("personalSessions")}</span>
+        ) : (
+          <span className="hidden sm:inline max-w-[9rem] truncate">
+            {current?.name || t("personalSessions")}
+          </span>
+        )}
       </button>
 
       {open ? (
-        <div className="absolute right-0 mt-2 w-72 rounded-xl border border-[var(--pp-outline-variant)] bg-[var(--pp-surface)] shadow-lg z-50 p-3 space-y-2">
+        <div
+          className={`absolute mt-2 w-72 rounded-xl border border-[var(--pp-outline-variant)] bg-[var(--pp-surface)] shadow-lg z-50 p-3 space-y-2 ${
+            align === "left" ? "left-0" : "right-0"
+          }`}
+        >
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-semibold">{t("personalSessions")}</p>
             <button type="button" className="p-1 rounded hover:bg-[var(--pp-surface-high)]" onClick={() => setOpen(false)}>

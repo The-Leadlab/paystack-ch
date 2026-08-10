@@ -23,6 +23,7 @@ import { logoutAliLab } from "@/lib/aliLabGateClient";
 import { usePersonalPlan } from "../context/PersonalPlanContext";
 import { useCanOpenBusinessDashboard } from "@/cafe/hooks/useProductLineAccess";
 import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/const/branding";
+import { PersonalSessionsControl } from "./PersonalSessionsControl";
 
 const SECONDARY_FEATURE_IDS = new Set([
   "automation-rules",
@@ -153,36 +154,39 @@ export function PersonalPlanSidebar({
     >
       <div
         className={cn(
-          "flex items-center mb-2 shrink-0",
-          collapsed ? "flex-col gap-1.5" : "justify-between gap-1"
+          "flex items-center mb-2 shrink-0 gap-1",
+          collapsed ? "flex-col" : "justify-between"
         )}
       >
-        <Link
-          href={personalHomePath(surface)}
-          className={cn("flex items-center hover:opacity-90 min-w-0", collapsed ? "justify-center" : "gap-2")}
-          title="Paystack Personal"
-        >
-          <img
-            src={BRAND_LOGO_SRC}
-            alt="Paystack.ch"
-            width={BRAND_LOGO_SIZE}
-            height={BRAND_LOGO_SIZE}
-            className={cn("object-contain shrink-0", collapsed ? "h-7 w-7" : "h-8 w-auto max-w-[120px]")}
-          />
-          {!collapsed ? (
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--pp-on-surface-variant)] truncate">
-                {surface === "app" ? "Personal" : "Lab · Personal"}
-              </p>
-            </div>
-          ) : null}
-        </Link>
+        <div className={cn("flex items-center min-w-0", collapsed ? "flex-col gap-1.5" : "gap-1.5")}>
+          <Link
+            href={personalHomePath(surface)}
+            className={cn("flex items-center hover:opacity-90 min-w-0", collapsed ? "justify-center" : "gap-2")}
+            title="Paystack Personal"
+          >
+            <img
+              src={BRAND_LOGO_SRC}
+              alt="Paystack.ch"
+              width={BRAND_LOGO_SIZE}
+              height={BRAND_LOGO_SIZE}
+              className={cn("object-contain shrink-0", collapsed ? "h-7 w-7" : "h-8 w-auto max-w-[96px]")}
+            />
+            {!collapsed ? (
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--pp-on-surface-variant)] truncate">
+                  {surface === "app" ? "Personal" : "Lab · Personal"}
+                </p>
+              </div>
+            ) : null}
+          </Link>
+          <PersonalSessionsControl compact iconOnly={collapsed} align="left" />
+        </div>
         {onToggleCollapsed ? (
           <button
             type="button"
             data-tour="sidebar-collapse"
             onClick={onToggleCollapsed}
-            className="p-1.5 rounded border border-[var(--pp-border)] text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-primary)]"
+            className="p-1.5 rounded border border-[var(--pp-border)] text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-primary)] shrink-0"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand" : "Collapse"}
           >
