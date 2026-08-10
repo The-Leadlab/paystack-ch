@@ -6,41 +6,16 @@ import { usePersonalPlan } from "../personal-plan/context/PersonalPlanContext";
 import { GlassCard } from "../personal-plan/components/GlassCard";
 import { PersonalRecentLedger } from "../personal-plan/components/PersonalRecentLedger";
 import { PersonalStatementUpload } from "../personal-plan/components/PersonalStatementUpload";
-import { formatChfDisplay, formatPct } from "../personal-plan/formatChfDisplay";
+import { formatChfDisplay } from "../personal-plan/formatChfDisplay";
 
+/** Overview body — KPIs live once in the shell strip (filtered by header calendar). */
 export function PersonalDashboardPanel({ feature: _feature }: { feature: AliLabFeature }) {
   const { t } = useLabLanguage();
   const { month, openTransaction } = usePersonalPlan();
   const budget = usePersonalBudgetLedger(month);
-  const h = budget.totals;
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <GlassCard className="p-4">
-          <p className="text-[11px] uppercase text-[var(--pp-on-surface-variant)]">{t("income")}</p>
-          <p className="text-lg font-semibold text-[var(--pp-secondary)] pp-tabular mt-1">
-            {formatChfDisplay(h.totalIncome)}
-          </p>
-        </GlassCard>
-        <GlassCard className="p-4">
-          <p className="text-[11px] uppercase text-[var(--pp-on-surface-variant)]">{t("expenses")}</p>
-          <p className="text-lg font-semibold pp-tabular mt-1">{formatChfDisplay(h.totalExpenses)}</p>
-        </GlassCard>
-        <GlassCard className="p-4">
-          <p className="text-[11px] uppercase text-[var(--pp-on-surface-variant)]">{t("savings")}</p>
-          <p
-            className={`text-lg font-semibold pp-tabular mt-1 ${h.savings >= 0 ? "text-[var(--pp-tertiary)]" : "text-[var(--pp-error)]"}`}
-          >
-            {formatChfDisplay(h.savings)}
-          </p>
-        </GlassCard>
-        <GlassCard className="p-4">
-          <p className="text-[11px] uppercase text-[var(--pp-on-surface-variant)]">{t("savingsRate")}</p>
-          <p className="text-lg font-semibold pp-tabular mt-1">{formatPct(h.savingsRatePct)}</p>
-        </GlassCard>
-      </div>
-
       <PersonalStatementUpload onImported={() => void budget.refresh()} />
 
       {budget.imports.length > 0 ? (
