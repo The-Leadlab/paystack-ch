@@ -6,6 +6,7 @@ import {
   getDownloadURL,
   deleteObject,
   getBytes,
+  getBlob,
 } from 'firebase/storage';
 import { FIREBASE_RESUMABLE_UPLOAD_THRESHOLD_BYTES } from '@shared/geminiLimits';
 
@@ -13,28 +14,69 @@ const DOC_CACHE_NAME = 'paystack-doc-cache-v1';
 const CACHE_PREFIX = '/__doc-cache__/';
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function withRetry<T>(fn: () => Promise<T>, attempts = 3, baseDelayMs = 500): Promise<T> {
+function isRetriableStorageError(error: unknown): boolean {
+  const err = error as { code?: string; message?: string; name?: string };
+  const code = String(err?.code || '');
+  const msg = String(err?.message || error || '').toLowerCase();
+  return (
+    code === 'storage/retry-limit-exceeded' ||
+    code === 'storage/server-file-wrong-size' ||
+    code === 'storage/unknown' ||
+    msg.includes('retry-limit-exceeded') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('network') ||
+    msg.includes('timeout') ||
+    msg.includes('unavailable')
+  );
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  attempts = 3,
+  baseDelayMs = 500,
+  shouldRetry: (error: unknown) => boolean = () => true
+): Promise<T> {
   let lastError: unknown;
   for (let i = 0; i < attempts; i += 1) {
     try {
       return await fn();
     } catch (error) {
       lastError = error;
-      if (i < attempts - 1) {
-        await wait(baseDelayMs * Math.pow(2, i));
+      if (i < attempts - 1 && shouldRetry(error)) {
+        // Cap jittered exponential backoff (~12s max step).
+        const delay = Math.min(12_000, baseDelayMs * Math.pow(2, i)) + Math.floor(Math.random() * 250);
+        await wait(delay);
+        continue;
       }
+      throw error;
     }
   }
   throw lastError;
 }
 
+function guessContentType(fileName: string, fallback?: string): string {
+  const lower = (fileName || '').toLowerCase();
+  if (lower.endsWith('.pdf')) return 'application/pdf';
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  return fallback || 'application/octet-stream';
+}
+
 async function fetchAsFile(url: string, fileName: string): Promise<File> {
-  const response = await withRetry(() => fetch(url, { cache: 'no-store' }), 3, 600);
+  const response = await withRetry(
+    () => fetch(url, { cache: 'no-store' }),
+    5,
+    800,
+    isRetriableStorageError
+  );
   if (!response.ok) {
     throw new Error(`Could not fetch stored file (${response.status})`);
   }
   const blob = await response.blob();
-  return new File([blob], fileName || 'document.bin', { type: blob.type || 'application/octet-stream' });
+  return new File([blob], fileName || 'document.bin', {
+    type: blob.type || guessContentType(fileName),
+  });
 }
 
 function buildCacheKey(id: string): string {
@@ -198,6 +240,7 @@ export async function deleteDocument(fileUrl: string): Promise<void> {
 /**
  * Download a stored document and reconstruct it as a File for re-processing.
  * Uses Firebase Storage SDK (authenticated) first, then falls back to fetch.
+ * Extra retries help large scanned PDFs that hit storage/retry-limit-exceeded.
  */
 export async function downloadDocumentFile(fileUrl: string, fileName: string): Promise<File> {
   if (!fileUrl || typeof fileUrl !== 'string') {
@@ -206,6 +249,7 @@ export async function downloadDocumentFile(fileUrl: string, fileName: string): P
 
   const normalized = fileUrl.trim();
   const safeName = fileName || 'document.bin';
+  const contentType = guessContentType(safeName);
 
   if (storage) {
     const storageRef =
@@ -213,16 +257,22 @@ export async function downloadDocumentFile(fileUrl: string, fileName: string): P
         ? ref(storage, normalized)
         : ref(storage, normalized.replace(/^\/+/, ''));
 
+    // 1) getBlob — often more resilient for multi-MB scanned PDFs than getBytes.
     try {
-      // Attempt authenticated SDK download first.
-      const bytes = await withRetry(() => getBytes(storageRef), 3, 700);
-      const contentType = storageRef.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream';
+      const blob = await withRetry(() => getBlob(storageRef), 5, 900, isRetriableStorageError);
+      return new File([blob], safeName, { type: blob.type || contentType });
+    } catch (blobError) {
+      console.warn('⚠️ SDK getBlob failed, trying getBytes:', blobError);
+    }
+
+    // 2) getBytes (authenticated byte array).
+    try {
+      const bytes = await withRetry(() => getBytes(storageRef), 5, 900, isRetriableStorageError);
       return new File([bytes], safeName, { type: contentType });
     } catch (sdkError) {
-      console.warn('⚠️ SDK download failed, trying fresh download URL:', sdkError);
+      console.warn('⚠️ SDK getBytes failed, trying fresh download URL:', sdkError);
       try {
-        // Generate a fresh URL in case stored URL token is stale.
-        const freshUrl = await withRetry(() => getDownloadURL(storageRef), 2, 400);
+        const freshUrl = await withRetry(() => getDownloadURL(storageRef), 4, 700, isRetriableStorageError);
         return await fetchAsFile(freshUrl, safeName);
       } catch (freshUrlError) {
         console.warn('⚠️ Fresh download URL failed, falling back to stored URL:', freshUrlError);
@@ -241,5 +291,5 @@ export function formatFileSize(bytes: number): string {
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }

@@ -214,7 +214,9 @@ export interface FinancialData {
   conversionRateUsed: number;
   notes: string;
   lineItems?: BankTransaction[];
-  subDocuments?: FinancialData[]; 
+  subDocuments?: FinancialData[];
+  /** Page or page range within a multi-page PDF (e.g. "1", "2-3"). */
+  pageRange?: string;
   paySlip?: PaySlipAnalysis;
   /** source_tax = net + state deductions (B, G, F). gross_paid = single gross payment (C, CH). */
   payrollSettlementMode?: 'source_tax' | 'gross_paid';

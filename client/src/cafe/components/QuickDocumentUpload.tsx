@@ -119,7 +119,20 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
       console.log(`Calling Gemini AI for: ${fileItem.name}`);
       
       const forceDeepPdfReads = billing?.deepPdfInvoiceBeta === true;
-      const timeoutMs = resolveDocumentProcessingTimeoutMs(fileItem.file, { forceDeepPdfReads });
+      let pdfPageCount = 1;
+      let pdfPageSplit = false;
+      try {
+        const { getPdfPageCount, shouldSplitPdfToPageImages } = await import('../lib/pdfPagesToImages');
+        pdfPageCount = await getPdfPageCount(fileItem.file);
+        pdfPageSplit = shouldSplitPdfToPageImages(fileItem.file, pdfPageCount);
+      } catch {
+        /* best-effort */
+      }
+      const timeoutMs = resolveDocumentProcessingTimeoutMs(fileItem.file, {
+        forceDeepPdfReads,
+        pdfPageCount,
+        pdfPageSplit,
+      });
       const timeoutSec = Math.round(timeoutMs / 1000);
       const abortController = new AbortController();
       const timeoutPromise = new Promise((_, reject) =>
@@ -138,7 +151,7 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
           undefined,
           undefined,
           abortController.signal,
-          { forceDeepPdfReads }
+          { forceDeepPdfReads, forcePdfPageSplit: pdfPageSplit }
         ),
         timeoutPromise,
       ])) as any;

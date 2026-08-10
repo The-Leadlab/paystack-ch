@@ -16,6 +16,11 @@ import {
   SwissVatFormPreview,
 } from "../types";
 import { prepareDocumentForAi } from "../lib/prepareDocumentForAi";
+import {
+  getPdfPageCount,
+  renderPdfPagesToJpegFiles,
+  shouldSplitPdfToPageImages,
+} from "../lib/pdfPagesToImages";
 import { inferLineItemType, matchLineItemTypeFromAi } from "./categoryDetectionService";
 import {
   normalizeIsoDate,
@@ -1237,7 +1242,7 @@ function applySwissVatWarnings(data: FinancialData): FinancialData {
     if (sl.length > 0 && sv > 0.004 && Number(sub.vatAmount || 0) <= 0.004) {
       return syncSwissVatDerivedFields({
         ...sub,
-        conversionRateUsed: Number(sub as any).conversionRateUsed || dataIn.conversionRateUsed || 1,
+        conversionRateUsed: Number((sub as any).conversionRateUsed) || dataIn.conversionRateUsed || 1,
       } as FinancialData);
     }
     return sub;
@@ -1291,7 +1296,60 @@ function applySwissVatWarnings(data: FinancialData): FinancialData {
 export type AnalyzeFinancialDocumentOptions = {
   /** Admin beta: always run exhaustive + product recovery for non-payslip PDFs. */
   forceDeepPdfReads?: boolean;
+  /** Force rasterizing each PDF page to JPEG before AI (ticket sheets). */
+  forcePdfPageSplit?: boolean;
+  /** Internal: skip page-split when already analyzing a page image. */
+  skipPdfPageSplit?: boolean;
 };
+
+/** Merge per-page analyses into one multi-receipt FinancialData. */
+function mergePdfPageAnalyses(pages: FinancialData[], sourceFileName: string): FinancialData {
+  type WithPageRange = FinancialData & { pageRange?: string };
+  const subs: WithPageRange[] = [];
+  for (let i = 0; i < pages.length; i += 1) {
+    const page = pages[i];
+    const pageLabel = String(i + 1);
+    const nested = Array.isArray(page.subDocuments) ? page.subDocuments : [];
+    if (nested.length > 0) {
+      for (const sub of nested) {
+        const s = sub as WithPageRange;
+        subs.push({
+          ...s,
+          pageRange: String(s.pageRange || pageLabel),
+        });
+      }
+    } else {
+      subs.push({
+        ...(page as WithPageRange),
+        pageRange: pageLabel,
+        subDocuments: undefined,
+      });
+    }
+  }
+
+  const first = pages[0];
+  const merged = normalizeMultiInvoiceData({
+    documentType:
+      first?.documentType === DocumentType.Z2_BULK_REPORT ||
+      /ticket|z2/i.test(sourceFileName)
+        ? DocumentType.Z2_BULK_REPORT
+        : first?.documentType || DocumentType.RECEIPT,
+    date: first?.date,
+    issuer: first?.issuer || "Multiple receipts",
+    originalCurrency: first?.originalCurrency || "CHF",
+    expenseCategory: first?.expenseCategory || "OTHER",
+    confidenceScore: first?.confidenceScore ?? 0.7,
+    aiInterpretation: `Split ${pages.length}-page PDF into per-page images and analyzed each receipt separately.`,
+    forensicAlerts: pages.flatMap((p) => (Array.isArray(p.forensicAlerts) ? p.forensicAlerts : [])),
+    subDocuments: subs,
+    lineItems: [],
+    totalAmount: 0,
+    vatAmount: 0,
+    netAmount: 0,
+  } as unknown as FinancialData);
+
+  return syncGrandTotalsFromSubDocuments(merged);
+}
 
 export const analyzeFinancialDocument = async (
   file: File,
@@ -1305,6 +1363,51 @@ export const analyzeFinancialDocument = async (
     throw new Error(
       `"${file.name}" is ${formatMegabytes(file.size)} MB. AI extraction supports up to ${formatMegabytes(MAX_GEMINI_ANALYSIS_BYTES)} MB per Google Gemini — compress or split the PDF. The file can still be stored for viewing.`
     );
+  }
+
+  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
+  // Ticket/receipt multi-page sheets → one JPEG per page → analyze one-by-one.
+  if (isPdf && !options?.skipPdfPageSplit && typeof document !== "undefined") {
+    try {
+      const pageCount = await getPdfPageCount(file);
+      const split =
+        shouldSplitPdfToPageImages(file, pageCount, userHint, options?.forcePdfPageSplit === true) &&
+        !/pay\s*slip|salary|lohn|bulletin\s*de\s*salaire/i.test(`${file.name} ${userHint || ""}`);
+      if (split) {
+        console.log(`🧾 PDF page-split: ${file.name} → ${pageCount} page image(s)`);
+        const images = await renderPdfPagesToJpegFiles(file, signal);
+        const pageResults: FinancialData[] = [];
+        for (let i = 0; i < images.length; i += 1) {
+          if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+          console.log(`🧾 Analyzing page ${i + 1}/${images.length}: ${images[i].name}`);
+          const pageData = await analyzeFinancialDocument(
+            images[i],
+            targetCurrency,
+            userHint
+              ? `${userHint} (page ${i + 1} of ${images.length} from ${file.name})`
+              : `Page ${i + 1} of ${images.length} from multi-ticket PDF ${file.name}`,
+            undefined,
+            signal,
+            { skipPdfPageSplit: true, forceDeepPdfReads: false }
+          );
+          pageResults.push(pageData);
+        }
+        let merged = mergePdfPageAnalyses(pageResults, file.name);
+        merged = sanitizeFinancialDataForUi(applySwissVatWarnings(merged));
+        if (merged.totalAmount !== undefined && (!merged.amountInCHF || merged.amountInCHF === 0)) {
+          const rate = await getLiveExchangeRate(merged.originalCurrency || "CHF", targetCurrency);
+          merged = {
+            ...merged,
+            amountInCHF: merged.totalAmount * rate,
+            conversionRateUsed: rate,
+          };
+        }
+        return merged;
+      }
+    } catch (splitErr) {
+      console.warn("⚠️ PDF page-split failed; falling back to full-PDF analysis:", splitErr);
+    }
   }
 
   // Skip upload when caller already resolved storage (processDoc pre-uploads)

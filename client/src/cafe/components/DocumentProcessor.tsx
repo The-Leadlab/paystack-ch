@@ -2601,11 +2601,24 @@ export const DocumentProcessor: React.FC<{
       }
       if (!inputFile && doc.fileUrl) {
         // Rehydrate persisted documents after page refresh.
-        const { downloadDocumentFile } = await import('../services/storageService');
+        const { downloadDocumentFile, cacheDocumentFile } = await import('../services/storageService');
         inputFile = await downloadDocumentFile(doc.fileUrl, doc.fileName);
+        if (inputFile && doc.persistedDocumentId) {
+          await cacheDocumentFile(doc.persistedDocumentId, inputFile);
+        }
       }
       if (!inputFile) {
         throw new Error('Missing source file or storage unreachable. Re-upload this document once to create local backup, then retry.');
+      }
+
+      // Keep a local backup so retries avoid another large Storage download.
+      if (doc.persistedDocumentId && inputFile) {
+        try {
+          const { cacheDocumentFile } = await import('../services/storageService');
+          await cacheDocumentFile(doc.persistedDocumentId, inputFile);
+        } catch {
+          /* non-fatal */
+        }
       }
 
       const cap = entitlements.maxDocumentsPerMonth;
@@ -2649,7 +2662,20 @@ export const DocumentProcessor: React.FC<{
       }
 
       const forceDeepPdfReads = billing?.deepPdfInvoiceBeta === true;
-      const processingTimeoutMs = resolveDocumentProcessingTimeoutMs(inputFile, { forceDeepPdfReads });
+      let pdfPageCount = 1;
+      let pdfPageSplit = false;
+      try {
+        const { getPdfPageCount, shouldSplitPdfToPageImages } = await import('../lib/pdfPagesToImages');
+        pdfPageCount = await getPdfPageCount(inputFile);
+        pdfPageSplit = shouldSplitPdfToPageImages(inputFile, pdfPageCount);
+      } catch {
+        /* page peek is best-effort */
+      }
+      const processingTimeoutMs = resolveDocumentProcessingTimeoutMs(inputFile, {
+        forceDeepPdfReads,
+        pdfPageCount,
+        pdfPageSplit,
+      });
       const timeoutSec = Math.round(processingTimeoutMs / 1000);
       const abortController = new AbortController();
       const timeoutPromise = new Promise<never>((_, reject) =>
@@ -2667,9 +2693,10 @@ export const DocumentProcessor: React.FC<{
           inputFile,
           reportingCurrency,
           undefined,
-          storageForAi,
+          // Page-split path uploads each JPEG itself; avoid forcing the whole PDF through Gemini Storage.
+          pdfPageSplit ? undefined : storageForAi,
           abortController.signal,
-          { forceDeepPdfReads }
+          { forceDeepPdfReads, forcePdfPageSplit: pdfPageSplit }
         ),
         timeoutPromise,
       ]);
