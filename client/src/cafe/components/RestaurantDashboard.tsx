@@ -40,6 +40,7 @@ import type { ReportScheduleCadenceDays } from '@shared/reportSchedule';
 import { RevenueLedgerTable } from './RevenueLedgerTable';
 import { mapAiExpenseCategoryToLedger } from '../lib/mapExpenseCategory';
 import { postLedgerFromFinancialData } from '../lib/postLedgerFromFinancialData';
+import { hydrateProcessedDocumentLineItems } from '../lib/financialDataFirestorePayload';
 import { canonicalizeSupplierName } from '../lib/swissDocumentNormalize';
 import { evaluateVatReview } from '../lib/vatReview';
 import { filterBusinessExpenses } from '../lib/personalBleedFilter';
@@ -686,11 +687,12 @@ export function RestaurantDashboard() {
     let ok = 0;
     for (const doc of completed) {
       try {
+        const hydrated = await hydrateProcessedDocumentLineItems(doc);
         await deleteFinancesByDocumentId(doc.id);
         await postLedgerFromFinancialData(
           { addIncome, addExpense },
-          doc.data!,
-          doc.fileName,
+          hydrated.data!,
+          hydrated.fileName,
           currentSession.id,
           doc.id
         );

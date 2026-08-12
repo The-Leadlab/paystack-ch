@@ -26,6 +26,7 @@ import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
 import { resolveDocumentProcessingTimeoutMs } from '../lib/documentProcessingTimeout';
 import { detectCategory, inferLineItemType } from '../services/categoryDetectionService';
 import { isCsvDocumentFile } from '../lib/businessDocumentFile';
+import { hydrateProcessedDocumentLineItems } from '../lib/financialDataFirestorePayload';
 import {
   ProcessedDocument,
   BankTransaction,
@@ -2489,6 +2490,10 @@ export const DocumentProcessor: React.FC<{
   const [reportingCurrency] = useState('CHF');
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [localDocs, setLocalDocs] = useState<ProcessedDocument[]>([]);
+  /** Full lineItems restored from Storage when Firestore only keeps a preview. */
+  const [hydratedLineItemsById, setHydratedLineItemsById] = useState<Record<string, BankTransaction[]>>(
+    {}
+  );
   const [reattachTargetId, setReattachTargetId] = useState<string | null>(null);
   const [retryingDocId, setRetryingDocId] = useState<string | null>(null);
   const reattachInputRef = useRef<HTMLInputElement>(null);
@@ -2534,10 +2539,17 @@ export const DocumentProcessor: React.FC<{
   const allDocs = useMemo(() => {
     const firestoreDocs = documents.map((d) => {
       const fileRaw = d.fileRaw || findLocalFileRaw(d);
+      const hydratedItems = hydratedLineItemsById[d.id];
+      const data =
+        hydratedItems && d.data
+          ? { ...d.data, lineItems: hydratedItems }
+          : d.data;
       return {
         ...d,
         source: 'firestore' as const,
         ...(fileRaw ? { fileRaw } : {}),
+        ...(data ? { data } : {}),
+        ...(hydratedItems ? { lineItemsCount: hydratedItems.length } : {}),
       };
     });
     const localProcessing = localDocs
@@ -2545,7 +2557,7 @@ export const DocumentProcessor: React.FC<{
       .map((d) => ({ ...d, source: 'local' as const }));
     return [...firestoreDocs, ...localProcessing];
     // eslint-disable-next-line react-hooks/exhaustive-deps -- findLocalFileRaw closes over localDocs
-  }, [documents, localDocs]);
+  }, [documents, localDocs, hydratedLineItemsById]);
   allDocsRef.current = allDocs;
 
   // Only drop mirrored locals after Firestore has finished AI (or local has no File left).
@@ -2601,6 +2613,31 @@ export const DocumentProcessor: React.FC<{
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only react when openDocumentId changes
   }, [openDocumentId]);
+
+  // Load full CSV/bank lineItems from Storage when verifying a slim Firestore preview.
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      for (const id of expandedRows) {
+        const docRow = allDocsRef.current.find((d) => d.id === id);
+        if (!docRow?.lineItemsUrl || !docRow.data) continue;
+        const current = docRow.data.lineItems?.length || 0;
+        const expected = Number(docRow.lineItemsCount || 0);
+        if (expected > 0 && current >= expected) continue;
+        const hydrated = await hydrateProcessedDocumentLineItems(docRow);
+        const items = hydrated.data?.lineItems;
+        if (cancelled || !items?.length) continue;
+        setHydratedLineItemsById((prev) => {
+          if (prev[id]?.length && prev[id].length >= items.length) return prev;
+          return { ...prev, [id]: items };
+        });
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [expandedRows, documents]);
 
   const isQueuedStatus = (status?: ProcessedDocument['status']) =>
     status === 'pending' || status === 'error' || status === 'skipped';

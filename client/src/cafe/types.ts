@@ -253,6 +253,10 @@ export interface ProcessedDocument {
   created_at?: string;
   fileHash?: string; // SHA-256 hash for duplicate detection
   persistedDocumentId?: string; // Firestore document id created at upload-time
+  /** Full lineItems JSON parked in Storage when Firestore would exceed 1 MiB. */
+  lineItemsStoragePath?: string;
+  lineItemsUrl?: string;
+  lineItemsCount?: number;
 }
 
 export interface BankStatementAnalysis {

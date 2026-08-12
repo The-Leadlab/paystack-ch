@@ -259,11 +259,13 @@ export async function parseBusinessCsvFile(
     );
     const payment = cell(row, paymentIdx);
     const inv = cell(row, invIdx);
+    const extraNote = cell(row, notesIdx);
     const noteParts = [
       supplier ? `Supplier: ${supplier}` : "",
       inv ? `Ref: ${inv}` : "",
       payment ? `Payment: ${payment}` : "",
-      cell(row, notesIdx),
+      // Keep sidecar/Firestore lean — ignore long fixture padding notes.
+      extraNote && extraNote.length <= 80 ? extraNote : "",
     ].filter(Boolean);
 
     const vatRaw = vatIdx >= 0 ? parseAmount(cell(row, vatIdx)) : NaN;
@@ -273,11 +275,11 @@ export async function parseBusinessCsvFile(
 
     lineItems.push({
       date,
-      description: supplier ? `${description} — ${supplier}` : description,
+      description: (supplier ? `${description} — ${supplier}` : description).slice(0, 160),
       amount: abs,
       type: flow,
       category,
-      notes: noteParts.join(" · ").slice(0, 400),
+      notes: noteParts.join(" · ").slice(0, 160),
     });
 
     if (flow === "INCOME") {

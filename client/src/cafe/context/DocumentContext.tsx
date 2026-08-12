@@ -6,6 +6,7 @@ import { useSession } from './SessionContext';
 import { db } from '../lib/firebase';
 import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, orderBy } from 'firebase/firestore';
 import { dedupeProcessedDocuments } from '../lib/dedupeProcessedDocuments';
+import { packDocumentUpdatesForFirestore } from '../lib/financialDataFirestorePayload';
 
 function removeUndefinedDeep<T>(value: T): T {
   if (Array.isArray(value)) {
@@ -162,13 +163,25 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
           session_id: sessionId,
           created_at: new Date().toISOString(),
         };
-        const docData = removeUndefinedDeep(rawDocData);
+
+        // Temporary id for Storage sidecar path when lineItems are huge (CSV bank imports).
+        const stagingId =
+          typeof document.persistedDocumentId === 'string' && document.persistedDocumentId
+            ? document.persistedDocumentId
+            : `pending_${Date.now()}`;
+        const packed = await packDocumentUpdatesForFirestore(stagingId, uid, rawDocData);
+        const docData = removeUndefinedDeep(packed.forFirestore);
 
         const docRef = await addDoc(collection(db, 'documents'), docData);
         const firestoreId = docRef.id;
-        const newDoc = { ...docData, id: firestoreId, persistedDocumentId: firestoreId };
+        const localFields = removeUndefinedDeep({
+          ...packed.forLocal,
+          id: firestoreId,
+          persistedDocumentId: firestoreId,
+        }) as ProcessedDocument;
+        const newDoc = { ...localFields, id: firestoreId, persistedDocumentId: firestoreId };
         setDocuments((prev) => [newDoc, ...prev]);
-        return newDoc; // Return the document with its ID
+        return newDoc;
       } catch (err) {
         console.error('Error adding document:', err);
         setError(err instanceof Error ? err.message : String(err));
@@ -181,13 +194,15 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
   const updateDocumentData = useCallback(
     async (documentId: string, updates: Partial<ProcessedDocument>) => {
       if (!db || !canWrite) return;
+      const uid = dataOwnerUid || '';
       
       try {
+        const packed = await packDocumentUpdatesForFirestore(documentId, uid, updates);
         const docRef = doc(db, 'documents', documentId);
-        const cleanedUpdates = removeUndefinedDeep(updates);
+        const cleanedUpdates = removeUndefinedDeep(packed.forFirestore);
         await updateDoc(docRef, cleanedUpdates as any);
         setDocuments((prev) =>
-          prev.map((d) => (d.id === documentId ? { ...d, ...updates } : d))
+          prev.map((d) => (d.id === documentId ? { ...d, ...packed.forLocal } : d))
         );
       } catch (err) {
         console.error('Error updating document:', err);
@@ -195,7 +210,7 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [canWrite]
+    [canWrite, dataOwnerUid]
   );
 
   const deleteDocument = useCallback(async (documentId: string) => {

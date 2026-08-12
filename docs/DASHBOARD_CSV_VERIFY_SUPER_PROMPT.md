@@ -43,8 +43,14 @@ Without `flow`, heuristics use signed amounts, category, and description keyword
 6. Right: bank-statement totals + **many** line items (not 1 article).
 7. Approve → ledger has matching income/expense rows.
 
-## Out of scope
+## Firestore 1 MiB limit (large CSV)
 
-- Excel `.xlsx` (CSV only).
-- Virtualized 10k-row table (full list is editable; may be heavy on huge files).
-- Changing PDF invoice / ticket Gemini paths.
+Saving thousands of `lineItems` inline exceeds Firestore’s **1,048,576 byte** document cap (typical for multi‑MB CSVs).
+
+**Fix:** `client/src/cafe/lib/financialDataFirestorePayload.ts` + `DocumentContext`
+- If payload is large / >150 lines → upload full `lineItems` JSON to Firebase Storage
+- Firestore keeps header + ~40-line preview + `lineItemsUrl` / `lineItemsCount`
+- React state keeps the full array; Verification Center hydrates from Storage when expanding
+- Ledger resync hydrates before posting
+
+CSV row notes are also kept short (no fixture padding) to reduce sidecar size.
