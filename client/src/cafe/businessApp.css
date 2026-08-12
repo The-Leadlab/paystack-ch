@@ -511,6 +511,26 @@
   cursor: not-allowed;
 }
 
+/* Stop processing — must beat .ba-btn-start white fill (Tailwind bg-red-600 alone loses). */
+.ba-v3 .ba-btn-start--danger {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.ba-v3 .ba-btn-start--danger:hover:not(:disabled) {
+  background: #b91c1c;
+  opacity: 1;
+}
+
+.cafe-shell.cafe-theme-light .ba-v3 .ba-btn-start--danger {
+  background: #dc2626;
+  color: #ffffff !important;
+}
+
+.cafe-shell.cafe-theme-light .ba-v3 .ba-btn-start--danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
 .ba-v3 .ba-btn-approve {
   background: var(--ba-accent-blue);
   color: #ffffff;
