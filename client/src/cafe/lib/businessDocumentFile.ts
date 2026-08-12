@@ -5,20 +5,24 @@ export const BUSINESS_DOCUMENT_ACCEPT =
 
 const IMAGE_EXT = /\.(jpe?g|png|webp)$/i;
 
+export function isCsvDocumentFile(file: { name: string; type?: string }): boolean {
+  const name = (file.name || "").toLowerCase();
+  const type = (file.type || "").toLowerCase().split(";")[0].trim();
+  return (
+    name.endsWith(".csv") ||
+    type === "text/csv" ||
+    type === "application/csv" ||
+    type === "application/vnd.ms-excel"
+  );
+}
+
 export function isBusinessDocumentFile(file: { name: string; type?: string }): boolean {
   const name = (file.name || "").toLowerCase();
   const type = (file.type || "").toLowerCase().split(";")[0].trim();
 
   if (name.endsWith(".pdf") || type === "application/pdf") return true;
   if (IMAGE_EXT.test(name) || /^image\/(jpeg|jpg|png|webp)$/.test(type)) return true;
-  if (
-    name.endsWith(".csv") ||
-    type === "text/csv" ||
-    type === "application/csv" ||
-    type === "application/vnd.ms-excel"
-  ) {
-    return true;
-  }
+  if (isCsvDocumentFile(file)) return true;
   return false;
 }
 

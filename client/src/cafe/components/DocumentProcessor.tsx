@@ -25,6 +25,7 @@ import { exportToExcel } from '../services/excelService';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
 import { resolveDocumentProcessingTimeoutMs } from '../lib/documentProcessingTimeout';
 import { detectCategory, inferLineItemType } from '../services/categoryDetectionService';
+import { isCsvDocumentFile } from '../lib/businessDocumentFile';
 import {
   ProcessedDocument,
   BankTransaction,
@@ -51,6 +52,7 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
   const { t } = useLanguage();
   const [docUrl, setDocUrl] = useState<string | null>(null);
   const [showZoom, setShowZoom] = useState(false);
+  const isCsv = isCsvDocumentFile({ name: doc.fileName || '', type: doc.fileRaw?.type });
 
   React.useEffect(() => {
     // Priority: Firebase Storage URL > fileRaw > fileDataUrl (deprecated)
@@ -74,6 +76,102 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
   ];
 
   const displayUrl = docUrl;
+  const lineItems = Array.isArray(doc.data?.lineItems) ? doc.data!.lineItems! : [];
+  const incomeCount = lineItems.filter((i) => i.type === 'INCOME').length;
+  const expenseCount = lineItems.filter((i) => i.type === 'EXPENSE').length;
+  const sampleRows = lineItems.slice(0, 12);
+
+  if (isCsv) {
+    return (
+      <div className="w-full h-full flex flex-col bg-slate-950 text-slate-300 font-mono text-[10px]">
+        <div className="flex-1 min-h-[220px] border-b border-emerald-500/20 overflow-hidden flex flex-col">
+          <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-r from-emerald-950/80 to-slate-950 flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-emerald-400 font-black uppercase tracking-widest text-[9px]">
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                {t('dpCsvPreviewTitle')}
+              </div>
+              <p className="text-slate-500 mt-1 text-[8px] uppercase tracking-wider">{t('dpCsvNoPdfHint')}</p>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="text-emerald-300 font-black text-[11px]">
+                {t('dpCsvRowsImported').replace('{count}', String(lineItems.length || '—'))}
+              </div>
+              <div className="text-slate-400 text-[8px] mt-0.5">
+                {t('dpCsvIncomeExpense')
+                  .replace('{income}', String(incomeCount))
+                  .replace('{expense}', String(expenseCount))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-auto p-3">
+            <p className="text-[8px] text-slate-500 uppercase tracking-widest mb-2">{t('dpCsvSampleHint')}</p>
+            {sampleRows.length === 0 ? (
+              <div className="h-40 flex items-center justify-center border border-dashed border-white/10 rounded-sm text-slate-600">
+                …
+              </div>
+            ) : (
+              <table className="w-full border-collapse text-[9px]">
+                <thead>
+                  <tr className="text-left text-slate-500 border-b border-white/10">
+                    <th className="py-1.5 pr-2 font-black uppercase">Date</th>
+                    <th className="py-1.5 pr-2 font-black uppercase">Flow</th>
+                    <th className="py-1.5 pr-2 font-black uppercase">Desc</th>
+                    <th className="py-1.5 font-black uppercase text-right">Amt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sampleRows.map((row, i) => (
+                    <tr key={`${row.date}-${i}`} className="border-b border-white/5 hover:bg-white/[0.03]">
+                      <td className="py-1.5 pr-2 whitespace-nowrap text-slate-400">{row.date}</td>
+                      <td className="py-1.5 pr-2">
+                        <span
+                          className={
+                            row.type === 'INCOME'
+                              ? 'text-emerald-400 font-bold'
+                              : 'text-rose-400 font-bold'
+                          }
+                        >
+                          {row.type === 'INCOME' ? 'IN' : 'OUT'}
+                        </span>
+                      </td>
+                      <td className="py-1.5 pr-2 truncate max-w-[140px] text-slate-300" title={row.description}>
+                        {row.description}
+                      </td>
+                      <td className="py-1.5 text-right font-bold text-slate-200 whitespace-nowrap">
+                        {Number(row.amount || 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {lineItems.length > sampleRows.length && (
+              <p className="mt-2 text-[8px] text-slate-500">
+                +{lineItems.length - sampleRows.length} …
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="p-4 space-y-3 shrink-0">
+          <div className="bg-white/5 p-3 rounded-sm italic border-l-2 border-emerald-500/50 leading-relaxed text-slate-200 text-[9px]">
+            {doc.data?.aiInterpretation || t('dpScanningContext')}
+          </div>
+          {displayUrl && (
+            <button
+              type="button"
+              onClick={() => openDocumentInNewTab(doc)}
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-sm font-black uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2 shadow-lg text-[9px]"
+            >
+              <ExternalLink className="w-4 h-4" /> {t('dpOpenCsv')}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-900 text-slate-300 font-mono text-[10px]">
@@ -1105,6 +1203,9 @@ const VerificationHub: React.FC<{
   };
   const isBankStatement = editedData.documentType === DocumentType.BANK_STATEMENT;
   const isPaySlip = editedData.documentType === DocumentType.PAY_SLIP;
+  const isCsv = isCsvDocumentFile({ name: doc.fileName || '', type: doc.fileRaw?.type });
+  const openSourceLabel = isCsv ? t('dpOpenCsv') : t('dpOpenPdf');
+  const sourceUnavailableLabel = isCsv ? t('dpCsvUnavailable') : t('dpPdfUnavailable');
   const isZeroValue = Number(editedData.totalAmount) === 0;
   const subDocuments = Array.isArray(editedData.subDocuments) ? editedData.subDocuments : [];
   const hasMultipleSubs = subDocuments.length > 1;
@@ -1270,7 +1371,7 @@ const VerificationHub: React.FC<{
                      onClick={() => openDocumentInNewTab(doc)}
                      className="h-9 px-3 border border-cdlp-border text-cdlp-muted rounded text-[10px] font-bold uppercase hover:text-white transition-colors whitespace-nowrap"
                    >
-                     {t('dpOpenPdf')}
+                     {openSourceLabel}
                    </button>
                  )}
                  <button
@@ -1592,13 +1693,17 @@ const VerificationHub: React.FC<{
                    <button
                      type="button"
                      onClick={() => openDocumentInNewTab(doc)}
-                     className="w-full h-11 px-4 bg-cdlp-gold text-cdlp-black rounded-sm text-xs font-black uppercase tracking-wider hover:bg-cdlp-gold-light transition-colors flex items-center justify-center gap-2"
+                     className={`w-full h-11 px-4 rounded-sm text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-2 ${
+                       isCsv
+                         ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                         : 'bg-cdlp-gold text-cdlp-black hover:bg-cdlp-gold-light'
+                     }`}
                    >
-                     <ExternalLink className="w-4 h-4" /> {t('dpOpenPdf')}
+                     <ExternalLink className="w-4 h-4" /> {openSourceLabel}
                    </button>
                  ) : (
                    <div className="text-[10px] font-bold text-cdlp-muted bg-cdlp-card border border-cdlp-border rounded-sm px-3 py-2">
-                     {t('dpPdfUnavailable')}
+                     {sourceUnavailableLabel}
                    </div>
                  )}
                  <div className="grid grid-cols-2 gap-3">
@@ -2927,10 +3032,14 @@ export const DocumentProcessor: React.FC<{
         timeoutPromise,
       ]);
       try {
-        res = await enrichFinancialDataWithSwissAccount(res, abortController.signal);
-        console.log(
-          `📒 Swiss account: ${res.swissAccountClassification?.account_code} (${((res.swissAccountClassification?.confidence || 0) * 100).toFixed(0)}%)`
-        );
+        if (!isCsvDocumentFile(inputFile)) {
+          res = await enrichFinancialDataWithSwissAccount(res, abortController.signal);
+          console.log(
+            `📒 Swiss account: ${res.swissAccountClassification?.account_code} (${((res.swissAccountClassification?.confidence || 0) * 100).toFixed(0)}%)`
+          );
+        } else {
+          step(`csv skip Swiss account classify (${(res.lineItems || []).length} rows)`);
+        }
       } catch (classifyErr) {
         console.warn(`⚠️ Swiss account classification skipped for ${doc.fileName}:`, classifyErr);
       }

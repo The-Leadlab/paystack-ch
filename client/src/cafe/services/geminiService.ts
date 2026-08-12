@@ -29,6 +29,8 @@ import {
   resolveDocumentVatAmount,
   splitIssuerAndReference,
 } from "../lib/swissDocumentNormalize";
+import { isCsvDocumentFile } from "../lib/businessDocumentFile";
+import { parseBusinessCsvFile } from "../lib/businessCsvImport";
 
 const Type = {
   ARRAY: "ARRAY",
@@ -1361,6 +1363,20 @@ export const analyzeFinancialDocument = async (
   signal?: AbortSignal,
   options?: AnalyzeFinancialDocumentOptions
 ): Promise<FinancialData> => {
+  // CSV: deterministic multi-row parse (Gemini collapses large sheets to the first invoice).
+  if (isCsvDocumentFile(file)) {
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    console.log(`📊 CSV deterministic parse: ${file.name}`);
+    const { data, rowCount, incomeCount, expenseCount } = await parseBusinessCsvFile(
+      file,
+      targetCurrency
+    );
+    console.log(
+      `📊 CSV parsed ${rowCount} rows (${incomeCount} income / ${expenseCount} expense)`
+    );
+    return data;
+  }
+
   if (file.size > MAX_GEMINI_ANALYSIS_BYTES) {
     throw new Error(
       `"${file.name}" is ${formatMegabytes(file.size)} MB. AI extraction supports up to ${formatMegabytes(MAX_GEMINI_ANALYSIS_BYTES)} MB per Google Gemini — compress or split the PDF. The file can still be stored for viewing.`
