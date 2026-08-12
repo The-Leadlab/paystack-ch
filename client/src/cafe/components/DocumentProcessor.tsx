@@ -3184,7 +3184,7 @@ export const DocumentProcessor: React.FC<{
             <button
               type="button"
               onClick={stopBatch}
-              className="ba-btn-start bg-red-600 text-white hover:opacity-100"
+              className="ba-btn-start ba-btn-start--danger"
             >
               {t('dpStopProcessing')}
             </button>
