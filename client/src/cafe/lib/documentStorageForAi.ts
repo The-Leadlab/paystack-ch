@@ -1,18 +1,13 @@
 import { auth } from "./firebase";
 import { uploadDocument, type UploadedDocumentMeta } from "../services/storageService";
+import { normalizeBusinessDocumentMime } from "./businessDocumentFile";
 
 export type DocumentStorageRef = UploadedDocumentMeta & {
   mimeType: string;
 };
 
 export function guessMimeType(fileName: string, fileType: string): string {
-  if (fileType) return fileType;
-  const lower = fileName.toLowerCase();
-  if (lower.endsWith(".pdf")) return "application/pdf";
-  if (/\.(jpe?g)$/.test(lower)) return "image/jpeg";
-  if (lower.endsWith(".png")) return "image/png";
-  if (lower.endsWith(".webp")) return "image/webp";
-  return "application/octet-stream";
+  return normalizeBusinessDocumentMime(fileName, fileType);
 }
 
 /**

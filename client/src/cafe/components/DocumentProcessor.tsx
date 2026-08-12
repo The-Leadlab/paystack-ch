@@ -44,6 +44,7 @@ import {
   recallDocumentFile,
   rememberDocumentFile,
 } from '../lib/documentFileMemory';
+import { BUSINESS_DOCUMENT_ACCEPT, isBusinessDocumentFile } from '../lib/businessDocumentFile';
 
 // Neural Log Component (from Ypsom)
 const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
@@ -2571,7 +2572,17 @@ export const DocumentProcessor: React.FC<{
       setUploadError(t('planLimitDocuments').replace('{n}', String(documentCap)));
       return;
     }
-    const incoming = Array.from(files);
+    const allIncoming = Array.from(files);
+    const rejected = allIncoming.filter((f) => !isBusinessDocumentFile(f));
+    const incoming = allIncoming.filter((f) => isBusinessDocumentFile(f));
+
+    if (rejected.length > 0) {
+      setUploadError(
+        (t('dpUnsupportedFiles') || 'Unsupported file type (use PDF, JPG, PNG, WebP, or CSV): {names}')
+          .replace('{names}', rejected.map((f) => f.name).join(', '))
+      );
+    }
+    if (incoming.length === 0) return;
 
     // Check for duplicate filenames
     const duplicateNames = incoming.filter(f => documents.some(d => d.fileName === f.name));
@@ -3003,6 +3014,14 @@ export const DocumentProcessor: React.FC<{
   const onReattachFileSelected = async (files: FileList | null) => {
     const file = files?.[0];
     if (!file || !reattachTargetId) return;
+    if (!isBusinessDocumentFile(file)) {
+      setUploadError(
+        (t('dpUnsupportedFiles') || 'Unsupported file type (use PDF, JPG, PNG, WebP, or CSV): {names}')
+          .replace('{names}', file.name)
+      );
+      setReattachTargetId(null);
+      return;
+    }
     const target = allDocs.find((d) => d.id === reattachTargetId);
     setReattachTargetId(null);
     if (!target) return;
@@ -3154,7 +3173,7 @@ export const DocumentProcessor: React.FC<{
             type="file"
             className="hidden"
             multiple
-            accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp"
+            accept={BUSINESS_DOCUMENT_ACCEPT}
             disabled={documentLimitReached}
             onChange={(e) => addFiles(e.target.files)}
           />
@@ -3649,7 +3668,7 @@ export const DocumentProcessor: React.FC<{
         ref={reattachInputRef}
         type="file"
         className="hidden"
-        accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp"
+        accept={BUSINESS_DOCUMENT_ACCEPT}
         onChange={(e) => {
           void onReattachFileSelected(e.target.files);
           e.currentTarget.value = '';

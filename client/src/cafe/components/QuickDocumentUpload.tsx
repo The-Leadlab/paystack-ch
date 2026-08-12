@@ -5,6 +5,7 @@ import { analyzeFinancialDocument } from '../services/geminiService';
 import { enrichFinancialDataWithSwissAccount } from '../services/swissAccountClassifierService';
 import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
 import { useSubscription } from '../context/SubscriptionContext';
+import { BUSINESS_DOCUMENT_ACCEPT, isBusinessDocumentFile } from '../lib/businessDocumentFile';
 import type { FinancialData } from '../types';
 
 type ProcessingFile = {
@@ -35,7 +36,7 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
     const translations: Record<string, Record<string, string>> = {
       en: {
         uploadTitle: 'Upload Documents',
-        uploadDesc: 'Drag & drop invoices, receipts, or bank statements (PDF, JPG, PNG)',
+        uploadDesc: 'Drag & drop invoices, receipts, bank statements, or CSV (PDF, JPG, PNG, CSV)',
         browse: 'Browse Files',
         processing: 'Processing',
         completed: 'Completed',
@@ -47,7 +48,7 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
       },
       fr: {
         uploadTitle: 'Télécharger des documents',
-        uploadDesc: 'Glissez-déposez des factures, reçus ou relevés bancaires (PDF, JPG, PNG)',
+        uploadDesc: 'Glissez-déposez factures, reçus, relevés ou CSV (PDF, JPG, PNG, CSV)',
         browse: 'Parcourir',
         processing: 'Traitement',
         completed: 'Terminé',
@@ -65,11 +66,7 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
     if (!fileList) return;
 
     const newFiles: ProcessingFile[] = Array.from(fileList)
-      .filter(file => {
-        // Only accept PDF and images
-        const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-        return validTypes.includes(file.type);
-      })
+      .filter((file) => isBusinessDocumentFile(file))
       .map((file) => ({
         id: Math.random().toString(36).substr(2, 9),
         name: file.name,
@@ -306,7 +303,7 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
           ref={fileInputRef}
           type="file"
           multiple
-          accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp"
+          accept={BUSINESS_DOCUMENT_ACCEPT}
           onChange={(e) => handleFiles(e.target.files)}
           className="hidden"
         />

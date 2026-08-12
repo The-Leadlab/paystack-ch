@@ -2,6 +2,7 @@
 import { generateGeminiContent, generateGeminiContentFromStorage } from "../lib/geminiClient";
 import {
   ensureDocumentStorageForAi,
+  guessMimeType,
   type DocumentStorageRef,
 } from "../lib/documentStorageForAi";
 import { MAX_GEMINI_ANALYSIS_BYTES, formatMegabytes } from "@shared/geminiLimits";
@@ -231,7 +232,7 @@ async function generateGeminiForDocumentFile(
 
   const prepared = await prepareDocumentForAi(file);
   const base64 = await fileToBase64(prepared);
-  const mimeType = prepared.type || file.type;
+  const mimeType = guessMimeType(file.name, prepared.type || file.type);
   return generateGeminiContent(
     {
       model,

@@ -20,6 +20,9 @@ const IMPORTABLE_MIME = new Set([
   "image/jpg",
   "image/png",
   "image/webp",
+  "text/csv",
+  "application/csv",
+  "application/vnd.ms-excel",
 ]);
 
 export type GoogleDriveSyncResult = { status: number; json: Record<string, unknown> };
@@ -354,7 +357,9 @@ export async function runDriveSyncFromDrive(authorization: string | undefined): 
         skipped += 1;
         continue;
       }
-      if (!IMPORTABLE_MIME.has(file.mimeType)) {
+      const nameLower = (file.name || "").toLowerCase();
+      const importableByExt = nameLower.endsWith(".csv") || nameLower.endsWith(".pdf") || /\.(jpe?g|png|webp)$/.test(nameLower);
+      if (!IMPORTABLE_MIME.has(file.mimeType) && !importableByExt) {
         skipped += 1;
         continue;
       }

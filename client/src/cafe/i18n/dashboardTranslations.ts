@@ -613,7 +613,8 @@ export const dashboardEn: Record<string, string> = {
 
   dpUploadDocuments: 'Upload documents',
   dpDocumentLimitReached: 'Document limit reached',
-  dpDropFiles: 'Drop PDF / JPG / PNG files',
+  dpDropFiles: 'Drop PDF / JPG / PNG / CSV files',
+  dpUnsupportedFiles: 'Unsupported file type (use PDF, JPG, PNG, WebP, or CSV): {names}',
   dpSlotsLeft: '{left}/{cap} processing slots left this month',
   dpClickRowsHint: 'Click rows below to view & edit',
   dpStopProcessing: 'Stop processing',
@@ -1410,7 +1411,8 @@ export const dashboardFr: Record<string, string> = {
 
   dpUploadDocuments: 'Téléverser des documents',
   dpDocumentLimitReached: 'Limite de documents atteinte',
-  dpDropFiles: 'Déposez PDF / JPG / PNG',
+  dpDropFiles: 'Déposez PDF / JPG / PNG / CSV',
+  dpUnsupportedFiles: 'Type de fichier non pris en charge (PDF, JPG, PNG, WebP ou CSV) : {names}',
   dpSlotsLeft: '{left}/{cap} traitements restants ce mois',
   dpClickRowsHint: 'Cliquez une ligne pour voir et modifier',
   dpStopProcessing: 'Arrêter le traitement',
