@@ -8,6 +8,7 @@ import {
   deleteDoc,
   doc,
   serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { Income, Expense } from '../types';
@@ -17,6 +18,31 @@ import { useWorkspace } from './WorkspaceContext';
 
 const INCOME_COLLECTION = 'income';
 const EXPENSE_COLLECTION = 'expenses';
+/** Firestore writeBatch limit is 500; stay under for safety. */
+const BATCH_WRITE_LIMIT = 400;
+
+export type LedgerIncomeDraft = {
+  date: string;
+  type: 'SALES' | 'RESERVATION';
+  amount: number;
+  description?: string;
+  sessionId: string;
+  documentId?: string;
+  vatAmount?: number;
+  accountCode?: string;
+};
+
+export type LedgerExpenseDraft = {
+  date: string;
+  category: Expense['category'];
+  amount: number;
+  description: string;
+  sessionId: string;
+  employeeId?: string;
+  documentId?: string;
+  vatAmount?: number;
+  accountCode?: string;
+};
 
 function docToIncome(id: string, data: any): Income {
   return {
@@ -58,6 +84,11 @@ type FinanceContextValue = {
   error: string | null;
   addIncome: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number, accountCode?: string) => Promise<Income | null>;
   addExpense: (date: string, category: Expense['category'], amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number, accountCode?: string) => Promise<Expense | null>;
+  /** Bulk write for CSV / bank-statement imports — one UI update after all rows land. */
+  addLedgerEntriesBatch: (
+    incomeDrafts: LedgerIncomeDraft[],
+    expenseDrafts: LedgerExpenseDraft[]
+  ) => Promise<{ income: Income[]; expenses: Expense[] }>;
   updateIncome: (id: string, updates: Partial<Omit<Income, 'id' | 'restaurant_id' | 'created_at'>>) => Promise<void>;
   updateExpense: (id: string, updates: Partial<Omit<Expense, 'id' | 'restaurant_id' | 'created_at'>>) => Promise<void>;
   deleteIncome: (id: string) => Promise<void>;
@@ -165,7 +196,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           created_at: new Date().toISOString(),
         };
         setIncome((prev) => [newIncome, ...prev]);
-        console.log('addIncome: Success, new income ID:', ref.id);
         return newIncome;
       } catch (err) {
         console.error('addIncome error:', err);
@@ -196,7 +226,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
             category,
             description,
           });
-        console.log('addExpense: Creating document with sessionId:', sessionId, 'documentId:', documentId, 'VAT:', vatAmount);
         const ref = await addDoc(collection(db, EXPENSE_COLLECTION), {
           restaurantId: uid,
           sessionId,
@@ -225,7 +254,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           created_at: new Date().toISOString(),
         };
         setExpenses((prev) => [newExpense, ...prev]);
-        console.log('addExpense: Success, new expense ID:', ref.id);
         return newExpense;
       } catch (err) {
         console.error('addExpense error:', err);
@@ -233,6 +261,128 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         setError(errorMsg);
         throw new Error('Failed to add expense: ' + errorMsg);
       }
+    },
+    [dataOwnerUid, canWrite]
+  );
+
+  const addLedgerEntriesBatch = useCallback(
+    async (
+      incomeDrafts: LedgerIncomeDraft[],
+      expenseDrafts: LedgerExpenseDraft[]
+    ): Promise<{ income: Income[]; expenses: Expense[] }> => {
+      const uid = dataOwnerUid;
+      if (!uid || !canWrite || !db) {
+        throw new Error('User not authenticated or database not available');
+      }
+      if (incomeDrafts.length === 0 && expenseDrafts.length === 0) {
+        return { income: [], expenses: [] };
+      }
+
+      const createdIncome: Income[] = [];
+      const createdExpenses: Expense[] = [];
+      const ops: Array<{ kind: 'income' | 'expense'; ref: ReturnType<typeof doc>; payload: Record<string, unknown>; local: Income | Expense }> = [];
+
+      for (const draft of incomeDrafts) {
+        if (!draft.sessionId) throw new Error('Session ID is required');
+        const resolvedAccountCode =
+          draft.accountCode ||
+          suggestSwissAccountCode({
+            kind: 'income',
+            incomeType: draft.type,
+            description: draft.description || '',
+          });
+        const ref = doc(collection(db, INCOME_COLLECTION));
+        const payload = {
+          restaurantId: uid,
+          sessionId: draft.sessionId,
+          date: draft.date,
+          type: draft.type,
+          amount: draft.amount,
+          vatAmount: draft.vatAmount || 0,
+          description: draft.description || '',
+          accountCode: resolvedAccountCode || null,
+          documentId: draft.documentId || null,
+          createdAt: serverTimestamp(),
+        };
+        const local: Income = {
+          id: ref.id,
+          restaurant_id: uid,
+          session_id: draft.sessionId,
+          date: draft.date,
+          type: draft.type,
+          amount: draft.amount,
+          vat_amount: draft.vatAmount || 0,
+          description: draft.description,
+          account_code: resolvedAccountCode,
+          document_id: draft.documentId,
+          created_at: new Date().toISOString(),
+        };
+        ops.push({ kind: 'income', ref, payload, local });
+        createdIncome.push(local);
+      }
+
+      for (const draft of expenseDrafts) {
+        if (!draft.sessionId) throw new Error('Session ID is required');
+        const resolvedAccountCode =
+          draft.accountCode ||
+          suggestSwissAccountCode({
+            kind: 'expense',
+            category: draft.category,
+            description: draft.description,
+          });
+        const ref = doc(collection(db, EXPENSE_COLLECTION));
+        const payload = {
+          restaurantId: uid,
+          sessionId: draft.sessionId,
+          date: draft.date,
+          category: draft.category,
+          amount: draft.amount,
+          vatAmount: draft.vatAmount || 0,
+          description: draft.description,
+          accountCode: resolvedAccountCode || null,
+          employeeId: draft.employeeId || null,
+          documentId: draft.documentId || null,
+          createdAt: serverTimestamp(),
+        };
+        const local: Expense = {
+          id: ref.id,
+          restaurant_id: uid,
+          session_id: draft.sessionId,
+          date: draft.date,
+          category: draft.category,
+          amount: draft.amount,
+          vat_amount: draft.vatAmount || 0,
+          description: draft.description,
+          account_code: resolvedAccountCode,
+          employee_id: draft.employeeId,
+          document_id: draft.documentId,
+          created_at: new Date().toISOString(),
+        };
+        ops.push({ kind: 'expense', ref, payload, local });
+        createdExpenses.push(local);
+      }
+
+      for (let i = 0; i < ops.length; i += BATCH_WRITE_LIMIT) {
+        const chunk = ops.slice(i, i + BATCH_WRITE_LIMIT);
+        const batch = writeBatch(db);
+        for (const op of chunk) {
+          batch.set(op.ref, op.payload);
+        }
+        await batch.commit();
+      }
+
+      // Single React update so dashboard/report totals jump once, not row-by-row.
+      if (createdIncome.length) {
+        setIncome((prev) => [...createdIncome, ...prev]);
+      }
+      if (createdExpenses.length) {
+        setExpenses((prev) => [...createdExpenses, ...prev]);
+      }
+
+      console.log(
+        `addLedgerEntriesBatch: +${createdIncome.length} income, +${createdExpenses.length} expenses`
+      );
+      return { income: createdIncome, expenses: createdExpenses };
     },
     [dataOwnerUid, canWrite]
   );
@@ -371,6 +521,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     error,
     addIncome,
     addExpense,
+    addLedgerEntriesBatch,
     updateIncome,
     updateExpense,
     deleteIncome,

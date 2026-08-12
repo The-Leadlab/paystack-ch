@@ -3080,20 +3080,34 @@ export const DocumentProcessor: React.FC<{
       } catch (classifyErr) {
         console.warn(`⚠️ Swiss account classification skipped for ${doc.fileName}:`, classifyErr);
       }
-      console.log(`✅ Completed: ${doc.fileName}`);
-      
+      console.log(`✅ Parsed: ${doc.fileName} (${(res.lineItems || []).length} lines)`);
+
       const completedAt = doc.created_at || new Date().toISOString();
+      // Stay on "processing" until Firestore + ledger/report rows finish (onDataExtracted).
       setLocalDocs((prev) =>
         prev.map((d) =>
-          d.id === doc.id ? { ...d, status: 'completed', data: res, created_at: completedAt } : d
+          d.id === doc.id
+            ? { ...d, status: 'processing', data: res, created_at: completedAt, error: undefined }
+            : d
         )
       );
-      
-      // Auto-extract data and save to Firestore with file metadata
+      if (isFirestoreDoc && firestoreId) {
+        try {
+          await updateDocument(firestoreId, { status: 'processing', error: undefined });
+        } catch {
+          /* mirror best-effort */
+        }
+      }
+
       try {
-        console.log(`💾 Saving document: ${doc.fileName}`);
+        console.log(`💾 Saving document + ledger: ${doc.fileName}`);
         await onDataExtracted(res, doc.fileName, doc.fileHash, inputFile, doc.persistedDocumentId);
         console.log(`✅ Document saved successfully: ${doc.fileName}`);
+        setLocalDocs((prev) =>
+          prev.map((d) =>
+            d.id === doc.id ? { ...d, status: 'completed', data: res, created_at: completedAt } : d
+          )
+        );
       } catch (saveErr: any) {
         console.error(`❌ Failed to save document: ${doc.fileName}`, saveErr);
         // Mark as error but keep the analyzed data

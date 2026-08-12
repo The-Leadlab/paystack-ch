@@ -11,6 +11,7 @@ import {
   resolveDocumentVatAmount,
   splitIssuerAndReference,
 } from './swissDocumentNormalize';
+import type { LedgerExpenseDraft, LedgerIncomeDraft } from '../context/FinanceContext';
 
 type LedgerWriters = {
   addIncome: (
@@ -34,6 +35,11 @@ type LedgerWriters = {
     vatAmount?: number,
     accountCode?: string
   ) => Promise<Expense | null>;
+  /** Preferred for CSV / bank statements — avoids live UI count spam. */
+  addLedgerEntriesBatch?: (
+    incomeDrafts: LedgerIncomeDraft[],
+    expenseDrafts: LedgerExpenseDraft[]
+  ) => Promise<{ income: Income[]; expenses: Expense[] }>;
 };
 
 function resolveAccountCode(
@@ -65,6 +71,14 @@ function isRevenueDoc(data: FinancialData): boolean {
   );
 }
 
+function incomeTypeFromCategory(category?: string): 'SALES' | 'RESERVATION' {
+  return String(category || '')
+    .toUpperCase()
+    .includes('RESERV')
+    ? 'RESERVATION'
+    : 'SALES';
+}
+
 async function postSingleAmount(
   writers: LedgerWriters,
   data: FinancialData,
@@ -91,7 +105,16 @@ async function postSingleAmount(
 
   if (isRevenueDoc(data)) {
     const code = resolveAccountCode(data, { kind: 'income', description });
-    await writers.addIncome(date, 'SALES', amount, description, sessionId, documentId, vatAmount, code);
+    await writers.addIncome(
+      date,
+      incomeTypeFromCategory(data.expenseCategory),
+      amount,
+      description,
+      sessionId,
+      documentId,
+      vatAmount,
+      code
+    );
     return 'income';
   }
 
@@ -139,6 +162,7 @@ async function postSingleAmount(
 /**
  * Create income/expense rows from AI extraction.
  * Multi-invoice PDFs → one ledger row per subDocument (keeps dashboard in sync with detected invoices).
+ * Bank Statement / CSV → batched writes when available (stable report totals).
  */
 export async function postLedgerFromFinancialData(
   writers: LedgerWriters,
@@ -152,23 +176,24 @@ export async function postLedgerFromFinancialData(
   let expensePosted = 0;
 
   if (docType === 'Bank Statement' || docType === 'Bank Deposit') {
-    const date = resolveDocumentDate(data.date);
+    const incomeDrafts: LedgerIncomeDraft[] = [];
+    const expenseDrafts: LedgerExpenseDraft[] = [];
+
     for (const item of data.lineItems || []) {
       const lineDate = resolveDocumentDate(item.date, data.date);
       if (item.type === 'INCOME') {
         const description = item.description || fileName;
         const code = resolveAccountCode(data, { kind: 'income', description });
-        await writers.addIncome(
-          lineDate,
-          'SALES',
-          item.amount,
+        incomeDrafts.push({
+          date: lineDate,
+          type: incomeTypeFromCategory(item.category),
+          amount: item.amount,
           description,
           sessionId,
           documentId,
-          0,
-          code
-        );
-        incomePosted += 1;
+          vatAmount: 0,
+          accountCode: code,
+        });
       } else if (item.type === 'EXPENSE') {
         const description =
           canonicalizeSupplierName(item.description || data.issuer, '') ||
@@ -182,21 +207,50 @@ export async function postLedgerFromFinancialData(
           documentType: docType,
         });
         const code = resolveAccountCode(data, { kind: 'expense', category, description });
-        await writers.addExpense(
-          lineDate,
+        expenseDrafts.push({
+          date: lineDate,
           category,
-          item.amount,
+          amount: item.amount,
           description,
           sessionId,
-          undefined,
           documentId,
-          0,
-          code
-        );
-        expensePosted += 1;
+          vatAmount: 0,
+          accountCode: code,
+        });
       }
     }
-    return { incomePosted, expensePosted };
+
+    if (writers.addLedgerEntriesBatch) {
+      await writers.addLedgerEntriesBatch(incomeDrafts, expenseDrafts);
+    } else {
+      for (const draft of incomeDrafts) {
+        await writers.addIncome(
+          draft.date,
+          draft.type,
+          draft.amount,
+          draft.description,
+          draft.sessionId,
+          draft.documentId,
+          draft.vatAmount,
+          draft.accountCode
+        );
+      }
+      for (const draft of expenseDrafts) {
+        await writers.addExpense(
+          draft.date,
+          draft.category,
+          draft.amount,
+          draft.description,
+          draft.sessionId,
+          draft.employeeId,
+          draft.documentId,
+          draft.vatAmount,
+          draft.accountCode
+        );
+      }
+    }
+
+    return { incomePosted: incomeDrafts.length, expensePosted: expenseDrafts.length };
   }
 
   if (docType === 'Pay Slip') {

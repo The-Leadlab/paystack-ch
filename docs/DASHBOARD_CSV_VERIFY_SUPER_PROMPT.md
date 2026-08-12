@@ -29,19 +29,34 @@ Without `flow`, heuristics use signed amounts, category, and description keyword
 
 ### Fixture
 
-`fixtures/paystack-dashboard-test-mixed-flows.csv` — ~2800 rows, ~20% income / 80% expense, `flow` + `payment_method`.
+Default test file (~100 rows, mixed income/expense):
 
-(Older `paystack-dashboard-test-1mb.csv` still works; flows inferred when `flow` is missing.)
+```bash
+node scripts/generate-dashboard-csv-fixture.cjs
+# → fixtures/paystack-dashboard-test-100.csv
+```
+
+Larger stress file (optional):
+
+```bash
+CSV_FIXTURE_ROWS=2800 node scripts/generate-dashboard-csv-fixture.cjs
+```
+
+## Processing + reports UX
+
+While CSV parse + Storage sidecar + ledger batch runs, the document stays **processing** (EN COURS). Dashboard income/expense totals update **once** after the batch commit (not row-by-row), so Reports / Revenue / Expenses stay readable.
+
+Bank-statement lines post as normal income (SALES/RESERVATION) and expense rows dated from the CSV — same source Reports already use.
 
 ## Manual test
 
 1. `pnpm dev` → `/app` → Documents / Dashboard upload.
-2. Upload `fixtures/paystack-dashboard-test-mixed-flows.csv`.
-3. Processing should finish quickly (no Gemini).
+2. Upload `fixtures/paystack-dashboard-test-100.csv` (generate with the script above).
+3. Row stays **EN COURS / processing** until ledger batch finishes — dashboard totals should jump once, not tick upward.
 4. Verification Center left: CSV ledger preview (sample rows, IN/OUT), not a black “Document Preview”.
 5. Buttons say **Open CSV**, not Open PDF.
-6. Right: bank-statement totals + **many** line items (not 1 article).
-7. Approve → ledger has matching income/expense rows.
+6. Right: bank-statement totals + all imported line items.
+7. Approve / Reports: income & expense rows match CSV dates and flows.
 
 ## Firestore 1 MiB limit (large CSV)
 

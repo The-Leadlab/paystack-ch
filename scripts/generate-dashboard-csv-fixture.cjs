@@ -1,11 +1,16 @@
 const fs = require("fs");
 const path = require("path");
 
+/** Default: compact ~100-row fixture for dashboard CSV tests (not the old 1MB sheet). */
+const ROW_COUNT = Number(process.env.CSV_FIXTURE_ROWS || 100);
+
 const outPath = path.join(
   __dirname,
   "..",
   "fixtures",
-  "paystack-dashboard-test-mixed-flows.csv"
+  ROW_COUNT <= 150
+    ? "paystack-dashboard-test-100.csv"
+    : "paystack-dashboard-test-mixed-flows.csv"
 );
 
 const suppliers = [
@@ -40,7 +45,7 @@ rows.push(
 );
 
 let d = new Date("2025-01-02T12:00:00Z");
-for (let i = 1; i <= 2800; i += 1) {
+for (let i = 1; i <= ROW_COUNT; i += 1) {
   const isIncome = i % 5 === 0;
   const flow = isIncome ? "income" : "expense";
   const supplier = suppliers[i % suppliers.length];
@@ -64,8 +69,7 @@ for (let i = 1; i <= 2800; i += 1) {
       ][i % 6] + ` #${i}`;
   const pay = pays[i % pays.length];
   const iban = `CH93 0076 2011 6238 5295 ${String(i % 100).padStart(2, "0")}`;
-  const pad = "_".repeat(20 + (i % 40)) + "x".repeat(40 + (i % 30));
-  const notes = `Test row for Paystack dashboard CSV upload. Session demo data line ${i}. Swiss restaurant hospitality ledger sample with enough text padding ${pad}`;
+  const notes = `Demo row ${i}`;
   const date = d.toISOString().slice(0, 10);
   if (i % 2 === 0) d.setUTCDate(d.getUTCDate() + 1);
 

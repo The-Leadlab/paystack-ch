@@ -116,6 +116,7 @@ export function RestaurantDashboard() {
     expenses,
     addIncome,
     addExpense,
+    addLedgerEntriesBatch,
     updateIncome,
     updateExpense,
     deleteIncome,
@@ -529,28 +530,29 @@ export function RestaurantDashboard() {
       const existing = existingById || existingByHash || existingByName;
       const targetId = existing?.id || persistedDocumentId;
 
+      // Keep status as processing until ledger rows are posted (avoids false "done" + live count spam).
       if (targetId) {
         await updateDocumentData(targetId, {
-          status: docStatus,
+          status: 'processing',
           data,
           ...(fileHash ? { fileHash } : {}),
         });
         documentId = targetId;
-        console.log('âœ… Document updated with ID:', documentId, docStatus);
+        console.log('Document saved (still processing ledger):', documentId);
       } else {
-        console.log('ðŸ’¾ Saving document to Firestore (legacy path)...');
+        console.log('Saving document to Firestore (legacy path)...');
         const newDoc = await addDocument({
           id: Math.random().toString(36).substr(2, 9),
           fileName,
-          status: docStatus,
+          status: 'processing',
           data,
           ...(fileHash ? { fileHash } : {}),
         });
         documentId = newDoc.id;
-        console.log('âœ… Document saved with ID:', documentId);
+        console.log('Document saved with ID:', documentId);
       }
     } catch (error) {
-      console.error('âŒ Error saving document:', error);
+      console.error('Error saving document:', error);
       alert(t('alertSaveDocumentFailed').replace('{msg}', errMsg(error)));
       throw error;
     }
@@ -586,14 +588,14 @@ export function RestaurantDashboard() {
       })();
     }
 
-    // Always replace linked ledger rows so documents stay in sync with income/expenses
+    // Always replace linked ledger rows so documents stay in sync with income/expenses / reports
     try {
       await deleteFinancesByDocumentId(documentId);
     } catch (syncErr) {
       console.warn('Could not clear prior ledger rows for document:', syncErr);
     }
 
-    const writers = { addIncome, addExpense };
+    const writers = { addIncome, addExpense, addLedgerEntriesBatch };
     const posted = await postLedgerFromFinancialData(
       writers,
       data,
@@ -601,6 +603,12 @@ export function RestaurantDashboard() {
       currentSession.id,
       documentId
     );
+
+    try {
+      await updateDocumentData(documentId, { status: docStatus });
+    } catch (statusErr) {
+      console.warn('Could not finalize document status:', statusErr);
+    }
 
     // Payslip employee upsert (side effect kept outside ledger helper)
     if (data.documentType === 'Pay Slip') {
@@ -647,7 +655,7 @@ export function RestaurantDashboard() {
       const fileName =
         documents.find((d) => d.id === documentId)?.fileName || 'Document';
       const posted = await postLedgerFromFinancialData(
-        { addIncome, addExpense },
+        { addIncome, addExpense, addLedgerEntriesBatch },
         newData,
         fileName,
         currentSession.id,
@@ -690,7 +698,7 @@ export function RestaurantDashboard() {
         const hydrated = await hydrateProcessedDocumentLineItems(doc);
         await deleteFinancesByDocumentId(doc.id);
         await postLedgerFromFinancialData(
-          { addIncome, addExpense },
+          { addIncome, addExpense, addLedgerEntriesBatch },
           hydrated.data!,
           hydrated.fileName,
           currentSession.id,
