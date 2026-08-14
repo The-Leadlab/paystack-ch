@@ -20,8 +20,13 @@ export async function runInDocumentBatches<T>(
   }
 }
 
+/**
+ * Default 1 — parallel Gemini calls on large PDFs often surface as browser "Failed to fetch"
+ * when the local proxy is down or Vercel cold-starts several 300s functions at once.
+ * Override with VITE_DOCUMENT_PROCESSING_CONCURRENCY=2..6 if needed.
+ */
 export function resolveDocumentBatchSize(): number {
-  const raw = (import.meta.env.VITE_DOCUMENT_PROCESSING_CONCURRENCY || "5").trim();
+  const raw = (import.meta.env.VITE_DOCUMENT_PROCESSING_CONCURRENCY || "1").trim();
   const n = parseInt(raw, 10);
-  return Math.min(6, Math.max(1, Number.isFinite(n) ? n : 5));
+  return Math.min(6, Math.max(1, Number.isFinite(n) ? n : 1));
 }

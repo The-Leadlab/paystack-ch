@@ -9,11 +9,6 @@ export type GeminiApiFetchOptions = {
   signal?: AbortSignal;
 };
 
-function parsePositiveIntEnv(raw: unknown, fallback: number): number {
-  const n = Number(raw);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
-}
-
 export function resolveGeminiFetchTimeoutMs(): number {
   const env = import.meta.env.VITE_GEMINI_FETCH_TIMEOUT_MS?.trim();
   const fromEnv = env ? Number(env) : NaN;
@@ -30,19 +25,43 @@ export function mapGeminiHttpError(status: number, message: string): string {
       "If this keeps happening, try splitting the file or processing fewer documents at once."
     );
   }
+  if (status === 503 && /GEMINI_API_KEY/i.test(message)) {
+    return (
+      "AI server is missing GEMINI_API_KEY. Set it in the server environment (Vercel / .env), " +
+      "then restart `pnpm dev:stripe-server` or redeploy."
+    );
+  }
   if (status === 429) {
     return message || "Too many AI requests. Please wait a minute and try again.";
   }
   return message || `AI request failed (HTTP ${status})`;
 }
 
-/**
- * Long-running POST for Gemini proxies — AbortController works in Safari, Firefox, and Chrome.
- */
-export async function postGeminiApi<T extends { text?: string; error?: string }>(
-  options: GeminiApiFetchOptions
+function isNetworkReachabilityError(detail: string): boolean {
+  return /failed to fetch|networkerror|load failed|network request failed|err_connection_refused|econnrefused/i.test(
+    detail
+  );
+}
+
+function networkReachabilityMessage(detail: string, url: string): string {
+  const isLocal =
+    typeof window !== "undefined" &&
+    /localhost|127\.0\.0\.1/i.test(window.location.hostname) &&
+    (url.startsWith("/") || /localhost|127\.0\.0\.1/.test(url));
+  if (isLocal) {
+    return (
+      "Cannot reach the local AI server. Start it with `pnpm dev:stripe-server` (port 8787) " +
+      "alongside `pnpm dev`, and ensure GEMINI_API_KEY is set in `.env`. " +
+      `(${detail})`
+    );
+  }
+  return `Cannot reach the AI server. Check your connection and try again. (${detail})`;
+}
+
+async function postOnce<T extends { text?: string; error?: string }>(
+  options: GeminiApiFetchOptions,
+  timeoutMs: number
 ): Promise<T> {
-  const timeoutMs = options.timeoutMs ?? resolveGeminiFetchTimeoutMs();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -52,6 +71,7 @@ export async function postGeminiApi<T extends { text?: string; error?: string }>
     else options.signal.addEventListener("abort", onExternalAbort, { once: true });
   }
 
+  const absolute = /^https?:\/\//i.test(options.url);
   try {
     const res = await fetch(options.url, {
       method: "POST",
@@ -63,7 +83,8 @@ export async function postGeminiApi<T extends { text?: string; error?: string }>
       signal: controller.signal,
       cache: "no-store",
       credentials: "omit",
-      mode: "cors",
+      // Relative /api/* URLs are same-origin; avoid CORS mode quirks on some browsers.
+      mode: absolute ? "cors" : "same-origin",
     });
 
     const json = (await res.json().catch(() => null)) as T | null;
@@ -73,19 +94,42 @@ export async function postGeminiApi<T extends { text?: string; error?: string }>
     return (json || {}) as T;
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
+      if (options.signal?.aborted) {
+        throw new Error("AI request was cancelled.");
+      }
       throw new Error(
         `AI request timed out after ${Math.round(timeoutMs / 1000)}s. Retry, or use a smaller PDF.`
       );
     }
     const detail = error instanceof Error ? error.message : "Failed to fetch";
-    if (/failed to fetch|networkerror|load failed/i.test(detail)) {
-      throw new Error(
-        `Cannot reach the AI server. Check your connection and try again. (${detail})`
-      );
+    if (isNetworkReachabilityError(detail)) {
+      throw new Error(networkReachabilityMessage(detail, options.url));
     }
     throw error instanceof Error ? error : new Error(detail);
   } finally {
     clearTimeout(timeoutId);
     if (options.signal) options.signal.removeEventListener("abort", onExternalAbort);
+  }
+}
+
+/**
+ * Long-running POST for Gemini proxies — AbortController works in Safari, Firefox, and Chrome.
+ * Retries once on transient network failures (common when the local proxy is still starting).
+ */
+export async function postGeminiApi<T extends { text?: string; error?: string }>(
+  options: GeminiApiFetchOptions
+): Promise<T> {
+  const timeoutMs = options.timeoutMs ?? resolveGeminiFetchTimeoutMs();
+  try {
+    return await postOnce<T>(options, timeoutMs);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    const canRetry =
+      !options.signal?.aborted &&
+      (/Cannot reach the (local )?AI server|Failed to fetch|ECONNREFUSED/i.test(detail) ||
+        isNetworkReachabilityError(detail));
+    if (!canRetry) throw error;
+    await new Promise((r) => setTimeout(r, 700));
+    return postOnce<T>(options, timeoutMs);
   }
 }

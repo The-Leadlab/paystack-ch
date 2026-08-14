@@ -203,9 +203,59 @@ function vitePluginStorageProxy(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy()];
+const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy(), vitePluginGeminiLocalApi()];
 
 const stripeDevProxy = process.env.STRIPE_DEV_PROXY === "1";
+
+/** Serve /api/gemini/* inside Vite so PDF AI works even when port 8787 is not running. */
+function vitePluginGeminiLocalApi(): Plugin {
+  return {
+    name: "gemini-local-api",
+    configureServer(server) {
+      let appPromise: Promise<((req: any, res: any, next: any) => void) | null> | null = null;
+
+      const getApp = () => {
+        if (!appPromise) {
+          appPromise = (async () => {
+            try {
+              const express = (await import("express")).default;
+              const { loadWorkspaceEnv } = await import("./server/loadEnv.ts");
+              loadWorkspaceEnv();
+              const { registerGeminiRoutes } = await import("./server/gemini.ts");
+              const app = express();
+              registerGeminiRoutes(app);
+              console.info(
+                "[vite] Gemini API mounted in-process at /api/gemini/* (no 8787 required for AI)"
+              );
+              return app as unknown as (req: any, res: any, next: any) => void;
+            } catch (err) {
+              console.warn("[vite] Could not mount in-process Gemini API:", err);
+              return null;
+            }
+          })();
+        }
+        return appPromise;
+      };
+
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith("/api/gemini")) return next();
+        const app = await getApp();
+        if (!app) {
+          res.statusCode = 503;
+          res.setHeader("Content-Type", "application/json");
+          res.end(
+            JSON.stringify({
+              error:
+                "Local AI API failed to start. Run `pnpm dev:stripe-server` and set GEMINI_API_KEY in .env.",
+            })
+          );
+          return;
+        }
+        return app(req, res, next);
+      });
+    },
+  };
+}
 
 export default defineConfig({
   plugins,
@@ -247,7 +297,7 @@ export default defineConfig({
       "/api/team": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/api/oauth": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/api/drive": { target: "http://127.0.0.1:8787", changeOrigin: true },
-      "/api/gemini": { target: "http://127.0.0.1:8787", changeOrigin: true },
+      // /api/gemini is served in-process by vitePluginGeminiLocalApi (avoids Failed to fetch when 8787 is down)
       ...(stripeDevProxy
         ? {
             "/api/stripe": { target: "http://127.0.0.1:8787", changeOrigin: true },

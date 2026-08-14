@@ -46,6 +46,13 @@ export async function generateGeminiContent(
         "Try a smaller PDF or split the file."
     );
   }
+  // Soft guard: oversized JSON bodies often die as browser "Failed to fetch" before HTTP status.
+  if (bytes > 3_800_000) {
+    throw new Error(
+      `Document payload is too large for inline AI (${(bytes / (1024 * 1024)).toFixed(1)} MB). ` +
+        "Re-upload so the file is stored in Firebase, then click Process again."
+    );
+  }
 
   let token: string;
   try {
