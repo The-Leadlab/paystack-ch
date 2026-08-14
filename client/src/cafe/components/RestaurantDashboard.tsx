@@ -130,7 +130,6 @@ export function RestaurantDashboard() {
   const { enforcementEnabled, entitlements, incrementDocumentUsage, documentsUsedThisMonth, loading: subscriptionLoading, isPlanTestUser, billing } = useSubscription();
   const { language, setLanguage, t } = useLanguage();
   const { theme } = useTheme();
-  const brandSrc = sidebarCollapsed ? brandMarkSrc(theme) : brandLockupSrc(theme);
   const brandMobileSrc = brandLockupSrc(theme);
   const chfLocale = useChfLocale();
   const errMsg = (error: unknown) => (error instanceof Error ? error.message : t('errorUnknown'));
@@ -195,6 +194,7 @@ export function RestaurantDashboard() {
   const [showSidebar, setShowSidebar] = useState(false);
   const { collapsed: sidebarCollapsed, toggle: toggleSidebarCollapsed } =
     usePersistedSidebarCollapsed(BUSINESS_SIDEBAR_COLLAPSED_KEY);
+  const brandSrc = sidebarCollapsed ? brandMarkSrc(theme) : brandLockupSrc(theme);
   const forceGuides = shouldForceProductGuides(user?.email);
   const [showBusinessOnboarding, setShowBusinessOnboarding] = useState(
     () => forceGuides || !readOnboardingDone(BUSINESS_ONBOARDING_KEY)
