@@ -18,7 +18,8 @@
     "assets:brand-icons": "node scripts/generate-brand-icons.mjs",
     "assets:process-logo": "node scripts/process-new-logo.mjs",
     "assets:patch-landing-logos": "node scripts/patch-landing-logos.mjs",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "weekly:whatsapp": "node scripts/generate-weekly-whatsapp.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.50.1",
