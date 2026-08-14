@@ -61,6 +61,12 @@ async function main() {
     if (r.status !== 0) process.exit(r.status ?? 1);
   }
 
+  const hardenScript = path.join(__dirname, "harden-brand-lockups.mjs");
+  if (fs.existsSync(hardenScript)) {
+    const r = spawnSync(process.execPath, [hardenScript], { stdio: "inherit" });
+    if (r.status !== 0) process.exit(r.status ?? 1);
+  }
+
   console.log("brand icons from", path.relative(root, src));
 }
 

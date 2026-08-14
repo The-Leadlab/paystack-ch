@@ -131,7 +131,8 @@ export default function PlatformTourSection() {
             transition={{ duration: 0.4 }}
           >
             <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-              <div className="lg:col-span-8">
+              {/* sticky below fixed navbar so in-shot sidebar lockup never stacks under BrandLogo */}
+              <div className="lg:col-span-8 lg:sticky lg:top-24 self-start">
                 <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-xl shadow-black/8">
                   <LandingScreenshot screen={current.screen} alt={current.alt} className="w-full h-auto block" loading="lazy" />
                 </div>
