@@ -1,10 +1,11 @@
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
-  BRAND_LOCKUP_SRC,
   BRAND_LOCKUP_HEIGHT,
-  BRAND_LOGO_SRC,
   BRAND_LOGO_SIZE,
+  brandLockupSrc,
+  brandMarkSrc,
 } from "@/const/branding";
 
 type BrandLogoProps = {
@@ -25,6 +26,7 @@ type BrandLogoProps = {
 /**
  * Single Paystack asset across marketing + auth (+ optional reuse in app shell).
  * Lockup PNG already includes the wordmark — do not render a CSS duplicate.
+ * Switches to the inverted on-dark artwork when the app theme is dark.
  */
 export function BrandLogo({
   href = "/",
@@ -32,7 +34,8 @@ export function BrandLogo({
   markClassName = "h-10 w-auto md:h-12 object-contain shrink-0",
   className,
 }: BrandLogoProps) {
-  const src = showWordmark ? BRAND_LOCKUP_SRC : BRAND_LOGO_SRC;
+  const { theme } = useTheme();
+  const src = showWordmark ? brandLockupSrc(theme) : brandMarkSrc(theme);
   const width = showWordmark ? undefined : BRAND_LOGO_SIZE;
   const height = showWordmark ? BRAND_LOCKUP_HEIGHT : BRAND_LOGO_SIZE;
 

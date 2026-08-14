@@ -17,6 +17,7 @@
     "test:capacity": "node scripts/capacity-test-2000.mjs",
     "assets:brand-icons": "node scripts/generate-brand-icons.mjs",
     "assets:process-logo": "node scripts/process-new-logo.mjs",
+    "assets:on-dark-logo": "node scripts/generate-on-dark-logo.mjs",
     "assets:patch-landing-logos": "node scripts/patch-landing-logos.mjs",
     "format": "prettier --write ."
   },

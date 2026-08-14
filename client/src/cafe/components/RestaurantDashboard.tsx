@@ -25,7 +25,8 @@ import { ExpensesManager } from './ExpensesManager';
 import { InvoiceMakerPanel } from './InvoiceMakerPanel';
 import type { ProcessedDocument, POSReading } from '../types';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
-import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from '@/const/branding';
+import { brandLockupSrc, brandMarkSrc, BRAND_LOGO_SIZE, BRAND_LOCKUP_HEIGHT } from '@/const/branding';
+import { useTheme } from '@/contexts/ThemeContext';
 import type { DocumentReference } from 'firebase/firestore';
 import {
   buildPayrollExpenseLines,
@@ -128,6 +129,9 @@ export function RestaurantDashboard() {
   const { signOut, user } = useAuth();
   const { enforcementEnabled, entitlements, incrementDocumentUsage, documentsUsedThisMonth, loading: subscriptionLoading, isPlanTestUser, billing } = useSubscription();
   const { language, setLanguage, t } = useLanguage();
+  const { theme } = useTheme();
+  const brandSrc = sidebarCollapsed ? brandMarkSrc(theme) : brandLockupSrc(theme);
+  const brandMobileSrc = brandLockupSrc(theme);
   const chfLocale = useChfLocale();
   const errMsg = (error: unknown) => (error instanceof Error ? error.message : t('errorUnknown'));
 
@@ -823,10 +827,9 @@ export function RestaurantDashboard() {
       <div className="md:hidden bg-cdlp-black border-b border-cdlp-border px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <img
-            src={BRAND_LOGO_SRC}
+            src={brandMobileSrc}
             alt="Paystack.ch"
-            width={BRAND_LOGO_SIZE}
-            height={BRAND_LOGO_SIZE}
+            height={BRAND_LOCKUP_HEIGHT}
             className="h-11 w-auto max-w-[200px] object-contain shrink-0"
           />
         </div>
@@ -865,11 +868,12 @@ export function RestaurantDashboard() {
         <div className="hidden md:flex md:flex-col shrink-0 ba-sidebar-head border-b border-cdlp-border">
           <div className={`flex items-center gap-1 mb-2 ${sidebarCollapsed ? 'flex-col' : 'justify-between'}`}>
             <img
-              src={BRAND_LOGO_SRC}
+              src={brandSrc}
               alt="Paystack.ch"
-              width={BRAND_LOGO_SIZE}
-              height={BRAND_LOGO_SIZE}
-              className={`object-contain shrink-0 ${sidebarCollapsed ? 'h-7 w-7' : 'h-8 w-auto max-w-[140px]'}`}
+              {...(sidebarCollapsed
+                ? { width: BRAND_LOGO_SIZE, height: BRAND_LOGO_SIZE }
+                : { height: BRAND_LOCKUP_HEIGHT })}
+              className={`object-contain shrink-0 ${sidebarCollapsed ? 'h-7 w-7' : 'h-8 w-auto max-w-[148px]'}`}
             />
             <button
               type="button"

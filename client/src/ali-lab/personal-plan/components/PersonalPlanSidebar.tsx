@@ -22,7 +22,8 @@ import { ALI_LAB_FEATURES } from "../../featureRegistry";
 import { logoutAliLab } from "@/lib/aliLabGateClient";
 import { usePersonalPlan } from "../context/PersonalPlanContext";
 import { useCanOpenBusinessDashboard } from "@/cafe/hooks/useProductLineAccess";
-import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/const/branding";
+import { brandLockupSrc, brandMarkSrc, BRAND_LOGO_SIZE, BRAND_LOCKUP_HEIGHT } from "@/const/branding";
+import { useTheme } from "@/contexts/ThemeContext";
 import { PersonalSessionsControl } from "./PersonalSessionsControl";
 
 const SECONDARY_FEATURE_IDS = new Set([
@@ -139,6 +140,8 @@ export function PersonalPlanSidebar({
 }) {
   const { openTransaction } = usePersonalPlan();
   const showBusinessLink = useCanOpenBusinessDashboard();
+  const { theme } = useTheme();
+  const brandSrc = collapsed ? brandMarkSrc(theme) : brandLockupSrc(theme);
   const lockLab = async () => {
     await logoutAliLab();
     window.location.href = "/ali-gate";
@@ -165,11 +168,12 @@ export function PersonalPlanSidebar({
             title="Paystack Personal"
           >
             <img
-              src={BRAND_LOGO_SRC}
+              src={brandSrc}
               alt="Paystack.ch"
-              width={BRAND_LOGO_SIZE}
-              height={BRAND_LOGO_SIZE}
-              className={cn("object-contain shrink-0", collapsed ? "h-7 w-7" : "h-8 w-auto max-w-[96px]")}
+              {...(collapsed
+                ? { width: BRAND_LOGO_SIZE, height: BRAND_LOGO_SIZE }
+                : { height: BRAND_LOCKUP_HEIGHT })}
+              className={cn("object-contain shrink-0", collapsed ? "h-7 w-7" : "h-8 w-auto max-w-[120px]")}
             />
             {!collapsed ? (
               <div className="min-w-0">

@@ -7,6 +7,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 
@@ -52,6 +53,12 @@ async function main() {
       .resize({ height: 128, fit: "inside" })
       .png(png)
       .toFile(path.join(outDir, "paystack-lockup-128.png"));
+  }
+
+  const darkScript = path.join(__dirname, "generate-on-dark-logo.mjs");
+  if (fs.existsSync(darkScript)) {
+    const r = spawnSync(process.execPath, [darkScript], { stdio: "inherit" });
+    if (r.status !== 0) process.exit(r.status ?? 1);
   }
 
   console.log("brand icons from", path.relative(root, src));
