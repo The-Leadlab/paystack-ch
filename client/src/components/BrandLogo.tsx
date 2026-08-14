@@ -1,44 +1,51 @@
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
-import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/const/branding";
+import {
+  BRAND_LOCKUP_SRC,
+  BRAND_LOCKUP_HEIGHT,
+  BRAND_LOGO_SRC,
+  BRAND_LOGO_SIZE,
+} from "@/const/branding";
 
 type BrandLogoProps = {
-  /** If set, wraps logo + optional wordmark in a wouter Link */
+  /** If set, wraps the logo in a wouter Link */
   href?: string;
+  /**
+   * When true (default), shows the full diamond-stack + PayStack.ch lockup image.
+   * When false, shows the mark-only icon (favicon / compact headers).
+   */
   showWordmark?: boolean;
-  /** Tailwind img height (controls visual weight across nav vs sidebar) */
+  /** Tailwind img classes for mark or lockup */
   markClassName?: string;
+  /** @deprecated Lockup is baked into the asset; kept for call-site compatibility */
   wordmarkClassName?: string;
   className?: string;
 };
 
 /**
  * Single Paystack asset across marketing + auth (+ optional reuse in app shell).
+ * Lockup PNG already includes the wordmark — do not render a CSS duplicate.
  */
 export function BrandLogo({
   href = "/",
   showWordmark = true,
   markClassName = "h-10 w-auto md:h-12 object-contain shrink-0",
-  wordmarkClassName = "font-display font-semibold text-xl md:text-2xl tracking-tight text-foreground",
   className,
 }: BrandLogoProps) {
+  const src = showWordmark ? BRAND_LOCKUP_SRC : BRAND_LOGO_SRC;
+  const width = showWordmark ? undefined : BRAND_LOGO_SIZE;
+  const height = showWordmark ? BRAND_LOCKUP_HEIGHT : BRAND_LOGO_SIZE;
+
   const inner = (
-    <>
-      <img
-        src={BRAND_LOGO_SRC}
-        alt="Paystack.ch"
-        width={BRAND_LOGO_SIZE}
-        height={BRAND_LOGO_SIZE}
-        className={markClassName}
-        loading="eager"
-        decoding="async"
-      />
-      {showWordmark ? (
-        <span className={wordmarkClassName}>
-          paystack<span className="text-brand-red">.ch</span>
-        </span>
-      ) : null}
-    </>
+    <img
+      src={src}
+      alt="Paystack.ch"
+      width={width}
+      height={height}
+      className={markClassName}
+      loading="eager"
+      decoding="async"
+    />
   );
 
   const combined = cn("flex items-center gap-3 group", className);

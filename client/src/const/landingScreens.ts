@@ -1,7 +1,7 @@
 /**
  * Landing / marketing screenshots under `client/public/landing/`.
  * V3 business app imagery (Dashboard, Revenue, Expenses, Reports, Documents).
- * Cache-bust by changing filenames when replacing shots.
+ * Cache-bust by changing filenames when replacing shots (v4 = diamond-stack logo).
  */
 export type LandingScreenKey =
   | "dashboard"
@@ -16,27 +16,27 @@ export const LANDING_SCREENSHOTS: Record<
   { primary: string; fallback: string }
 > = {
   dashboard: {
-    primary: "/landing/screenshot-dashboard.jpg",
-    fallback: "/landing/screenshot-dashboard.jpg",
+    primary: "/landing/screenshot-dashboard-v4.jpg",
+    fallback: "/landing/screenshot-dashboard-v4.jpg",
   },
   reports: {
-    primary: "/landing/screenshot-reports.jpg",
-    fallback: "/landing/screenshot-dashboard.jpg",
+    primary: "/landing/screenshot-reports-v4.jpg",
+    fallback: "/landing/screenshot-dashboard-v4.jpg",
   },
   revenue: {
-    primary: "/landing/screenshot-revenue-pos.jpg",
-    fallback: "/landing/screenshot-dashboard.jpg",
+    primary: "/landing/screenshot-revenue-v4.jpg",
+    fallback: "/landing/screenshot-dashboard-v4.jpg",
   },
   expenses: {
-    primary: "/landing/screenshot-expenses.jpg",
-    fallback: "/landing/screenshot-revenue-pos.jpg",
+    primary: "/landing/screenshot-expenses-v4.jpg",
+    fallback: "/landing/screenshot-revenue-v4.jpg",
   },
   documents: {
-    primary: "/landing/screenshot-documents.jpg",
-    fallback: "/landing/screenshot-dashboard.jpg",
+    primary: "/landing/screenshot-documents-v4.jpg",
+    fallback: "/landing/screenshot-dashboard-v4.jpg",
   },
   personal: {
-    primary: "/landing/screenshot-personal.jpg",
-    fallback: "/landing/screenshot-dashboard.jpg",
+    primary: "/landing/screenshot-personal-v4.jpg",
+    fallback: "/landing/screenshot-dashboard-v4.jpg",
   },
 };
