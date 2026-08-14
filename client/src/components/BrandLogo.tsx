@@ -9,7 +9,7 @@ import {
 } from "@/const/branding";
 
 type BrandLogoProps = {
-  /** If set, wraps the logo in a wouter Link */
+  /** If set to a non-empty string, wraps the logo in a wouter Link. Pass "" to render without a link. */
   href?: string;
   /**
    * When true (default), shows the full diamond-stack + PayStack.ch lockup image.

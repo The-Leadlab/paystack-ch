@@ -64,7 +64,7 @@ export function BusinessOnboardingWizard({
         onPrimary={() => setStep(1)}
         onSkip={() => finish("skip")}
       >
-        <p className="text-xs text-white/50">Personal money stays on /personal — never mixed into Revenue.</p>
+        <p className="text-xs text-[color:var(--color-cdlp-muted)]">Personal money stays on /personal — never mixed into Revenue.</p>
       </OnboardingStepShell>
     );
   }
@@ -79,8 +79,8 @@ export function BusinessOnboardingWizard({
         onPrimary={() => setStep(2)}
         onSkip={() => finish("skip")}
       >
-        <div className="rounded-xl border border-white/15 px-4 py-3 flex items-center gap-3 text-sm">
-          <Store className="size-5 text-white/70" />
+        <div className="rounded-xl border border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-card)] px-4 py-3 flex items-center gap-3 text-sm">
+          <Store className="size-5 text-[color:var(--color-cdlp-muted)]" />
           Client / restaurant selection stays available after setup.
         </div>
       </OnboardingStepShell>
@@ -101,8 +101,8 @@ export function BusinessOnboardingWizard({
         }}
         onSkip={() => setStep(3)}
       >
-        <div className="rounded-xl border border-white/15 px-4 py-3 flex items-center gap-3 text-sm">
-          <Cloud className="size-5 text-white/70" />
+        <div className="rounded-xl border border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-card)] px-4 py-3 flex items-center gap-3 text-sm">
+          <Cloud className="size-5 text-[color:var(--color-cdlp-muted)]" />
           {driveConnected ? "Drive connected" : "Reconnect anytime from Billing / Settings."}
         </div>
       </OnboardingStepShell>
@@ -119,8 +119,8 @@ export function BusinessOnboardingWizard({
         onPrimary={() => setStep(4)}
         onSkip={() => setStep(4)}
       >
-        <div className="rounded-xl border border-white/15 px-4 py-3 flex items-center gap-3 text-sm">
-          <FolderKanban className="size-5 text-white/70" />
+        <div className="rounded-xl border border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-card)] px-4 py-3 flex items-center gap-3 text-sm">
+          <FolderKanban className="size-5 text-[color:var(--color-cdlp-muted)]" />
           Tip: collapse the sidebar — only icons remain and the dashboard grows.
         </div>
       </OnboardingStepShell>

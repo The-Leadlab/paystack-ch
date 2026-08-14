@@ -79,7 +79,7 @@ export function PersonalOnboardingWizard({
         onPrimary={() => setStep(1)}
         onSkip={() => finish("skip")}
       >
-        <p className="text-xs text-white/50">Bank statements, budgets, and goals stay separate from Business.</p>
+        <p className="text-xs text-[color:var(--color-cdlp-muted)]">Bank statements, budgets, and goals stay separate from Business.</p>
       </OnboardingStepShell>
     );
   }
@@ -133,8 +133,8 @@ export function PersonalOnboardingWizard({
         }}
         onSkip={() => setStep(3)}
       >
-        <div className="rounded-xl border border-white/15 px-4 py-3 flex items-center gap-3 text-sm">
-          <Cloud className="size-5 text-white/70" />
+        <div className="rounded-xl border border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-card)] px-4 py-3 flex items-center gap-3 text-sm">
+          <Cloud className="size-5 text-[color:var(--color-cdlp-muted)]" />
           {driveConnected ? "Drive connected" : "Same Google account as Business Drive is fine."}
         </div>
       </OnboardingStepShell>
@@ -154,8 +154,8 @@ export function PersonalOnboardingWizard({
         }}
         onSkip={() => setStep(4)}
       >
-        <div className="rounded-xl border border-white/15 px-4 py-3 flex items-center gap-3 text-sm">
-          <UserPlus className="size-5 text-white/70" />
+        <div className="rounded-xl border border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-card)] px-4 py-3 flex items-center gap-3 text-sm">
+          <UserPlus className="size-5 text-[color:var(--color-cdlp-muted)]" />
           One free seat on Personal — extras are billed as add-ons.
         </div>
       </OnboardingStepShell>
@@ -172,8 +172,8 @@ export function PersonalOnboardingWizard({
         onPrimary={() => setStep(5)}
         onSkip={() => setStep(5)}
       >
-        <div className="rounded-xl border border-white/15 px-4 py-3 flex items-center gap-3 text-sm">
-          <Upload className="size-5 text-white/70" />
+        <div className="rounded-xl border border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-card)] px-4 py-3 flex items-center gap-3 text-sm">
+          <Upload className="size-5 text-[color:var(--color-cdlp-muted)]" />
           You can upload anytime from Overview.
         </div>
       </OnboardingStepShell>
