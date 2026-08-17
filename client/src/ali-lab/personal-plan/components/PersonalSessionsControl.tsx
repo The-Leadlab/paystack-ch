@@ -104,7 +104,7 @@ export function PersonalSessionsControl({
   const current = sessions.find((s) => s.id === currentId);
 
   return (
-    <div className="relative">
+    <div className={compact && !iconOnly ? "relative w-full min-w-0" : "relative"}>
       <button
         type="button"
         data-tour="personal-sessions"
@@ -113,7 +113,7 @@ export function PersonalSessionsControl({
         className={
           compact || iconOnly
             ? `inline-flex items-center justify-center gap-1 min-h-8 rounded border border-[var(--pp-border)] text-[9px] font-bold uppercase tracking-wider text-[var(--pp-on-surface-variant)] hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)] ${
-                iconOnly ? "w-8 px-0" : "px-2"
+                iconOnly ? "w-8 px-0" : "w-full px-2"
               }`
             : "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[var(--pp-outline-variant)] text-[10px] font-bold uppercase tracking-wide text-[var(--pp-on-surface-variant)] hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)]"
         }
@@ -123,7 +123,7 @@ export function PersonalSessionsControl({
       >
         {busy ? <Loader2 className="size-3.5 animate-spin" /> : <FolderKanban className="size-3.5 shrink-0" />}
         {iconOnly ? null : compact ? (
-          <span className="max-w-[4.5rem] truncate">{t("personalSessions")}</span>
+          <span className="truncate">{t("personalSessions")}</span>
         ) : (
           <span className="hidden sm:inline max-w-[9rem] truncate">
             {current?.name || t("personalSessions")}

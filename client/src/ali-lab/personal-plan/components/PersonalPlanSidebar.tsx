@@ -155,16 +155,19 @@ export function PersonalPlanSidebar({
         collapsed ? "pp-sidebar--rail w-14 px-1.5 py-3" : "w-52 px-3 py-4"
       )}
     >
-      <div
-        className={cn(
-          "flex items-center mb-2 shrink-0 gap-1",
-          collapsed ? "flex-col" : "justify-between"
-        )}
-      >
-        <div className={cn("flex items-center min-w-0", collapsed ? "flex-col gap-1.5" : "gap-1.5")}>
+      <div className="flex flex-col gap-2 mb-3 shrink-0 min-w-0">
+        <div
+          className={cn(
+            "flex items-center gap-1 min-w-0",
+            collapsed ? "flex-col" : "justify-between"
+          )}
+        >
           <Link
             href={personalHomePath(surface)}
-            className={cn("flex items-center hover:opacity-90 min-w-0", collapsed ? "justify-center" : "gap-2")}
+            className={cn(
+              "flex items-center hover:opacity-90 min-w-0 overflow-hidden",
+              collapsed ? "justify-center" : "flex-1"
+            )}
             title="Paystack Personal"
           >
             <img
@@ -173,30 +176,31 @@ export function PersonalPlanSidebar({
               {...(collapsed
                 ? { width: BRAND_LOGO_SIZE, height: BRAND_LOGO_SIZE }
                 : { height: BRAND_LOCKUP_HEIGHT })}
-              className={cn("object-contain shrink-0", collapsed ? "h-7 w-7" : "h-8 w-auto max-w-[120px]")}
+              className={cn(
+                "object-contain object-left",
+                collapsed ? "h-8 w-8 shrink-0" : "h-8 w-auto max-w-full"
+              )}
             />
-            {!collapsed ? (
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--pp-on-surface-variant)] truncate">
-                  {surface === "app" ? "Personal" : "Lab · Personal"}
-                </p>
-              </div>
-            ) : null}
           </Link>
-          <PersonalSessionsControl compact iconOnly={collapsed} align="left" />
+          {onToggleCollapsed ? (
+            <button
+              type="button"
+              data-tour="sidebar-collapse"
+              onClick={onToggleCollapsed}
+              className="p-1.5 rounded border border-[var(--pp-border)] text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-primary)] shrink-0"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={collapsed ? "Expand" : "Collapse"}
+            >
+              {collapsed ? <PanelLeftOpen className="size-3.5" /> : <PanelLeftClose className="size-3.5" />}
+            </button>
+          ) : null}
         </div>
-        {onToggleCollapsed ? (
-          <button
-            type="button"
-            data-tour="sidebar-collapse"
-            onClick={onToggleCollapsed}
-            className="p-1.5 rounded border border-[var(--pp-border)] text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-primary)] shrink-0"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={collapsed ? "Expand" : "Collapse"}
-          >
-            {collapsed ? <PanelLeftOpen className="size-3.5" /> : <PanelLeftClose className="size-3.5" />}
-          </button>
+        {!collapsed ? (
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--pp-on-surface-variant)] truncate px-0.5">
+            {surface === "app" ? "Personal" : "Lab · Personal"}
+          </p>
         ) : null}
+        <PersonalSessionsControl compact iconOnly={collapsed} align="left" />
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden" aria-label="Personal navigation">

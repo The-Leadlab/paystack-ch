@@ -866,14 +866,14 @@ export function RestaurantDashboard() {
       >
         {/* Desktop: logo + nav */}
         <div className="hidden md:flex md:flex-col shrink-0 ba-sidebar-head border-b border-cdlp-border">
-          <div className={`flex items-center gap-1 mb-2 ${sidebarCollapsed ? 'flex-col' : 'justify-between'}`}>
+          <div className={`flex items-center gap-1 mb-2 min-w-0 ${sidebarCollapsed ? 'flex-col' : 'justify-between'}`}>
             <img
               src={brandSrc}
               alt="Paystack.ch"
               {...(sidebarCollapsed
                 ? { width: BRAND_LOGO_SIZE, height: BRAND_LOGO_SIZE }
                 : { height: BRAND_LOCKUP_HEIGHT })}
-              className={`object-contain shrink-0 ${sidebarCollapsed ? 'h-7 w-7' : 'h-8 w-auto max-w-[148px]'}`}
+              className={`object-contain object-left ${sidebarCollapsed ? 'h-8 w-8 shrink-0' : 'h-8 w-auto max-w-[calc(100%-2.25rem)]'}`}
             />
             <button
               type="button"
