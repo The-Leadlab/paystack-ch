@@ -1,5 +1,5 @@
 import { wrapBrandedLetterHtml } from "./outreachMail.js";
-import { PLATFORM_CONTACT_EMAIL } from "./const.js";
+import { FONT_BODY, PLATFORM_CONTACT_EMAIL } from "./const.js";
 
 export type OutreachPresetId = "blank-text" | "blank-html" | "beta-invite" | "beta-direct";
 
@@ -11,7 +11,7 @@ export type OutreachPreset = {
 };
 
 const P =
-  'style="margin:0 0 16px;font-family:Georgia,\'Times New Roman\',Times,serif;font-size:16px;line-height:1.7;color:#2B2B2B;"';
+  `style="margin:0 0 16px;font-family:${FONT_BODY};font-size:16px;line-height:1.7;color:#2B2B2B;"`;
 
 function p(html: string): string {
   return `<p ${P}>${html}</p>`;

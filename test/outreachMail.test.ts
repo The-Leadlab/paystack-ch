@@ -74,6 +74,9 @@ describe("renderOutreachHtml", () => {
     });
     expect(text).toContain("Hi Joshua");
     expect(html).toContain("lucas@paystack.ch");
+    expect(html).toContain("Source Serif 4");
+    expect(html).toContain("Sora");
+    expect(html).toContain("fonts.googleapis.com");
     expect(html).toContain("#E8423F");
     expect(html).toContain("Hi Joshua");
     expect(html).toContain("Welcome to Leadlab");
