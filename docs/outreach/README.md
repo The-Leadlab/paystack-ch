@@ -1,16 +1,16 @@
-# Paystack v2 client outreach (HTML)
+# Paystack client outreach (HTML)
 
-Branded HTML emails, same pattern as Spinella campaigns (`docs/*.html` in `spinella-geneva`): 600px table, hosted logo, brand colours, bilingual body.
+Branded HTML emails in the Spinella campaign pattern: 600px table, hosted logo, brand colours, English then French.
 
 | File | Tone | Subject |
 |------|------|---------|
-| `paystack-v2-try.html` | Softer — invite to test v2 | Test Paystack v2 / Testez Paystack v2 |
-| `paystack-v2-direct.html` | Direct — ask them onto v2 this week | Paystack v2 is ready for [Restaurant name] |
+| `paystack-beta-invite.html` | Softer — origin story + beta invite | A private beta for Geneva SMEs / Une bêta privée pour les PME à Genève |
+| `paystack-beta-direct.html` | Direct — selected as a field leader | You are one of 200 beta testers / Vous faites partie des 200 testeurs |
 
-**Before sending:** find-replace `[First name]` and `[Restaurant name]`.
+**Before sending:** find-replace `[First name]` (and `[Business name]` on the direct email).
 
-**Preview:** open the HTML file in a browser.
+**Do not use** the old “test Paystack v2 / same login” copy. That wave comes later.
 
-**Send:** paste the HTML into Gmail (compose → ⋮ → Plain text off, or a mail tool that accepts HTML). Logo loads from `https://www.paystack.ch/brand/…` so it works in the inbox.
+**Preview:** open the HTML in a browser. Logo loads from `https://www.paystack.ch/brand/…`.
 
-Colours match `shared/brandAssets.ts`: red `#E8423F`, charcoal `#2B2B2B`, cream `#FFF5F4`.
+CTA is reply / `mailto:info@paystack.ch`. Swap in a Calendly (or other booking) URL when you have one.
