@@ -37,6 +37,10 @@
     "api/admin/logout.ts": {
       "includeFiles": "lib/**"
     },
+    "api/admin/outreach.ts": {
+      "maxDuration": 60,
+      "includeFiles": "{lib,shared}/**"
+    },
     "api/ali/verify.ts": {
       "includeFiles": "lib/**"
     },

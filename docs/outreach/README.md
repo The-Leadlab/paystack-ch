@@ -1,6 +1,6 @@
 # Paystack client outreach (HTML)
 
-Branded HTML emails in the Spinella campaign pattern: 600px table, hosted logo, brand colours, English then French.
+Professional letter-style HTML: 600px table, Paystack lockup, cream `#FFF5F4` and red `#E8423F`, Georgia body, English then French in the same email.
 
 | File | Tone | Subject |
 |------|------|---------|
@@ -14,5 +14,19 @@ Do not mention Paystack’s own price. Both emails say almost CHF 5–10,000 of 
 **Do not use** the old “test Paystack v2 / same login” copy. That wave comes later.
 
 **Preview:** open the HTML in a browser. Logo loads from `https://www.paystack.ch/brand/…`.
+
+**Joshua send-ready (filled names, EN then FR in one HTML):**
+- `send/joshua-invite.html`
+- `send/joshua-direct.html`
+
+Send both via Resend (needs `RESEND_API_KEY`):
+
+```bash
+RESEND_API_KEY=re_... node scripts/send-outreach-resend.mjs
+```
+
+Defaults: `to=joshua@the-leadlab.com`, `from=Paystack <notifications@paystack.ch>`. Override with `OUTREACH_TO` / `NEW_USER_NOTIFY_FROM`.
+
+**Admin UI:** `/admin` → **Cold outreach**. Upload CSV (`name,email,company,extra`), HTML or plain text, preview, send via Resend (`POST /api/admin/outreach`). Merge tags: `{{name}}` `{{email}}` `{{company}}` `{{extra}}` `{{sender}}`.
 
 CTA is reply / `mailto:info@paystack.ch`. Swap in a Calendly (or other booking) URL when you have one.

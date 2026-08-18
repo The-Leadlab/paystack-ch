@@ -3,6 +3,8 @@ import { createHash, timingSafeEqual } from "crypto";
 import { adminSessionCookieValue, adminSessionSetCookieHeader } from "../lib/adminGateCookie.js";
 import { adminSessionIsValid, requireAdminSession } from "../lib/adminSession.js";
 import { getAdminUserDetail, createAdminUser, listAdminUsers, runAdminUserAction, type AdminUserAction, type CreateAdminUserInput } from "../lib/adminUsers.js";
+import { sendOutreachBatch } from "../lib/sendOutreachBatch.js";
+import { OUTREACH_MAX_RECIPIENTS } from "../shared/outreachMail.js";
 import { parsePaystackPlanId } from "../shared/planCatalog.js";
 
 function passwordMatches(given: string, expected: string): boolean {
@@ -120,7 +122,47 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  app.post("/api/admin/outreach", express.json({ limit: "1mb" }), async (req: Request, res: Response) => {
+    try {
+      const gate = requireAdminSession(req.headers.cookie);
+      if (!gate.ok) {
+        res.status(gate.status).json({ error: gate.error });
+        return;
+      }
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const raw = Array.isArray(body.recipients) ? body.recipients : [];
+      const recipients = raw.slice(0, OUTREACH_MAX_RECIPIENTS).map((item) => {
+        const rec = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
+        const fields =
+          rec.fields && typeof rec.fields === "object" && !Array.isArray(rec.fields)
+            ? (rec.fields as Record<string, string>)
+            : {};
+        return {
+          name: typeof rec.name === "string" ? rec.name : "",
+          email: typeof rec.email === "string" ? rec.email : "",
+          company: typeof rec.company === "string" ? rec.company : "",
+          extra: typeof rec.extra === "string" ? rec.extra : "",
+          fields,
+        };
+      });
+      const { results } = await sendOutreachBatch({
+        subject: typeof body.subject === "string" ? body.subject : "",
+        mode: body.mode === "text" ? "text" : "html",
+        body: typeof body.body === "string" ? body.body : "",
+        sender: typeof body.sender === "string" ? body.sender : undefined,
+        replyTo: typeof body.replyTo === "string" ? body.replyTo : undefined,
+        recipients,
+      });
+      const sent = results.filter((r) => r.ok).length;
+      const failed = results.filter((r) => !r.ok).length;
+      res.json({ ok: failed === 0, sent, failed, results });
+    } catch (e) {
+      const status = (e as { status?: number }).status ?? 500;
+      res.status(status).json({ error: e instanceof Error ? e.message : "Internal server error" });
+    }
+  });
+
   console.info(
-    "[admin] POST /api/admin/verify, GET /api/admin/session, GET|POST /api/admin/users, GET|POST /api/admin/user"
+    "[admin] POST /api/admin/verify, GET /api/admin/session, GET|POST /api/admin/users, GET|POST /api/admin/user, POST /api/admin/outreach"
   );
 }
