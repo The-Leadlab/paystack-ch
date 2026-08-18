@@ -1,6 +1,6 @@
 # Paystack client outreach (HTML)
 
-Professional letter-style HTML: 600px table, Paystack lockup, cream `#FFF5F4` and red `#E8423F`, Georgia body, English then French in the same email.
+Professional letter-style HTML: 600px table, Paystack lockup, cream `#FFF5F4` and red `#E8423F`. Platform fonts: Sora (titles/CTA), Source Serif 4 (body), Inter (labels). English then French in the same email.
 
 | File | Tone | Subject |
 |------|------|---------|

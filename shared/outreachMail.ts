@@ -1,6 +1,6 @@
 /** Cold-outreach CSV merge + branded email HTML (admin / Resend). */
 
-import { PLATFORM_CONTACT_EMAIL } from "./const.js";
+import { FONT_BODY, FONT_DISPLAY, FONT_UI, PLATFORM_CONTACT_EMAIL, PLATFORM_FONTS_HREF } from "./const.js";
 
 export const OUTREACH_MAX_RECIPIENTS = 200;
 
@@ -214,7 +214,7 @@ function letterParagraphsFromPlain(text: string): string {
   return blocks
     .map((block) => {
       const html = escapeHtml(block).replace(/\n/g, "<br>");
-      return `<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',Times,serif;font-size:16px;line-height:1.7;color:#2B2B2B;">${html}</p>`;
+      return `<p style="margin:0 0 16px;font-family:${FONT_BODY};font-size:16px;line-height:1.7;color:#2B2B2B;">${html}</p>`;
     })
     .join("\n");
 }
@@ -250,7 +250,7 @@ export function wrapBrandedLetterHtml(opts: {
                   <td style="border-top:1px solid #E8E2E0;font-size:0;line-height:0;">&nbsp;</td>
                 </tr>
               </table>
-              <p style="margin:18px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#E8423F;text-align:center;">${escapeHtml(opts.frenchLabel || "Français")}</p>
+              <p style="margin:18px 0 0;font-family:${FONT_UI};font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#E8423F;text-align:center;">${escapeHtml(opts.frenchLabel || "Français")}</p>
             </td>
           </tr>
           <tr>
@@ -266,7 +266,7 @@ export function wrapBrandedLetterHtml(opts: {
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td align="center" bgcolor="#E8423F" style="background-color:#E8423F;">
-                    <a href="${escapeHtml(ctaHref)}" style="display:inline-block;padding:13px 26px;font-family:Arial,Helvetica,sans-serif;font-size:13px;letter-spacing:0.4px;font-weight:700;color:#FFFFFF;text-decoration:none;">
+                    <a href="${escapeHtml(ctaHref)}" style="display:inline-block;padding:13px 26px;font-family:${FONT_DISPLAY};font-size:13px;letter-spacing:0.4px;font-weight:700;color:#FFFFFF;text-decoration:none;">
                       ${escapeHtml(opts.frenchCtaLabel)}
                     </a>
                   </td>
@@ -274,7 +274,7 @@ export function wrapBrandedLetterHtml(opts: {
               </table>
               ${
                 opts.frenchCtaHint
-                  ? `<p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#6F6669;">${opts.frenchCtaHint}</p>`
+                  ? `<p style="margin:14px 0 0;font-family:${FONT_UI};font-size:12px;line-height:18px;color:#6F6669;">${opts.frenchCtaHint}</p>`
                   : ""
               }
             </td>
@@ -290,6 +290,7 @@ export function wrapBrandedLetterHtml(opts: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light">
   <title>${escapeHtml(opts.title)}</title>
+  <link rel="stylesheet" href="${PLATFORM_FONTS_HREF}">
 </head>
 <body style="margin:0;padding:0;background-color:#FFF5F4;" bgcolor="#FFF5F4">
   ${
@@ -311,7 +312,7 @@ export function wrapBrandedLetterHtml(opts: {
           </tr>
           <tr>
             <td style="padding:0 48px 8px;">
-              <p style="margin:0 0 22px;font-family:Georgia,'Times New Roman',Times,serif;font-size:22px;line-height:30px;font-weight:normal;color:#2B2B2B;text-align:center;">
+              <p style="margin:0 0 22px;font-family:${FONT_DISPLAY};font-size:22px;line-height:30px;font-weight:600;color:#2B2B2B;text-align:center;">
                 ${escapeHtml(opts.title)}
               </p>
               ${opts.innerHtml}
@@ -322,7 +323,7 @@ export function wrapBrandedLetterHtml(opts: {
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td align="center" bgcolor="#E8423F" style="background-color:#E8423F;">
-                    <a href="${escapeHtml(ctaHref)}" style="display:inline-block;padding:13px 26px;font-family:Arial,Helvetica,sans-serif;font-size:13px;letter-spacing:0.4px;font-weight:700;color:#FFFFFF;text-decoration:none;">
+                    <a href="${escapeHtml(ctaHref)}" style="display:inline-block;padding:13px 26px;font-family:${FONT_DISPLAY};font-size:13px;letter-spacing:0.4px;font-weight:700;color:#FFFFFF;text-decoration:none;">
                       ${escapeHtml(ctaLabel)}
                     </a>
                   </td>
@@ -330,7 +331,7 @@ export function wrapBrandedLetterHtml(opts: {
               </table>
               ${
                 opts.ctaHint
-                  ? `<p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#6F6669;">${opts.ctaHint}</p>`
+                  ? `<p style="margin:14px 0 0;font-family:${FONT_UI};font-size:12px;line-height:18px;color:#6F6669;">${opts.ctaHint}</p>`
                   : ""
               }
             </td>
@@ -338,10 +339,10 @@ export function wrapBrandedLetterHtml(opts: {
           ${frenchBlock}
           <tr>
             <td style="padding:36px 48px 40px;border-top:1px solid #E8E2E0;">
-              <p style="margin:0 0 6px;font-family:Georgia,'Times New Roman',Times,serif;font-size:15px;line-height:22px;color:#2B2B2B;">
+              <p style="margin:0 0 6px;font-family:${FONT_BODY};font-size:15px;line-height:22px;color:#2B2B2B;">
                 ${signoff}
               </p>
-              <p style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#6F6669;">
+              <p style="margin:12px 0 0;font-family:${FONT_UI};font-size:12px;line-height:18px;color:#6F6669;">
                 Geneva, Switzerland<br>
                 <a href="mailto:${PLATFORM_CONTACT_EMAIL}" style="color:#E8423F;text-decoration:none;">${PLATFORM_CONTACT_EMAIL}</a>
               </p>
