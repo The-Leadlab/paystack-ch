@@ -1,6 +1,7 @@
 /**
- * Minimal Resend send helper (reports, admin alerts, etc.).
+ * Minimal Resend send helper (reports, admin alerts, outreach, etc.).
  */
+import { PLATFORM_FROM } from "../shared/const.js";
 export async function sendResendEmail(opts: {
   to: string[];
   subject: string;
@@ -23,7 +24,7 @@ export async function sendResendEmail(opts: {
     opts.from?.trim() ||
     process.env.NEW_USER_NOTIFY_FROM?.trim() ||
     process.env.REPORT_EMAIL_FROM?.trim() ||
-    "Paystack <notifications@paystack.ch>";
+    PLATFORM_FROM;
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",

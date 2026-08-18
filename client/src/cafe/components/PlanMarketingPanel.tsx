@@ -1,10 +1,11 @@
+import { PLATFORM_CONTACT_EMAIL } from '@shared/const';
 import { useLanguage } from '../context/LanguageContext';
 import type { PaystackPlanId } from '@shared/planCatalog';
 import { planMarketingFeatureKeys } from '@shared/planMarketingFeatureKeys';
 
 /** Same mailto as landing `PricingSection` Enterprise CTA. */
 export const PLAN_ENTERPRISE_SALES_MAILTO =
-  'mailto:info@paystack.ch?subject=Enterprise%20plan%20%E2%80%94%20Paystack.ch';
+  `mailto:${PLATFORM_CONTACT_EMAIL}?subject=Enterprise%20plan%20%E2%80%94%20Paystack.ch`;
 
 function planMarketingDescription(t: (k: string) => string, planId: PaystackPlanId): string {
   if (planId === 'personal') return t('planPersonalDescription');
