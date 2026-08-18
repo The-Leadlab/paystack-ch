@@ -41,9 +41,48 @@ export function canOpenPublicSignUp(allowFromCheckout: boolean): boolean {
   return allowFromCheckout;
 }
 
+/** Firebase Auth `code`, or parsed from `Firebase: Error (auth/…).` */
+export function firebaseAuthErrorCode(err: unknown): string | null {
+  if (typeof err !== 'object' || err === null) return null;
+  if ('code' in err && typeof (err as { code: unknown }).code === 'string') {
+    const code = (err as { code: string }).code;
+    if (code.startsWith('auth/')) return code;
+  }
+  if (err instanceof Error) {
+    const match = err.message.match(/auth\/[\w-]+/);
+    if (match) return match[0];
+  }
+  return null;
+}
+
 export function formatAuthAccessError(err: Error | null, t: (key: string) => string): string {
   if (!err) return '';
   if (err.message === AUTH_ERR_REGISTRATION_CLOSED) return t('authErrRegistrationClosed');
   if (err.message === AUTH_ERR_GOOGLE_NEW_USER) return t('authErrGoogleNewUser');
-  return err.message;
+
+  const code = firebaseAuthErrorCode(err);
+  switch (code) {
+    case 'auth/invalid-credential':
+    case 'auth/invalid-login-credentials':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return t('authErrWrongPassword');
+    case 'auth/invalid-email':
+      return t('authErrInvalidEmail');
+    case 'auth/user-disabled':
+      return t('authErrUserDisabled');
+    case 'auth/too-many-requests':
+      return t('authErrTooManyRequests');
+    case 'auth/network-request-failed':
+      return t('authErrNetwork');
+    case 'auth/popup-closed-by-user':
+    case 'auth/cancelled-popup-request':
+      return t('authErrPopupClosed');
+    case 'auth/email-already-in-use':
+      return t('authErrEmailInUse');
+    case 'auth/weak-password':
+      return t('authErrWeakPassword');
+    default:
+      return err.message;
+  }
 }

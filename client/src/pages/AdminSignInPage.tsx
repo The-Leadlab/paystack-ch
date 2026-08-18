@@ -10,6 +10,7 @@ import { useAuth } from "@/cafe/context/AuthContext";
 import { firebaseReady } from "@/cafe/lib/firebase";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { isSubscriptionBypassEmail } from "@/cafe/lib/subscriptionBypass";
+import { formatAuthAccessError } from "@/cafe/lib/authAccess";
 import { GoogleGIcon } from "@/components/icons/GoogleGIcon";
 import { AuthLayout } from "./auth/AuthLayout";
 import { logoutAdmin } from "@/lib/adminGateClient";
@@ -188,7 +189,7 @@ export default function AdminSignInPage() {
                     setGoogleLoading(true);
                     try {
                       const { error: err } = await signInWithGoogle({ skipRegistrationGate: true });
-                      if (err) setError(err.message);
+                      if (err) setError(formatAuthAccessError(err, t));
                     } finally {
                       setGoogleLoading(false);
                     }
@@ -216,7 +217,7 @@ export default function AdminSignInPage() {
                     try {
                       const { error: err } = await signIn(email, password);
                       if (err) {
-                        setError(err.message);
+                        setError(formatAuthAccessError(err, t));
                       }
                     } finally {
                       setSubmitting(false);
@@ -255,8 +256,7 @@ export default function AdminSignInPage() {
                     />
                   </div>
                   {error ? (
-                    <p className="text-sm text-destructive font-medium">
-                      {t("authErrorPrefix")}
+                    <p className="text-sm text-destructive font-medium" role="alert">
                       {error}
                     </p>
                   ) : null}

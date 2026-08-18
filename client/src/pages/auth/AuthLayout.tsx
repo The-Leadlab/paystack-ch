@@ -4,6 +4,8 @@ import { Home, Shield } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { LanguageToggleButton } from "@/components/LanguageToggleButton";
 import { useLanguage } from "@/cafe/context/LanguageContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { cn } from "@/lib/utils";
 
 type AuthLayoutProps = {
   children: ReactNode;
@@ -22,12 +24,23 @@ export function AuthLayout({
   showAdminEntry = false,
 }: AuthLayoutProps) {
   const { t } = useLanguage();
+  const { theme } = useTheme();
 
   return (
-    <div className="min-h-[100dvh] min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-[oklch(0.97_0.01_85)] text-foreground touch-manipulation overscroll-y-contain">
+    <div
+      className={cn(
+        "min-h-[100dvh] min-h-screen flex flex-col text-foreground touch-manipulation overscroll-y-contain",
+        theme === "dark"
+          ? "bg-gradient-to-br from-zinc-950 via-zinc-950 to-zinc-900"
+          : "bg-gradient-to-br from-background via-background to-[oklch(0.97_0.01_85)]"
+      )}
+    >
       <header className="container px-4 sm:px-6 pt-[max(1rem,env(safe-area-inset-top)+0.75rem)] pb-3 space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <BrandLogo href="/" markClassName="h-10 sm:h-11 w-auto object-contain shrink-0" />
+          <BrandLogo
+            href="/"
+            markClassName="h-12 sm:h-14 w-auto max-w-[min(100%,14rem)] shrink-0"
+          />
           <div className="flex items-center gap-2 shrink-0">
             {showAdminEntry ? (
               <Link

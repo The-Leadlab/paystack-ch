@@ -151,7 +151,7 @@ export default function SignInPage() {
     try {
       const { error: err } = await signIn(email, password);
       if (err) {
-        setError(err.message);
+        setError(formatAuthAccessError(err, t));
         return;
       }
     } finally {
@@ -238,8 +238,7 @@ export default function SignInPage() {
               />
             </div>
             {error ? (
-              <p className="text-sm text-destructive font-medium">
-                {t("authErrorPrefix")}
+              <p className="text-sm text-destructive font-medium" role="alert">
                 {error}
               </p>
             ) : null}

@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
   BRAND_LOCKUP_HEIGHT,
+  BRAND_LOCKUP_WIDTH,
   BRAND_LOGO_SIZE,
   brandLockupSrc,
   brandMarkSrc,
@@ -36,7 +37,7 @@ export function BrandLogo({
 }: BrandLogoProps) {
   const { theme } = useTheme();
   const src = showWordmark ? brandLockupSrc(theme) : brandMarkSrc(theme);
-  const width = showWordmark ? undefined : BRAND_LOGO_SIZE;
+  const width = showWordmark ? BRAND_LOCKUP_WIDTH : BRAND_LOGO_SIZE;
   const height = showWordmark ? BRAND_LOCKUP_HEIGHT : BRAND_LOGO_SIZE;
 
   const inner = (
@@ -45,7 +46,7 @@ export function BrandLogo({
       alt="Paystack.ch"
       width={width}
       height={height}
-      className={markClassName}
+      className={cn("object-contain object-left", markClassName)}
       loading="eager"
       decoding="async"
     />

@@ -282,8 +282,7 @@ export default function SignUpPage() {
               />
             </div>
             {error ? (
-              <p className="text-sm text-destructive font-medium">
-                {t("authErrorPrefix")}
+              <p className="text-sm text-destructive font-medium" role="alert">
                 {error}
               </p>
             ) : null}

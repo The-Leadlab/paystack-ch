@@ -12,7 +12,8 @@ export const BRAND_LOGO_SIZE = 128 as const;
 
 /** Horizontal lockup with transparent background (navbar / footer / auth, light chrome). */
 export const BRAND_LOCKUP_SRC = "/brand/paystack-lockup.png" as const;
-/** Display height hint for lockup (full-res asset is 967×258). */
+/** Intrinsic lockup size (full-res asset). Set both width+height on <img> so CSS scaling stays sharp. */
+export const BRAND_LOCKUP_WIDTH = 967 as const;
 export const BRAND_LOCKUP_HEIGHT = 258 as const;
 
 /** Lockup for dark chrome (white wordmark, light plates, red kept). */
