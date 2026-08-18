@@ -12,7 +12,7 @@ const to = process.env.OUTREACH_TO?.trim() || "joshua@the-leadlab.com";
 const from =
   process.env.NEW_USER_NOTIFY_FROM?.trim() ||
   process.env.REPORT_EMAIL_FROM?.trim() ||
-  "Paystack <joshua@paystack.ch>";
+  "Paystack <lucas@paystack.ch>";
 const apiKey = process.env.RESEND_API_KEY?.trim();
 
 const emails = [
@@ -37,7 +37,7 @@ async function sendOne({ subject, file }) {
     body: JSON.stringify({
       from,
       to: [to],
-      reply_to: ["joshua@paystack.ch"],
+      reply_to: ["lucas@paystack.ch"],
       subject,
       html,
     }),
