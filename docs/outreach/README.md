@@ -19,12 +19,14 @@ Do not mention Paystack’s own price. Both emails say almost CHF 5–10,000 of 
 - `send/joshua-invite.html`
 - `send/joshua-direct.html`
 
-Send both via Resend (needs `RESEND_API_KEY` on the machine — Vercel has it in production, this agent VM does not):
+Send both via Resend (needs `RESEND_API_KEY`):
 
 ```bash
 RESEND_API_KEY=re_... node scripts/send-outreach-resend.mjs
 ```
 
 Defaults: `to=joshua@the-leadlab.com`, `from=Paystack <notifications@paystack.ch>`. Override with `OUTREACH_TO` / `NEW_USER_NOTIFY_FROM`.
+
+**Admin UI:** `/admin` → **Cold outreach**. Upload CSV (`name,email,company,extra`), HTML or plain text, preview, send via Resend (`POST /api/admin/outreach`). Merge tags: `{{name}}` `{{email}}` `{{company}}` `{{extra}}` `{{sender}}`.
 
 CTA is reply / `mailto:info@paystack.ch`. Swap in a Calendly (or other booking) URL when you have one.
