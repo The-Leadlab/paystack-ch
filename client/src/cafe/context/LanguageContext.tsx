@@ -245,7 +245,7 @@ const translations = {
     authAdminPlanLive: 'Live Stripe (real keys)',
     authAdminPlanTest: 'Test Stripe (test keys)',
     authAdminEnterpriseNoCheckout:
-      'Enterprise is sold via sales, not Stripe checkout here. Use Contact Sales or email joshua@paystack.ch.',
+      'Enterprise is sold via sales, not Stripe checkout here. Use Contact Sales or email lucas@paystack.ch.',
     stripeSandboxModeActive:
       'Stripe sandbox mode is on — all checkouts use test cards only (no real charges). Set VITE_STRIPE_USE_TEST=false to return to live billing.',
     authAdminBypassSectionTitle: 'Firebase admin (subscription bypass)',
@@ -603,7 +603,7 @@ const translations = {
     subscriptionTrialUntil: 'Trial access until {date}',
     subscriptionManageBilling: 'Billing & plan',
     subscriptionPickPlan: 'Choose a plan',
-    subscriptionEnterpriseHint: 'Enterprise (custom pricing): contact sales at joshua@paystack.ch.',
+    subscriptionEnterpriseHint: 'Enterprise (custom pricing): contact sales at lucas@paystack.ch.',
     subscriptionPickPlanError: 'Please choose Starter, Business, or Unlimited before continuing to checkout.',
     subscriptionCheckoutUnavailable:
       'We could not start checkout. Please try again in a few minutes or contact support@paystack.ch.',
@@ -1364,7 +1364,7 @@ const translations = {
     authAdminPlanLive: 'Stripe live (cles reelles)',
     authAdminPlanTest: 'Stripe test (cles test)',
     authAdminEnterpriseNoCheckout:
-      'L\'offre Enterprise se vend par vente directe, pas via cette caisse Stripe. Contactez le commercial ou joshua@paystack.ch.',
+      'L\'offre Enterprise se vend par vente directe, pas via cette caisse Stripe. Contactez le commercial ou lucas@paystack.ch.',
     stripeSandboxModeActive:
       'Mode bac a sable Stripe actif — paiements fictifs uniquement (cartes test). Mettez VITE_STRIPE_USE_TEST=false pour la facturation live.',
     authAdminBypassSectionTitle: 'Admin Firebase (contournement abonnement)',
@@ -1722,7 +1722,7 @@ const translations = {
     subscriptionTrialUntil: 'Essai jusqu\'au {date}',
     subscriptionManageBilling: 'Facturation et offre',
     subscriptionPickPlan: 'Choisissez une offre',
-    subscriptionEnterpriseHint: 'Entreprise (tarif sur mesure) : contactez joshua@paystack.ch.',
+    subscriptionEnterpriseHint: 'Entreprise (tarif sur mesure) : contactez lucas@paystack.ch.',
     subscriptionPickPlanError: 'Choisissez Starter, Business ou Illimite avant le paiement.',
     subscriptionCheckoutUnavailable:
       'Impossible de demarrer le paiement. Reessayez dans quelques minutes ou contactez support@paystack.ch.',
