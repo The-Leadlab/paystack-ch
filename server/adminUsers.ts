@@ -150,6 +150,7 @@ export function registerAdminRoutes(app: Express): void {
         mode: body.mode === "text" ? "text" : "html",
         body: typeof body.body === "string" ? body.body : "",
         sender: typeof body.sender === "string" ? body.sender : undefined,
+        from: typeof body.from === "string" ? body.from : undefined,
         replyTo: typeof body.replyTo === "string" ? body.replyTo : undefined,
         recipients,
       });

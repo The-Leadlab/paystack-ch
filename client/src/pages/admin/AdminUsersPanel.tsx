@@ -94,6 +94,7 @@ export function AdminUsersPanel() {
       const result = await listAdminUsers(term);
       setUsers(result.users);
     } catch (e) {
+      setUsers([]);
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
@@ -574,7 +575,7 @@ export function AdminUsersPanel() {
           <Loader2 className="size-6 animate-spin mx-auto mb-2" />
           {t("adminUsersLoading")}
         </div>
-      ) : tabCount === 0 ? (
+      ) : error && users.length === 0 ? null : tabCount === 0 ? (
         <div className="py-16 text-center text-muted-foreground rounded-xl border border-border bg-card px-4">
           {t("adminUsersEmpty")}
         </div>

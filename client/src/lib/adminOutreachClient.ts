@@ -13,6 +13,7 @@ export async function sendAdminOutreach(payload: {
   mode: "html" | "text";
   body: string;
   sender?: string;
+  from?: string;
   replyTo?: string;
   recipients: OutreachRecipient[];
 }): Promise<OutreachSendResult> {
@@ -22,14 +23,21 @@ export async function sendAdminOutreach(payload: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  let data: { error?: string } & Partial<OutreachSendResult> = {};
+  const raw = await res.text();
+  let data: { error?: unknown } & Partial<OutreachSendResult> = {};
   try {
-    data = (await res.json()) as { error?: string } & Partial<OutreachSendResult>;
+    data = raw ? (JSON.parse(raw) as { error?: unknown } & Partial<OutreachSendResult>) : {};
   } catch {
     /* ignore */
   }
   if (!res.ok) {
-    throw new Error(typeof data.error === "string" ? data.error : "Request failed");
+    const err =
+      typeof data.error === "string"
+        ? data.error
+        : raw.includes("FUNCTION_INVOCATION_FAILED")
+          ? `Outreach API crashed (HTTP ${res.status}). Check Vercel logs.`
+          : `Request failed (HTTP ${res.status})`;
+    throw new Error(err);
   }
   return {
     ok: data.ok === true,

@@ -56,6 +56,24 @@ export type AdminUserDetail = AdminUserSummary & {
   stripeCustomerMatchPending: boolean;
 };
 
+function readApiError(status: number, data: unknown, raw: string): string {
+  if (data && typeof data === "object") {
+    const rec = data as Record<string, unknown>;
+    if (typeof rec.error === "string" && rec.error.trim()) return rec.error;
+    if (rec.error && typeof rec.error === "object") {
+      const inner = rec.error as Record<string, unknown>;
+      if (typeof inner.message === "string" && inner.message.trim()) return inner.message;
+    }
+    if (typeof rec.message === "string" && rec.message.trim()) return rec.message;
+  }
+  if (raw.includes("FUNCTION_INVOCATION_FAILED")) {
+    return `Admin API crashed (HTTP ${status}). Try again; if it persists, check Vercel logs.`;
+  }
+  const snippet = raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 180);
+  if (snippet) return `Request failed (HTTP ${status}): ${snippet}`;
+  return `Request failed (HTTP ${status})`;
+}
+
 async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(apiUrl(path), {
     ...init,
@@ -65,16 +83,17 @@ async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
       ...(init?.headers ?? {}),
     },
   });
-  let data: { error?: string } & T = {} as { error?: string } & T;
+  const raw = await res.text();
+  let data: ({ error?: unknown } & T) | undefined;
   try {
-    data = (await res.json()) as { error?: string } & T;
+    data = raw ? (JSON.parse(raw) as { error?: unknown } & T) : undefined;
   } catch {
-    /* ignore */
+    data = undefined;
   }
   if (!res.ok) {
-    throw new Error(typeof data.error === "string" ? data.error : "Request failed");
+    throw new Error(readApiError(res.status, data, raw));
   }
-  return data;
+  return (data ?? ({} as T)) as T;
 }
 
 export async function checkAdminSession(): Promise<boolean> {

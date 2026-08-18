@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { requireAdminSession } from "../../lib/adminSession.js";
-import { createAdminUser, listAdminUsers, type CreateAdminUserInput } from "../../lib/adminUsers.js";
+import { createAdminUser, listAdminUsers, type CreateAdminUserInput } from "../../lib/adminUsersList.js";
 import { parsePaystackPlanId } from "../../shared/planCatalog.js";
 
 function sendJson(res: VercelResponse, status: number, body: unknown): void {

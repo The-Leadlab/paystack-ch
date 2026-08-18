@@ -6,6 +6,49 @@ export const OUTREACH_MAX_RECIPIENTS = 200;
 
 export const OUTREACH_LOCKUP_URL = "https://www.paystack.ch/brand/paystack-lockup.png";
 
+/** Verified Resend mailboxes operators can send cold outreach from. */
+export const OUTREACH_FROM_MAILBOXES = [
+  "lucas@paystack.ch",
+  "joshua@paystack.ch",
+  "ali@paystack.ch",
+] as const;
+
+const PAYSTACK_FROM_EMAIL_RE = /^[a-z0-9._%+-]+@paystack\.ch$/;
+
+/** Pull the address out of `Paystack <lucas@paystack.ch>` or a bare email. */
+export function parseOutreachFromAddress(raw: string | undefined | null): {
+  email: string;
+  name: string;
+} | null {
+  if (!raw || typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const angled = trimmed.match(/^(.*?)<([^>]+)>\s*$/);
+  const email = (angled ? angled[2] : trimmed).trim().toLowerCase();
+  const name = (angled ? angled[1] : "").trim().replace(/^["']|["']$/g, "");
+  if (!PAYSTACK_FROM_EMAIL_RE.test(email)) return null;
+  return { email, name };
+}
+
+export function formatOutreachFromHeader(email: string, fromName?: string): string {
+  const name = (fromName?.trim() || "Paystack").replace(/[<>\r\n]/g, "");
+  return `${name} <${email}>`;
+}
+
+/** Require @paystack.ch. Empty falls back to Lucas. */
+export function resolveOutreachFromHeader(raw: string | undefined, fromName?: string): string {
+  const parsed = parseOutreachFromAddress(raw);
+  if (raw?.trim() && !parsed) {
+    throw Object.assign(
+      new Error("From address must be a verified @paystack.ch mailbox."),
+      { status: 400 }
+    );
+  }
+  const email = parsed?.email || PLATFORM_CONTACT_EMAIL;
+  const name = parsed?.name || fromName || "Paystack";
+  return formatOutreachFromHeader(email, name);
+}
+
 export type OutreachRecipient = {
   name: string;
   email: string;

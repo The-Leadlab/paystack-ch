@@ -3,7 +3,7 @@
  * and Vercel Serverless (`api/stripe/*`).
  */
 import Stripe from "stripe";
-import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import {
   isSelfServePlan,
   parsePaystackPlanId,
@@ -27,7 +27,6 @@ import {
   buildSubscriptionCheckoutParams,
 } from "./stripeCheckoutSession.js";
 import { ensureFirebaseAdmin, hasFirebaseAdminCredentials } from "./firebaseAdmin.js";
-import { resolvePlanIdFromStripeSubscription } from "./stripePlanResolve.js";
 import {
   buildBillingPatchFromSubscription,
   signBillingLinkToken,
@@ -42,48 +41,13 @@ import {
   resolvePersonalAddonPriceId,
   type PersonalAddonKind,
 } from "./personalAddons.js";
+import { syncSubscriptionToFirestore } from "./syncSubscriptionToFirestore.js";
 
 export type { HeaderMap } from "./stripeCore.js";
 export { getStripe, getStripeTest, publicAppOriginFromHeaders, trialDays } from "./stripeCore.js";
 export { ensureFirebaseAdmin, hasFirebaseAdminCredentials } from "./firebaseAdmin.js";
 export { resolvePlanIdFromStripeSubscription } from "./stripePlanResolve.js";
-
-export async function syncSubscriptionToFirestore(
-  uid: string,
-  subscription: Stripe.Subscription,
-  useTestPrices: boolean
-): Promise<void> {
-  if (!hasFirebaseAdminCredentials()) return;
-  ensureFirebaseAdmin();
-  const db = getFirestore();
-  const customerId =
-    typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id ?? null;
-  const planId = resolvePlanIdFromStripeSubscription(subscription, useTestPrices);
-  const basePersonalDocs = entitlementsForPlan(planId).maxPersonalDocumentsPerMonth;
-  const addons = personalAddonsFromSubscription(subscription, basePersonalDocs);
-  await db
-    .collection("users")
-    .doc(uid)
-    .set(
-      {
-        stripeCustomerId: customerId,
-        subscriptionId: subscription.id,
-        subscriptionStatus: subscription.status,
-        planId,
-        productLine: productLineForPlan(planId),
-        personalAddonSeats: addons.personalAddonSeats,
-        personalDocPack: addons.personalDocPack,
-        trialEndsAt:
-          subscription.trial_end != null
-            ? Timestamp.fromMillis(subscription.trial_end * 1000)
-            : null,
-        currentPeriodEnd: Timestamp.fromMillis(subscription.current_period_end * 1000),
-        cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
-}
+export { syncSubscriptionToFirestore } from "./syncSubscriptionToFirestore.js";
 
 async function markSubscriptionCanceled(uid: string): Promise<void> {
   if (!hasFirebaseAdminCredentials()) return;

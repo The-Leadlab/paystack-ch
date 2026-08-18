@@ -37,6 +37,17 @@
     "api/admin/logout.ts": {
       "includeFiles": "lib/**"
     },
+    "api/admin/users.ts": {
+      "maxDuration": 30,
+      "includeFiles": "{lib,shared}/**"
+    },
+    "api/admin/user.ts": {
+      "maxDuration": 30,
+      "includeFiles": "{lib,shared}/**"
+    },
+    "api/admin/session.ts": {
+      "includeFiles": "lib/**"
+    },
     "api/admin/outreach.ts": {
       "maxDuration": 60,
       "includeFiles": "{lib,shared}/**"

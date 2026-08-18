@@ -70,6 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const mode = body.mode === "text" ? "text" : "html";
     const content = typeof body.body === "string" ? body.body : "";
     const sender = typeof body.sender === "string" ? body.sender : undefined;
+    const from = typeof body.from === "string" ? body.from : undefined;
     const replyTo = typeof body.replyTo === "string" ? body.replyTo : undefined;
     const recipients = parseRecipients(body.recipients).slice(0, OUTREACH_MAX_RECIPIENTS);
 
@@ -78,6 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       mode,
       body: content,
       sender,
+      from,
       replyTo,
       recipients,
     });

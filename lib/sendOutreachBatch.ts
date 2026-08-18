@@ -1,9 +1,11 @@
 import { PLATFORM_CONTACT_EMAIL } from "../shared/const.js";
+import { sendResendEmail } from "./resendEmail.js";
 import {
   OUTREACH_MAX_RECIPIENTS,
   isValidOutreachEmail,
   mergeOutreachTemplate,
   renderOutreachHtml,
+  resolveOutreachFromHeader,
   type OutreachRecipient,
 } from "../shared/outreachMail.js";
 
@@ -18,6 +20,7 @@ export async function sendOutreachBatch(opts: {
   mode: "html" | "text";
   body: string;
   sender?: string;
+  from?: string;
   replyTo?: string;
   recipients: OutreachRecipient[];
 }): Promise<{ results: OutreachSendItemResult[] }> {
@@ -35,6 +38,9 @@ export async function sendOutreachBatch(opts: {
       status: 400,
     });
   }
+
+  const from = resolveOutreachFromHeader(opts.from);
+  const replyTo = opts.replyTo?.trim() || PLATFORM_CONTACT_EMAIL;
 
   const results: OutreachSendItemResult[] = [];
   for (const recipient of opts.recipients) {
@@ -57,7 +63,8 @@ export async function sendOutreachBatch(opts: {
         subject: mergedSubject,
         html: rendered.html,
         text: rendered.text,
-        replyTo: opts.replyTo?.trim() || PLATFORM_CONTACT_EMAIL,
+        from,
+        replyTo,
       });
       results.push({ email, ok: true });
     } catch (e) {

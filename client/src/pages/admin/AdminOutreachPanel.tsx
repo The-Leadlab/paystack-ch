@@ -25,6 +25,7 @@ import {
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import { PLATFORM_CONTACT_EMAIL } from "@shared/const";
 import {
+  OUTREACH_FROM_MAILBOXES,
   OUTREACH_MAX_RECIPIENTS,
   SAMPLE_OUTREACH_CSV,
   mergeOutreachTemplate,
@@ -33,6 +34,7 @@ import {
   type OutreachRecipient,
 } from "@shared/outreachMail";
 import { getOutreachPreset, type OutreachPresetId } from "@shared/outreachPresets";
+import { sendAdminOutreach } from "@/lib/adminOutreachClient";
 import { toast } from "sonner";
 
 const CHUNK = 8;
@@ -47,6 +49,7 @@ export function AdminOutreachPanel() {
   const [mode, setMode] = useState<"html" | "text">("html");
   const [body, setBody] = useState("");
   const [sender, setSender] = useState("Ali");
+  const [fromEmail, setFromEmail] = useState(PLATFORM_CONTACT_EMAIL);
   const [replyTo, setReplyTo] = useState(PLATFORM_CONTACT_EMAIL);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -126,6 +129,7 @@ export function AdminOutreachPanel() {
           mode,
           body,
           sender,
+          from: fromEmail,
           replyTo,
           recipients: slice,
         });
@@ -280,6 +284,25 @@ export function AdminOutreachPanel() {
               <Input id="outreach-sender" value={sender} onChange={(e) => setSender(e.target.value)} />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="outreach-from">{t("adminOutreachFrom")}</Label>
+              <select
+                id="outreach-from"
+                value={fromEmail}
+                onChange={(e) => setFromEmail(e.target.value)}
+                className="w-full h-11 rounded-md border border-input bg-transparent px-3 text-sm"
+              >
+                {OUTREACH_FROM_MAILBOXES.map((addr) => (
+                  <option key={addr} value={addr}>
+                    {addr}
+                  </option>
+                ))}
+                {OUTREACH_FROM_MAILBOXES.includes(fromEmail as (typeof OUTREACH_FROM_MAILBOXES)[number]) ? null : (
+                  <option value={fromEmail}>{fromEmail}</option>
+                )}
+              </select>
+              <p className="text-xs text-muted-foreground">{t("adminOutreachFromHint")}</p>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="outreach-reply">{t("adminOutreachReplyTo")}</Label>
               <Input
                 id="outreach-reply"
@@ -410,7 +433,9 @@ export function AdminOutreachPanel() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t("adminOutreachConfirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("adminOutreachConfirmBody").replace("{n}", String(recipients.length))}
+              {t("adminOutreachConfirmBody")
+                .replace("{n}", String(recipients.length))
+                .replace("{from}", fromEmail)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

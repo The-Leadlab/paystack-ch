@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   mergeOutreachTemplate,
   parseOutreachCsv,
+  parseOutreachFromAddress,
   renderOutreachHtml,
+  resolveOutreachFromHeader,
   wrapBrandedLetterHtml,
 } from "../shared/outreachMail.js";
 import { getOutreachPreset } from "../shared/outreachPresets.js";
@@ -96,6 +98,28 @@ describe("renderOutreachHtml", () => {
       recipient: rec,
     });
     expect(html).toBe("<!DOCTYPE html><html><body>Hi Kara</body></html>");
+  });
+});
+
+describe("outreach from address", () => {
+  it("parses bare and display-name addresses on paystack.ch", () => {
+    expect(parseOutreachFromAddress("lucas@paystack.ch")).toEqual({
+      email: "lucas@paystack.ch",
+      name: "",
+    });
+    expect(parseOutreachFromAddress("Paystack <JOSHUA@paystack.ch>")).toEqual({
+      email: "joshua@paystack.ch",
+      name: "Paystack",
+    });
+    expect(parseOutreachFromAddress("ali@the-leadlab.com")).toBeNull();
+    expect(parseOutreachFromAddress("not-an-email")).toBeNull();
+  });
+
+  it("resolves a From header and rejects off-domain mailboxes", () => {
+    expect(resolveOutreachFromHeader(undefined)).toBe("Paystack <lucas@paystack.ch>");
+    expect(resolveOutreachFromHeader("joshua@paystack.ch")).toBe("Paystack <joshua@paystack.ch>");
+    expect(resolveOutreachFromHeader("Ali <ali@paystack.ch>")).toBe("Ali <ali@paystack.ch>");
+    expect(() => resolveOutreachFromHeader("ali@gmail.com")).toThrow(/paystack\.ch/);
   });
 });
 
