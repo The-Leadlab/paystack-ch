@@ -1,4 +1,4 @@
-import { sendResendEmail } from "./resendEmail.js";
+import { PLATFORM_CONTACT_EMAIL } from "../shared/const.js";
 import {
   OUTREACH_MAX_RECIPIENTS,
   isValidOutreachEmail,
@@ -57,7 +57,7 @@ export async function sendOutreachBatch(opts: {
         subject: mergedSubject,
         html: rendered.html,
         text: rendered.text,
-        replyTo: opts.replyTo?.trim() || "info@paystack.ch",
+        replyTo: opts.replyTo?.trim() || PLATFORM_CONTACT_EMAIL,
       });
       results.push({ email, ok: true });
     } catch (e) {

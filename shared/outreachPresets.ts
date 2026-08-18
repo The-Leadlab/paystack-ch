@@ -1,4 +1,5 @@
 import { wrapBrandedLetterHtml } from "./outreachMail.js";
+import { PLATFORM_CONTACT_EMAIL } from "./const.js";
 
 export type OutreachPresetId = "blank-text" | "blank-html" | "beta-invite" | "beta-direct";
 
@@ -121,7 +122,7 @@ export function getOutreachPreset(id: OutreachPresetId): OutreachPreset {
         title: "A private beta for Geneva SMEs",
         innerHtml: inviteEn,
         ctaLabel: "Book a free demo",
-        ctaHref: "mailto:info@paystack.ch?subject=Paystack%20beta%20demo",
+        ctaHref: `mailto:${PLATFORM_CONTACT_EMAIL}?subject=Paystack%20beta%20demo`,
         ctaHint: siteHint,
         frenchInnerHtml: inviteFr,
         frenchCtaLabel: "Réserver une démo",
@@ -139,7 +140,7 @@ export function getOutreachPreset(id: OutreachPresetId): OutreachPreset {
       title: "You are one of 200 beta testers",
       innerHtml: directEn,
       ctaLabel: "Book a meeting",
-      ctaHref: "mailto:info@paystack.ch?subject=Paystack%20beta",
+      ctaHref: `mailto:${PLATFORM_CONTACT_EMAIL}?subject=Paystack%20beta`,
       ctaHint: siteHint,
       frenchInnerHtml: directFr,
       frenchCtaLabel: "Prendre rendez-vous",

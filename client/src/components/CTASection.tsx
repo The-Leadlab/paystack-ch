@@ -9,6 +9,7 @@ import { ArrowRight, Mail, Phone, MapPin, CheckCircle } from "lucide-react";
 import ScrollReveal from "./ScrollReveal";
 import SectionLabel from "./SectionLabel";
 import { useLanguage } from "@/cafe/context/LanguageContext";
+import { PLATFORM_CONTACT_EMAIL } from "@shared/const";
 
 export default function CTASection() {
   const { t } = useLanguage();
@@ -81,8 +82,8 @@ export default function CTASection() {
                   </div>
                   <div>
                     <p className="font-display text-sm font-medium text-foreground">{t("contactEmail")}</p>
-                    <a href="mailto:info@paystack.ch" className="font-editorial text-sm text-muted-foreground hover:text-brand-red transition-colors">
-                      info@paystack.ch
+                    <a href={`mailto:${PLATFORM_CONTACT_EMAIL}`} className="font-editorial text-sm text-muted-foreground hover:text-brand-red transition-colors">
+                      {PLATFORM_CONTACT_EMAIL}
                     </a>
                   </div>
                 </div>

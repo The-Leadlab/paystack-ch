@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useLanguage } from "@/cafe/context/LanguageContext";
-import { sendAdminOutreach } from "@/lib/adminOutreachClient";
+import { PLATFORM_CONTACT_EMAIL } from "@shared/const";
 import {
   OUTREACH_MAX_RECIPIENTS,
   SAMPLE_OUTREACH_CSV,
@@ -47,7 +47,7 @@ export function AdminOutreachPanel() {
   const [mode, setMode] = useState<"html" | "text">("html");
   const [body, setBody] = useState("");
   const [sender, setSender] = useState("Ali");
-  const [replyTo, setReplyTo] = useState("info@paystack.ch");
+  const [replyTo, setReplyTo] = useState(PLATFORM_CONTACT_EMAIL);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);

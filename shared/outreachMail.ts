@@ -1,5 +1,7 @@
 /** Cold-outreach CSV merge + branded email HTML (admin / Resend). */
 
+import { PLATFORM_CONTACT_EMAIL } from "./const.js";
+
 export const OUTREACH_MAX_RECIPIENTS = 200;
 
 export const OUTREACH_LOCKUP_URL = "https://www.paystack.ch/brand/paystack-lockup.png";
@@ -217,7 +219,7 @@ function letterParagraphsFromPlain(text: string): string {
     .join("\n");
 }
 
-const CTA_HREF_DEFAULT = "mailto:info@paystack.ch?subject=Paystack%20beta";
+const CTA_HREF_DEFAULT = `mailto:${PLATFORM_CONTACT_EMAIL}?subject=Paystack%20beta`;
 
 export function wrapBrandedLetterHtml(opts: {
   preheader?: string;
@@ -341,7 +343,7 @@ export function wrapBrandedLetterHtml(opts: {
               </p>
               <p style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#6F6669;">
                 Geneva, Switzerland<br>
-                <a href="mailto:info@paystack.ch" style="color:#E8423F;text-decoration:none;">info@paystack.ch</a>
+                <a href="mailto:${PLATFORM_CONTACT_EMAIL}" style="color:#E8423F;text-decoration:none;">${PLATFORM_CONTACT_EMAIL}</a>
               </p>
             </td>
           </tr>
@@ -369,7 +371,7 @@ export function renderOutreachHtml(opts: {
       title: opts.title || "Paystack.ch",
       innerHtml: merged,
       ctaLabel: "Reply",
-      ctaHref: "mailto:info@paystack.ch",
+      ctaHref: `mailto:${PLATFORM_CONTACT_EMAIL}`,
       ctaHint: `<a href="https://www.paystack.ch" style="color:#E8423F;text-decoration:none;">www.paystack.ch</a>`,
     });
     return { html, text: stripHtmlToText(merged) };
@@ -378,7 +380,7 @@ export function renderOutreachHtml(opts: {
     title: opts.title || "Paystack.ch",
     innerHtml: letterParagraphsFromPlain(merged),
     ctaLabel: "Reply",
-    ctaHref: "mailto:info@paystack.ch",
+    ctaHref: `mailto:${PLATFORM_CONTACT_EMAIL}`,
     ctaHint: `Or reply to this email · <a href="https://www.paystack.ch" style="color:#E8423F;text-decoration:none;">www.paystack.ch</a>`,
   });
   return { html, text: merged };
