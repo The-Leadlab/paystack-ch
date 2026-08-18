@@ -9,7 +9,7 @@ Branded HTML emails in the Spinella campaign pattern: 600px table, hosted logo, 
 
 Do not mention Paystack’s own price. Both emails say almost CHF 5–10,000 of expense a year. Beta is zero-cost. First 100 who become clients get 25% off for life.
 
-**Before sending:** find-replace `[First name]` (and `[Business name]` on the direct email).
+**Before sending:** find-replace `[First name]`, `[Your name]`, and `[Business name]` (direct email).
 
 **Do not use** the old “test Paystack v2 / same login” copy. That wave comes later.
 
