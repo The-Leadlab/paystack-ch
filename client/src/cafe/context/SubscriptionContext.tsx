@@ -33,6 +33,8 @@ type UserBillingSnapshot = {
   personalAddonSeats: number;
   personalDocPack: boolean;
   appAdmin: boolean;
+  /** Admin-granted beta / sandbox plan — no Stripe charge required. */
+  planTestMode: boolean;
   /** Admin beta: force deep multi-page invoice extraction. */
   deepPdfInvoiceBeta: boolean;
 };
@@ -114,6 +116,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             personalAddonSeats: 0,
             personalDocPack: false,
             appAdmin: false,
+            planTestMode: false,
             deepPdfInvoiceBeta: false,
           });
           setDocumentsUsedThisMonth(0);
@@ -139,6 +142,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
                 : 0,
             personalDocPack: d.personalDocPack === true,
             appAdmin: d.appAdmin === true,
+            planTestMode: d.planTestMode === true,
             deepPdfInvoiceBeta: d.deepPdfInvoiceBeta === true,
           });
           const usage = d.usage as Record<string, unknown> | undefined;
@@ -165,6 +169,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           personalAddonSeats: 0,
           personalDocPack: false,
           appAdmin: false,
+          planTestMode: false,
           deepPdfInvoiceBeta: false,
         });
         setDocumentsUsedThisMonth(0);
@@ -197,19 +202,18 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     if (workspace && !workspace.loading && !workspace.isOwner && workspace.dataOwnerUid) {
       return true;
     }
-    // Admin-granted simulated plan (no Stripe)
-    if (billing?.planTestMode === true && billing?.planId) return true;
+    // Admin-granted beta / plan test mode (subscriptionStatus is intentionally "none")
+    if (billing?.planTestMode === true) return true;
     const st = billing?.subscriptionStatus;
     return st === 'trialing' || st === 'active';
-  }, [bypass, enforcementEnabled, billing?.subscriptionStatus, billing?.planTestMode, billing?.planId, workspace]);
+  }, [bypass, enforcementEnabled, billing?.subscriptionStatus, billing?.planTestMode, workspace]);
 
   const entitlements = useMemo((): PlanEntitlements => {
     if (!enforcementEnabled) return UNRESTRICTED_ENTITLEMENTS;
-    if (planTest) return entitlementsForPlan(billing?.planId ?? 'starter');
-    if (bypass) return UNRESTRICTED_ENTITLEMENTS;
-    if (billing?.planTestMode === true && billing?.planId) {
-      return entitlementsForPlan(billing.planId);
+    if (planTest || billing?.planTestMode === true) {
+      return entitlementsForPlan(billing?.planId ?? 'starter');
     }
+    if (bypass) return UNRESTRICTED_ENTITLEMENTS;
     const base = entitlementsForPlan(billing?.planId ?? undefined);
     const seats = effectiveTeamSeats(billing?.planId, billing?.personalAddonSeats ?? 0);
     const personalDocs = personalDocumentsLimit({
@@ -234,10 +238,12 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const setPlanTestPlan = useCallback(
     async (planId: PaystackPlanId) => {
       if (!user) throw new Error('Not signed in');
-      if (!planTest) throw new Error('Plan test mode is not enabled for this account');
+      if (!planTest && billing?.planTestMode !== true) {
+        throw new Error('Plan test mode is not enabled for this account');
+      }
       await applyPlanTestSelection(user.uid, planId);
     },
-    [user, planTest]
+    [user, planTest, billing?.planTestMode]
   );
 
   const startCheckout = useCallback(
@@ -351,7 +357,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     personalDocumentsUsedThisMonth,
     incrementDocumentUsage,
     incrementPersonalDocumentUsage,
-    isPlanTestUser: planTest,
+    isPlanTestUser: planTest || billing?.planTestMode === true,
     setPlanTestPlan,
     startCheckout,
     openCustomerPortal,
