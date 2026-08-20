@@ -9,9 +9,9 @@ Use this when updating **Geneva SME cold outreach** (especially Outreach 1 / `be
 | Letter HTML (file) | `docs/outreach/paystack-beta-invite.html` |
 | Admin preset | `shared/outreachPresets.ts` → `beta-invite` |
 | Branded wrapper | `shared/outreachMail.ts` → `wrapBrandedLetterHtml` |
-| Demo GIF | `client/public/outreach/upload-demo.gif` → `https://www.paystack.ch/outreach/upload-demo.gif` |
-| Demo PNG fallback | `client/public/outreach/upload-demo.png` |
-| GIF generator | `node scripts/generate-outreach-upload-demo.mjs` |
+| Demo GIF | `client/public/outreach/upload-demo-v2.gif` → `https://www.paystack.ch/outreach/upload-demo-v2.gif` |
+| Demo PNG fallback | `client/public/outreach/upload-demo-v2.png` |
+| GIF generator | `node scripts/generate-outreach-upload-demo.mjs` (uses ffmpeg two-pass palette) |
 | Calendar CTA | `OUTREACH_DEMO_CALENDAR_URL` = `https://calendar.app.google/gjusbBhAfBKaEh1J6` |
 | From mailbox | `lucas@paystack.ch` (also `joshua@` / `ali@` via admin) |
 
@@ -37,7 +37,7 @@ node scripts/generate-outreach-upload-demo.mjs
 ```
 
 - Keep file under ~100KB for email clients. Host only under `client/public/outreach/` so production serves `https://www.paystack.ch/outreach/…`.
-- In HTML: `<img src="…/upload-demo.gif" width="504" …>`. Absolute HTTPS URLs only (no relative paths in sent mail).
+- In HTML: `<img src="…/upload-demo-v2.gif" width="504" …>`. Absolute HTTPS URLs only (no relative paths in sent mail). Bump `vN` when replacing pixels so caches don’t serve a broken file.
 
 ## Checklist before send
 
@@ -45,7 +45,7 @@ node scripts/generate-outreach-upload-demo.mjs
 - [ ] FR block above EN; calendar CTAs work
 - [ ] Admin → Cold outreach → preset **beta-invite** matches the file
 - [ ] Test send to yourself via Resend / admin UI
-- [ ] After deploy, hard-refresh so `/outreach/upload-demo.gif` is live before mass send
+- [ ] After deploy, hard-refresh so `/outreach/upload-demo-v2.gif` is live before mass send
 
 ## Out of scope
 

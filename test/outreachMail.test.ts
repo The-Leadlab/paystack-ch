@@ -129,7 +129,7 @@ describe("presets", () => {
     expect(preset.mode).toBe("html");
     expect(preset.body).toContain("<!DOCTYPE html>");
     expect(preset.body).toContain("{{name}}");
-    expect(preset.body).toContain("upload-demo.gif");
+    expect(preset.body).toContain("upload-demo-v2.gif");
     expect(preset.body).toContain("calendar.app.google");
     expect(preset.body).toContain("Une bêta privée pour les PME à Genève");
     // French greeting appears before English greeting in FR-first layout

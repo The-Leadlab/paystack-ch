@@ -9,7 +9,7 @@ Professional letter-style HTML: 600px table, Paystack lockup, cream `#FFF5F4` an
 
 Do not mention Paystack’s own price. Both emails say almost CHF 5–10,000 of expense a year. Beta is zero-cost. First 100 who become clients get 25% off for life.
 
-**Upload demo:** `https://www.paystack.ch/outreach/upload-demo.gif` (still: `upload-demo.png`). Regenerate with `node scripts/generate-outreach-upload-demo.mjs`.
+**Upload demo:** `https://www.paystack.ch/outreach/upload-demo-v2.gif` (still: `upload-demo-v2.png`). Regenerate with `node scripts/generate-outreach-upload-demo.mjs` (needs ffmpeg).
 
 **CTA:** Google Calendar `https://calendar.app.google/gjusbBhAfBKaEh1J6` (Réserver une démo / Book a free demo).
 
