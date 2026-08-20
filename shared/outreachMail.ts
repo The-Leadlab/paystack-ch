@@ -20,6 +20,18 @@ export const OUTREACH_FROM_MAILBOXES = [
   "ali@paystack.ch",
 ] as const;
 
+/** Inbox-friendly From display names (Gmail truncates bare local-parts like “lucas”). */
+export const OUTREACH_FROM_DISPLAY_NAMES: Record<string, string> = {
+  "lucas@paystack.ch": "Lucas | Paystack",
+  "joshua@paystack.ch": "Joshua | Paystack",
+  "ali@paystack.ch": "Ali | Paystack",
+};
+
+export function outreachFromDisplayName(email: string | null | undefined): string {
+  const key = (email || "").trim().toLowerCase();
+  return OUTREACH_FROM_DISPLAY_NAMES[key] || "Paystack";
+}
+
 const PAYSTACK_FROM_EMAIL_RE = /^[a-z0-9._%+-]+@paystack\.ch$/;
 
 /** Pull the address out of `Paystack <lucas@paystack.ch>` or a bare email. */
@@ -52,7 +64,10 @@ export function resolveOutreachFromHeader(raw: string | undefined, fromName?: st
     );
   }
   const email = parsed?.email || PLATFORM_CONTACT_EMAIL;
-  const name = parsed?.name || fromName || "Paystack";
+  const name =
+    (parsed?.name && parsed.name.trim()) ||
+    (fromName && fromName.trim()) ||
+    outreachFromDisplayName(email);
   return formatOutreachFromHeader(email, name);
 }
 

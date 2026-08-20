@@ -115,7 +115,7 @@ export function getOutreachPreset(id: OutreachPresetId): OutreachPreset {
   if (id === "beta-invite") {
     return {
       id,
-      subject: "A private beta for Geneva SMEs / Une bêta privée pour les PME à Genève",
+      subject: "You've been chosen / Vous avez été choisi",
       mode: "html",
       body: wrapBrandedLetterHtml({
         preheader:

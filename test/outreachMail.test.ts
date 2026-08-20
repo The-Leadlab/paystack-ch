@@ -116,8 +116,8 @@ describe("outreach from address", () => {
   });
 
   it("resolves a From header and rejects off-domain mailboxes", () => {
-    expect(resolveOutreachFromHeader(undefined)).toBe("Paystack <lucas@paystack.ch>");
-    expect(resolveOutreachFromHeader("joshua@paystack.ch")).toBe("Paystack <joshua@paystack.ch>");
+    expect(resolveOutreachFromHeader(undefined)).toBe("Lucas | Paystack <lucas@paystack.ch>");
+    expect(resolveOutreachFromHeader("joshua@paystack.ch")).toBe("Joshua | Paystack <joshua@paystack.ch>");
     expect(resolveOutreachFromHeader("Ali <ali@paystack.ch>")).toBe("Ali <ali@paystack.ch>");
     expect(() => resolveOutreachFromHeader("ali@gmail.com")).toThrow(/paystack\.ch/);
   });
@@ -127,6 +127,7 @@ describe("presets", () => {
   it("builds the beta invite as a full branded document", () => {
     const preset = getOutreachPreset("beta-invite");
     expect(preset.mode).toBe("html");
+    expect(preset.subject).toMatch(/chosen|choisi/i);
     expect(preset.body).toContain("<!DOCTYPE html>");
     expect(preset.body).toContain("{{name}}");
     expect(preset.body).toContain("upload-demo-v2.gif");

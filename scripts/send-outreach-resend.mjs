@@ -12,12 +12,12 @@ const to = process.env.OUTREACH_TO?.trim() || "joshua@the-leadlab.com";
 const from =
   process.env.NEW_USER_NOTIFY_FROM?.trim() ||
   process.env.REPORT_EMAIL_FROM?.trim() ||
-  "Paystack <lucas@paystack.ch>";
+  "Lucas | Paystack <lucas@paystack.ch>";
 const apiKey = process.env.RESEND_API_KEY?.trim();
 
 const emails = [
   {
-    subject: "A private beta for Geneva SMEs / Une bêta privée pour les PME à Genève",
+    subject: "You've been chosen / Vous avez été choisi",
     file: "docs/outreach/send/joshua-invite.html",
   },
   {

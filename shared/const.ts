@@ -4,7 +4,7 @@ export { DEPLOYMENT_URLS } from "./deploymentUrls";
 
 /** Public contact + outreach reply-to (verified on paystack.ch). */
 export const PLATFORM_CONTACT_EMAIL = "lucas@paystack.ch";
-export const PLATFORM_FROM = `Paystack <${PLATFORM_CONTACT_EMAIL}>`;
+export const PLATFORM_FROM = `Lucas | Paystack <${PLATFORM_CONTACT_EMAIL}>`;
 
 /** Same webfonts as `client/index.html` — Sora, Source Serif 4, Inter, JetBrains Mono. */
 export const PLATFORM_FONTS_HREF =

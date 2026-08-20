@@ -29,6 +29,7 @@ import {
   OUTREACH_MAX_RECIPIENTS,
   SAMPLE_OUTREACH_CSV,
   mergeOutreachTemplate,
+  outreachFromDisplayName,
   parseOutreachCsv,
   renderOutreachHtml,
   type OutreachRecipient,
@@ -293,11 +294,13 @@ export function AdminOutreachPanel() {
               >
                 {OUTREACH_FROM_MAILBOXES.map((addr) => (
                   <option key={addr} value={addr}>
-                    {addr}
+                    {outreachFromDisplayName(addr)} &lt;{addr}&gt;
                   </option>
                 ))}
                 {OUTREACH_FROM_MAILBOXES.includes(fromEmail as (typeof OUTREACH_FROM_MAILBOXES)[number]) ? null : (
-                  <option value={fromEmail}>{fromEmail}</option>
+                  <option value={fromEmail}>
+                    {outreachFromDisplayName(fromEmail)} &lt;{fromEmail}&gt;
+                  </option>
                 )}
               </select>
               <p className="text-xs text-muted-foreground">{t("adminOutreachFromHint")}</p>

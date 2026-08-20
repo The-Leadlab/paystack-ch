@@ -13,19 +13,20 @@ Use this when updating **Geneva SME cold outreach** (especially Outreach 1 / `be
 | Demo PNG fallback | `client/public/outreach/upload-demo-v2.png` |
 | GIF generator | `node scripts/generate-outreach-upload-demo.mjs` (uses ffmpeg two-pass palette) |
 | Calendar CTA | `OUTREACH_DEMO_CALENDAR_URL` = `https://calendar.app.google/gjusbBhAfBKaEh1J6` |
-| From mailbox | `lucas@paystack.ch` (also `joshua@` / `ali@` via admin) |
+| From mailbox | `Lucas | Paystack <lucas@paystack.ch>` (also Joshua/Ali variants) |
 
 ## Correct invite rules (do not drift)
 
 1. **French first**, then English (Geneva SME audience).
-2. Subject: `A private beta for Geneva SMEs / Une bêta privée pour les PME à Genève`
+2. Subject: `You've been chosen / Vous avez été choisi` (hook in the inbox — not the long “private beta…” line)
 3. Preheader (FR): bêta privée, CHF 5–10k, échange sans frais, −25 % à vie.
 4. CTA buttons → Google Calendar booking link (not bare mailto), with “or reply / www.paystack.ch” under each.
 5. Sign-off: Paystack.ch team + `lucas@paystack.ch`
-6. Merge tags for admin/Resend: `{{name}}` `{{email}}` `{{company}}` `{{extra}}` `{{sender}}`
-7. Instantly/Lemlist: map First Name into `{{name}}` (do not leave Instantly `{{11.…}}` tags in repo templates).
-8. Do **not** mention Paystack’s own price. Keep almost CHF 5–10,000 of expense a year + first 100 → 25% off for life.
-9. Include the **upload demo** under the logo: animated GIF preferred; PNG exists as fallback.
+6. **From display:** `Lucas | Paystack <lucas@paystack.ch>` (Joshua/Ali same pattern). Never send with a bare local-part From Name like `lucas` — Gmail then shows only “lucas” and looks unprofessional.
+7. Merge tags for admin/Resend: `{{name}}` `{{email}}` `{{company}}` `{{extra}}` `{{sender}}`
+8. Instantly/Lemlist: map First Name into `{{name}}`; set **From Name** to `Lucas | Paystack`.
+9. Do **not** mention Paystack’s own price. Keep almost CHF 5–10,000 of expense a year + first 100 → 25% off for life.
+10. Include the **upload demo** under the logo: animated GIF preferred (`upload-demo-v2.gif`); PNG exists as fallback.
 
 ## Upload demo media
 

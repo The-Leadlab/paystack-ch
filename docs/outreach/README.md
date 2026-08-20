@@ -4,10 +4,12 @@ Professional letter-style HTML: 600px table, Paystack lockup, cream `#FFF5F4` an
 
 | File | Tone | Subject |
 |------|------|---------|
-| `paystack-beta-invite.html` | Softer — origin story + beta invite + upload GIF | A private beta for Geneva SMEs / Une bêta privée pour les PME à Genève |
+| `paystack-beta-invite.html` | Softer — origin story + beta invite + upload GIF | You've been chosen / Vous avez été choisi |
 | `paystack-beta-direct.html` | Direct — selected as a field leader | You are one of 200 beta testers / Vous faites partie des 200 testeurs |
 
 Do not mention Paystack’s own price. Both emails say almost CHF 5–10,000 of expense a year. Beta is zero-cost. First 100 who become clients get 25% off for life.
+
+**From display (inbox):** `Lucas | Paystack <lucas@paystack.ch>` (not bare “lucas”). Same pattern for Joshua/Ali. In Instantly, set **From Name** to `Lucas | Paystack`.
 
 **Upload demo:** `https://www.paystack.ch/outreach/upload-demo-v2.gif` (still: `upload-demo-v2.png`). Regenerate with `node scripts/generate-outreach-upload-demo.mjs` (needs ffmpeg).
 
@@ -25,6 +27,6 @@ Do not mention Paystack’s own price. Both emails say almost CHF 5–10,000 of 
 RESEND_API_KEY=re_... node scripts/send-outreach-resend.mjs
 ```
 
-Defaults: `to=joshua@the-leadlab.com`, `from=Paystack <lucas@paystack.ch>`.
+Defaults: `to=joshua@the-leadlab.com`, `from=Lucas | Paystack <lucas@paystack.ch>`.
 
-**Admin UI:** `/admin` → **Cold outreach**. Preset **beta-invite** matches this letter (FR-first + GIF + calendar).
+**Admin UI:** `/admin` → **Cold outreach**. Preset **beta-invite** matches this letter (FR-first + GIF + calendar + chosen subject).
