@@ -6,6 +6,13 @@ export const OUTREACH_MAX_RECIPIENTS = 200;
 
 export const OUTREACH_LOCKUP_URL = "https://www.paystack.ch/brand/paystack-lockup.png";
 
+/** Animated drag-and-drop demo for beta invite emails (GIF; PNG fallback also hosted). */
+export const OUTREACH_UPLOAD_DEMO_GIF_URL = "https://www.paystack.ch/outreach/upload-demo.gif";
+export const OUTREACH_UPLOAD_DEMO_PNG_URL = "https://www.paystack.ch/outreach/upload-demo.png";
+
+/** Public Google Calendar booking link for beta demos. */
+export const OUTREACH_DEMO_CALENDAR_URL = "https://calendar.app.google/gjusbBhAfBKaEh1J6";
+
 /** Verified Resend mailboxes operators can send cold outreach from. */
 export const OUTREACH_FROM_MAILBOXES = [
   "lucas@paystack.ch",
@@ -264,17 +271,66 @@ function letterParagraphsFromPlain(text: string): string {
 
 const CTA_HREF_DEFAULT = `mailto:${PLATFORM_CONTACT_EMAIL}?subject=Paystack%20beta`;
 
+function ctaBlock(opts: {
+  ctaHref: string;
+  ctaLabel: string;
+  ctaHint?: string;
+}): string {
+  return `
+          <tr>
+            <td align="center" style="padding:28px 48px 8px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" bgcolor="#E8423F" style="background-color:#E8423F;">
+                    <a href="${escapeHtml(opts.ctaHref)}" style="display:inline-block;padding:13px 26px;font-family:${FONT_DISPLAY};font-size:13px;letter-spacing:0.4px;font-weight:700;color:#FFFFFF;text-decoration:none;">
+                      ${escapeHtml(opts.ctaLabel)}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              ${
+                opts.ctaHint
+                  ? `<p style="margin:14px 0 0;font-family:${FONT_UI};font-size:12px;line-height:18px;color:#6F6669;">${opts.ctaHint}</p>`
+                  : ""
+              }
+            </td>
+          </tr>`;
+}
+
+function langDivider(label: string): string {
+  return `
+          <tr>
+            <td style="padding:32px 48px 8px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="border-top:1px solid #E8E2E0;font-size:0;line-height:0;">&nbsp;</td>
+                </tr>
+              </table>
+              <p style="margin:18px 0 0;font-family:${FONT_UI};font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#E8423F;text-align:center;">${escapeHtml(label)}</p>
+            </td>
+          </tr>`;
+}
+
 export function wrapBrandedLetterHtml(opts: {
   preheader?: string;
   title: string;
+  /** English body HTML (paragraphs). */
   innerHtml: string;
   ctaLabel?: string;
   ctaHref?: string;
   ctaHint?: string;
   frenchLabel?: string;
+  frenchTitle?: string;
   frenchInnerHtml?: string;
   frenchCtaLabel?: string;
   frenchCtaHint?: string;
+  /** When true, French block comes first (Geneva SME default). */
+  frenchFirst?: boolean;
+  englishLabel?: string;
+  /** Optional product demo image under the logo (GIF preferred). */
+  demoImageUrl?: string;
+  demoImageAlt?: string;
+  demoImageWidth?: number;
   signoffHtml?: string;
 }): string {
   const ctaHref = opts.ctaHref || CTA_HREF_DEFAULT;
@@ -283,56 +339,67 @@ export function wrapBrandedLetterHtml(opts: {
     opts.signoffHtml ||
     `Best regards,<br>
                 The Paystack.ch team`;
-  const frenchBlock =
-    opts.frenchInnerHtml?.trim() ?
-      `
+  const hasFrench = Boolean(opts.frenchInnerHtml?.trim());
+  const frenchFirst = opts.frenchFirst === true && hasFrench;
+  const demoWidth = opts.demoImageWidth ?? 504;
+  const demoBlock = opts.demoImageUrl
+    ? `
           <tr>
-            <td style="padding:32px 48px 8px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td style="border-top:1px solid #E8E2E0;font-size:0;line-height:0;">&nbsp;</td>
-                </tr>
-              </table>
-              <p style="margin:18px 0 0;font-family:${FONT_UI};font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#E8423F;text-align:center;">${escapeHtml(opts.frenchLabel || "Français")}</p>
+            <td align="center" style="padding:0 48px 24px;">
+              <img src="${escapeHtml(opts.demoImageUrl)}" width="${demoWidth}" alt="${escapeHtml(opts.demoImageAlt || "Paystack product demo")}" style="display:block;margin:0 auto;max-width:100%;height:auto;border:0;border-radius:8px;">
+            </td>
+          </tr>`
+    : "";
+
+  const enTitle = escapeHtml(opts.title);
+  const frTitle = escapeHtml(opts.frenchTitle || opts.title);
+  const enSection = `
+          <tr>
+            <td style="padding:0 48px 8px;">
+              <p style="margin:0 0 22px;font-family:${FONT_DISPLAY};font-size:22px;line-height:30px;font-weight:600;color:#2B2B2B;text-align:center;">
+                ${enTitle}
+              </p>
+              ${opts.innerHtml}
             </td>
           </tr>
+          ${ctaBlock({ ctaHref, ctaLabel, ctaHint: opts.ctaHint })}`;
+
+  const frSection = hasFrench
+    ? `
           <tr>
-            <td style="padding:8px 48px 8px;">
+            <td style="padding:${frenchFirst ? "0" : "8px"} 48px 8px;">
+              <p style="margin:0 0 22px;font-family:${FONT_DISPLAY};font-size:22px;line-height:30px;font-weight:600;color:#2B2B2B;text-align:center;">
+                ${frTitle}
+              </p>
               ${opts.frenchInnerHtml}
             </td>
           </tr>
           ${
             opts.frenchCtaLabel
-              ? `
-          <tr>
-            <td align="center" style="padding:28px 48px 8px;">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td align="center" bgcolor="#E8423F" style="background-color:#E8423F;">
-                    <a href="${escapeHtml(ctaHref)}" style="display:inline-block;padding:13px 26px;font-family:${FONT_DISPLAY};font-size:13px;letter-spacing:0.4px;font-weight:700;color:#FFFFFF;text-decoration:none;">
-                      ${escapeHtml(opts.frenchCtaLabel)}
-                    </a>
-                  </td>
-                </tr>
-              </table>
-              ${
-                opts.frenchCtaHint
-                  ? `<p style="margin:14px 0 0;font-family:${FONT_UI};font-size:12px;line-height:18px;color:#6F6669;">${opts.frenchCtaHint}</p>`
-                  : ""
-              }
-            </td>
-          </tr>`
+              ? ctaBlock({
+                  ctaHref,
+                  ctaLabel: opts.frenchCtaLabel,
+                  ctaHint: opts.frenchCtaHint,
+                })
               : ""
           }`
     : "";
 
+  const bilingualBody = frenchFirst
+    ? `${frSection}
+          ${langDivider(opts.englishLabel || "English")}
+          ${enSection.replace('padding:0 48px 8px;', 'padding:8px 48px 8px;')}`
+    : `${enSection}
+          ${hasFrench ? langDivider(opts.frenchLabel || "Français") : ""}
+          ${frSection}`;
+
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${frenchFirst ? "fr" : "en"}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light">
-  <title>${escapeHtml(opts.title)}</title>
+  <title>${enTitle}</title>
   <link rel="stylesheet" href="${PLATFORM_FONTS_HREF}">
 </head>
 <body style="margin:0;padding:0;background-color:#FFF5F4;" bgcolor="#FFF5F4">
@@ -349,37 +416,12 @@ export function wrapBrandedLetterHtml(opts: {
             <td style="height:4px;line-height:4px;font-size:0;background-color:#E8423F;" bgcolor="#E8423F">&nbsp;</td>
           </tr>
           <tr>
-            <td align="center" style="padding:40px 48px 28px;">
+            <td align="center" style="padding:40px 48px ${demoBlock ? "20px" : "28px"};">
               <img src="${OUTREACH_LOCKUP_URL}" width="200" alt="Paystack.ch" style="display:block;margin:0 auto;max-width:200px;height:auto;border:0;">
             </td>
           </tr>
-          <tr>
-            <td style="padding:0 48px 8px;">
-              <p style="margin:0 0 22px;font-family:${FONT_DISPLAY};font-size:22px;line-height:30px;font-weight:600;color:#2B2B2B;text-align:center;">
-                ${escapeHtml(opts.title)}
-              </p>
-              ${opts.innerHtml}
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:28px 48px 8px;">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td align="center" bgcolor="#E8423F" style="background-color:#E8423F;">
-                    <a href="${escapeHtml(ctaHref)}" style="display:inline-block;padding:13px 26px;font-family:${FONT_DISPLAY};font-size:13px;letter-spacing:0.4px;font-weight:700;color:#FFFFFF;text-decoration:none;">
-                      ${escapeHtml(ctaLabel)}
-                    </a>
-                  </td>
-                </tr>
-              </table>
-              ${
-                opts.ctaHint
-                  ? `<p style="margin:14px 0 0;font-family:${FONT_UI};font-size:12px;line-height:18px;color:#6F6669;">${opts.ctaHint}</p>`
-                  : ""
-              }
-            </td>
-          </tr>
-          ${frenchBlock}
+          ${demoBlock}
+          ${bilingualBody}
           <tr>
             <td style="padding:36px 48px 40px;border-top:1px solid #E8E2E0;">
               <p style="margin:0 0 6px;font-family:${FONT_BODY};font-size:15px;line-height:22px;color:#2B2B2B;">

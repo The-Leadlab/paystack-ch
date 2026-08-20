@@ -129,6 +129,14 @@ describe("presets", () => {
     expect(preset.mode).toBe("html");
     expect(preset.body).toContain("<!DOCTYPE html>");
     expect(preset.body).toContain("{{name}}");
+    expect(preset.body).toContain("upload-demo.gif");
+    expect(preset.body).toContain("calendar.app.google");
+    expect(preset.body).toContain("Une bêta privée pour les PME à Genève");
+    // French greeting appears before English greeting in FR-first layout
+    const frIdx = preset.body.indexOf("Bonjour {{name}}");
+    const enIdx = preset.body.indexOf("Hi {{name}}");
+    expect(frIdx).toBeGreaterThan(-1);
+    expect(enIdx).toBeGreaterThan(frIdx);
     expect(wrapBrandedLetterHtml({ title: "T", innerHtml: "<p>x</p>" })).toContain("Paystack.ch");
   });
 });

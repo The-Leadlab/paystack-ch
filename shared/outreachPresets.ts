@@ -1,4 +1,4 @@
-import { wrapBrandedLetterHtml } from "./outreachMail.js";
+import { wrapBrandedLetterHtml, OUTREACH_DEMO_CALENDAR_URL, OUTREACH_UPLOAD_DEMO_GIF_URL } from "./outreachMail.js";
 import { FONT_BODY, PLATFORM_CONTACT_EMAIL } from "./const.js";
 
 export type OutreachPresetId = "blank-text" | "blank-html" | "beta-invite" | "beta-direct";
@@ -118,15 +118,21 @@ export function getOutreachPreset(id: OutreachPresetId): OutreachPreset {
       subject: "A private beta for Geneva SMEs / Une bêta privée pour les PME à Genève",
       mode: "html",
       body: wrapBrandedLetterHtml({
-        preheader: "Private beta for Geneva SMEs. Almost CHF 5–10,000 of expense a year. 25% off for life.",
+        preheader:
+          "Bêta privée pour les PME genevoises. Près de 5 à 10 000 CHF de frais par an. Échange sans frais. -25 % à vie.",
         title: "A private beta for Geneva SMEs",
+        frenchTitle: "Une bêta privée pour les PME à Genève",
+        frenchFirst: true,
+        englishLabel: "English",
         innerHtml: inviteEn,
-        ctaLabel: "Book a free demo",
-        ctaHref: `mailto:${PLATFORM_CONTACT_EMAIL}?subject=Paystack%20beta%20demo`,
-        ctaHint: siteHint,
         frenchInnerHtml: inviteFr,
+        ctaLabel: "Book a free demo",
         frenchCtaLabel: "Réserver une démo",
+        ctaHref: OUTREACH_DEMO_CALENDAR_URL,
+        ctaHint: siteHint,
         frenchCtaHint: siteHintFr,
+        demoImageUrl: OUTREACH_UPLOAD_DEMO_GIF_URL,
+        demoImageAlt: "Drag a PDF into the Paystack dashboard",
         signoffHtml: "Best regards,<br>\n                The Paystack.ch team",
       }),
     };

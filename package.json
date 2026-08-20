@@ -20,6 +20,7 @@
     "assets:on-dark-logo": "node scripts/generate-on-dark-logo.mjs",
     "assets:harden-logos": "node scripts/harden-brand-lockups.mjs",
     "assets:patch-landing-logos": "node scripts/patch-landing-logos.mjs",
+    "assets:outreach-upload-demo": "node scripts/generate-outreach-upload-demo.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {
