@@ -29,6 +29,7 @@ import { useSession } from '../context/SessionContext';
 import { useDocuments } from '../context/DocumentContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { filterBusinessExpenses } from '../lib/personalBleedFilter';
+import { formatInsightText, localizeLedgerDescription } from '../lib/localizeLedgerCopy';
 import {
   addDaysIso,
   buildCategoryMix,
@@ -738,8 +739,12 @@ export function ExpensesManager({
                               : 'border-cdlp-border bg-cdlp-card/30 hover:bg-cdlp-card/50'
                         } ${ins.action ? 'cursor-pointer' : 'cursor-default'}`}
                       >
-                        <p className="font-bold text-[var(--ba-text,#fff)]">{ins.title}</p>
-                        <p className="text-xs text-cdlp-muted mt-1">{ins.body}</p>
+                        <p className="font-bold text-[var(--ba-text,#fff)]">
+                          {formatInsightText(ins.titleKey, t, ins.params)}
+                        </p>
+                        <p className="text-xs text-cdlp-muted mt-1">
+                          {formatInsightText(ins.bodyKey, t, ins.params)}
+                        </p>
                       </button>
                     </li>
                   ))}
@@ -879,8 +884,11 @@ export function ExpensesManager({
                             <span>{categoryLabel(entry.category)}</span>
                           )}
                         </td>
-                        <td className="max-w-[14rem] truncate" title={entry.description}>
-                          {entry.description || '—'}
+                        <td
+                          className="max-w-[14rem] truncate"
+                          title={localizeLedgerDescription(entry.description, t) || undefined}
+                        >
+                          {localizeLedgerDescription(entry.description, t) || '—'}
                         </td>
                         <td className="text-right tabular-nums font-bold text-red-400">
                           {fmtChf(entry.amount)}

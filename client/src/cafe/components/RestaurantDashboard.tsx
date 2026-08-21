@@ -20,6 +20,10 @@ import { PlanTestBanner, PlanTestPickerModal } from './PlanTestPickerModal';
 import { isAdminAppAccessUser, isPersonalFinancesAccessUser } from '../lib/subscriptionBypass';
 import { restaurantPlanIncludesPersonalBridge, isPersonalPlan } from '@shared/planCatalog';
 import { getSessionDisplayName } from '../lib/formatLocalDateTime';
+import {
+  localizeLedgerCategory,
+  localizeLedgerDescription,
+} from '../lib/localizeLedgerCopy';
 import { POSManager } from './POSManager';
 import { ExpensesManager } from './ExpensesManager';
 import { InvoiceMakerPanel } from './InvoiceMakerPanel';
@@ -932,7 +936,7 @@ export function RestaurantDashboard() {
               onClick={() => requestProductTour(BUSINESS_TOUR_DONE_KEY, 'short')}
               className="ba-sidebar-action-btn"
             >
-              Restart tour
+              {t('dashRestartTour')}
             </button>
           ) : null}
 
@@ -1795,7 +1799,7 @@ function IncomeExpenseSection({
                   >
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-bold text-xs md:text-sm truncate">
-                        {isIncome ? item.type : item.category}
+                        {localizeLedgerCategory(isIncome ? item.type : item.category, t)}
                       </p>
                       <SwissAccountCodeBadge konto={item.account_code} lang={language} />
                       {(item.document_id || item.description) && (
@@ -1804,7 +1808,9 @@ function IncomeExpenseSection({
                     </div>
                     <p className="text-[10px] md:text-xs text-cdlp-muted">{item.date}</p>
                     {item.description && (
-                      <p className="text-[10px] md:text-xs text-cdlp-muted mt-1 truncate">{item.description}</p>
+                      <p className="text-[10px] md:text-xs text-cdlp-muted mt-1 truncate">
+                        {localizeLedgerDescription(item.description, t)}
+                      </p>
                     )}
                   </button>
                   <div className="flex items-center gap-2 ml-2">

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Expense, Income } from "../types";
 import { buildLedgerRows } from "@shared/financialReportAggregates";
 import { useChfLocale, useLanguage } from "../context/LanguageContext";
+import { localizeLedgerDescription } from "../lib/localizeLedgerCopy";
 
 const PAGE_SIZE = 10;
 
@@ -33,7 +34,15 @@ export function RevenueLedgerTable({
   const [visible, setVisible] = useState(PAGE_SIZE);
 
   const categoryLabel = (cat: string) => {
-    const known = ["BILLS", "SUPPLIERS", "PAYROLL", "PAYROLL_TAXES", "OTHER"] as const;
+    const known = [
+      "SALES",
+      "RESERVATION",
+      "BILLS",
+      "SUPPLIERS",
+      "PAYROLL",
+      "PAYROLL_TAXES",
+      "OTHER",
+    ] as const;
     if ((known as readonly string[]).includes(cat)) return t(cat);
     return cat;
   };
@@ -107,7 +116,7 @@ export function RevenueLedgerTable({
               <tr key={row.id}>
                 <td className="ba-field-value">{row.date}</td>
                 <td className="truncate max-w-[10rem] ba-field-value">{row.vendor}</td>
-                <td className="ba-field-value">{row.category}</td>
+                <td className="ba-field-value">{categoryLabel(row.category)}</td>
                 <td className="ba-field-value">{row.account}</td>
                 <td
                   className={`text-right font-bold ${row.tone === "income" ? "text-emerald-500" : "text-red-400"}`}
@@ -123,7 +132,9 @@ export function RevenueLedgerTable({
                     maximumFractionDigits: 2,
                   })}
                 </td>
-                <td className="truncate max-w-[14rem] ba-field-value">{row.description}</td>
+                <td className="truncate max-w-[14rem] ba-field-value">
+                  {localizeLedgerDescription(row.description, t)}
+                </td>
               </tr>
             ))
           )}

@@ -69,6 +69,7 @@ import {
   zReadingIncomeDescription,
   type RevenueIntervalId,
 } from '../lib/revenueAnalytics';
+import { formatInsightText } from '../lib/localizeLedgerCopy';
 import {
   autoMapColumns,
   csvPreviewToZReadingDraft,
@@ -1230,8 +1231,12 @@ export function POSManager({
                           : 'border-cdlp-border bg-cdlp-card/30 hover:bg-cdlp-card/50'
                     } ${ins.action ? 'cursor-pointer' : 'cursor-default'}`}
                   >
-                    <p className="font-bold text-[var(--ba-text,#fff)]">{ins.title}</p>
-                    <p className="text-xs text-cdlp-muted mt-1">{ins.body}</p>
+                    <p className="font-bold text-[var(--ba-text,#fff)]">
+                      {formatInsightText(ins.titleKey, t, ins.params)}
+                    </p>
+                    <p className="text-xs text-cdlp-muted mt-1">
+                      {formatInsightText(ins.bodyKey, t, ins.params)}
+                    </p>
                     {ins.action === 'reconciliation' ? (
                       <p className="text-[10px] text-cdlp-gold mt-2 uppercase font-bold">{t('rhOpenRecon')}</p>
                     ) : null}

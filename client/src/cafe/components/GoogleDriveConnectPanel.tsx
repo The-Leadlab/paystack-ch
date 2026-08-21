@@ -11,6 +11,7 @@ import {
   fetchGoogleDriveStatus,
   type GoogleDriveStatus,
 } from '../lib/googleDriveClient';
+import { useLanguage } from '../context/LanguageContext';
 
 function parseDriveErrorReason(raw: string | null): GoogleDriveErrorReason | null {
   if (!raw) return null;
@@ -34,6 +35,7 @@ export function GoogleDriveConnectPanel({
   /** Where to land after OAuth (e.g. `/personal/overview`). Defaults to `/app`. */
   returnPath?: string;
 }) {
+  const { t } = useLanguage();
   const [status, setStatus] = useState<GoogleDriveStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -63,16 +65,18 @@ export function GoogleDriveConnectPanel({
     if (!result) return;
 
     if (result === 'connected') {
-      toast.success('Google Drive connected.');
+      toast.success(t('driveConnectedToast'));
       void loadStatus();
       if (onDriveSync) {
-        void onDriveSync().then(({ count }) => {
-          if (count > 0) {
-            toast.success(`${count} document(s) imported from Google Drive.`);
-          }
-        }).catch((e) => {
-          console.warn('Drive import after connect failed:', e);
-        });
+        void onDriveSync()
+          .then(({ count }) => {
+            if (count > 0) {
+              toast.success(t('driveImportedToast').replace('{count}', String(count)));
+            }
+          })
+          .catch((e) => {
+            console.warn('Drive import after connect failed:', e);
+          });
       }
     } else {
       const reason = parseDriveErrorReason(params.get('googleDriveReason'));
@@ -83,7 +87,7 @@ export function GoogleDriveConnectPanel({
     params.delete('googleDriveReason');
     const query = params.toString();
     window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
-  }, []);
+  }, [t, onDriveSync]);
 
   const handleConnect = async () => {
     setBusy(true);
@@ -102,9 +106,9 @@ export function GoogleDriveConnectPanel({
     try {
       const { count } = await onDriveSync();
       if (count > 0) {
-        toast.success(`${count} document(s) imported from Google Drive.`);
+        toast.success(t('driveImportedToast').replace('{count}', String(count)));
       } else {
-        toast.message('Google Drive is up to date — no new files to import.');
+        toast.message(t('driveUpToDateToast'));
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
@@ -117,7 +121,7 @@ export function GoogleDriveConnectPanel({
     setBusy(true);
     try {
       await disconnectGoogleDriveAccount();
-      toast.success('Google Drive disconnected.');
+      toast.success(t('driveDisconnectedToast'));
       await loadStatus();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
@@ -133,20 +137,16 @@ export function GoogleDriveConnectPanel({
     <section className="ba-panel space-y-4">
       <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
         <Cloud className="w-4 h-4 shrink-0 text-cdlp-muted" aria-hidden />
-        Google Drive
+        {t('driveTitle')}
       </h2>
-      <p className="text-xs text-cdlp-muted leading-relaxed">
-        Connect Google Drive for two-way sync with your &ldquo;Paystack Documents&rdquo; folder: uploads on
-        Paystack are backed up to Drive, and new files added in Drive are imported here automatically.
-        If you connected before, reconnect once to grant read access for imports.
-      </p>
+      <p className="text-xs text-cdlp-muted leading-relaxed">{t('driveDesc')}</p>
 
       {statusError ? (
         <div className="space-y-2 text-[11px] leading-relaxed rounded-md border border-amber-900/40 bg-amber-950/30 px-3 py-3">
           <p className="flex items-start gap-2 font-semibold text-amber-200">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden />
             {statusError.toLowerCase().includes('firebase admin') ? (
-              <>Server cannot save Google Drive tokens yet</>
+              <>{t('driveTokensUnavailable')}</>
             ) : (
               statusError
             )}
@@ -154,13 +154,14 @@ export function GoogleDriveConnectPanel({
           {statusError.toLowerCase().includes('firebase admin') ? (
             <ol className="list-decimal list-inside space-y-1 text-amber-100/90 pl-1">
               <li>
-                GCP Console → IAM → Service Accounts → create or pick one for <code className="text-[10px]">paystack-ch</code>
+                GCP Console → IAM → Service Accounts → create or pick one for{' '}
+                <code className="text-[10px]">paystack-ch</code>
               </li>
               <li>Keys → Add key → JSON → download the file</li>
               <li>
                 Vercel → Project → Settings → Environment Variables → add{' '}
-                <code className="text-[10px]">FIREBASE_SERVICE_ACCOUNT_JSON</code> (paste JSON on one line) or{' '}
-                <code className="text-[10px]">FIREBASE_SERVICE_ACCOUNT_JSON_BASE64</code>
+                <code className="text-[10px]">FIREBASE_SERVICE_ACCOUNT_JSON</code> (paste JSON on one
+                line) or <code className="text-[10px]">FIREBASE_SERVICE_ACCOUNT_JSON_BASE64</code>
               </li>
               <li>Redeploy production, then click Connect again</li>
             </ol>
@@ -171,14 +172,14 @@ export function GoogleDriveConnectPanel({
       {needsReconnect ? (
         <p className="flex items-center gap-2 text-[10px] font-bold text-red-400/90 bg-red-950/25 border border-red-900/30 rounded-md px-3 py-2">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden />
-          Your Google Drive connection needs to be renewed. Reconnect below.
+          {t('driveNeedsRenew')}
         </p>
       ) : null}
 
       {loadingStatus ? (
         <div className="flex items-center gap-2 text-cdlp-muted text-xs">
           <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
-          Checking connection…
+          {t('driveChecking')}
         </div>
       ) : connected && !needsReconnect ? (
         <div className="flex flex-col sm:flex-row gap-2">
@@ -194,7 +195,7 @@ export function GoogleDriveConnectPanel({
               ) : (
                 <Cloud className="w-3.5 h-3.5 text-cdlp-gold/80" aria-hidden />
               )}
-              Sync from Drive
+              {t('driveSyncFrom')}
             </button>
           ) : null}
           <button
@@ -208,7 +209,7 @@ export function GoogleDriveConnectPanel({
             ) : (
               <Unlink className="w-3.5 h-3.5 text-cdlp-gold/80" aria-hidden />
             )}
-            Disconnect Google Drive
+            {t('driveDisconnect')}
           </button>
         </div>
       ) : (
@@ -219,7 +220,7 @@ export function GoogleDriveConnectPanel({
           className="w-full h-11 rounded-sm bg-cdlp-gold text-white font-black text-xs uppercase tracking-wider hover:bg-cdlp-gold-light disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
         >
           {busy ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Cloud className="w-4 h-4" aria-hidden />}
-          {needsReconnect ? 'Reconnect Google Drive' : 'Connect Google Drive'}
+          {needsReconnect ? t('driveReconnect') : t('driveConnect')}
         </button>
       )}
     </section>

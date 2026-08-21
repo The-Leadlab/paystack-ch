@@ -69,13 +69,20 @@ function createInitialInvoice(t: (k: string) => string, taxRate = DEFAULT_SWISS_
 }
 
 function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
+  const { t } = useLanguage();
   const map: Record<InvoiceStatus, string> = {
     draft: 'ba-status-pill ba-status-pill--pending',
     sent: 'ba-status-pill ba-status-pill--verify',
     paid: 'ba-status-pill ba-status-pill--completed',
     overdue: 'ba-status-pill ba-status-pill--error',
   };
-  return <span className={map[status]}>{status.toUpperCase()}</span>;
+  const labelKey: Record<InvoiceStatus, string> = {
+    draft: 'invStatusDraft',
+    sent: 'invStatusSent',
+    paid: 'invStatusPaid',
+    overdue: 'invStatusOverdue',
+  };
+  return <span className={map[status]}>{t(labelKey[status])}</span>;
 }
 
 function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {

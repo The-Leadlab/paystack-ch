@@ -802,6 +802,76 @@ export const dashboardEn: Record<string, string> = {
   catGroupLegal: 'Legal & compliance',
   catGroupOther: 'Other',
   na: 'N/A',
+
+  dashRestartTour: 'Restart tour',
+
+  payslipDescSalaryToEmployee: 'Payslip — salary payment to employee - {name}',
+  payslipDescShort: 'Payslip - {name}',
+  payslipDescGrossToEmployee: 'Payslip (gross paid to employee) - {name}',
+  payslipDescStatePayment:
+    'Payslip — 2nd payment: taxes & contributions to state (gross − employee payment) - {name}',
+
+  rhInsightOutstandingTitle: 'Outstanding invoices',
+  rhInsightOutstandingBody:
+    '{amount} CHF in reservation/invoice income expected to hit cash.',
+  rhInsightReconTitle: 'Reconciliation exceptions',
+  rhInsightReconBody:
+    '{count} item(s) need review ({variance} CHF variance). Tap to open them.',
+  rhInsightWowTitle: 'Week-over-week momentum',
+  rhInsightWowInsufficientBody:
+    'Not enough daily data yet. Upload daily Z-readings or POS exports (not only a monthly recap) to get an accurate week-over-week insight.',
+  rhInsightWowUpBody: 'Revenue is up {pct}% vs last week.',
+  rhInsightWowDipTitle: 'Week-over-week dip',
+  rhInsightWowDownBody: 'Revenue is down {pct}% vs last week.',
+  rhInsightBehindTitle: 'Behind monthly pace',
+  rhInsightPaceBody: 'Month revenue is at {pct}% of your trailing average target.',
+  rhInsightAheadTitle: 'On or above target',
+  rhInsightPaceReachedBody: 'Month revenue reached {pct}% of your trailing average target.',
+  rhInsightCashTitle: 'Cash on hand',
+  rhInsightCashBody:
+    '{cash} CHF in the till. Suggested float ~{till} CHF — log deposits when you bank the rest.',
+  rhInsightCashUnknownBody:
+    'No POS cash readings yet. Log a deposit or import Z-readings so we can advise how much to keep in the till.',
+  rhInsightNoZTitle: 'No Z-readings yet',
+  rhInsightNoZBody:
+    'Import or auto-generate a Z-reading to reconcile POS totals with your income ledger.',
+  rhInsightActiveTitle: 'Revenue engine active',
+  rhInsightActiveBody:
+    'Today has recorded income. Keep Z-readings in sync for clean month-end close.',
+
+  ehInsightEmptyTitle: 'No expenses yet',
+  ehInsightEmptyBody: 'Add a bill, supplier invoice, or payroll entry to populate this hub.',
+  ehInsightSpendUpTitle: 'Spend up vs prior period',
+  ehInsightSpendUpBody:
+    'Expenses are up {pct}% versus the previous period of the same length.',
+  ehInsightSpendDownTitle: 'Spend down vs prior period',
+  ehInsightSpendDownBody: 'Expenses are down {pct}% versus the previous period.',
+  ehInsightOverPaceTitle: 'Above trailing spend pace',
+  ehInsightUnderPaceTitle: 'Under trailing spend pace',
+  ehInsightPaceBody: 'Period spend is at {pct}% of your trailing 3-month average.',
+  ehInsightCatHeavyTitle: '{cat} dominates',
+  ehInsightCatHeavyBody: '{cat} is {pct}% of spend in this filter.',
+  ehInsightNoDocsTitle: 'No linked documents',
+  ehInsightNoDocsBody: 'Process invoices in Documents so expense rows stay audit-ready.',
+  ehInsightFewDocsTitle: 'Few documents linked',
+  ehInsightFewDocsBody: 'Only {linked} of {total} expense entries link to a document.',
+  ehInsightActiveTitle: 'Expense hub active',
+  ehInsightActiveBody: 'Spend is tracking normally for the selected interval.',
+
+  driveTitle: 'Google Drive',
+  driveDesc:
+    'Connect Google Drive for two-way sync with your “Paystack Documents” folder: uploads on Paystack are backed up to Drive, and new files added in Drive are imported here automatically. If you connected before, reconnect once to grant read access for imports.',
+  driveSyncFrom: 'Sync from Drive',
+  driveDisconnect: 'Disconnect Google Drive',
+  driveConnect: 'Connect Google Drive',
+  driveReconnect: 'Reconnect Google Drive',
+  driveChecking: 'Checking connection…',
+  driveNeedsRenew: 'Your Google Drive connection needs to be renewed. Reconnect below.',
+  driveConnectedToast: 'Google Drive connected.',
+  driveImportedToast: '{count} document(s) imported from Google Drive.',
+  driveUpToDateToast: 'Google Drive is up to date — no new files to import.',
+  driveDisconnectedToast: 'Google Drive disconnected.',
+  driveTokensUnavailable: 'Server cannot save Google Drive tokens yet',
 };
 
 export const dashboardFr: Record<string, string> = {
@@ -1608,4 +1678,77 @@ export const dashboardFr: Record<string, string> = {
   catGroupLegal: 'Juridique',
   catGroupOther: 'Autre',
   na: 'N/D',
+
+  dashRestartTour: 'Recommencer la visite',
+
+  payslipDescSalaryToEmployee: 'Fiche de paie — paiement du salaire à l’employé - {name}',
+  payslipDescShort: 'Fiche de paie - {name}',
+  payslipDescGrossToEmployee: 'Fiche de paie (brut versé à l’employé) - {name}',
+  payslipDescStatePayment:
+    'Fiche de paie — 2e paiement : impôts et cotisations à l’État (brut − paiement employé) - {name}',
+
+  rhInsightOutstandingTitle: 'Factures en attente',
+  rhInsightOutstandingBody:
+    '{amount} CHF de revenus réservation/facture attendus en trésorerie.',
+  rhInsightReconTitle: 'Exceptions de rapprochement',
+  rhInsightReconBody:
+    '{count} élément(s) à revoir (écart de {variance} CHF). Touchez pour les ouvrir.',
+  rhInsightWowTitle: 'Dynamique semaine après semaine',
+  rhInsightWowInsufficientBody:
+    'Pas assez de données quotidiennes. Importez des Z journaliers ou des exports POS (pas seulement un récap mensuel) pour un insight fiable.',
+  rhInsightWowUpBody: 'Le chiffre d’affaires est en hausse de {pct} % vs la semaine dernière.',
+  rhInsightWowDipTitle: 'Baisse semaine après semaine',
+  rhInsightWowDownBody: 'Le chiffre d’affaires est en baisse de {pct} % vs la semaine dernière.',
+  rhInsightBehindTitle: 'En retard sur le rythme mensuel',
+  rhInsightPaceBody: 'Le CA du mois est à {pct} % de votre moyenne mobile cible.',
+  rhInsightAheadTitle: 'Au niveau ou au-dessus de l’objectif',
+  rhInsightPaceReachedBody: 'Le CA du mois a atteint {pct} % de votre moyenne mobile cible.',
+  rhInsightCashTitle: 'Liquidités en caisse',
+  rhInsightCashBody:
+    '{cash} CHF en caisse. Fond de caisse conseillé ~{till} CHF — enregistrez les dépôts quand vous banquez le reste.',
+  rhInsightCashUnknownBody:
+    'Aucune lecture de caisse POS. Enregistrez un dépôt ou importez des Z pour estimer le fond de caisse.',
+  rhInsightNoZTitle: 'Pas encore de lectures Z',
+  rhInsightNoZBody:
+    'Importez ou générez automatiquement une lecture Z pour rapprocher les totaux POS du grand livre des revenus.',
+  rhInsightActiveTitle: 'Moteur de revenus actif',
+  rhInsightActiveBody:
+    'Des revenus sont enregistrés aujourd’hui. Gardez les Z synchronisés pour la clôture de fin de mois.',
+
+  ehInsightEmptyTitle: 'Aucune dépense pour l’instant',
+  ehInsightEmptyBody:
+    'Ajoutez une facture, un fournisseur ou une écriture de paie pour alimenter ce hub.',
+  ehInsightSpendUpTitle: 'Dépenses en hausse vs période précédente',
+  ehInsightSpendUpBody:
+    'Les dépenses sont en hausse de {pct} % par rapport à la période précédente de même durée.',
+  ehInsightSpendDownTitle: 'Dépenses en baisse vs période précédente',
+  ehInsightSpendDownBody:
+    'Les dépenses sont en baisse de {pct} % par rapport à la période précédente.',
+  ehInsightOverPaceTitle: 'Au-dessus du rythme de dépenses',
+  ehInsightUnderPaceTitle: 'En dessous du rythme de dépenses',
+  ehInsightPaceBody: 'Les dépenses de la période sont à {pct} % de votre moyenne sur 3 mois.',
+  ehInsightCatHeavyTitle: '{cat} domine',
+  ehInsightCatHeavyBody: '{cat} représente {pct} % des dépenses dans ce filtre.',
+  ehInsightNoDocsTitle: 'Aucun document lié',
+  ehInsightNoDocsBody:
+    'Traitez les factures dans Documents pour garder les écritures prêtes pour l’audit.',
+  ehInsightFewDocsTitle: 'Peu de documents liés',
+  ehInsightFewDocsBody: 'Seules {linked} écritures de dépense sur {total} sont liées à un document.',
+  ehInsightActiveTitle: 'Hub dépenses actif',
+  ehInsightActiveBody: 'Les dépenses évoluent normalement pour l’intervalle sélectionné.',
+
+  driveTitle: 'Google Drive',
+  driveDesc:
+    'Connectez Google Drive pour une synchronisation bidirectionnelle avec votre dossier « Paystack Documents » : les envois sur Paystack sont sauvegardés sur Drive, et les nouveaux fichiers ajoutés dans Drive sont importés ici automatiquement. Si vous vous êtes déjà connecté, reconnectez une fois pour autoriser les imports en lecture.',
+  driveSyncFrom: 'Synchroniser depuis Drive',
+  driveDisconnect: 'Déconnecter Google Drive',
+  driveConnect: 'Connecter Google Drive',
+  driveReconnect: 'Reconnecter Google Drive',
+  driveChecking: 'Vérification de la connexion…',
+  driveNeedsRenew: 'Votre connexion Google Drive doit être renouvelée. Reconnectez ci-dessous.',
+  driveConnectedToast: 'Google Drive connecté.',
+  driveImportedToast: '{count} document(s) importé(s) depuis Google Drive.',
+  driveUpToDateToast: 'Google Drive est à jour — aucun nouveau fichier à importer.',
+  driveDisconnectedToast: 'Google Drive déconnecté.',
+  driveTokensUnavailable: 'Le serveur ne peut pas encore enregistrer les jetons Google Drive',
 };

@@ -206,3 +206,23 @@ pnpm dev
 
 - `docs/ALI_LAB_SUPER_PROMPT.md` — feature lab scope and promotion gate
 - `AGENTS.md` — repo commands and `/ali` access
+
+---
+
+## Audit batch — EN→FR dashboard leaks (2026-08)
+
+Screenshots / pain points fixed in this pass (keep from regressing):
+
+| Surface | Symptom (FR UI) | Fix |
+|---------|-----------------|-----|
+| Sidebar | `Restart tour` hard-coded | `t('dashRestartTour')` → « Recommencer la visite » |
+| Dashboard income/expense cards | Raw `SALES` / `SUPPLIERS` | `localizeLedgerCategory()` + existing `SALES`/`SUPPLIERS` keys |
+| Expense descriptions | English payslip lines | `localizeLedgerDescription()` in `client/src/cafe/lib/localizeLedgerCopy.ts` |
+| Revenue / Expenses Insights | English titles/bodies from analytics | `titleKey`/`bodyKey`/`params` in `revenueAnalytics.ts` / `expenseAnalytics.ts`; UI uses `formatInsightText()` |
+| Invoices table | `PAID` / `DRAFT` badges | `InvoiceStatusBadge` → `invStatusPaid` / `invStatusDraft` (etc.) |
+| Billing / Drive panel | Full English Google Drive card | `GoogleDriveConnectPanel` + `drive*` keys in `dashboardTranslations.ts` |
+| Reports ledger | Raw category codes | `RevenueLedgerTable` `categoryLabel` includes income types |
+
+**Pattern:** analytics libs return **keys**, not English sentences. UI resolves with `t()` so language toggles without rebuilding insight logic.
+
+**Files:** `dashboardTranslations.ts` (en+fr), `localizeLedgerCopy.ts`, `RestaurantDashboard.tsx`, `POSManager.tsx`, `ExpensesManager.tsx`, `InvoiceMakerPanel.tsx`, `GoogleDriveConnectPanel.tsx`, `RevenueLedgerTable.tsx`, `revenueAnalytics.ts`, `expenseAnalytics.ts`.

@@ -53,8 +53,10 @@ export type TopVendor = {
 export type ExpenseInsight = {
   id: string;
   tone: 'info' | 'warn' | 'positive';
-  title: string;
-  body: string;
+  /** i18n key — resolve with t() in the UI */
+  titleKey: string;
+  bodyKey: string;
+  params?: Record<string, string>;
   action?: 'categories' | 'documents' | 'add_expense';
 };
 
@@ -162,8 +164,8 @@ export function buildExpenseInsights(opts: {
     out.push({
       id: 'empty',
       tone: 'info',
-      title: 'No expenses yet',
-      body: 'Add a bill, supplier invoice, or payroll entry to populate this hub.',
+      titleKey: 'ehInsightEmptyTitle',
+      bodyKey: 'ehInsightEmptyBody',
       action: 'add_expense',
     });
     return out;
@@ -180,16 +182,18 @@ export function buildExpenseInsights(opts: {
     out.push({
       id: 'spend-up',
       tone: 'warn',
-      title: 'Spend up vs prior period',
-      body: `Expenses are up ${growth.toFixed(1)}% versus the previous period of the same length.`,
+      titleKey: 'ehInsightSpendUpTitle',
+      bodyKey: 'ehInsightSpendUpBody',
+      params: { pct: growth.toFixed(1) },
       action: 'categories',
     });
   } else if (growth <= -10 && opts.spendPeriod > 0) {
     out.push({
       id: 'spend-down',
       tone: 'positive',
-      title: 'Spend down vs prior period',
-      body: `Expenses are down ${Math.abs(growth).toFixed(1)}% versus the previous period.`,
+      titleKey: 'ehInsightSpendDownTitle',
+      bodyKey: 'ehInsightSpendDownBody',
+      params: { pct: Math.abs(growth).toFixed(1) },
     });
   }
 
@@ -199,16 +203,18 @@ export function buildExpenseInsights(opts: {
       out.push({
         id: 'over-budget',
         tone: 'warn',
-        title: 'Above trailing spend pace',
-        body: `Period spend is at ${pct.toFixed(0)}% of your trailing 3-month average.`,
+        titleKey: 'ehInsightOverPaceTitle',
+        bodyKey: 'ehInsightPaceBody',
+        params: { pct: pct.toFixed(0) },
         action: 'categories',
       });
     } else if (pct <= 90) {
       out.push({
         id: 'under-budget',
         tone: 'positive',
-        title: 'Under trailing spend pace',
-        body: `Period spend is at ${pct.toFixed(0)}% of your trailing 3-month average.`,
+        titleKey: 'ehInsightUnderPaceTitle',
+        bodyKey: 'ehInsightPaceBody',
+        params: { pct: pct.toFixed(0) },
       });
     }
   }
@@ -217,8 +223,12 @@ export function buildExpenseInsights(opts: {
     out.push({
       id: 'cat-heavy',
       tone: 'info',
-      title: `${opts.topCategory} dominates`,
-      body: `${opts.topCategory} is ${(opts.topCategoryPct ?? 0).toFixed(0)}% of spend in this filter.`,
+      titleKey: 'ehInsightCatHeavyTitle',
+      bodyKey: 'ehInsightCatHeavyBody',
+      params: {
+        cat: opts.topCategory,
+        pct: (opts.topCategoryPct ?? 0).toFixed(0),
+      },
       action: 'categories',
     });
   }
@@ -227,16 +237,20 @@ export function buildExpenseInsights(opts: {
     out.push({
       id: 'no-docs',
       tone: 'info',
-      title: 'No linked documents',
-      body: 'Process invoices in Documents so expense rows stay audit-ready.',
+      titleKey: 'ehInsightNoDocsTitle',
+      bodyKey: 'ehInsightNoDocsBody',
       action: 'documents',
     });
   } else if (opts.expenseCount > 3 && opts.docsLinked / opts.expenseCount < 0.3) {
     out.push({
       id: 'few-docs',
       tone: 'warn',
-      title: 'Few documents linked',
-      body: `Only ${opts.docsLinked} of ${opts.expenseCount} expense entries link to a document.`,
+      titleKey: 'ehInsightFewDocsTitle',
+      bodyKey: 'ehInsightFewDocsBody',
+      params: {
+        linked: String(opts.docsLinked),
+        total: String(opts.expenseCount),
+      },
       action: 'documents',
     });
   }
@@ -245,8 +259,8 @@ export function buildExpenseInsights(opts: {
     out.push({
       id: 'ok',
       tone: 'info',
-      title: 'Expense hub active',
-      body: 'Spend is tracking normally for the selected interval.',
+      titleKey: 'ehInsightActiveTitle',
+      bodyKey: 'ehInsightActiveBody',
     });
   }
 

@@ -47,8 +47,11 @@ export type ReconciliationItem = {
 export type RevenueInsight = {
   id: string;
   tone: 'info' | 'warn' | 'positive';
-  title: string;
-  body: string;
+  /** i18n key — resolve with t() in the UI */
+  titleKey: string;
+  bodyKey: string;
+  /** Placeholder values for `{name}` style tokens in title/body */
+  params?: Record<string, string>;
   /** Optional hub tab / action target when the insight is clicked. */
   action?: 'reconciliation' | 'documents' | 'cash_deposit' | 'upload_z';
 };
@@ -405,8 +408,9 @@ export function buildInsights(opts: {
     out.push({
       id: 'invoices',
       tone: 'info',
-      title: 'Outstanding invoices',
-      body: `${opts.incomingInvoices.toFixed(0)} CHF in reservation/invoice income expected to hit cash.`,
+      titleKey: 'rhInsightOutstandingTitle',
+      bodyKey: 'rhInsightOutstandingBody',
+      params: { amount: opts.incomingInvoices.toFixed(0) },
     });
   }
 
@@ -414,8 +418,12 @@ export function buildInsights(opts: {
     out.push({
       id: 'recon',
       tone: 'warn',
-      title: 'Reconciliation exceptions',
-      body: `${opts.reconciliationOpen} item(s) need review (${opts.reconciliationVariance.toFixed(0)} CHF variance). Tap to open them.`,
+      titleKey: 'rhInsightReconTitle',
+      bodyKey: 'rhInsightReconBody',
+      params: {
+        count: String(opts.reconciliationOpen),
+        variance: opts.reconciliationVariance.toFixed(0),
+      },
       action: 'reconciliation',
     });
   }
@@ -424,9 +432,8 @@ export function buildInsights(opts: {
     out.push({
       id: 'wow-insufficient',
       tone: 'info',
-      title: 'Week-over-week momentum',
-      body:
-        'Not enough daily data yet. Upload daily Z-readings or POS exports (not only a monthly recap) to get an accurate week-over-week insight.',
+      titleKey: 'rhInsightWowTitle',
+      bodyKey: 'rhInsightWowInsufficientBody',
       action: 'upload_z',
     });
   } else {
@@ -440,15 +447,17 @@ export function buildInsights(opts: {
       out.push({
         id: 'growth',
         tone: 'positive',
-        title: 'Week-over-week momentum',
-        body: `Revenue is up ${growth.toFixed(1)}% vs last week.`,
+        titleKey: 'rhInsightWowTitle',
+        bodyKey: 'rhInsightWowUpBody',
+        params: { pct: growth.toFixed(1) },
       });
     } else if (growth <= -5 && opts.revWeek > 0) {
       out.push({
         id: 'decline',
         tone: 'warn',
-        title: 'Week-over-week dip',
-        body: `Revenue is down ${Math.abs(growth).toFixed(1)}% vs last week.`,
+        titleKey: 'rhInsightWowDipTitle',
+        bodyKey: 'rhInsightWowDownBody',
+        params: { pct: Math.abs(growth).toFixed(1) },
       });
     }
   }
@@ -459,15 +468,17 @@ export function buildInsights(opts: {
       out.push({
         id: 'budget-behind',
         tone: 'warn',
-        title: 'Behind monthly pace',
-        body: `Month revenue is at ${pct.toFixed(0)}% of your trailing average target.`,
+        titleKey: 'rhInsightBehindTitle',
+        bodyKey: 'rhInsightPaceBody',
+        params: { pct: pct.toFixed(0) },
       });
     } else if (pct >= 100) {
       out.push({
         id: 'budget-ahead',
         tone: 'positive',
-        title: 'On or above target',
-        body: `Month revenue reached ${pct.toFixed(0)}% of your trailing average target.`,
+        titleKey: 'rhInsightAheadTitle',
+        bodyKey: 'rhInsightPaceReachedBody',
+        params: { pct: pct.toFixed(0) },
       });
     }
   }
@@ -477,16 +488,17 @@ export function buildInsights(opts: {
     out.push({
       id: 'cash-hand',
       tone: 'info',
-      title: 'Cash on hand',
-      body: `${opts.cashOnHand.toFixed(0)} CHF in the till. Suggested float ~${till.toFixed(0)} CHF — log deposits when you bank the rest.`,
+      titleKey: 'rhInsightCashTitle',
+      bodyKey: 'rhInsightCashBody',
+      params: { cash: opts.cashOnHand.toFixed(0), till: till.toFixed(0) },
       action: 'cash_deposit',
     });
   } else if (!opts.cashFromPos) {
     out.push({
       id: 'cash-hand-unknown',
       tone: 'info',
-      title: 'Cash on hand',
-      body: 'No POS cash readings yet. Log a deposit or import Z-readings so we can advise how much to keep in the till.',
+      titleKey: 'rhInsightCashTitle',
+      bodyKey: 'rhInsightCashUnknownBody',
       action: 'cash_deposit',
     });
   }
@@ -495,8 +507,8 @@ export function buildInsights(opts: {
     out.push({
       id: 'no-z',
       tone: 'info',
-      title: 'No Z-readings yet',
-      body: 'Import or auto-generate a Z-reading to reconcile POS totals with your income ledger.',
+      titleKey: 'rhInsightNoZTitle',
+      bodyKey: 'rhInsightNoZBody',
       action: 'upload_z',
     });
   }
@@ -505,8 +517,8 @@ export function buildInsights(opts: {
     out.push({
       id: 'ok',
       tone: 'info',
-      title: 'Revenue engine active',
-      body: 'Today has recorded income. Keep Z-readings in sync for clean month-end close.',
+      titleKey: 'rhInsightActiveTitle',
+      bodyKey: 'rhInsightActiveBody',
     });
   }
 
