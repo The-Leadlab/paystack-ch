@@ -8,9 +8,10 @@ Use this when updating **Geneva SME cold outreach** (Outreach 1 / `beta-invite`)
 |-------|------------|
 | Letter HTML | `docs/outreach/paystack-beta-invite.html` |
 | Make.com paste | `C:\Users\attia\Downloads\paystack-beta-invite-campaign.html` (refresh after each edit) |
-| Hero **light** (white OS / light mail) | `client/public/outreach/paystack-beta-campaign-hero-fr-light.jpg` → `https://www.paystack.ch/outreach/paystack-beta-campaign-hero-fr-light.jpg` |
-| Hero **dark** (dark OS / dark mail) | `client/public/outreach/paystack-beta-campaign-hero-fr-dark.jpg` → `https://www.paystack.ch/outreach/paystack-beta-campaign-hero-fr-dark.jpg` |
-| Alias (dark, legacy) | `…/paystack-beta-campaign-hero-fr.jpg` (same pixels as dark) |
+| Hero **light** FR | `…/paystack-beta-campaign-hero-fr-light.jpg` |
+| Hero **dark** FR | `…/paystack-beta-campaign-hero-fr-dark.jpg` |
+| Hero **light** EN | `…/paystack-beta-campaign-hero-en-light.jpg` |
+| Hero **dark** EN | `…/paystack-beta-campaign-hero-en-dark.jpg` |
 | Calendar CTA | `https://calendar.app.google/gjusbBhAfBKaEh1J6` |
 | From | Prefer `Lucas \| Paystack <lucas@paystack.ch>` |
 
@@ -36,11 +37,11 @@ The site swaps brand lockups for light vs dark UI. The campaign email must do th
 
 ## Layout rules
 
-1. Hero image(s) first (chart + benefits + exclusive offer).
-2. HTML letter below for Make personalization: `Bonjour {{11.`3`}},`.
-3. One body font: Arial/Helvetica, **16px**, `font-weight:normal` for letter copy.
-4. Red full-width CTA → calendar URL; secondary « Ou répondez… · www.paystack.ch ».
-5. French first, then English separator + EN block (same theme classes).
+1. FR hero image(s) first (chart + benefits + exclusive offer).
+2. HTML French letter below for Make personalization: `Bonjour {{11.`3`}},`.
+3. English separator, then **EN hero** (light/dark pair), then English letter + CTA.
+4. One body font: Arial/Helvetica, **16px**, `font-weight:normal` for letter copy.
+5. Red full-width CTA → calendar URL; secondary « Ou répondez… · www.paystack.ch ».
 6. Footer: `Paystack.ch — vos finances automatisées` + Geneva + `lucas@paystack.ch`.
 7. Subject: `Vous avez été choisi`. Preheader: bêta, 5–10k, sans frais, −25 % à vie.
 
