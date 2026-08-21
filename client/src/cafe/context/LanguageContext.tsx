@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useState, useEffect } from 'react';
 import { dashboardEn, dashboardFr } from '../i18n/dashboardTranslations';
+import { tourEn, tourFr } from '../i18n/tourTranslations';
 
 type Language = 'en' | 'fr';
 
@@ -1131,6 +1132,7 @@ const translations = {
     vatFromCustomersHint: 'From customers',
     vatOnPurchasesHint: 'On purchases',
     ...dashboardEn,
+    ...tourEn,
     appLoading: 'Loading…',
   },
   fr: {
@@ -2252,6 +2254,7 @@ const translations = {
     vatFromCustomersHint: 'Des clients',
     vatOnPurchasesHint: 'Sur achats',
     ...dashboardFr,
+    ...tourFr,
     appLoading: 'Chargement…',
     bankStatus_error: 'erreur',
   },

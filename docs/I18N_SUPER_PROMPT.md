@@ -226,3 +226,15 @@ Screenshots / pain points fixed in this pass (keep from regressing):
 **Pattern:** analytics libs return **keys**, not English sentences. UI resolves with `t()` so language toggles without rebuilding insight logic.
 
 **Files:** `dashboardTranslations.ts` (en+fr), `localizeLedgerCopy.ts`, `RestaurantDashboard.tsx`, `POSManager.tsx`, `ExpensesManager.tsx`, `InvoiceMakerPanel.tsx`, `GoogleDriveConnectPanel.tsx`, `RevenueLedgerTable.tsx`, `revenueAnalytics.ts`, `expenseAnalytics.ts`.
+
+### Product tour short / long (2026-08)
+
+| Surface | Fix |
+|---------|-----|
+| `tourSteps.ts` | Steps use `titleKey` / `bodyKey` (business + personal, short + long) |
+| `ProductTourOverlay.tsx` | `t(step.titleKey)`, Next/Back/Done/Skip via `tourNext`… |
+| `tourTranslations.ts` | All EN/FR strings; merged in `LanguageContext` |
+| Onboarding choice cards | Short / Long / Skip labels via `tourChoice*` |
+| Personal Settings | Restart short/long/onboarding buttons |
+
+Restart tour from the business sidebar (`dashRestartTour`) already uses i18n.

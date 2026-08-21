@@ -17,6 +17,7 @@ import {
   writeTourDone,
   writeTourLength,
 } from "@/components/product-tour";
+import { useLanguage } from "@/cafe/context/LanguageContext";
 
 const STEPS = 5;
 
@@ -25,6 +26,7 @@ export function BusinessOnboardingWizard({
 }: {
   onDone: (tourLength: TourLength) => void;
 }) {
+  const { t } = useLanguage();
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [driveConnected, setDriveConnected] = useState(false);
@@ -64,7 +66,9 @@ export function BusinessOnboardingWizard({
         onPrimary={() => setStep(1)}
         onSkip={() => finish("skip")}
       >
-        <p className="text-xs text-[color:var(--color-cdlp-muted)]">Personal money stays on /personal — never mixed into Revenue.</p>
+        <p className="text-xs text-[color:var(--color-cdlp-muted)]">
+          Personal money stays on /personal — never mixed into Revenue.
+        </p>
       </OnboardingStepShell>
     );
   }
@@ -130,9 +134,9 @@ export function BusinessOnboardingWizard({
     <OnboardingStepShell
       stepIndex={4}
       stepCount={STEPS}
-      title="Product tour?"
-      subtitle="Short covers the essentials. Long walks every tab and the features inside."
-      primaryLabel="Open dashboard"
+      title={t("tourChoiceTitle")}
+      subtitle={t("tourChoiceSubtitleBiz")}
+      primaryLabel={t("tourChoiceOpenDashboard")}
       primaryDisabled={!tourLength}
       onPrimary={() => finish(tourLength || "short")}
       onSkip={() => finish("skip")}
@@ -140,20 +144,20 @@ export function BusinessOnboardingWizard({
       <div className="space-y-2">
         <ChoiceCard
           selected={tourLength === "short"}
-          title="Short tutorial"
-          description="Sessions, Dashboard, Documents, sidebar (~1 min)"
+          title={t("tourChoiceShortTitle")}
+          description={t("tourChoiceShortDescBiz")}
           onClick={() => setTourLength("short")}
         />
         <ChoiceCard
           selected={tourLength === "long"}
-          title="Long tutorial"
-          description="Each tab (Revenue, Expenses, Invoices, Reports…) plus in-page features"
+          title={t("tourChoiceLongTitle")}
+          description={t("tourChoiceLongDescBiz")}
           onClick={() => setTourLength("long")}
         />
         <ChoiceCard
           selected={tourLength === "skip"}
-          title="No tutorial"
-          description="Go straight in — restart anytime from the sidebar"
+          title={t("tourChoiceSkipTitle")}
+          description={t("tourChoiceSkipDescBiz")}
           onClick={() => setTourLength("skip")}
         />
       </div>

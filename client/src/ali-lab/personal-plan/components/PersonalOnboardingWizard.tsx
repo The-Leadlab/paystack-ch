@@ -20,6 +20,7 @@ import {
   writeTourDone,
   writeTourLength,
 } from "@/components/product-tour";
+import { useLanguage } from "@/cafe/context/LanguageContext";
 
 type Goal = "save" | "track" | "both" | null;
 
@@ -30,6 +31,7 @@ export function PersonalOnboardingWizard({
 }: {
   onDone: (tourLength: TourLength) => void;
 }) {
+  const { t } = useLanguage();
   const { openInvite, surface } = usePersonalPlan();
   const [step, setStep] = useState(0);
   const [goal, setGoal] = useState<Goal>(null);
@@ -183,9 +185,9 @@ export function PersonalOnboardingWizard({
     <OnboardingStepShell
       stepIndex={5}
       stepCount={STEPS}
-      title="Product tour?"
-      subtitle="Short covers the essentials. Long walks every tab and key features inside."
-      primaryLabel={tourLength === "skip" ? "Open Overview" : "Start tour"}
+      title={t("tourChoiceTitle")}
+      subtitle={t("tourChoiceSubtitlePersonal")}
+      primaryLabel={tourLength === "skip" ? t("tourChoiceOpenOverview") : t("tourChoiceStartTour")}
       primaryDisabled={!tourLength}
       onPrimary={() => finish(tourLength || "short")}
       onSkip={() => finish("skip")}
@@ -193,20 +195,20 @@ export function PersonalOnboardingWizard({
       <div className="space-y-2">
         <ChoiceCard
           selected={tourLength === "short"}
-          title="Short tutorial"
-          description="Overview, upload, Budget, Settings, sidebar (~1 min)"
+          title={t("tourChoiceShortTitle")}
+          description={t("tourChoiceShortDescPersonal")}
           onClick={() => setTourLength("short")}
         />
         <ChoiceCard
           selected={tourLength === "long"}
-          title="Long tutorial"
-          description="Each tab and the main features inside"
+          title={t("tourChoiceLongTitle")}
+          description={t("tourChoiceLongDescPersonal")}
           onClick={() => setTourLength("long")}
         />
         <ChoiceCard
           selected={tourLength === "skip"}
-          title="No tutorial"
-          description="Go straight to Overview — you can restart later in Settings"
+          title={t("tourChoiceSkipTitle")}
+          description={t("tourChoiceSkipDescPersonal")}
           onClick={() => setTourLength("skip")}
         />
       </div>

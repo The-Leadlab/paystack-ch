@@ -109,20 +109,20 @@ export function PersonalSettingsPanel() {
 
       {surface === "app" ? (
         <GlassCard className="p-4 space-y-3">
-          <p className="text-sm font-semibold">Help</p>
+          <p className="text-sm font-semibold">{t("tourHelp")}</p>
           <button
             type="button"
             onClick={() => requestProductTour(PERSONAL_TOUR_DONE_KEY, "short")}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--pp-outline-variant)] text-xs font-bold hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)]"
           >
-            Restart short tour
+            {t("tourRestartShort")}
           </button>
           <button
             type="button"
             onClick={() => requestProductTour(PERSONAL_TOUR_DONE_KEY, "long")}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--pp-outline-variant)] text-xs font-bold hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)]"
           >
-            Restart long tour
+            {t("tourRestartLong")}
           </button>
           <button
             type="button"
@@ -132,7 +132,7 @@ export function PersonalSettingsPanel() {
             }}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--pp-outline-variant)] text-xs font-bold text-[var(--pp-on-surface-variant)] hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)]"
           >
-            Restart onboarding
+            {t("tourRestartOnboarding")}
           </button>
         </GlassCard>
       ) : null}

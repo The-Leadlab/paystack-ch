@@ -1,6 +1,7 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import { OnboardingThemeToggle } from "@/components/onboarding/OnboardingStepShell";
+import { useLanguage } from "@/cafe/context/LanguageContext";
 import type { TourRect } from "./useProductTour";
 import type { TourStep } from "./tourSteps";
 
@@ -26,6 +27,7 @@ export function ProductTourOverlay({
   onSkip,
 }: Props) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const dark = theme === "dark";
 
   const hole = rect
@@ -59,7 +61,7 @@ export function ProductTourOverlay({
       )}
       role="dialog"
       aria-modal="true"
-      aria-label="Product tour"
+      aria-label={t("tourAriaLabel")}
       style={{ fontFamily: "var(--font-app), system-ui, -apple-system, 'Segoe UI', sans-serif" }}
     >
       <div className="absolute inset-0 bg-black/55" onClick={onSkip} />
@@ -94,16 +96,18 @@ export function ProductTourOverlay({
             dark ? "text-white" : "text-[color:var(--color-brand-charcoal,#2B2B2B)]",
           )}
         >
-          {step.title}
+          {t(step.titleKey)}
         </h2>
-        <p className="mt-1.5 text-xs leading-relaxed text-[color:var(--color-cdlp-muted)]">{step.body}</p>
+        <p className="mt-1.5 text-xs leading-relaxed text-[color:var(--color-cdlp-muted)]">
+          {t(step.bodyKey)}
+        </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={onNext}
             className="h-9 px-4 rounded-lg bg-[color:var(--color-cdlp-gold)] text-white text-xs font-bold hover:bg-[color:var(--color-cdlp-gold-light)] transition-colors"
           >
-            {index >= total - 1 ? "Done" : "Next"}
+            {index >= total - 1 ? t("tourDone") : t("tourNext")}
           </button>
           {index > 0 ? (
             <button
@@ -111,7 +115,7 @@ export function ProductTourOverlay({
               onClick={onBack}
               className="h-9 px-3 text-xs font-semibold text-[color:var(--color-cdlp-muted)] hover:text-[color:var(--color-cdlp-gold)]"
             >
-              Back
+              {t("tourBack")}
             </button>
           ) : null}
           <button
@@ -119,7 +123,7 @@ export function ProductTourOverlay({
             onClick={onSkip}
             className="h-9 px-3 ml-auto text-xs font-semibold text-[color:var(--color-cdlp-muted)] hover:text-[color:var(--color-cdlp-gold)]"
           >
-            Skip tutorial
+            {t("tourSkip")}
           </button>
         </div>
       </div>
