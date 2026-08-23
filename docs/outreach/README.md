@@ -11,7 +11,7 @@ Do not mention Paystack’s own price. Both emails say almost CHF 5–10,000 of 
 
 **From display (inbox):** `Lucas | Paystack <lucas@paystack.ch>` (not bare “lucas”). Same pattern for Joshua/Ali. In Instantly, set **From Name** to `Lucas | Paystack`.
 
-**Upload demo:** `https://www.paystack.ch/outreach/upload-demo-v2.gif` (still: `upload-demo-v2.png`). Regenerate with `node scripts/generate-outreach-upload-demo.mjs` (needs ffmpeg).
+**Upload demo:** `https://www.paystack.ch/outreach/upload-demo-v4.gif` (still: `upload-demo-v4.png`). Regenerate with `node scripts/generate-outreach-upload-demo.mjs` (needs ffmpeg). Full dashboard (`fit: contain`, no crop); small realistic cursor + PDF.
 
 **CTA:** Google Calendar `https://calendar.app.google/gjusbBhAfBKaEh1J6` (Réserver une démo / Book a free demo).
 

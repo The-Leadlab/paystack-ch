@@ -12,7 +12,7 @@ Use this when updating **Geneva SME cold outreach** (Outreach 1 / `beta-invite`)
 | Hero **light** FR | `…/outreach/paystack-beta-campaign-hero-fr-light.jpg` |
 | Hero **dark** EN (default) | `…/outreach/paystack-beta-campaign-hero-en-dark.jpg` |
 | Hero **light** EN | `…/outreach/paystack-beta-campaign-hero-en-light.jpg` |
-| Product demo GIF | `…/outreach/upload-demo-v3.gif` (PNG: `upload-demo-v3.png`) |
+| Product demo GIF | `…/outreach/upload-demo-v4.gif` (PNG: `upload-demo-v4.png`) |
 | GIF generator | `node scripts/generate-outreach-upload-demo.mjs` |
 | Calendar CTA | `https://calendar.app.google/gjusbBhAfBKaEh1J6` |
 | From | Prefer `Lucas \| Paystack <lucas@paystack.ch>` |
@@ -40,8 +40,9 @@ Gmail dark mode remaps light cream shells (`#FFF5F4`) to **brown** and often **i
 ### Product demo GIF (between FR and EN)
 
 - Place **after** the French CTA and **before** the “English” separator.
-- Must show the **real Paystack dashboard** (not a flat SVG mock), with a **mouse cursor dragging a PDF** into the drop zone.
-- Host as `upload-demo-v3.gif` (bump version when regenerating so CDNs/clients drop the old loop).
+- Must show the **full real Paystack dashboard** — `fit: contain`, **never crop** the product UI.
+- Mouse + PDF must be **small and realistic** (system-cursor scale; PDF ~ table status-chip size), not oversized overlays.
+- Host as `upload-demo-v4.gif` (bump version when regenerating so CDNs/clients drop the old loop).
 - Regenerate: `node scripts/generate-outreach-upload-demo.mjs` (composites `tmp-landing-v3/dashboard.png` + cursor/PDF overlays via sharp + ffmpeg).
 - Also refresh `OUTREACH_UPLOAD_DEMO_GIF_URL` / PNG in `shared/outreachMail.ts` when the admin preset should match.
 
@@ -61,7 +62,7 @@ Gmail dark mode remaps light cream shells (`#FFF5F4`) to **brown** and often **i
 - Merge: `{{11.`3`}}`
 - Re-paste HTML from Downloads after every deploy
 - From name is not HTML — SMTP From name or Google Admin display name
-- After deploy, wait until `https://www.paystack.ch/outreach/upload-demo-v3.gif` and the dark hero JPGs are live before mass send
+- After deploy, wait until `https://www.paystack.ch/outreach/upload-demo-v4.gif` and the dark hero JPGs are live before mass send
 
 ## Checklist (theme QA)
 

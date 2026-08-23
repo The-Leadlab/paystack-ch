@@ -1,5 +1,9 @@
 /**
- * Build a realistic email-safe GIF: real Paystack dashboard + cursor dragging a PDF.
+ * Build a realistic email-safe GIF: full Paystack dashboard + small cursor dragging a PDF.
+ *
+ * Rules (super prompt):
+ * - Show the FULL dashboard (fit contain) — never crop the product UI.
+ * - Keep the PDF and mouse SMALL so they read like a real desktop cursor + file icon.
  *
  * Usage: node scripts/generate-outreach-upload-demo.mjs
  */
@@ -14,8 +18,14 @@ const root = path.join(__dirname, "..");
 const outDir = path.join(root, "client/public/outreach");
 const tmpDir = path.join(root, "tmp-outreach-gif");
 
+/** Email width; height follows full 1536×1024 dashboard aspect (no crop). */
 const W = 600;
-const H = 338;
+const H = 400;
+
+/** Realistic desktop cursor (~9px tip); PDF icon ~ one table-row tall. */
+const CURSOR_SCALE = 0.28;
+const DOC_W = 14;
+const DOC_H = 18;
 
 function findFfmpeg() {
   const candidates = [
@@ -31,33 +41,34 @@ function findFfmpeg() {
 }
 
 function cursorSvg(x, y, grabbing = false) {
+  const s = CURSOR_SCALE;
   const tip = grabbing
-    ? `<path d="M0 0 L0 17 L4 13 L7 20 L10 19 L7 12 L12 12 Z" fill="#FFFFFF" stroke="#1a1a1a" stroke-width="1.2" stroke-linejoin="round"/>`
-    : `<path d="M0 0 L0 18 L5 14 L8 22 L11.5 20.5 L8.5 13 L14 13 Z" fill="#FFFFFF" stroke="#1a1a1a" stroke-width="1.2" stroke-linejoin="round"/>`;
+    ? `<path d="M0 0 L0 17 L4 13 L7 20 L10 19 L7 12 L12 12 Z" fill="#FFFFFF" stroke="#1a1a1a" stroke-width="1.15" stroke-linejoin="round"/>`
+    : `<path d="M0 0 L0 18 L5 14 L8 22 L11.5 20.5 L8.5 13 L14 13 Z" fill="#FFFFFF" stroke="#1a1a1a" stroke-width="1.15" stroke-linejoin="round"/>`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
-  <g transform="translate(${x},${y})">
-    <path d="M1 2 L1 20 L6 16 L9 24 L12.5 22.5 L9.5 15 L15 15 Z" fill="#000000" opacity="0.28"/>
+  <g transform="translate(${x},${y}) scale(${s})">
+    <path d="M1 2 L1 20 L6 16 L9 24 L12.5 22.5 L9.5 15 L15 15 Z" fill="#000000" opacity="0.25"/>
     ${tip}
   </g>
 </svg>`;
 }
 
 function docSvg(x, y, scale = 1) {
-  const dw = Math.round(78 * scale);
-  const dh = Math.round(100 * scale);
+  const dw = Math.round(DOC_W * scale);
+  const dh = Math.round(DOC_H * scale);
+  const fsPx = Math.max(6, Math.round(7 * scale));
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
   <g transform="translate(${x},${y})">
-    <rect x="4" y="6" width="${dw}" height="${dh}" rx="5" fill="#000000" opacity="0.35"/>
-    <rect x="0" y="0" width="${dw}" height="${dh}" rx="5" fill="#FFFFFF" stroke="#D8D0CE" stroke-width="1"/>
-    <rect x="10" y="12" width="${Math.round(dw * 0.55)}" height="6" rx="2" fill="#2B2B2B"/>
-    <rect x="10" y="24" width="${Math.round(dw * 0.72)}" height="3.5" rx="1" fill="#C9C2BF"/>
-    <rect x="10" y="32" width="${Math.round(dw * 0.66)}" height="3.5" rx="1" fill="#C9C2BF"/>
-    <rect x="10" y="40" width="${Math.round(dw * 0.6)}" height="3.5" rx="1" fill="#C9C2BF"/>
-    <rect x="10" y="48" width="${Math.round(dw * 0.7)}" height="3.5" rx="1" fill="#C9C2BF"/>
-    <rect x="10" y="64" width="${Math.round(dw * 0.38)}" height="20" rx="3" fill="#E8423F"/>
-    <text x="${10 + Math.round(dw * 0.19)}" y="78" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" fill="#FFFFFF">PDF</text>
+    <rect x="2" y="3" width="${dw}" height="${dh}" rx="3" fill="#000000" opacity="0.3"/>
+    <rect x="0" y="0" width="${dw}" height="${dh}" rx="3" fill="#FFFFFF" stroke="#D0C8C6" stroke-width="1"/>
+    <rect x="5" y="6" width="${Math.round(dw * 0.52)}" height="3" rx="1" fill="#2B2B2B"/>
+    <rect x="5" y="12" width="${Math.round(dw * 0.7)}" height="2" rx="1" fill="#C9C2BF"/>
+    <rect x="5" y="16" width="${Math.round(dw * 0.64)}" height="2" rx="1" fill="#C9C2BF"/>
+    <rect x="5" y="20" width="${Math.round(dw * 0.58)}" height="2" rx="1" fill="#C9C2BF"/>
+    <rect x="5" y="28" width="${Math.round(dw * 0.42)}" height="11" rx="2" fill="#E8423F"/>
+    <text x="${5 + Math.round(dw * 0.21)}" y="${28 + 8}" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="${fsPx}" font-weight="700" fill="#FFFFFF">PDF</text>
   </g>
 </svg>`;
 }
@@ -66,14 +77,15 @@ function highlightSvg(active, done) {
   if (!active && !done) {
     return `<?xml version="1.0" encoding="UTF-8"?><svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg"/>`;
   }
+  // Drop zone on full-frame dashboard (sidebar ~88px; zone centered in main pane)
   const stroke = done ? "#3ECF8E" : "#E8423F";
-  const fill = done ? "rgba(62,207,142,0.12)" : "rgba(232,66,63,0.14)";
+  const fill = done ? "rgba(62,207,142,0.10)" : "rgba(232,66,63,0.12)";
   const label = done ? "Uploaded" : "Drop to upload";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
-  <rect x="168" y="118" width="390" height="168" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="2.5" stroke-dasharray="${done ? "0" : "10 7"}"/>
-  <rect x="268" y="178" width="190" height="36" rx="8" fill="#12151a" opacity="0.88"/>
-  <text x="363" y="201" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="${stroke}">${label}</text>
+  <rect x="210" y="168" width="300" height="92" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-dasharray="${done ? "0" : "8 6"}"/>
+  <rect x="285" y="198" width="150" height="28" rx="6" fill="#12151a" opacity="0.9"/>
+  <text x="360" y="216" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="${stroke}">${label}</text>
 </svg>`;
 }
 
@@ -105,29 +117,27 @@ async function main() {
     throw new Error("Missing dashboard source (tmp-landing-v3/dashboard.png)");
   }
 
-  const meta = await sharp(dashPath).metadata();
-  const extractW = Math.min(1456, meta.width - 40);
-  const extractH = Math.min(920, meta.height - 36);
+  // Full dashboard, letterboxed if needed — never crop product UI
   const baseBuf = await sharp(dashPath)
-    .extract({
-      left: Math.min(40, Math.max(0, meta.width - extractW)),
-      top: Math.min(36, Math.max(0, meta.height - extractH)),
-      width: extractW,
-      height: extractH,
+    .resize(W, H, {
+      fit: "contain",
+      background: { r: 12, g: 14, b: 18, alpha: 1 },
+      position: "centre",
     })
-    .resize(W, H, { fit: "cover", position: "northwest" })
     .png()
     .toBuffer();
 
+  // Path into the drop zone (coords for full 600×400 frame).
+  // Cursor tip sits near the PDF bottom-right (~doc + 8, doc + 12).
   const frames = [
-    { doc: [42, 210], cur: [108, 292], highlight: false, done: false, grabbing: true, dur: 0.28 },
-    { doc: [110, 188], cur: [176, 270], highlight: false, done: false, grabbing: true, dur: 0.16 },
-    { doc: [190, 160], cur: [256, 242], highlight: false, done: false, grabbing: true, dur: 0.16 },
-    { doc: [270, 142], cur: [336, 224], highlight: true, done: false, grabbing: true, dur: 0.16 },
-    { doc: [330, 132], cur: [396, 214], highlight: true, done: false, grabbing: true, dur: 0.16 },
-    { doc: [360, 128], cur: [426, 210], highlight: true, done: false, grabbing: true, dur: 0.18 },
-    { doc: [372, 136], cur: [430, 218], highlight: true, done: true, grabbing: false, dur: 0.55 },
-    { doc: [372, 136], cur: [450, 240], highlight: true, done: true, grabbing: false, dur: 0.65 },
+    { doc: [132, 300], cur: [140, 310], highlight: false, done: false, grabbing: true, dur: 0.28 },
+    { doc: [180, 268], cur: [188, 278], highlight: false, done: false, grabbing: true, dur: 0.16 },
+    { doc: [235, 230], cur: [243, 240], highlight: false, done: false, grabbing: true, dur: 0.16 },
+    { doc: [290, 200], cur: [298, 210], highlight: true, done: false, grabbing: true, dur: 0.16 },
+    { doc: [335, 185], cur: [343, 195], highlight: true, done: false, grabbing: true, dur: 0.16 },
+    { doc: [350, 180], cur: [358, 190], highlight: true, done: false, grabbing: true, dur: 0.18 },
+    { doc: [352, 186], cur: [360, 196], highlight: true, done: true, grabbing: false, dur: 0.55 },
+    { doc: [352, 186], cur: [385, 215], highlight: true, done: true, grabbing: false, dur: 0.65 },
   ];
 
   const concatLines = [];
@@ -137,7 +147,7 @@ async function main() {
       highlight: f.highlight,
       done: f.done,
       grabbing: f.grabbing,
-      docScale: f.done ? 0.92 : 1,
+      docScale: f.done ? 0.9 : 1,
     });
     const framePath = path.join(tmpDir, `frame-${String(i).padStart(2, "0")}.png`);
     await sharp(buf).png().toFile(framePath);
@@ -152,13 +162,16 @@ async function main() {
   const listPath = path.join(tmpDir, "frames.txt");
   fs.writeFileSync(listPath, concatLines.join("\n"), "utf8");
 
-  const still = await composeFrame(baseBuf, 330, 132, 396, 214, {
+  const still = await composeFrame(baseBuf, 335, 185, 343, 195, {
     highlight: true,
     done: false,
     grabbing: true,
   });
-  const pngOut = path.join(outDir, "upload-demo-v3.png");
-  const gifOut = path.join(outDir, "upload-demo-v3.gif");
+
+  const pngOut = path.join(outDir, "upload-demo-v4.png");
+  const gifOut = path.join(outDir, "upload-demo-v4.gif");
+  const pngV3 = path.join(outDir, "upload-demo-v3.png");
+  const gifV3 = path.join(outDir, "upload-demo-v3.gif");
   const pngLegacy = path.join(outDir, "upload-demo-v2.png");
   const gifLegacy = path.join(outDir, "upload-demo-v2.gif");
   const pngRoot = path.join(outDir, "upload-demo.png");
@@ -215,10 +228,8 @@ async function main() {
     throw new Error("ffmpeg paletteuse failed");
   }
 
-  fs.copyFileSync(gifOut, gifLegacy);
-  fs.copyFileSync(pngOut, pngLegacy);
-  fs.copyFileSync(gifOut, gifRoot);
-  fs.copyFileSync(pngOut, pngRoot);
+  for (const dest of [gifV3, gifLegacy, gifRoot]) fs.copyFileSync(gifOut, dest);
+  for (const dest of [pngV3, pngLegacy, pngRoot]) fs.copyFileSync(pngOut, dest);
 
   const gifMeta = await sharp(gifOut, { animated: true }).metadata();
   await sharp(gifOut).png().toBuffer();
@@ -229,6 +240,7 @@ async function main() {
     "wrote",
     path.relative(root, gifOut),
     `${fs.statSync(gifOut).size} bytes`,
+    `${W}x${H}`,
     `pages=${gifMeta.pages}`,
     `delay=${JSON.stringify(gifMeta.delay)}`
   );
