@@ -1,6 +1,5 @@
 /**
- * Build email-safe upload demo still + animated GIF for outreach.
- * Mouse cursor dragging an invoice into the Paystack dashboard drop zone.
+ * Build a realistic email-safe GIF: real Paystack dashboard + cursor dragging a PDF.
  *
  * Usage: node scripts/generate-outreach-upload-demo.mjs
  */
@@ -15,14 +14,14 @@ const root = path.join(__dirname, "..");
 const outDir = path.join(root, "client/public/outreach");
 const tmpDir = path.join(root, "tmp-outreach-gif");
 
-const W = 560;
-const H = 280;
+const W = 600;
+const H = 338;
 
 function findFfmpeg() {
   const candidates = [
     "ffmpeg",
-    "C:\\\\Program Files\\\\PySceneDetect\\\\ffmpeg.exe",
-    "C:\\\\ffmpeg\\\\bin\\\\ffmpeg.exe",
+    "C:\\Program Files\\PySceneDetect\\ffmpeg.exe",
+    "C:\\ffmpeg\\bin\\ffmpeg.exe",
   ];
   for (const bin of candidates) {
     const r = spawnSync(bin, ["-version"], { encoding: "utf8" });
@@ -31,42 +30,65 @@ function findFfmpeg() {
   return null;
 }
 
-function sceneSvg(docX, docY, highlight = false, done = false) {
-  const dash = highlight ? "#E8423F" : "#5a6169";
-  const zoneFill = highlight ? "#2a1f1f" : "#1a1d23";
-  const label = done ? "UPLOADED" : "DROP PDF / JPG / PNG / CSV";
-  const labelColor = done ? "#3ECF8E" : "#c5cad1";
+function cursorSvg(x, y, grabbing = false) {
+  const tip = grabbing
+    ? `<path d="M0 0 L0 17 L4 13 L7 20 L10 19 L7 12 L12 12 Z" fill="#FFFFFF" stroke="#1a1a1a" stroke-width="1.2" stroke-linejoin="round"/>`
+    : `<path d="M0 0 L0 18 L5 14 L8 22 L11.5 20.5 L8.5 13 L14 13 Z" fill="#FFFFFF" stroke="#1a1a1a" stroke-width="1.2" stroke-linejoin="round"/>`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
-  <rect width="${W}" height="${H}" fill="#FFF5F4"/>
-  <rect x="24" y="24" width="512" height="232" rx="12" fill="#12151a" stroke="#3a4048" stroke-width="1"/>
-  <rect x="24" y="24" width="88" height="232" rx="12" fill="#0e1116"/>
-  <rect x="40" y="48" width="56" height="8" rx="2" fill="#E8423F"/>
-  <rect x="40" y="72" width="48" height="6" rx="2" fill="#3a4048"/>
-  <rect x="40" y="88" width="48" height="6" rx="2" fill="#3a4048"/>
-  <rect x="40" y="104" width="48" height="6" rx="2" fill="#3a4048"/>
-  <text x="132" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" fill="#e8eaed" letter-spacing="1">DASHBOARD</text>
-  <rect x="132" y="72" width="110" height="36" rx="6" fill="#1c2128" stroke="#3a4048"/>
-  <rect x="252" y="72" width="110" height="36" rx="6" fill="#1c2128" stroke="#3a4048"/>
-  <rect x="372" y="72" width="140" height="36" rx="6" fill="#1c2128" stroke="#3a4048"/>
-  <rect x="132" y="124" width="380" height="110" rx="10" fill="${zoneFill}" stroke="${dash}" stroke-width="2" stroke-dasharray="8 6"/>
-  <text x="322" y="178" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="${labelColor}" letter-spacing="0.5">${label}</text>
-  ${
-    done
-      ? `<circle cx="322" cy="150" r="12" fill="#3ECF8E"/><path d="M316 150 l4 4 8-8" fill="none" stroke="#12151a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`
-      : `<path d="M310 148 h24 M322 136 v24" stroke="#6F6669" stroke-width="2" stroke-linecap="round"/>`
-  }
-  <g transform="translate(${docX},${docY})">
-    <rect x="0" y="0" width="72" height="92" rx="4" fill="#FFFFFF" stroke="#E8E2E0" stroke-width="1"/>
-    <rect x="10" y="12" width="40" height="5" rx="1.5" fill="#2B2B2B"/>
-    <rect x="10" y="24" width="52" height="3" rx="1" fill="#C9C2BF"/>
-    <rect x="10" y="32" width="48" height="3" rx="1" fill="#C9C2BF"/>
-    <rect x="10" y="40" width="44" height="3" rx="1" fill="#C9C2BF"/>
-    <rect x="10" y="56" width="28" height="18" rx="2" fill="#E8423F"/>
-    <text x="24" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" fill="#FFFFFF">PDF</text>
-    <path d="M58 78 l0 28 7-6 5 12 6-2 -5-12 10-1 z" fill="#FFFFFF" stroke="#2B2B2B" stroke-width="1.5" stroke-linejoin="round"/>
+  <g transform="translate(${x},${y})">
+    <path d="M1 2 L1 20 L6 16 L9 24 L12.5 22.5 L9.5 15 L15 15 Z" fill="#000000" opacity="0.28"/>
+    ${tip}
   </g>
 </svg>`;
+}
+
+function docSvg(x, y, scale = 1) {
+  const dw = Math.round(78 * scale);
+  const dh = Math.round(100 * scale);
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(${x},${y})">
+    <rect x="4" y="6" width="${dw}" height="${dh}" rx="5" fill="#000000" opacity="0.35"/>
+    <rect x="0" y="0" width="${dw}" height="${dh}" rx="5" fill="#FFFFFF" stroke="#D8D0CE" stroke-width="1"/>
+    <rect x="10" y="12" width="${Math.round(dw * 0.55)}" height="6" rx="2" fill="#2B2B2B"/>
+    <rect x="10" y="24" width="${Math.round(dw * 0.72)}" height="3.5" rx="1" fill="#C9C2BF"/>
+    <rect x="10" y="32" width="${Math.round(dw * 0.66)}" height="3.5" rx="1" fill="#C9C2BF"/>
+    <rect x="10" y="40" width="${Math.round(dw * 0.6)}" height="3.5" rx="1" fill="#C9C2BF"/>
+    <rect x="10" y="48" width="${Math.round(dw * 0.7)}" height="3.5" rx="1" fill="#C9C2BF"/>
+    <rect x="10" y="64" width="${Math.round(dw * 0.38)}" height="20" rx="3" fill="#E8423F"/>
+    <text x="${10 + Math.round(dw * 0.19)}" y="78" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" fill="#FFFFFF">PDF</text>
+  </g>
+</svg>`;
+}
+
+function highlightSvg(active, done) {
+  if (!active && !done) {
+    return `<?xml version="1.0" encoding="UTF-8"?><svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg"/>`;
+  }
+  const stroke = done ? "#3ECF8E" : "#E8423F";
+  const fill = done ? "rgba(62,207,142,0.12)" : "rgba(232,66,63,0.14)";
+  const label = done ? "Uploaded" : "Drop to upload";
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+  <rect x="168" y="118" width="390" height="168" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="2.5" stroke-dasharray="${done ? "0" : "10 7"}"/>
+  <rect x="268" y="178" width="190" height="36" rx="8" fill="#12151a" opacity="0.88"/>
+  <text x="363" y="201" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="${stroke}">${label}</text>
+</svg>`;
+}
+
+async function composeFrame(baseBuf, docX, docY, cursorX, cursorY, opts = {}) {
+  const { highlight = false, done = false, grabbing = true, docScale = 1 } = opts;
+  const layers = [
+    { input: await sharp(Buffer.from(highlightSvg(highlight, done))).png().toBuffer(), top: 0, left: 0 },
+    { input: await sharp(Buffer.from(docSvg(docX, docY, docScale))).png().toBuffer(), top: 0, left: 0 },
+    {
+      input: await sharp(Buffer.from(cursorSvg(cursorX, cursorY, grabbing))).png().toBuffer(),
+      top: 0,
+      left: 0,
+    },
+  ];
+  return sharp(baseBuf).composite(layers).png().toBuffer();
 }
 
 async function main() {
@@ -74,48 +96,79 @@ async function main() {
   fs.rmSync(tmpDir, { recursive: true, force: true });
   fs.mkdirSync(tmpDir, { recursive: true });
 
-  const pathFrames = [
-    { x: 48, y: 150, highlight: false, done: false, dur: 0.35 },
-    { x: 110, y: 138, highlight: false, done: false, dur: 0.18 },
-    { x: 180, y: 128, highlight: true, done: false, dur: 0.18 },
-    { x: 250, y: 120, highlight: true, done: false, dur: 0.18 },
-    { x: 300, y: 118, highlight: true, done: false, dur: 0.18 },
-    { x: 322, y: 132, highlight: true, done: true, dur: 0.7 },
-    { x: 322, y: 132, highlight: true, done: true, dur: 0.5 },
+  const dashCandidates = [
+    path.join(root, "tmp-landing-v3", "dashboard.png"),
+    path.join(root, "tmp-landing-v3", "dashboard.png"),
+  ];
+  const dashPath = dashCandidates.find((p) => fs.existsSync(p));
+  if (!dashPath) {
+    throw new Error("Missing dashboard source (tmp-landing-v3/dashboard.png)");
+  }
+
+  const meta = await sharp(dashPath).metadata();
+  const extractW = Math.min(1456, meta.width - 40);
+  const extractH = Math.min(920, meta.height - 36);
+  const baseBuf = await sharp(dashPath)
+    .extract({
+      left: Math.min(40, Math.max(0, meta.width - extractW)),
+      top: Math.min(36, Math.max(0, meta.height - extractH)),
+      width: extractW,
+      height: extractH,
+    })
+    .resize(W, H, { fit: "cover", position: "northwest" })
+    .png()
+    .toBuffer();
+
+  const frames = [
+    { doc: [42, 210], cur: [108, 292], highlight: false, done: false, grabbing: true, dur: 0.28 },
+    { doc: [110, 188], cur: [176, 270], highlight: false, done: false, grabbing: true, dur: 0.16 },
+    { doc: [190, 160], cur: [256, 242], highlight: false, done: false, grabbing: true, dur: 0.16 },
+    { doc: [270, 142], cur: [336, 224], highlight: true, done: false, grabbing: true, dur: 0.16 },
+    { doc: [330, 132], cur: [396, 214], highlight: true, done: false, grabbing: true, dur: 0.16 },
+    { doc: [360, 128], cur: [426, 210], highlight: true, done: false, grabbing: true, dur: 0.18 },
+    { doc: [372, 136], cur: [430, 218], highlight: true, done: true, grabbing: false, dur: 0.55 },
+    { doc: [372, 136], cur: [450, 240], highlight: true, done: true, grabbing: false, dur: 0.65 },
   ];
 
-  const gifOut = path.join(outDir, "upload-demo.gif");
-  const gifOutV2 = path.join(outDir, "upload-demo-v2.gif");
-  const pngOut = path.join(outDir, "upload-demo.png");
-  const pngOutV2 = path.join(outDir, "upload-demo-v2.png");
-
-  const stillSvg = sceneSvg(220, 124, true, false);
-  await sharp(Buffer.from(stillSvg)).png().toFile(pngOut);
-  fs.copyFileSync(pngOut, pngOutV2);
-
   const concatLines = [];
-  for (let i = 0; i < pathFrames.length; i++) {
-    const f = pathFrames[i];
+  for (let i = 0; i < frames.length; i++) {
+    const f = frames[i];
+    const buf = await composeFrame(baseBuf, f.doc[0], f.doc[1], f.cur[0], f.cur[1], {
+      highlight: f.highlight,
+      done: f.done,
+      grabbing: f.grabbing,
+      docScale: f.done ? 0.92 : 1,
+    });
     const framePath = path.join(tmpDir, `frame-${String(i).padStart(2, "0")}.png`);
-    await sharp(Buffer.from(sceneSvg(f.x, f.y, f.highlight, f.done))).png().toFile(framePath);
+    await sharp(buf).png().toFile(framePath);
     const posix = framePath.replace(/\\/g, "/");
     concatLines.push(`file '${posix}'`);
     concatLines.push(`duration ${f.dur}`);
   }
   const last = path
-    .join(tmpDir, `frame-${String(pathFrames.length - 1).padStart(2, "0")}.png`)
+    .join(tmpDir, `frame-${String(frames.length - 1).padStart(2, "0")}.png`)
     .replace(/\\/g, "/");
   concatLines.push(`file '${last}'`);
   const listPath = path.join(tmpDir, "frames.txt");
   fs.writeFileSync(listPath, concatLines.join("\n"), "utf8");
 
+  const still = await composeFrame(baseBuf, 330, 132, 396, 214, {
+    highlight: true,
+    done: false,
+    grabbing: true,
+  });
+  const pngOut = path.join(outDir, "upload-demo-v3.png");
+  const gifOut = path.join(outDir, "upload-demo-v3.gif");
+  const pngLegacy = path.join(outDir, "upload-demo-v2.png");
+  const gifLegacy = path.join(outDir, "upload-demo-v2.gif");
+  const pngRoot = path.join(outDir, "upload-demo.png");
+  const gifRoot = path.join(outDir, "upload-demo.gif");
+  await sharp(still).png().toFile(pngOut);
+
   const ffmpeg = findFfmpeg();
-  if (!ffmpeg) {
-    throw new Error("ffmpeg not found — cannot build a valid GIF");
-  }
+  if (!ffmpeg) throw new Error("ffmpeg not found — cannot build GIF");
 
   const palette = path.join(tmpDir, "palette.png");
-
   let r = spawnSync(
     ffmpeg,
     [
@@ -127,7 +180,7 @@ async function main() {
       "-i",
       listPath,
       "-vf",
-      "palettegen=max_colors=128:stats_mode=diff",
+      "palettegen=max_colors=192:stats_mode=diff",
       palette,
     ],
     { encoding: "utf8" }
@@ -150,7 +203,7 @@ async function main() {
       "-i",
       palette,
       "-lavfi",
-      "paletteuse=dither=bayer:bayer_scale=3",
+      "paletteuse=dither=bayer:bayer_scale=2",
       "-loop",
       "0",
       gifOut,
@@ -162,21 +215,22 @@ async function main() {
     throw new Error("ffmpeg paletteuse failed");
   }
 
-  fs.copyFileSync(gifOut, gifOutV2);
+  fs.copyFileSync(gifOut, gifLegacy);
+  fs.copyFileSync(pngOut, pngLegacy);
+  fs.copyFileSync(gifOut, gifRoot);
+  fs.copyFileSync(pngOut, pngRoot);
 
-  const meta = await sharp(gifOut, { animated: true }).metadata();
-  // Must decode without "Invalid frame data"
+  const gifMeta = await sharp(gifOut, { animated: true }).metadata();
   await sharp(gifOut).png().toBuffer();
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 
   console.log(
     "wrote",
-    path.relative(root, pngOutV2),
-    path.relative(root, gifOutV2),
-    `${fs.statSync(gifOutV2).size} bytes`,
-    `pages=${meta.pages}`,
-    `delay=${JSON.stringify(meta.delay)}`
+    path.relative(root, gifOut),
+    `${fs.statSync(gifOut).size} bytes`,
+    `pages=${gifMeta.pages}`,
+    `delay=${JSON.stringify(gifMeta.delay)}`
   );
 }
 
