@@ -1,9 +1,11 @@
 <!--
   Outreach 1 — Subject: Vous avez été choisi
   NO cream/pink shell — Gmail native white/black behind text only.
-  IMAGES: Gmail does NOT run prefers-color-scheme, so it always shows the DEFAULT images.
-  Default = DARK heroes + dark GIF (so Gmail dark mode is correct).
-  Apple Mail / clients that support media queries: swap to LIGHT in light mode.
+
+  Gmail IGNORES prefers-color-scheme for images. It always shows the DEFAULT <img>.
+  Default = LIGHT heroes + light GIF (desktop Gmail is usually light).
+  Apple Mail / clients that support media queries: swap to DARK in dark mode.
+
   Make.com: From Name "Lucas | Paystack"
   Merge: {{11.`3`}}
 -->
@@ -12,14 +14,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="dark light">
-  <meta name="supported-color-schemes" content="dark light">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
   <title>Vous avez été choisi</title>
   <style type="text/css">
-    :root { color-scheme: dark light; }
+    :root { color-scheme: light dark; }
 
-    /* DEFAULT = DARK images (Gmail always uses this — it ignores media queries) */
-    .img-light {
+    /* DEFAULT = LIGHT images (Gmail always uses this) */
+    .img-dark {
       display: none !important;
       max-height: 0 !important;
       max-width: 0 !important;
@@ -28,16 +30,16 @@
       line-height: 0 !important;
       mso-hide: all;
     }
-    .img-dark {
+    .img-light {
       display: block !important;
       width: 100% !important;
       max-width: 600px !important;
       height: auto !important;
     }
 
-    /* Apple Mail + others: phone LIGHT → show light images */
-    @media (prefers-color-scheme: light) {
-      .img-dark {
+    /* Apple Mail + others: phone/OS DARK → show dark images */
+    @media (prefers-color-scheme: dark) {
+      .img-light {
         display: none !important;
         max-height: 0 !important;
         max-width: 0 !important;
@@ -45,7 +47,7 @@
         font-size: 0 !important;
         line-height: 0 !important;
       }
-      .img-light {
+      .img-dark {
         display: block !important;
         max-height: none !important;
         max-width: 600px !important;
@@ -55,26 +57,26 @@
         font-size: initial !important;
         line-height: normal !important;
       }
-      .txt { color: #1A1A1A !important; }
-      .muted { color: #5C5C5C !important; }
+      .txt { color: #FFFFFF !important; }
+      .muted { color: #B0B0B0 !important; }
     }
 
-    /* Apple Mail + others: phone DARK → keep dark images + white text */
-    @media (prefers-color-scheme: dark) {
-      .img-light {
+    /* Apple Mail + others: phone/OS LIGHT → keep light images */
+    @media (prefers-color-scheme: light) {
+      .img-dark {
         display: none !important;
         max-height: 0 !important;
         max-width: 0 !important;
         overflow: hidden !important;
       }
-      .img-dark {
+      .img-light {
         display: block !important;
         width: 100% !important;
         max-width: 600px !important;
         height: auto !important;
       }
-      .txt { color: #FFFFFF !important; }
-      .muted { color: #B0B0B0 !important; }
+      .txt { color: #1A1A1A !important; }
+      .muted { color: #5C5C5C !important; }
     }
 
     /* Outlook.com dark */
@@ -105,11 +107,11 @@
       <td align="center" style="padding:0;margin:0;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;border-collapse:collapse;border-spacing:0;">
 
-          <!-- FR HERO: dark first (Gmail default), light for Apple light mode -->
+          <!-- FR HERO: light first (Gmail default), dark for Apple dark mode -->
           <tr>
             <td align="center" style="padding:0;margin:0;font-size:0;line-height:0;">
-              <img class="img-dark" src="https://www.paystack.ch/outreach/paystack-beta-campaign-hero-fr-dark.jpg" width="600" alt="Paystack.ch — Une bêta privée pour les PME à Genève." style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;">
-              <img class="img-light" src="https://www.paystack.ch/outreach/paystack-beta-campaign-hero-fr-light.jpg" width="600" alt="Paystack.ch — Une bêta privée pour les PME à Genève." style="display:none;width:100%;max-width:600px;height:auto;border:0;outline:none;">
+              <img class="img-light" src="https://www.paystack.ch/outreach/paystack-beta-campaign-hero-fr-light.jpg" width="600" alt="Paystack.ch — Une bêta privée pour les PME à Genève." style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;">
+              <img class="img-dark" src="https://www.paystack.ch/outreach/paystack-beta-campaign-hero-fr-dark.jpg" width="600" alt="Paystack.ch — Une bêta privée pour les PME à Genève." style="display:none;width:100%;max-width:600px;height:auto;border:0;outline:none;">
             </td>
           </tr>
 
@@ -155,11 +157,11 @@
             </td>
           </tr>
 
-          <!-- DEMO GIF: dark first (Gmail), light for Apple light mode -->
+          <!-- DEMO GIF: light first (Gmail), dark for Apple dark mode -->
           <tr>
             <td align="center" style="padding:24px 0 8px;font-size:0;line-height:0;">
-              <img class="img-dark" src="https://www.paystack.ch/outreach/upload-demo-dark.gif" width="600" alt="Paystack dashboard — drag a PDF into the drop zone" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;">
-              <img class="img-light" src="https://www.paystack.ch/outreach/upload-demo-light.gif" width="600" alt="Paystack dashboard — drag a PDF into the drop zone" style="display:none;width:100%;max-width:600px;height:auto;border:0;outline:none;">
+              <img class="img-light" src="https://www.paystack.ch/outreach/upload-demo-light.gif" width="600" alt="Paystack dashboard — drag a PDF into the drop zone" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;">
+              <img class="img-dark" src="https://www.paystack.ch/outreach/upload-demo-dark.gif" width="600" alt="Paystack dashboard — drag a PDF into the drop zone" style="display:none;width:100%;max-width:600px;height:auto;border:0;outline:none;">
             </td>
           </tr>
 
@@ -172,8 +174,8 @@
           <!-- EN HERO -->
           <tr>
             <td align="center" style="padding:16px 0 0;font-size:0;line-height:0;">
-              <img class="img-dark" src="https://www.paystack.ch/outreach/paystack-beta-campaign-hero-en-dark.jpg" width="600" alt="Paystack.ch — A private beta for SMEs in Geneva." style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;">
-              <img class="img-light" src="https://www.paystack.ch/outreach/paystack-beta-campaign-hero-en-light.jpg" width="600" alt="Paystack.ch — A private beta for SMEs in Geneva." style="display:none;width:100%;max-width:600px;height:auto;border:0;outline:none;">
+              <img class="img-light" src="https://www.paystack.ch/outreach/paystack-beta-campaign-hero-en-light.jpg" width="600" alt="Paystack.ch — A private beta for SMEs in Geneva." style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;">
+              <img class="img-dark" src="https://www.paystack.ch/outreach/paystack-beta-campaign-hero-en-dark.jpg" width="600" alt="Paystack.ch — A private beta for SMEs in Geneva." style="display:none;width:100%;max-width:600px;height:auto;border:0;outline:none;">
             </td>
           </tr>
 
