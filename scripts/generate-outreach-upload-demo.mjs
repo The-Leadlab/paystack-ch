@@ -82,13 +82,47 @@ function highlightSvg(active, done, theme) {
   const stroke = done ? "#3ECF8E" : "#E8423F";
   const fill = done ? "rgba(62,207,142,0.12)" : "rgba(232,66,63,0.12)";
   const label = done ? "Uploaded" : "Drop to upload";
-  const chip = theme === "light" ? "#FFFFFF" : "#12151a";
+  const chip = theme === "light" ? "#FFFFFF" : "#000000";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
   <rect x="210" y="168" width="300" height="92" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-dasharray="${done ? "0" : "8 6"}"/>
   <rect x="285" y="198" width="150" height="28" rx="6" fill="${chip}" opacity="0.92"/>
   <text x="360" y="216" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="${stroke}">${label}</text>
 </svg>`;
+}
+
+/** Push navy / blue-gray chrome toward true black while keeping brand reds/greens. */
+async function toTrueBlackDashboard(pngBuf) {
+  const { data, info } = await sharp(pngBuf).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    // Keep Paystack red accents
+    if (r > 160 && g < 110 && b < 110 && r > g + 40 && r > b + 40) continue;
+    // Keep greens (income / success)
+    if (g > 140 && g > r + 20 && g > b + 10) continue;
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    const cool = b > r + 8 && b > g + 4; // navy / blue-gray tint
+    if (lum < 90) {
+      // dark chrome → near-black (kill blue cast)
+      const v = cool ? Math.max(0, Math.round(lum * 0.15)) : Math.max(0, Math.round(lum * 0.28));
+      data[i] = v;
+      data[i + 1] = v;
+      data[i + 2] = v;
+    } else if (lum < 140 && cool) {
+      // mid navy panels → charcoal
+      const v = Math.round(lum * 0.35);
+      data[i] = v;
+      data[i + 1] = v;
+      data[i + 2] = v;
+    }
+  }
+  return sharp(data, {
+    raw: { width: info.width, height: info.height, channels: 4 },
+  })
+    .png()
+    .toBuffer();
 }
 
 /** Remap dark UI screenshot → light UI while preserving brand red. */
@@ -255,14 +289,16 @@ async function main() {
   ].find((p) => fs.existsSync(p));
   if (!dashPath) throw new Error("Missing tmp-landing-v3/dashboard.png");
 
-  const darkBase = await sharp(dashPath)
-    .resize(W, H, {
-      fit: "contain",
-      background: { r: 12, g: 14, b: 18, alpha: 1 },
-      position: "centre",
-    })
-    .png()
-    .toBuffer();
+  const darkBase = await toTrueBlackDashboard(
+    await sharp(dashPath)
+      .resize(W, H, {
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 1 },
+        position: "centre",
+      })
+      .png()
+      .toBuffer()
+  );
 
   const lightBase = await toLightDashboard(
     await sharp(dashPath)
@@ -282,11 +318,15 @@ async function main() {
   const darkPng = path.join(outDir, "upload-demo-dark.png");
   const lightGif = path.join(outDir, "upload-demo-light.gif");
   const lightPng = path.join(outDir, "upload-demo-light.png");
+  const darkGifV6 = path.join(outDir, "upload-demo-v6.gif");
+  const darkPngV6 = path.join(outDir, "upload-demo-v6.png");
 
   await buildGif(ffmpeg, darkBase, "dark", darkGif, darkPng);
   await buildGif(ffmpeg, lightBase, "light", lightGif, lightPng);
+  fs.copyFileSync(darkGif, darkGifV6);
+  fs.copyFileSync(darkPng, darkPngV6);
 
-  // Cache-bust aliases + legacy names (dark = previous default)
+  // Cache-bust aliases + legacy names (dark = campaign default)
   for (const name of [
     "upload-demo-v5.gif",
     "upload-demo-v4.gif",
