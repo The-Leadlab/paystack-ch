@@ -31,6 +31,10 @@ Sessions list, New session, Dashboard / Revenue / Expenses / Documents, Billing,
 - Personal Settings: “Restart product tour”
 - Business sidebar tools / foot: same control
 
+## Click reliability & language chrome
+
+See **`docs/TOUR_LANGUAGE_DRIVE_TRUST_SUPER_PROMPT.md`**: overlay `z-[120]`, no backdrop-skip, language toggle in tour + app FAB (not theme Clair).
+
 ## Out of scope
 
 Open Banking; promoting Ali lab into `/app`; fullscreen chrome hide.

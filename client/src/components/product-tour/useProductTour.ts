@@ -96,9 +96,9 @@ export function useProductTour(opts: {
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
-    if (!force && readTourDone(storageKey)) return;
+    if (readTourDone(storageKey)) return;
     const length = readTourLength(lengthKey);
-    if (!force && length === "skip") {
+    if (length === "skip") {
       writeTourDone(storageKey);
       return;
     }
@@ -108,13 +108,14 @@ export function useProductTour(opts: {
       // If length missing but tour not done (legacy), default short once.
     }
     const t = window.setTimeout(() => {
-      if (!force && readTourDone(storageKey)) return;
+      // Always respect Skip / Done — even for forceGuides tester (restart via sidebar).
+      if (readTourDone(storageKey)) return;
       const len = readTourLength(lengthKey);
       if (len === "skip") {
         writeTourDone(storageKey);
         return;
       }
-      // Only auto-start when length is set, or force tester
+      // Only auto-start when length is set, or force tester with no prior skip
       if (force || len === "short" || len === "long") {
         start(len ?? "short");
       }

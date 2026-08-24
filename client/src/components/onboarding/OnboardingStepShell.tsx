@@ -17,7 +17,7 @@ type Props = {
   stepCount: number;
 };
 
-/** Compact theme control for onboarding / tour chrome (not the floating FAB). */
+/** Compact theme control for onboarding chrome (not the floating FAB). */
 export function OnboardingThemeToggle({ className }: { className?: string }) {
   const { theme, toggleTheme, switchable } = useTheme();
   const { t } = useLanguage();
@@ -38,6 +38,34 @@ export function OnboardingThemeToggle({ className }: { className?: string }) {
     >
       {dark ? <Sun className="size-3.5 shrink-0" /> : <Moon className="size-3.5 shrink-0" />}
       <span className="hidden sm:inline">{dark ? t("themeLabelLight") : t("themeLabelDark")}</span>
+    </button>
+  );
+}
+
+/** Compact EN ↔ FR control for product tour / onboarding chrome. */
+export function OnboardingLanguageToggle({ className }: { className?: string }) {
+  const { language, setLanguage, t } = useLanguage();
+  const next = language === "en" ? "fr" : "en";
+  const short = next === "en" ? t("languageToggleShortEn") : t("languageToggleShortFr");
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setLanguage(next);
+      }}
+      className={cn(
+        "inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-colors",
+        "border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-card)] text-[color:var(--color-cdlp-muted)]",
+        "hover:text-[color:var(--color-cdlp-gold)] hover:border-[color:var(--color-cdlp-gold)]",
+        className,
+      )}
+      aria-label={language === "en" ? t("navSwitchToFrench") : t("navSwitchToEnglish")}
+      title={`${t("languageToggleLabel")}: ${short}`}
+    >
+      <span aria-hidden>🌐</span>
+      <span>{language === "en" ? t("languageToggleShortEn") : t("languageToggleShortFr")}</span>
     </button>
   );
 }

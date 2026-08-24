@@ -866,6 +866,8 @@ export const dashboardEn: Record<string, string> = {
   driveConnect: 'Connect Google Drive',
   driveReconnect: 'Reconnect Google Drive',
   driveChecking: 'Checking connection…',
+  driveUnverifiedWarning:
+    'Google may show “Google hasn’t verified this app.” Click Advanced → Go to Paystack.ch (unsafe). That screen is normal until Google finishes verifying paystack.ch — you are still connecting to our official Drive integration.',
   driveNeedsRenew: 'Your Google Drive connection needs to be renewed. Reconnect below.',
   driveConnectedToast: 'Google Drive connected.',
   driveImportedToast: '{count} document(s) imported from Google Drive.',
@@ -1745,6 +1747,8 @@ export const dashboardFr: Record<string, string> = {
   driveConnect: 'Connecter Google Drive',
   driveReconnect: 'Reconnecter Google Drive',
   driveChecking: 'Vérification de la connexion…',
+  driveUnverifiedWarning:
+    'Google peut afficher « Google n’a pas vérifié cette application ». Cliquez sur Paramètres avancés → Accéder à Paystack.ch (non sécurisé). Cet écran est normal tant que Google n’a pas terminé la vérification de paystack.ch — vous connectez bien notre intégration Drive officielle.',
   driveNeedsRenew: 'Votre connexion Google Drive doit être renouvelée. Reconnectez ci-dessous.',
   driveConnectedToast: 'Google Drive connecté.',
   driveImportedToast: '{count} document(s) importé(s) depuis Google Drive.',

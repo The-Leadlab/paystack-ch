@@ -34,7 +34,7 @@ export function googleDriveErrorUserMessage(reason: GoogleDriveErrorReason): str
     case "missing_config":
       return "Google Drive is not configured on the server (missing GOOGLE_DRIVE_* env vars on Vercel).";
     case "oauth_denied":
-      return "Google access was denied or the OAuth app is in Testing mode without your account as a test user.";
+      return "Google blocked access or showed the unverified-app screen. On that page choose Advanced → Go to Paystack.ch, or add your Google account as a test user while the OAuth app is in Testing mode.";
     default:
       return "Could not connect Google Drive. Check Vercel env vars (GOOGLE_DRIVE_* and Firebase Admin JSON), then try again.";
   }

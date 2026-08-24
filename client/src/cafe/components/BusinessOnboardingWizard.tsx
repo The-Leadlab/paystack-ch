@@ -109,9 +109,16 @@ export function BusinessOnboardingWizard({
         }}
         onSkip={() => setStep(3)}
       >
-        <div className="rounded-xl border border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-card)] px-4 py-3 flex items-center gap-3 text-sm">
-          <Cloud className="size-5 text-[color:var(--color-cdlp-muted)]" />
-          {driveConnected ? t("onboardingDriveConnected") : t("bizOnboardDriveHint")}
+        <div className="space-y-2">
+          <div className="rounded-xl border border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-card)] px-4 py-3 flex items-center gap-3 text-sm">
+            <Cloud className="size-5 text-[color:var(--color-cdlp-muted)]" />
+            {driveConnected ? t("onboardingDriveConnected") : t("bizOnboardDriveHint")}
+          </div>
+          {!driveConnected ? (
+            <p className="text-xs text-[color:var(--color-cdlp-muted)] leading-relaxed px-1">
+              {t("bizOnboardDriveUnverified")}
+            </p>
+          ) : null}
         </div>
       </OnboardingStepShell>
     );

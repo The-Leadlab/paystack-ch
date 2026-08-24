@@ -48,6 +48,8 @@ export const tourEn: Record<string, string> = {
   bizOnboardDriveTitle: 'Connect Google Drive',
   bizOnboardDriveSubtitle: 'Optional. Business documents sync under Paystack Documents.',
   bizOnboardDriveHint: 'Reconnect anytime from Billing / Settings.',
+  bizOnboardDriveUnverified:
+    'Google may warn that the app isn’t verified. Use Advanced → Go to Paystack.ch — that’s expected until verification completes.',
   bizOnboardSessionTitle: 'Create your first session',
   bizOnboardSessionSubtitle:
     'Sessions organize documents and ledgers by period. Use New session in the sidebar.',
@@ -229,6 +231,8 @@ export const tourFr: Record<string, string> = {
   bizOnboardDriveSubtitle:
     'Optionnel. Les documents pro se synchronisent sous Paystack Documents.',
   bizOnboardDriveHint: 'Reconnectez à tout moment depuis Facturation / Paramètres.',
+  bizOnboardDriveUnverified:
+    'Google peut avertir que l’app n’est pas vérifiée. Utilisez Paramètres avancés → Accéder à Paystack.ch — c’est normal tant que la vérification n’est pas terminée.',
   bizOnboardSessionTitle: 'Créez votre première session',
   bizOnboardSessionSubtitle:
     'Les sessions organisent documents et grands livres par période. Utilisez Nouvelle session dans la barre latérale.',

@@ -213,15 +213,21 @@ export function GoogleDriveConnectPanel({
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void handleConnect()}
-          className="w-full h-11 rounded-sm bg-cdlp-gold text-white font-black text-xs uppercase tracking-wider hover:bg-cdlp-gold-light disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
-        >
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Cloud className="w-4 h-4" aria-hidden />}
-          {needsReconnect ? t('driveReconnect') : t('driveConnect')}
-        </button>
+        <div className="space-y-3">
+          <p className="flex items-start gap-2 text-[11px] leading-relaxed rounded-md border border-cdlp-border/80 bg-cdlp-dark/40 px-3 py-2.5 text-cdlp-muted">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-cdlp-gold/80" aria-hidden />
+            <span>{t('driveUnverifiedWarning')}</span>
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void handleConnect()}
+            className="w-full h-11 rounded-sm bg-cdlp-gold text-white font-black text-xs uppercase tracking-wider hover:bg-cdlp-gold-light disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
+          >
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Cloud className="w-4 h-4" aria-hidden />}
+            {needsReconnect ? t('driveReconnect') : t('driveConnect')}
+          </button>
+        </div>
       )}
     </section>
   );
