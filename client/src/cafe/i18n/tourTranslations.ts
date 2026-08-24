@@ -30,6 +30,57 @@ export const tourEn: Record<string, string> = {
   tourRestartOnboarding: 'Restart onboarding',
   tourHelp: 'Help',
 
+  onboardingSkip: 'Skip for now',
+  onboardingContinue: 'Continue',
+  onboardingConnecting: 'Connecting…',
+  onboardingConnectDrive: 'Connect Drive',
+  onboardingDriveConnected: 'Drive connected',
+
+  bizOnboardWelcomeTitle: 'Welcome to Paystack Business',
+  bizOnboardWelcomeSubtitle:
+    'Swiss restaurant finances — sessions, documents, revenue, and VAT.',
+  bizOnboardWelcomeNote:
+    'Personal money stays on /personal — never mixed into Revenue.',
+  bizOnboardWorkspaceTitle: 'Your restaurant workspace',
+  bizOnboardWorkspaceSubtitle:
+    'If you already picked a client, you’re set. Otherwise create one from the client list.',
+  bizOnboardWorkspaceCard: 'Client / restaurant selection stays available after setup.',
+  bizOnboardDriveTitle: 'Connect Google Drive',
+  bizOnboardDriveSubtitle: 'Optional. Business documents sync under Paystack Documents.',
+  bizOnboardDriveHint: 'Reconnect anytime from Billing / Settings.',
+  bizOnboardSessionTitle: 'Create your first session',
+  bizOnboardSessionSubtitle:
+    'Sessions organize documents and ledgers by period. Use New session in the sidebar.',
+  bizOnboardSessionTip:
+    'Tip: collapse the sidebar — only icons remain and the dashboard grows.',
+
+  perOnboardWelcomeTitle: 'Welcome to Paystack Personal',
+  perOnboardWelcomeSubtitle:
+    'Set up your household money view in a minute — or skip and explore.',
+  perOnboardWelcomeNote:
+    'Bank statements, budgets, and goals stay separate from Business.',
+  perOnboardGoalTitle: 'What do you want to focus on?',
+  perOnboardGoalSubtitle: 'We’ll highlight the right tabs after you choose.',
+  perOnboardGoalSave: 'Save more',
+  perOnboardGoalSaveDesc: 'Goals and surplus coaching',
+  perOnboardGoalTrack: 'Track spending',
+  perOnboardGoalTrackDesc: 'Budgets and category limits',
+  perOnboardGoalBoth: 'Both',
+  perOnboardGoalBothDesc: 'Full personal toolkit',
+  perOnboardDriveTitle: 'Connect Google Drive',
+  perOnboardDriveSubtitle:
+    'Optional. Statement backups go under Paystack Documents / Personal / date.',
+  perOnboardDriveHint: 'Same Google account as Business Drive is fine.',
+  perOnboardInviteTitle: 'Invite household?',
+  perOnboardInviteSubtitle:
+    'Editors can help with budgets; viewers can see the shared wallet.',
+  perOnboardInviteOpen: 'Open invite',
+  perOnboardInviteNote: 'One free seat on Personal — extras are billed as add-ons.',
+  perOnboardUploadTitle: 'Upload a bank statement',
+  perOnboardUploadSubtitle:
+    'CSV or PDF on Overview — AI fills categories when available.',
+  perOnboardUploadNote: 'You can upload anytime from Overview.',
+
   // Business short
   tourBizSessionsTitle: 'Sessions',
   tourBizSessionsBody: 'Organize documents and ledgers by period.',
@@ -157,6 +208,60 @@ export const tourFr: Record<string, string> = {
   tourRestartLong: 'Recommencer la visite longue',
   tourRestartOnboarding: 'Recommencer l’intégration',
   tourHelp: 'Aide',
+
+  onboardingSkip: 'Passer pour l’instant',
+  onboardingContinue: 'Continuer',
+  onboardingConnecting: 'Connexion…',
+  onboardingConnectDrive: 'Connecter Drive',
+  onboardingDriveConnected: 'Drive connecté',
+
+  bizOnboardWelcomeTitle: 'Bienvenue sur Paystack Business',
+  bizOnboardWelcomeSubtitle:
+    'Finances de restaurants suisses — sessions, documents, revenus et TVA.',
+  bizOnboardWelcomeNote:
+    'L’argent personnel reste sur /personal — jamais mélangé aux revenus.',
+  bizOnboardWorkspaceTitle: 'Votre espace restaurant',
+  bizOnboardWorkspaceSubtitle:
+    'Si vous avez déjà choisi un client, c’est bon. Sinon créez-en un depuis la liste.',
+  bizOnboardWorkspaceCard:
+    'Le choix client / restaurant reste disponible après la configuration.',
+  bizOnboardDriveTitle: 'Connecter Google Drive',
+  bizOnboardDriveSubtitle:
+    'Optionnel. Les documents pro se synchronisent sous Paystack Documents.',
+  bizOnboardDriveHint: 'Reconnectez à tout moment depuis Facturation / Paramètres.',
+  bizOnboardSessionTitle: 'Créez votre première session',
+  bizOnboardSessionSubtitle:
+    'Les sessions organisent documents et grands livres par période. Utilisez Nouvelle session dans la barre latérale.',
+  bizOnboardSessionTip:
+    'Astuce : réduisez la barre latérale — seules les icônes restent et le tableau s’agrandit.',
+
+  perOnboardWelcomeTitle: 'Bienvenue sur Paystack Personal',
+  perOnboardWelcomeSubtitle:
+    'Configurez la vue argent du foyer en une minute — ou passez et explorez.',
+  perOnboardWelcomeNote:
+    'Relevés, budgets et objectifs restent séparés de Business.',
+  perOnboardGoalTitle: 'Sur quoi voulez-vous vous concentrer ?',
+  perOnboardGoalSubtitle: 'Nous mettrons en avant les bons onglets après votre choix.',
+  perOnboardGoalSave: 'Épargner plus',
+  perOnboardGoalSaveDesc: 'Objectifs et coaching d’excédent',
+  perOnboardGoalTrack: 'Suivre les dépenses',
+  perOnboardGoalTrackDesc: 'Budgets et plafonds par catégorie',
+  perOnboardGoalBoth: 'Les deux',
+  perOnboardGoalBothDesc: 'Toute la boîte à outils personnelle',
+  perOnboardDriveTitle: 'Connecter Google Drive',
+  perOnboardDriveSubtitle:
+    'Optionnel. Les sauvegardes de relevés vont sous Paystack Documents / Personal / date.',
+  perOnboardDriveHint: 'Le même compte Google que Business Drive convient.',
+  perOnboardInviteTitle: 'Inviter le foyer ?',
+  perOnboardInviteSubtitle:
+    'Les éditeurs aident sur les budgets ; les lecteurs voient le portefeuille partagé.',
+  perOnboardInviteOpen: 'Ouvrir l’invitation',
+  perOnboardInviteNote:
+    'Un siège gratuit sur Personal — les sièges en plus sont facturés en options.',
+  perOnboardUploadTitle: 'Importer un relevé bancaire',
+  perOnboardUploadSubtitle:
+    'CSV ou PDF sur l’aperçu — l’IA remplit les catégories quand c’est possible.',
+  perOnboardUploadNote: 'Vous pouvez importer à tout moment depuis l’aperçu.',
 
   tourBizSessionsTitle: 'Sessions',
   tourBizSessionsBody: 'Organisez documents et grands livres par période.',

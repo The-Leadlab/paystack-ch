@@ -60,15 +60,13 @@ export function BusinessOnboardingWizard({
       <OnboardingStepShell
         stepIndex={0}
         stepCount={STEPS}
-        title="Welcome to Paystack Business"
-        subtitle="Swiss restaurant finances — sessions, documents, revenue, and VAT."
-        primaryLabel="Continue"
+        title={t("bizOnboardWelcomeTitle")}
+        subtitle={t("bizOnboardWelcomeSubtitle")}
+        primaryLabel={t("onboardingContinue")}
         onPrimary={() => setStep(1)}
         onSkip={() => finish("skip")}
       >
-        <p className="text-xs text-[color:var(--color-cdlp-muted)]">
-          Personal money stays on /personal — never mixed into Revenue.
-        </p>
+        <p className="text-xs text-[color:var(--color-cdlp-muted)]">{t("bizOnboardWelcomeNote")}</p>
       </OnboardingStepShell>
     );
   }
@@ -77,15 +75,15 @@ export function BusinessOnboardingWizard({
       <OnboardingStepShell
         stepIndex={1}
         stepCount={STEPS}
-        title="Your restaurant workspace"
-        subtitle="If you already picked a client, you’re set. Otherwise create one from the client list."
-        primaryLabel="Continue"
+        title={t("bizOnboardWorkspaceTitle")}
+        subtitle={t("bizOnboardWorkspaceSubtitle")}
+        primaryLabel={t("onboardingContinue")}
         onPrimary={() => setStep(2)}
         onSkip={() => finish("skip")}
       >
         <div className="rounded-xl border border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-card)] px-4 py-3 flex items-center gap-3 text-sm">
           <Store className="size-5 text-[color:var(--color-cdlp-muted)]" />
-          Client / restaurant selection stays available after setup.
+          {t("bizOnboardWorkspaceCard")}
         </div>
       </OnboardingStepShell>
     );
@@ -95,9 +93,15 @@ export function BusinessOnboardingWizard({
       <OnboardingStepShell
         stepIndex={2}
         stepCount={STEPS}
-        title="Connect Google Drive"
-        subtitle="Optional. Business documents sync under Paystack Documents."
-        primaryLabel={driveConnected ? "Continue" : busy ? "Connecting…" : "Connect Drive"}
+        title={t("bizOnboardDriveTitle")}
+        subtitle={t("bizOnboardDriveSubtitle")}
+        primaryLabel={
+          driveConnected
+            ? t("onboardingContinue")
+            : busy
+              ? t("onboardingConnecting")
+              : t("onboardingConnectDrive")
+        }
         primaryDisabled={busy}
         onPrimary={() => {
           if (driveConnected) setStep(3);
@@ -107,7 +111,7 @@ export function BusinessOnboardingWizard({
       >
         <div className="rounded-xl border border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-card)] px-4 py-3 flex items-center gap-3 text-sm">
           <Cloud className="size-5 text-[color:var(--color-cdlp-muted)]" />
-          {driveConnected ? "Drive connected" : "Reconnect anytime from Billing / Settings."}
+          {driveConnected ? t("onboardingDriveConnected") : t("bizOnboardDriveHint")}
         </div>
       </OnboardingStepShell>
     );
@@ -117,15 +121,15 @@ export function BusinessOnboardingWizard({
       <OnboardingStepShell
         stepIndex={3}
         stepCount={STEPS}
-        title="Create your first session"
-        subtitle="Sessions organize documents and ledgers by period. Use New session in the sidebar."
-        primaryLabel="Continue"
+        title={t("bizOnboardSessionTitle")}
+        subtitle={t("bizOnboardSessionSubtitle")}
+        primaryLabel={t("onboardingContinue")}
         onPrimary={() => setStep(4)}
         onSkip={() => setStep(4)}
       >
         <div className="rounded-xl border border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-card)] px-4 py-3 flex items-center gap-3 text-sm">
           <FolderKanban className="size-5 text-[color:var(--color-cdlp-muted)]" />
-          Tip: collapse the sidebar — only icons remain and the dashboard grows.
+          {t("bizOnboardSessionTip")}
         </div>
       </OnboardingStepShell>
     );

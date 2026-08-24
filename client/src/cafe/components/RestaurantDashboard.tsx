@@ -190,10 +190,6 @@ export function RestaurantDashboard() {
   }, [subscriptionLoading, enforcementEnabled, entitlements.maxDocumentsPerMonth, documentsUsedThisMonth]);
 
   const [planTestPickerOpen, setPlanTestPickerOpen] = useState(false);
-  useEffect(() => {
-    if (!isPlanTestUser || subscriptionLoading) return;
-    if (!billing?.planId) setPlanTestPickerOpen(true);
-  }, [isPlanTestUser, subscriptionLoading, billing?.planId]);
 
   const [showSidebar, setShowSidebar] = useState(false);
   const { collapsed: sidebarCollapsed, toggle: toggleSidebarCollapsed } =
@@ -203,6 +199,11 @@ export function RestaurantDashboard() {
   const [showBusinessOnboarding, setShowBusinessOnboarding] = useState(
     () => forceGuides || !readOnboardingDone(BUSINESS_ONBOARDING_KEY)
   );
+
+  useEffect(() => {
+    if (!isPlanTestUser || subscriptionLoading || showBusinessOnboarding) return;
+    if (!billing?.planId) setPlanTestPickerOpen(true);
+  }, [isPlanTestUser, subscriptionLoading, billing?.planId, showBusinessOnboarding]);
 
   useEffect(() => {
     if (shouldForceProductGuides(user?.email)) {
@@ -816,7 +817,7 @@ export function RestaurantDashboard() {
           onOpenBilling={openBillingTab}
         />
       )}
-      {isPlanTestUser ? (
+      {isPlanTestUser && !showBusinessOnboarding ? (
         <>
           {billing?.planId ? <PlanTestBanner onSwitch={() => setPlanTestPickerOpen(true)} /> : null}
           <PlanTestPickerModal

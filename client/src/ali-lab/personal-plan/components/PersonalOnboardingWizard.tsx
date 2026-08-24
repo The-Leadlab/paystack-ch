@@ -75,13 +75,13 @@ export function PersonalOnboardingWizard({
       <OnboardingStepShell
         stepIndex={0}
         stepCount={STEPS}
-        title="Welcome to Paystack Personal"
-        subtitle="Set up your household money view in a minute — or skip and explore."
-        primaryLabel="Continue"
+        title={t("perOnboardWelcomeTitle")}
+        subtitle={t("perOnboardWelcomeSubtitle")}
+        primaryLabel={t("onboardingContinue")}
         onPrimary={() => setStep(1)}
         onSkip={() => finish("skip")}
       >
-        <p className="text-xs text-[color:var(--color-cdlp-muted)]">Bank statements, budgets, and goals stay separate from Business.</p>
+        <p className="text-xs text-[color:var(--color-cdlp-muted)]">{t("perOnboardWelcomeNote")}</p>
       </OnboardingStepShell>
     );
   }
@@ -90,9 +90,9 @@ export function PersonalOnboardingWizard({
       <OnboardingStepShell
         stepIndex={1}
         stepCount={STEPS}
-        title="What do you want to focus on?"
-        subtitle="We’ll highlight the right tabs after you choose."
-        primaryLabel="Continue"
+        title={t("perOnboardGoalTitle")}
+        subtitle={t("perOnboardGoalSubtitle")}
+        primaryLabel={t("onboardingContinue")}
         primaryDisabled={!goal}
         onPrimary={() => setStep(2)}
         onSkip={() => finish("skip")}
@@ -100,20 +100,20 @@ export function PersonalOnboardingWizard({
         <div className="space-y-2">
           <ChoiceCard
             selected={goal === "save"}
-            title="Save more"
-            description="Goals and surplus coaching"
+            title={t("perOnboardGoalSave")}
+            description={t("perOnboardGoalSaveDesc")}
             onClick={() => setGoal("save")}
           />
           <ChoiceCard
             selected={goal === "track"}
-            title="Track spending"
-            description="Budgets and category limits"
+            title={t("perOnboardGoalTrack")}
+            description={t("perOnboardGoalTrackDesc")}
             onClick={() => setGoal("track")}
           />
           <ChoiceCard
             selected={goal === "both"}
-            title="Both"
-            description="Full personal toolkit"
+            title={t("perOnboardGoalBoth")}
+            description={t("perOnboardGoalBothDesc")}
             onClick={() => setGoal("both")}
           />
         </div>
@@ -125,9 +125,15 @@ export function PersonalOnboardingWizard({
       <OnboardingStepShell
         stepIndex={2}
         stepCount={STEPS}
-        title="Connect Google Drive"
-        subtitle="Optional. Statement backups go under Paystack Documents / Personal / date."
-        primaryLabel={driveConnected ? "Continue" : busy ? "Connecting…" : "Connect Drive"}
+        title={t("perOnboardDriveTitle")}
+        subtitle={t("perOnboardDriveSubtitle")}
+        primaryLabel={
+          driveConnected
+            ? t("onboardingContinue")
+            : busy
+              ? t("onboardingConnecting")
+              : t("onboardingConnectDrive")
+        }
         primaryDisabled={busy}
         onPrimary={() => {
           if (driveConnected) setStep(3);
@@ -137,7 +143,7 @@ export function PersonalOnboardingWizard({
       >
         <div className="rounded-xl border border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-card)] px-4 py-3 flex items-center gap-3 text-sm">
           <Cloud className="size-5 text-[color:var(--color-cdlp-muted)]" />
-          {driveConnected ? "Drive connected" : "Same Google account as Business Drive is fine."}
+          {driveConnected ? t("onboardingDriveConnected") : t("perOnboardDriveHint")}
         </div>
       </OnboardingStepShell>
     );
@@ -147,9 +153,9 @@ export function PersonalOnboardingWizard({
       <OnboardingStepShell
         stepIndex={3}
         stepCount={STEPS}
-        title="Invite household?"
-        subtitle="Editors can help with budgets; viewers can see the shared wallet."
-        primaryLabel={surface === "app" ? "Open invite" : "Continue"}
+        title={t("perOnboardInviteTitle")}
+        subtitle={t("perOnboardInviteSubtitle")}
+        primaryLabel={surface === "app" ? t("perOnboardInviteOpen") : t("onboardingContinue")}
         onPrimary={() => {
           if (surface === "app") openInvite();
           setStep(4);
@@ -158,7 +164,7 @@ export function PersonalOnboardingWizard({
       >
         <div className="rounded-xl border border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-card)] px-4 py-3 flex items-center gap-3 text-sm">
           <UserPlus className="size-5 text-[color:var(--color-cdlp-muted)]" />
-          One free seat on Personal — extras are billed as add-ons.
+          {t("perOnboardInviteNote")}
         </div>
       </OnboardingStepShell>
     );
@@ -168,15 +174,15 @@ export function PersonalOnboardingWizard({
       <OnboardingStepShell
         stepIndex={4}
         stepCount={STEPS}
-        title="Upload a bank statement"
-        subtitle="CSV or PDF on Overview — AI fills categories when available."
-        primaryLabel="Continue"
+        title={t("perOnboardUploadTitle")}
+        subtitle={t("perOnboardUploadSubtitle")}
+        primaryLabel={t("onboardingContinue")}
         onPrimary={() => setStep(5)}
         onSkip={() => setStep(5)}
       >
         <div className="rounded-xl border border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-card)] px-4 py-3 flex items-center gap-3 text-sm">
           <Upload className="size-5 text-[color:var(--color-cdlp-muted)]" />
-          You can upload anytime from Overview.
+          {t("perOnboardUploadNote")}
         </div>
       </OnboardingStepShell>
     );

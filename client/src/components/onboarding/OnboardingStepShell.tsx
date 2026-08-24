@@ -58,16 +58,21 @@ export function OnboardingStepShell({
   stepCount,
 }: Props) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const dark = theme === "dark";
 
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[80] flex flex-col cafe-shell overscroll-y-contain",
+        /* Above global ThemeToggle (z-100) and tour overlay (z-90) so Continue / Skip always receive clicks */
+        "fixed inset-0 z-[110] flex flex-col cafe-shell overscroll-y-contain pointer-events-auto",
         dark ? "cafe-theme-dark" : "cafe-theme-light",
         "bg-[color:var(--color-cdlp-black)] text-[color:var(--color-cdlp-muted)]",
       )}
       style={{ fontFamily: "var(--font-app), system-ui, -apple-system, 'Segoe UI', sans-serif" }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="onboarding-step-title"
     >
       <header className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-b border-[color:var(--color-cdlp-border)] bg-[color:var(--color-cdlp-black)]/95 backdrop-blur-sm">
         <BrandLogo
@@ -88,6 +93,7 @@ export function OnboardingStepShell({
         <div className="max-w-xl mx-auto space-y-6">
           <div>
             <h1
+              id="onboarding-step-title"
               className={cn(
                 "text-2xl md:text-3xl font-bold tracking-tight",
                 dark ? "text-white" : "text-[color:var(--color-brand-charcoal,#2B2B2B)]",
@@ -100,11 +106,15 @@ export function OnboardingStepShell({
             ) : null}
           </div>
           <div className="space-y-4">{children}</div>
-          <div className="flex flex-wrap items-center gap-3 pt-4">
+          <div className="flex flex-wrap items-center gap-3 pt-4 relative z-10">
             <button
               type="button"
               disabled={primaryDisabled}
-              onClick={onPrimary}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onPrimary();
+              }}
               className={cn(
                 "h-11 px-6 rounded-lg text-sm font-bold text-white transition-colors",
                 "bg-[color:var(--color-cdlp-gold)] hover:bg-[color:var(--color-cdlp-gold-light)]",
@@ -115,10 +125,14 @@ export function OnboardingStepShell({
             </button>
             <button
               type="button"
-              onClick={onSkip}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onSkip();
+              }}
               className="h-11 px-4 text-sm font-semibold text-[color:var(--color-cdlp-muted)] hover:text-[color:var(--color-cdlp-gold)] transition-colors"
             >
-              Skip for now
+              {t("onboardingSkip")}
             </button>
           </div>
         </div>
