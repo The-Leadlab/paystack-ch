@@ -6,7 +6,8 @@
   Phone (Gmail app dark): same black heroes + white text on black cells;
   body is TRANSPARENT so Gmail dark chrome fills the side gutters (kills white borders).
   Do NOT paint body #0c0c0c — that made Gmail force a white/grey frame around the message.
-  Images never swap by theme. Text stays white on locked black cells.
+  Images never swap by theme.
+  Gmail iOS dark mode darkens white text → Parmentier blend wrappers restore white.
 
   Assets: hero-*-v2.jpg, upload-demo-v7.gif, email-bg-black.png
   Make: From "Lucas | Paystack" · Merge {{11.`3`}} · FULL replace HTML → NEW test.
@@ -50,7 +51,11 @@
     }
     img { border: 0 !important; outline: none !important; text-decoration: none !important; display: block !important; }
     .txt { color: #FFFFFF !important; }
-    .muted { color: #B0B0B0 !important; }
+    .muted { color: #FFFFFF !important; }
+
+    /* Gmail-only: force white text back after dark-mode darkening (Rémi Parmentier) */
+    u + .body .gmail-blend-screen { background: #000000; mix-blend-mode: screen; }
+    u + .body .gmail-blend-difference { background: #000000; mix-blend-mode: difference; color: #FFFFFF; }
 
     @media (prefers-color-scheme: dark) {
       html, body {
@@ -60,8 +65,7 @@
         background-color: #0c0c0c !important;
         background-image: linear-gradient(#0c0c0c, #0c0c0c) !important;
       }
-      .txt, p.txt { color: #FFFFFF !important; }
-      .muted { color: #B0B0B0 !important; }
+      .txt, p.txt, .muted { color: #FFFFFF !important; }
     }
 
     /* Phone: force full width of message pane (no centered card look) */
@@ -79,11 +83,11 @@
       background-color: #0c0c0c !important;
       background-image: linear-gradient(#0c0c0c, #0c0c0c) !important;
     }
-    [data-ogsc] .txt, [data-ogsb] .txt { color: #FFFFFF !important; }
-    [data-ogsc] .muted, [data-ogsb] .muted { color: #B0B0B0 !important; }
+    [data-ogsc] .txt, [data-ogsb] .txt,
+    [data-ogsc] .muted, [data-ogsb] .muted { color: #FFFFFF !important; }
   </style>
 </head>
-<body style="margin:0;padding:0;width:100%;min-width:100%;background-color:transparent;">
+<body class="body" style="margin:0;padding:0;width:100%;min-width:100%;background-color:transparent;">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">
     Bêta privée pour les PME genevoises. Près de 5 à 10 000 CHF de frais économisés. Échange sans frais. −25 % à vie.
   </div>
@@ -102,31 +106,35 @@
 
           <!-- FR LETTER -->
           <tr>
-            <td class="cell-bg" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:36px 24px 12px;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);background-repeat:repeat;">
-              <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
-                Bonjour {{11.`3`}},
-              </p>
-              <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
-                Paystack a commencé comme un outil privé. Notre fondateur travaille en private equity et l’a conçu pour gérer les impôts et plusieurs affaires à Genève — parce que comptables et financiers prenaient trop de temps et trop d’argent.
-              </p>
-              <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
-                Les PME perdent encore des heures (et des milliers de francs par an) rien qu’à traiter les documents que l’activité génère. Paystack est là pour régler ce problème : déposer tickets et factures, voir clairement recettes et dépenses, et arrêter de payer un travail que le logiciel peut faire.
-              </p>
-              <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
-                Pour la plupart des PME, cela représente près de CHF 5’000 à 10’000 de frais par an.
-              </p>
-              <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
-                Nous sommes en bêta dès maintenant, et nous cherchons avec soin un petit groupe d’exploitants à Genève. Si vous êtes ouvert à un court échange sans frais — et sans frais pour accepter d’être testeur — planifiez un créneau avec le bouton ci-dessous, ou répondez à cet e-mail. Voyez cela comme une occasion gratuite de gagner du temps et de l’argent. Sans engagement.
-              </p>
-              <p class="txt" style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
-                Les 100 premiers testeurs qui souhaitent devenir clients auront −25 % à vie.
-              </p>
+            <td class="cell-bg" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:36px 24px 12px;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);color:#FFFFFF;">
+              <div class="gmail-blend-screen">
+                <div class="gmail-blend-difference">
+                  <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
+                    Bonjour {{11.`3`}},
+                  </p>
+                  <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
+                    Paystack a commencé comme un outil privé. Notre fondateur travaille en private equity et l’a conçu pour gérer les impôts et plusieurs affaires à Genève — parce que comptables et financiers prenaient trop de temps et trop d’argent.
+                  </p>
+                  <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
+                    Les PME perdent encore des heures (et des milliers de francs par an) rien qu’à traiter les documents que l’activité génère. Paystack est là pour régler ce problème : déposer tickets et factures, voir clairement recettes et dépenses, et arrêter de payer un travail que le logiciel peut faire.
+                  </p>
+                  <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
+                    Pour la plupart des PME, cela représente près de CHF 5’000 à 10’000 de frais par an.
+                  </p>
+                  <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
+                    Nous sommes en bêta dès maintenant, et nous cherchons avec soin un petit groupe d’exploitants à Genève. Si vous êtes ouvert à un court échange sans frais — et sans frais pour accepter d’être testeur — planifiez un créneau avec le bouton ci-dessous, ou répondez à cet e-mail. Voyez cela comme une occasion gratuite de gagner du temps et de l’argent. Sans engagement.
+                  </p>
+                  <p class="txt" style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
+                    Les 100 premiers testeurs qui souhaitent devenir clients auront −25 % à vie.
+                  </p>
+                </div>
+              </div>
             </td>
           </tr>
 
           <!-- FR CTA -->
           <tr>
-            <td class="cell-bg" align="center" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:28px 24px 8px;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);background-repeat:repeat;">
+            <td class="cell-bg" align="center" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:28px 24px 8px;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);color:#FFFFFF;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:520px;border-collapse:collapse;">
                 <tr>
                   <td align="center" bgcolor="#E8423F" style="background-color:#E8423F;">
@@ -136,9 +144,13 @@
                   </td>
                 </tr>
               </table>
-              <p class="muted" style="margin:18px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;font-weight:normal;color:#B0B0B0;text-align:center;">
-                Ou répondez à cet e-mail · <a href="https://www.paystack.ch" style="color:#E8423F;text-decoration:none;">www.paystack.ch</a>
-              </p>
+              <div class="gmail-blend-screen">
+                <div class="gmail-blend-difference">
+                  <p class="muted" style="margin:18px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;font-weight:normal;color:#FFFFFF;text-align:center;">
+                    Ou répondez à cet e-mail · <a href="https://www.paystack.ch" style="color:#FFFFFF;text-decoration:underline;">www.paystack.ch</a>
+                  </p>
+                </div>
+              </div>
             </td>
           </tr>
 
@@ -164,31 +176,35 @@
 
           <!-- EN LETTER -->
           <tr>
-            <td class="cell-bg" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:36px 24px 12px;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);background-repeat:repeat;">
-              <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
-                Hi {{11.`3`}},
-              </p>
-              <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
-                Paystack started as a private system. Our founder works in private equity and built it to manage taxes and several businesses across Geneva — because accountants and financiers were taking too much time and too much money.
-              </p>
-              <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
-                SMEs still lose hours (and thousands of francs a year) just processing the documents a business generates. Paystack is built to kill that problem: upload receipts and invoices, get a clear picture of revenue and expenses, and stop paying for work that software can do.
-              </p>
-              <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
-                For most SMEs, that is almost CHF 5,000 to 10,000 of expense a year.
-              </p>
-              <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
-                We are beta live right now, selectively looking for a small group of Geneva operators to beta-test with us. If you are open to a short, zero-cost conversation — and zero cost to accept our beta tester offer — please schedule a time with the button below, or reply to this email. See this as a free opportunity to save time and money. No commitment.
-              </p>
-              <p class="txt" style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
-                The first 100 beta testers who wish to become clients will get 25% off for life.
-              </p>
+            <td class="cell-bg" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:36px 24px 12px;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);color:#FFFFFF;">
+              <div class="gmail-blend-screen">
+                <div class="gmail-blend-difference">
+                  <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
+                    Hi {{11.`3`}},
+                  </p>
+                  <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
+                    Paystack started as a private system. Our founder works in private equity and built it to manage taxes and several businesses across Geneva — because accountants and financiers were taking too much time and too much money.
+                  </p>
+                  <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
+                    SMEs still lose hours (and thousands of francs a year) just processing the documents a business generates. Paystack is built to kill that problem: upload receipts and invoices, get a clear picture of revenue and expenses, and stop paying for work that software can do.
+                  </p>
+                  <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
+                    For most SMEs, that is almost CHF 5,000 to 10,000 of expense a year.
+                  </p>
+                  <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
+                    We are beta live right now, selectively looking for a small group of Geneva operators to beta-test with us. If you are open to a short, zero-cost conversation — and zero cost to accept our beta tester offer — please schedule a time with the button below, or reply to this email. See this as a free opportunity to save time and money. No commitment.
+                  </p>
+                  <p class="txt" style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
+                    The first 100 beta testers who wish to become clients will get 25% off for life.
+                  </p>
+                </div>
+              </div>
             </td>
           </tr>
 
           <!-- EN CTA -->
           <tr>
-            <td class="cell-bg" align="center" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:28px 24px 8px;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);background-repeat:repeat;">
+            <td class="cell-bg" align="center" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:28px 24px 8px;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);color:#FFFFFF;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:520px;border-collapse:collapse;">
                 <tr>
                   <td align="center" bgcolor="#E8423F" style="background-color:#E8423F;">
@@ -198,21 +214,29 @@
                   </td>
                 </tr>
               </table>
-              <p class="muted" style="margin:18px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;font-weight:normal;color:#B0B0B0;text-align:center;">
-                Or reply to this email · <a href="https://www.paystack.ch" style="color:#E8423F;text-decoration:none;">www.paystack.ch</a>
-              </p>
+              <div class="gmail-blend-screen">
+                <div class="gmail-blend-difference">
+                  <p class="muted" style="margin:18px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;font-weight:normal;color:#FFFFFF;text-align:center;">
+                    Or reply to this email · <a href="https://www.paystack.ch" style="color:#FFFFFF;text-decoration:underline;">www.paystack.ch</a>
+                  </p>
+                </div>
+              </div>
             </td>
           </tr>
 
           <!-- FOOTER -->
           <tr>
-            <td class="cell-bg" align="center" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:40px 24px 44px;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);background-repeat:repeat;">
-              <p class="muted" style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;font-weight:normal;color:#B0B0B0;">
-                Paystack.ch — vos finances automatisées
-              </p>
-              <p class="muted" style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;font-weight:normal;color:#888888;">
-                Geneva, Switzerland · <a href="mailto:lucas@paystack.ch" style="color:#E8423F;text-decoration:none;">lucas@paystack.ch</a>
-              </p>
+            <td class="cell-bg" align="center" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:40px 24px 44px;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);color:#FFFFFF;">
+              <div class="gmail-blend-screen">
+                <div class="gmail-blend-difference">
+                  <p class="muted" style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;font-weight:normal;color:#FFFFFF;">
+                    Paystack.ch — vos finances automatisées
+                  </p>
+                  <p class="muted" style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;font-weight:normal;color:#FFFFFF;">
+                    Geneva, Switzerland · <a href="mailto:lucas@paystack.ch" style="color:#FFFFFF;text-decoration:underline;">lucas@paystack.ch</a>
+                  </p>
+                </div>
+              </div>
             </td>
           </tr>
 

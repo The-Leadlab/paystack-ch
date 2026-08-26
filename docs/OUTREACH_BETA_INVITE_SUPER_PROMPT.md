@@ -20,6 +20,7 @@ Instead, one file (`docs/outreach/paystack-beta-invite.html`) encodes both behav
 1. **Content (laptop + phone):** black tables/cells + black `/outreach/*-v2.jpg` / `upload-demo-v7.gif` + white `#FFFFFF` text.
 2. **Phone gutters:** `html`/`body` use `background-color: transparent` so Gmail iOS dark mode fills the side frame with the **app’s black chrome** instead of forcing a white/grey reading-pane border.
 3. **Phone width:** `@media (max-width: 620px)` forces `.outer-table` / `.inner-table` / images to `width:100%` so the black column fills the message pane.
+4. **Phone white text:** Gmail iOS darkens `#FFFFFF` on black → wrap letter/footer copy in Parmentier blend divs (`gmail-blend-screen` + `gmail-blend-difference`) with `u + .body` CSS. Requires `<body class="body">`. Blend keeps **white** text only (no grey muted).
 
 Painting `body` solid `#0c0c0c` (or `color-scheme: light only`) was what produced the thick **white vertical borders** around an otherwise correct black letter.
 
@@ -28,10 +29,11 @@ Painting `body` solid `#0c0c0c` (or `color-scheme: light only`) was what produce
 1. Body / html → **transparent** (no solid body fill).
 2. All letter/CTA/footer cells → `bgcolor="#0c0c0c"` + `background="…/email-bg-black.png"` (or linear-gradient lock).
 3. Heroes + GIF → black assets only; no `-light` srcs; no CSS image swap.
-4. Text → `#FFFFFF` / muted `#B0B0B0` with `.txt` `!important`.
+4. Text → `#FFFFFF` inside Gmail blend wrappers (letter + footer). No grey muted on phone — grey becomes invisible after dark-mode rewrite.
 5. Outer padding → `0` (no `24px 12px` gutters in our HTML).
 6. Never reintroduce cream / `#FFF5F4` / light shells.
 7. After any HTML edit: copy to `C:\Users\attia\Downloads\paystack-beta-invite-campaign.html`, **full replace** in Make, send a **new** test (old messages keep old chrome).
+8. Body must have `class="body"` or the Gmail blend CSS (`u + .body …`) never applies.
 
 ## Source of truth
 
