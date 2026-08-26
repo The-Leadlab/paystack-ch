@@ -1,8 +1,9 @@
 <!--
   Outreach 1 — Subject: Vous avez été choisi
-  Locked BLACK email (Spinella-style) for Gmail desktop AND mobile.
-  Force black in BOTH light + dark media queries so Gmail iOS/Android cannot invert to white.
-  Images: v2/v7 filenames (cache-bust Google image proxy 404s).
+  ALWAYS black (same as laptop) — never adapt to phone light/dark mode.
+  color-scheme: light only → stops Gmail iOS from inverting black HTML to white.
+  background-image + linear-gradient on cells → extra anti-invert lock.
+  Images: hero-*-v2.jpg, upload-demo-v7.gif, email-bg-black.png
   Make.com: From Name "Lucas | Paystack" · Merge {{11.`3`}}
   After edit: FULL replace HTML in Make → NEW test send.
 -->
@@ -11,8 +12,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="dark only">
-  <meta name="supported-color-schemes" content="dark only">
+  <!-- light only = do NOT invite Gmail dark-mode remapping (that was turning our black letter white) -->
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
   <meta name="x-apple-disable-message-reformatting">
   <title>Vous avez été choisi</title>
   <!--[if mso]>
@@ -26,64 +28,57 @@
   <style>table,td{font-family:Arial,Helvetica,sans-serif !important;}</style>
   <![endif]-->
   <style type="text/css">
-    :root { color-scheme: dark only; supported-color-schemes: dark only; }
+    :root { color-scheme: light only; supported-color-schemes: light only; }
     html, body {
       margin: 0 !important;
       padding: 0 !important;
       width: 100% !important;
       background-color: #0c0c0c !important;
     }
-    /* Lock black in EVERY scheme — Gmail mobile remaps pure #000 / white shells */
     body, .body-bg, .outer-table, .inner-table, .cell-bg {
       background-color: #0c0c0c !important;
+      background-image: linear-gradient(#0c0c0c, #0c0c0c) !important;
     }
     .txt { color: #FFFFFF !important; }
     .muted { color: #B0B0B0 !important; }
-
+    /* If a client still applies dark scheme, keep black — never go white */
     @media (prefers-color-scheme: dark) {
       body, .body-bg, .outer-table, .inner-table, .cell-bg, table, td {
         background-color: #0c0c0c !important;
+        background-image: linear-gradient(#0c0c0c, #0c0c0c) !important;
       }
       .txt, p.txt, h1, h2 { color: #FFFFFF !important; }
       .muted { color: #B0B0B0 !important; }
-      a { color: #E8423F !important; }
     }
-    @media (prefers-color-scheme: light) {
-      body, .body-bg, .outer-table, .inner-table, .cell-bg, table, td {
-        background-color: #0c0c0c !important;
-      }
-      .txt, p.txt { color: #FFFFFF !important; }
-      .muted { color: #B0B0B0 !important; }
-    }
-    /* Outlook.com dark */
     [data-ogsc] body, [data-ogsc] .body-bg, [data-ogsc] .outer-table, [data-ogsc] .inner-table, [data-ogsc] .cell-bg,
     [data-ogsb] body, [data-ogsb] .body-bg, [data-ogsb] .outer-table, [data-ogsb] .inner-table, [data-ogsb] .cell-bg {
       background-color: #0c0c0c !important;
+      background-image: linear-gradient(#0c0c0c, #0c0c0c) !important;
     }
     [data-ogsc] .txt, [data-ogsb] .txt { color: #FFFFFF !important; }
     [data-ogsc] .muted, [data-ogsb] .muted { color: #B0B0B0 !important; }
   </style>
 </head>
-<body class="body-bg" style="margin:0;padding:0;width:100%;background-color:#0c0c0c;" bgcolor="#0c0c0c">
+<body class="body-bg" bgcolor="#0c0c0c" style="margin:0;padding:0;width:100%;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">
     Bêta privée pour les PME genevoises. Près de 5 à 10 000 CHF de frais économisés. Échange sans frais. −25 % à vie.
   </div>
 
-  <table class="outer-table" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0c0c0c" style="border-collapse:collapse;border-spacing:0;width:100%;background-color:#0c0c0c;">
+  <table class="outer-table" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="border-collapse:collapse;border-spacing:0;width:100%;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);">
     <tr>
-      <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:24px 12px;background-color:#0c0c0c;">
-        <table class="inner-table" role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#0c0c0c" style="max-width:600px;width:100%;border-collapse:collapse;border-spacing:0;background-color:#0c0c0c;">
+      <td class="cell-bg" align="center" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:24px 12px;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);">
+        <table class="inner-table" role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="max-width:600px;width:100%;border-collapse:collapse;border-spacing:0;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);">
 
           <!-- FR HERO -->
           <tr>
-            <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:0 0 16px;margin:0;font-size:0;line-height:0;background-color:#0c0c0c;">
+            <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:0 0 16px;margin:0;font-size:0;line-height:0;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);">
               <img src="https://www.paystack.ch/outreach/paystack-beta-hero-fr-v2.jpg" width="600" height="auto" alt="Paystack.ch — Une bêta privée pour les PME à Genève." style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;">
             </td>
           </tr>
 
           <!-- FR LETTER -->
           <tr>
-            <td class="cell-bg" bgcolor="#0c0c0c" style="padding:36px 24px 12px;background-color:#0c0c0c;">
+            <td class="cell-bg" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:36px 24px 12px;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);background-repeat:repeat;">
               <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
                 Bonjour {{11.`3`}},
               </p>
@@ -107,7 +102,7 @@
 
           <!-- FR CTA -->
           <tr>
-            <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:28px 24px 8px;background-color:#0c0c0c;">
+            <td class="cell-bg" align="center" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:28px 24px 8px;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);background-repeat:repeat;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:520px;border-collapse:collapse;">
                 <tr>
                   <td align="center" bgcolor="#E8423F" style="background-color:#E8423F;">
@@ -125,27 +120,27 @@
 
           <!-- DEMO GIF -->
           <tr>
-            <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:48px 0 40px;font-size:0;line-height:0;background-color:#0c0c0c;">
+            <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:48px 0 40px;font-size:0;line-height:0;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);">
               <img src="https://www.paystack.ch/outreach/upload-demo-v7.gif" width="600" height="auto" alt="Paystack dashboard — drag a PDF into the drop zone" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;">
             </td>
           </tr>
 
           <tr>
-            <td class="cell-bg" bgcolor="#0c0c0c" style="padding:12px 24px 40px;background-color:#0c0c0c;">
+            <td class="cell-bg" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:12px 24px 40px;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);background-repeat:repeat;">
               <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;font-weight:normal;color:#E8423F;text-align:center;">English</p>
             </td>
           </tr>
 
           <!-- EN HERO -->
           <tr>
-            <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:0 0 16px;font-size:0;line-height:0;background-color:#0c0c0c;">
+            <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:0 0 16px;font-size:0;line-height:0;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);">
               <img src="https://www.paystack.ch/outreach/paystack-beta-hero-en-v2.jpg" width="600" height="auto" alt="Paystack.ch — A private beta for SMEs in Geneva." style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;">
             </td>
           </tr>
 
           <!-- EN LETTER -->
           <tr>
-            <td class="cell-bg" bgcolor="#0c0c0c" style="padding:36px 24px 12px;background-color:#0c0c0c;">
+            <td class="cell-bg" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:36px 24px 12px;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);background-repeat:repeat;">
               <p class="txt" style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;font-weight:normal;color:#FFFFFF;">
                 Hi {{11.`3`}},
               </p>
@@ -169,7 +164,7 @@
 
           <!-- EN CTA -->
           <tr>
-            <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:28px 24px 8px;background-color:#0c0c0c;">
+            <td class="cell-bg" align="center" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:28px 24px 8px;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);background-repeat:repeat;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:520px;border-collapse:collapse;">
                 <tr>
                   <td align="center" bgcolor="#E8423F" style="background-color:#E8423F;">
@@ -187,7 +182,7 @@
 
           <!-- FOOTER -->
           <tr>
-            <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:40px 24px 44px;background-color:#0c0c0c;">
+            <td class="cell-bg" align="center" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:40px 24px 44px;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);background-repeat:repeat;">
               <p class="muted" style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;font-weight:normal;color:#B0B0B0;">
                 Paystack.ch — vos finances automatisées
               </p>

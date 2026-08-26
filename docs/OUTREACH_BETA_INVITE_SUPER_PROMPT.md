@@ -6,39 +6,30 @@
 |-------|------------|
 | Letter HTML | `docs/outreach/paystack-beta-invite.html` |
 | Make paste | `C:\Users\attia\Downloads\paystack-beta-invite-campaign.html` |
-| Heroes | black only: `paystack-beta-campaign-hero-fr-black.jpg` / `…-en-black.jpg` |
-| GIF | `upload-demo-black.gif` (true black dashboard) |
-| Generator | `node scripts/generate-outreach-upload-demo.mjs` |
+| Heroes | `paystack-beta-hero-fr-v2.jpg` / `paystack-beta-hero-en-v2.jpg` |
+| GIF | `upload-demo-v7.gif` |
+| Cell bg lock | `email-bg-black.png` |
 | Calendar | `https://calendar.app.google/gjusbBhAfBKaEh1J6` |
 | From | `Lucas \| Paystack <lucas@paystack.ch>` |
-| Pattern ref | `spinella-geneva` emails: full black body + outer table (`#000` / `#0c0c0c`) |
 
-## Theme rules (locked black — Spinella style)
+## Theme rules (always laptop black — ignore phone mode)
 
-1. **Whole email is black.** `body`, outer table, inner 600px table, and letter `<td>`s use `bgcolor="#000000"` + `background-color:#000000`.
-2. **White body text** `#FFFFFF` (class `.txt`). Muted `#B0B0B0`.
-3. Only the **red CTA** may use another background (`#E8423F`).
-4. **No light/dark image swap.** Gmail ignores media queries — ship black heroes + black GIF only (`*-black.jpg`, `upload-demo-black.gif`).
-5. `color-scheme: dark` only (meta + `:root`).
-6. Never reintroduce cream / pink / `#FFF5F4` shells or `*-light.jpg` / `upload-demo-light.gif`.
-7. GIF must be **true black**, not navy/blue-gray — generator remaps cool dark chrome via `toTrueBlackDashboard`.
-8. Extra padding between CTA text ↔ GIF ↔ “English” ↔ EN hero (≈40–48px).
-
-## Layout
-
-FR hero → FR letter → FR CTA → black GIF → English → EN hero → EN letter → EN CTA → footer.
-
-Merge: `{{11.`3`}}`.
+1. **One design only:** black shell + black hero/GIF images. Never light variants.
+2. **`color-scheme: light only`** — critical. `dark only` made Gmail iOS *invert* the black HTML letter to white (hero image stayed black; body went white).
+3. Shell / cells: `bgcolor="#0c0c0c"` + `background-image: url(.../email-bg-black.png)` and/or `linear-gradient(#0c0c0c,#0c0c0c)` so solid fills survive clients that remap `background-color`.
+4. White text `#FFFFFF`, muted `#B0B0B0`, red CTA only.
+5. Never cream / pink / `#FFF5F4`.
 
 ## Make.com
 
-After every HTML change: copy file to Downloads, **re-paste full HTML into Make**, send a **new** test. Old emails never update. Wait for CDN deploy of `/outreach/upload-demo-black.gif` and `*-black.jpg` before testing.
+1. Wait for deploy of `email-bg-black.png` (heroes/GIF already live).
+2. Copy HTML → Downloads paste file.
+3. **Delete** old Make HTML → paste full new file.
+4. Send a **new** test (old emails keep white letter forever).
 
 ## Checklist
 
-- [ ] Grep HTML: zero `FFF5F4`, zero `-light.jpg` / `upload-demo-light`
-- [ ] Image srcs are `*-black.jpg` and `upload-demo-black.gif` only
-- [ ] Every major `td` / table has black `bgcolor`
-- [ ] Text is white; CTA is red
-- [ ] Visible space between CTA hint, GIF, English label, and EN hero
-- [ ] Make template fully replaced (not partial paste)
+- [ ] Meta is `light only` (not `dark only`)
+- [ ] Letter cells use `email-bg-black.png` background
+- [ ] Phone dark mode: black letter under black hero (not white)
+- [ ] Laptop: unchanged black look
