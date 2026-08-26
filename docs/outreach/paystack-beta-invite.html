@@ -1,8 +1,8 @@
 <!--
   Outreach 1 — Subject: Vous avez été choisi
   ALWAYS black (same as laptop) — never adapt to phone light/dark mode.
+  Full-bleed: zero outer padding so phone has no white side gutters/frame.
   color-scheme: light only → stops Gmail iOS from inverting black HTML to white.
-  background-image + linear-gradient on cells → extra anti-invert lock.
   Images: hero-*-v2.jpg, upload-demo-v7.gif, email-bg-black.png
   Make.com: From Name "Lucas | Paystack" · Merge {{11.`3`}}
   After edit: FULL replace HTML in Make → NEW test send.
@@ -33,12 +33,16 @@
       margin: 0 !important;
       padding: 0 !important;
       width: 100% !important;
+      min-width: 100% !important;
       background-color: #0c0c0c !important;
     }
     body, .body-bg, .outer-table, .inner-table, .cell-bg {
       background-color: #0c0c0c !important;
       background-image: linear-gradient(#0c0c0c, #0c0c0c) !important;
+      border: 0 !important;
+      outline: 0 !important;
     }
+    img { border: 0 !important; outline: none !important; text-decoration: none !important; }
     .txt { color: #FFFFFF !important; }
     .muted { color: #B0B0B0 !important; }
     /* If a client still applies dark scheme, keep black — never go white */
@@ -64,15 +68,15 @@
     Bêta privée pour les PME genevoises. Près de 5 à 10 000 CHF de frais économisés. Échange sans frais. −25 % à vie.
   </div>
 
-  <table class="outer-table" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="border-collapse:collapse;border-spacing:0;width:100%;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);">
+  <table class="outer-table" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="border-collapse:collapse;border-spacing:0;margin:0;padding:0;width:100%;min-width:100%;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);">
     <tr>
-      <td class="cell-bg" align="center" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:24px 12px;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);">
-        <table class="inner-table" role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="max-width:600px;width:100%;border-collapse:collapse;border-spacing:0;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);">
+      <td class="cell-bg" align="center" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="padding:0;margin:0;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);">
+        <table class="inner-table" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0c0c0c" background="https://www.paystack.ch/outreach/email-bg-black.png" style="max-width:600px;width:100%;border-collapse:collapse;border-spacing:0;margin:0;padding:0;background-color:#0c0c0c;background-image:url(https://www.paystack.ch/outreach/email-bg-black.png);">
 
-          <!-- FR HERO -->
+          <!-- FR HERO — flush edges, no side gutter -->
           <tr>
-            <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:0 0 16px;margin:0;font-size:0;line-height:0;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);">
-              <img src="https://www.paystack.ch/outreach/paystack-beta-hero-fr-v2.jpg" width="600" height="auto" alt="Paystack.ch — Une bêta privée pour les PME à Genève." style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;">
+            <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:0;margin:0;font-size:0;line-height:0;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);">
+              <img src="https://www.paystack.ch/outreach/paystack-beta-hero-fr-v2.jpg" width="600" height="auto" alt="Paystack.ch — Une bêta privée pour les PME à Genève." style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;margin:0;padding:0;">
             </td>
           </tr>
 
@@ -120,8 +124,8 @@
 
           <!-- DEMO GIF -->
           <tr>
-            <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:48px 0 40px;font-size:0;line-height:0;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);">
-              <img src="https://www.paystack.ch/outreach/upload-demo-v7.gif" width="600" height="auto" alt="Paystack dashboard — drag a PDF into the drop zone" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;">
+            <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:40px 0;font-size:0;line-height:0;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);">
+              <img src="https://www.paystack.ch/outreach/upload-demo-v7.gif" width="600" height="auto" alt="Paystack dashboard — drag a PDF into the drop zone" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;margin:0;padding:0;">
             </td>
           </tr>
 
@@ -131,10 +135,10 @@
             </td>
           </tr>
 
-          <!-- EN HERO -->
+          <!-- EN HERO — flush edges -->
           <tr>
-            <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:0 0 16px;font-size:0;line-height:0;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);">
-              <img src="https://www.paystack.ch/outreach/paystack-beta-hero-en-v2.jpg" width="600" height="auto" alt="Paystack.ch — A private beta for SMEs in Geneva." style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;">
+            <td class="cell-bg" align="center" bgcolor="#0c0c0c" style="padding:0;font-size:0;line-height:0;background-color:#0c0c0c;background-image:linear-gradient(#0c0c0c,#0c0c0c);">
+              <img src="https://www.paystack.ch/outreach/paystack-beta-hero-en-v2.jpg" width="600" height="auto" alt="Paystack.ch — A private beta for SMEs in Geneva." style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;margin:0;padding:0;">
             </td>
           </tr>
 

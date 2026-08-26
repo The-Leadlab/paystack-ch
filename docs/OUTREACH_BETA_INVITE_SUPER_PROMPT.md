@@ -16,9 +16,10 @@
 
 1. **One design only:** black shell + black hero/GIF images. Never light variants.
 2. **`color-scheme: light only`** — critical. `dark only` made Gmail iOS *invert* the black HTML letter to white (hero image stayed black; body went white).
-3. Shell / cells: `bgcolor="#0c0c0c"` + `background-image: url(.../email-bg-black.png)` and/or `linear-gradient(#0c0c0c,#0c0c0c)` so solid fills survive clients that remap `background-color`.
-4. White text `#FFFFFF`, muted `#B0B0B0`, red CTA only.
-5. Never cream / pink / `#FFF5F4`.
+3. Shell / cells: `bgcolor="#0c0c0c"` + `background-image: url(.../email-bg-black.png)` and/or `linear-gradient(#0c0c0c,#0c0c0c)`.
+4. **Full-bleed:** outer wrapper padding `0` (no `24px 12px` gutters) so phone has no white side frame around the black block.
+5. White text `#FFFFFF`, muted `#B0B0B0`, red CTA only.
+6. Never cream / pink / `#FFF5F4`.
 
 ## Make.com
 
