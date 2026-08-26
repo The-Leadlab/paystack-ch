@@ -7,8 +7,8 @@ export const OUTREACH_MAX_RECIPIENTS = 200;
 export const OUTREACH_LOCKUP_URL = "https://www.paystack.ch/brand/paystack-lockup.png";
 
 /** Animated drag-and-drop demo for beta invite emails (GIF; PNG fallback also hosted). */
-export const OUTREACH_UPLOAD_DEMO_GIF_URL = "https://www.paystack.ch/outreach/upload-demo-black.gif";
-export const OUTREACH_UPLOAD_DEMO_PNG_URL = "https://www.paystack.ch/outreach/upload-demo-black.png";
+export const OUTREACH_UPLOAD_DEMO_GIF_URL = "https://www.paystack.ch/outreach/upload-demo-v7.gif";
+export const OUTREACH_UPLOAD_DEMO_PNG_URL = "https://www.paystack.ch/outreach/upload-demo-v7.png";
 export const OUTREACH_UPLOAD_DEMO_GIF_LIGHT_URL = "https://www.paystack.ch/outreach/upload-demo-light.gif";
 export const OUTREACH_UPLOAD_DEMO_PNG_LIGHT_URL = "https://www.paystack.ch/outreach/upload-demo-light.png";
 
