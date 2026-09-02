@@ -6,6 +6,7 @@ import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
 import { ensureFirebaseAdmin, hasFirebaseAdminCredentials } from "./firebaseAdmin.js";
 import { parsePaystackPlanId, type PaystackPlanId } from "../shared/planCatalog.js";
+import { parseLoginMode, type LoginMode } from "../shared/loginMode.js";
 import {
   aggregateUserAnalytics,
   googleDriveConnectedFromBilling,
@@ -41,6 +42,7 @@ export type AdminUserSummary = {
   errors30d: number | null;
   uploads30d: number | null;
   googleDriveConnected: boolean;
+  loginMode: "exclusive" | "shared" | null;
 };
 
 export type CreateAdminUserInput = {
@@ -98,6 +100,9 @@ export function summaryFromAuthAndBilling(
     typeof billing?.betaCohort === "string" && billing.betaCohort.trim()
       ? billing.betaCohort.trim()
       : null;
+  const loginModeRaw = billing?.loginMode;
+  const loginMode: LoginMode | null =
+    loginModeRaw != null ? parseLoginMode(loginModeRaw) : null;
 
   return {
     uid: record.uid,
@@ -125,6 +130,7 @@ export function summaryFromAuthAndBilling(
     errors30d: rollup.errors30d,
     uploads30d: rollup.uploads30d,
     googleDriveConnected: googleDriveConnectedFromBilling(billing),
+    loginMode,
   };
 }
 

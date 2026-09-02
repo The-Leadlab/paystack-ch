@@ -51,7 +51,7 @@ import {
 } from '../types';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useAuth } from '../context/AuthContext';
-import { useWorkspace } from '../context/WorkspaceContext';
+import { useDataWriteAccess } from '../hooks/useDataWriteAccess';
 import { logUserActivity } from '../lib/userActivity';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useExpenseCategoryMeta } from '../i18n/expenseCategoryI18n';
@@ -2499,7 +2499,7 @@ export const DocumentProcessor: React.FC<{
   onOpenDocumentHandled?: () => void,
 }> = ({ documents, updateDocument, onDeleteDocument, onDocumentQueued, onDataExtracted, onDocumentUpdated, openDocumentId, onOpenDocumentHandled }) => {
   const { enforcementEnabled, entitlements, documentsUsedThisMonth, billing } = useSubscription();
-  const { canWrite } = useWorkspace();
+  const canWrite = useDataWriteAccess();
   const { user } = useAuth();
   const { t } = useLanguage();
   const chfLocale = useChfLocale();

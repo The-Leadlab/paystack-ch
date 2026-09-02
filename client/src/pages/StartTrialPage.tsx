@@ -7,13 +7,23 @@ import { useLanguage } from "@/cafe/context/LanguageContext";
 import { firebaseReady } from "@/cafe/lib/firebase";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { AuthLayout } from "./auth/AuthLayout";
-import { isSelfServePlan, parsePaystackPlanId, parseBillingInterval, SELECTED_PLAN_STORAGE_KEY, type PaystackPlanId } from "@shared/planCatalog";
+import {
+  isSelfServePlan,
+  parsePaystackPlanId,
+  parseBillingInterval,
+  SELECTED_PLAN_STORAGE_KEY,
+  type PaystackPlanId,
+} from "@shared/planCatalog";
+import { type LoginMode } from "@shared/loginMode";
+import { storeSelectedLoginMode } from "@/cafe/lib/persistLoginMode";
 import { startGuestCheckoutSession } from "@/cafe/lib/stripeCheckoutClient";
 
 export default function StartTrialPage() {
   const { t } = useLanguage();
   const search = useSearch();
   const [err, setErr] = useState<string | null>(null);
+  const [loginMode, setLoginMode] = useState<LoginMode>("exclusive");
+  const [confirmed, setConfirmed] = useState(false);
   const redirectStarted = useRef(false);
 
   const planId = useMemo(() => {
@@ -24,6 +34,8 @@ export default function StartTrialPage() {
     const p = parsePaystackPlanId(params.get("plan"));
     return p && isSelfServePlan(p) ? p : ("starter" as PaystackPlanId);
   }, [search]);
+
+  const isPersonal = planId === "personal";
 
   const cancelled = useMemo(() => {
     const qs = search.startsWith("?") ? search.slice(1) : search;
@@ -36,8 +48,16 @@ export default function StartTrialPage() {
   }, [search]);
 
   useEffect(() => {
-    if (!firebaseReady || cancelled || redirectStarted.current) return;
+    if (isPersonal) {
+      storeSelectedLoginMode("exclusive");
+      setConfirmed(true);
+    }
+  }, [isPersonal]);
+
+  useEffect(() => {
+    if (!firebaseReady || cancelled || !confirmed || redirectStarted.current) return;
     redirectStarted.current = true;
+    storeSelectedLoginMode(loginMode);
     void (async () => {
       try {
         if (typeof sessionStorage !== "undefined") {
@@ -50,7 +70,7 @@ export default function StartTrialPage() {
         redirectStarted.current = false;
       }
     })();
-  }, [firebaseReady, cancelled, planId, billingInterval]);
+  }, [firebaseReady, cancelled, confirmed, planId, billingInterval, loginMode]);
 
   if (!firebaseReady) {
     return <FirebaseMissing />;
@@ -63,7 +83,9 @@ export default function StartTrialPage() {
       <AuthLayout heading={t("startTrialCheckoutCancelled")}>
         <Card className="border-border shadow-sm max-w-lg mx-auto">
           <CardHeader>
-            <p className="font-editorial text-sm text-muted-foreground leading-relaxed">{t("startTrialCheckoutCancelledHint")}</p>
+            <p className="font-editorial text-sm text-muted-foreground leading-relaxed">
+              {t("startTrialCheckoutCancelledHint")}
+            </p>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             <Button asChild variant="default" className="font-display bg-brand-red text-white hover:bg-brand-red/90">
@@ -97,6 +119,53 @@ export default function StartTrialPage() {
             </p>
             <Button asChild className="font-display bg-brand-red text-white hover:bg-brand-red/90 w-full">
               <Link href="/">{t("startTrialGoHome")}</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </AuthLayout>
+    );
+  }
+
+  if (!isPersonal && !confirmed) {
+    return (
+      <AuthLayout heading={t("startTrialLoginModeTitle")}>
+        <Card className="border-border shadow-sm max-w-lg mx-auto">
+          <CardHeader className="space-y-2">
+            <p className="font-editorial text-sm text-muted-foreground leading-relaxed">
+              {t("startTrialLoginModeHint")}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <button
+              type="button"
+              onClick={() => setLoginMode("exclusive")}
+              className={`w-full text-left rounded-xl border p-4 transition-colors ${
+                loginMode === "exclusive"
+                  ? "border-brand-red bg-brand-red/5"
+                  : "border-border hover:border-brand-red/40"
+              }`}
+            >
+              <p className="font-display font-semibold text-sm">{t("loginModeExclusiveTitle")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("loginModeExclusiveHint")}</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginMode("shared")}
+              className={`w-full text-left rounded-xl border p-4 transition-colors ${
+                loginMode === "shared"
+                  ? "border-brand-red bg-brand-red/5"
+                  : "border-border hover:border-brand-red/40"
+              }`}
+            >
+              <p className="font-display font-semibold text-sm">{t("loginModeSharedTitle")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("loginModeSharedHint")}</p>
+            </button>
+            <Button
+              type="button"
+              className="font-display bg-brand-red text-white hover:bg-brand-red/90 w-full mt-2"
+              onClick={() => setConfirmed(true)}
+            >
+              {t("startTrialContinueCheckout")}
             </Button>
           </CardContent>
         </Card>

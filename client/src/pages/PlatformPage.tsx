@@ -13,6 +13,7 @@ import { UserActivityTracker } from "@/cafe/components/UserActivityTracker";
 import { SubscriptionProvider, useSubscription } from "@/cafe/context/SubscriptionContext";
 import { WorkspaceProvider, useWorkspace } from "@/cafe/context/WorkspaceContext";
 import { SubscriptionGate } from "@/cafe/components/SubscriptionGate";
+import { SessionAccessShell } from "@/cafe/components/SessionAccessShell";
 import { firebaseReady } from "@/cafe/lib/firebase";
 import {
   isPersonalFinancesAccessUser,
@@ -197,17 +198,19 @@ function ProductLineShell() {
 
   return (
     <SessionProvider>
-      <EmployeeProvider>
-        <FinanceProvider>
-          <POSProvider>
-            <DocumentProvider>
-              <Suspense fallback={<DashboardLoadingShell />}>
-                <RestaurantDashboard />
-              </Suspense>
-            </DocumentProvider>
-          </POSProvider>
-        </FinanceProvider>
-      </EmployeeProvider>
+      <SessionAccessShell>
+        <EmployeeProvider>
+          <FinanceProvider>
+            <POSProvider>
+              <DocumentProvider>
+                <Suspense fallback={<DashboardLoadingShell />}>
+                  <RestaurantDashboard />
+                </Suspense>
+              </DocumentProvider>
+            </POSProvider>
+          </FinanceProvider>
+        </EmployeeProvider>
+      </SessionAccessShell>
     </SessionProvider>
   );
 }

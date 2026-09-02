@@ -231,6 +231,11 @@ service cloud.firestore {
       );
       allow create, update: if signedIn() && userId == ownerUid();
       allow delete: if false;
+
+      match /sessionAccessRequests/{requestId} {
+        allow read, create, update: if signedIn() && userId == ownerUid();
+        allow delete: if false;
+      }
     }
 
     /** Beta usage telemetry — clients write their own events; admin reads via server API. */

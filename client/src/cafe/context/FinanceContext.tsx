@@ -15,6 +15,7 @@ import type { Income, Expense } from '../types';
 import { suggestSwissAccountCode } from '@shared/suggestSwissAccountCode';
 import { useAuth } from './AuthContext';
 import { useWorkspace } from './WorkspaceContext';
+import { useDataWriteAccess } from '../hooks/useDataWriteAccess';
 
 const INCOME_COLLECTION = 'income';
 const EXPENSE_COLLECTION = 'expenses';
@@ -102,7 +103,8 @@ const FinanceContext = createContext<FinanceContextValue | null>(null);
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { dataOwnerUid, canWrite } = useWorkspace();
+  const { dataOwnerUid } = useWorkspace();
+  const canWrite = useDataWriteAccess();
   const [income, setIncome] = useState<Income[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);

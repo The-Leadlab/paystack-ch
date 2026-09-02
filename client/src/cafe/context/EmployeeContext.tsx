@@ -15,6 +15,7 @@ import { db } from '../lib/firebase';
 import type { Employee } from '../types';
 import { useAuth } from './AuthContext';
 import { useWorkspace } from './WorkspaceContext';
+import { useDataWriteAccess } from '../hooks/useDataWriteAccess';
 import { useSubscription } from './SubscriptionContext';
 import { useLanguage } from './LanguageContext';
 
@@ -45,7 +46,8 @@ const EmployeeContext = createContext<EmployeeContextValue | null>(null);
 
 export function EmployeeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { dataOwnerUid, canWrite } = useWorkspace();
+  const { dataOwnerUid } = useWorkspace();
+  const canWrite = useDataWriteAccess();
   const { enforcementEnabled, entitlements } = useSubscription();
   const { t } = useLanguage();
   const [employees, setEmployees] = useState<Employee[]>([]);

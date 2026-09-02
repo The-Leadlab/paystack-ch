@@ -13,6 +13,7 @@ import {
 import { db } from '../lib/firebase';
 import type { Session } from '../types';
 import { useWorkspace } from './WorkspaceContext';
+import { useDataWriteAccess } from '../hooks/useDataWriteAccess';
 import { useSubscription } from './SubscriptionContext';
 import { useLanguage } from './LanguageContext';
 import { defaultSessionName } from '../lib/formatLocalDateTime';
@@ -59,7 +60,8 @@ type SessionContextValue = {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const { dataOwnerUid, canWrite } = useWorkspace();
+  const { dataOwnerUid } = useWorkspace();
+  const canWrite = useDataWriteAccess();
   const { enforcementEnabled, entitlements } = useSubscription();
   const { t } = useLanguage();
   const [sessions, setSessions] = useState<Session[]>([]);

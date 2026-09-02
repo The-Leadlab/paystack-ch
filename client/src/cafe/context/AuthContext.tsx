@@ -18,13 +18,15 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, firebaseReady } from '../lib/firebase';
 import { emailVerificationActionCodeSettings } from '../lib/firebaseEmailAction';
 import {
-  claimActiveClientSession,
   clearLocalClientSessionId,
   getLocalClientSessionId,
   isSingleActiveSessionEnabled,
+  registerClientSession,
+  syncClientSessionRole,
   verifyActiveClientSession,
   watchActiveClientSession,
 } from '../lib/activeClientSession';
+import { persistLoginModeToUser } from '../lib/persistLoginMode';
 import {
   clearLoginActivitySessionFlag,
   logLoginActivityOnce,
@@ -57,6 +59,7 @@ async function ensureUserBillingStub(firebaseUser: FirebaseUser): Promise<void> 
       },
       { merge: true }
     );
+    await persistLoginModeToUser(firebaseUser.uid);
   } catch (err) {
     console.warn('Could not create users/{uid} billing stub:', err);
   }
@@ -114,8 +117,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logLoginActivityOnce(firebaseUser.uid);
         const local = getLocalClientSessionId();
         if (isSingleActiveSessionEnabled() && !local) {
-          void claimActiveClientSession(firebaseUser.uid);
+          void registerClientSession(firebaseUser.uid);
         } else if (local) {
+          void syncClientSessionRole(firebaseUser.uid);
           void verifyActiveClientSession(firebaseUser.uid).then((ok) => {
             if (!ok && auth) {
               try {
@@ -149,7 +153,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const afterAuthSessionClaim = async () => {
     if (!auth?.currentUser || !isSingleActiveSessionEnabled()) return;
-    await claimActiveClientSession(auth.currentUser.uid);
+    await persistLoginModeToUser(auth.currentUser.uid);
+    await registerClientSession(auth.currentUser.uid);
   };
 
   const signIn = async (email: string, password: string) => {
@@ -184,7 +189,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await updateProfile(newUser, { displayName });
       }
       await sendEmailVerification(newUser, emailVerificationActionCodeSettings());
-      await claimActiveClientSession(newUser.uid);
+      await persistLoginModeToUser(newUser.uid);
+      await registerClientSession(newUser.uid);
       return { error: null };
     } catch (err) {
       return { error: err instanceof Error ? err : new Error(String(err)) };

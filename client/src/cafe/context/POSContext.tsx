@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import type { POSReading } from '../types';
 import { useAuth } from './AuthContext';
 import { useWorkspace } from './WorkspaceContext';
+import { useDataWriteAccess } from '../hooks/useDataWriteAccess';
 import { useSession } from './SessionContext';
 import { db } from '../lib/firebase';
 import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, orderBy } from 'firebase/firestore';
@@ -20,7 +21,8 @@ const POSContext = createContext<POSContextValue | null>(null);
 
 export function POSProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { dataOwnerUid, canWrite } = useWorkspace();
+  const { dataOwnerUid } = useWorkspace();
+  const canWrite = useDataWriteAccess();
   const { currentSession, isAllSessionsView } = useSession();
   const [posReadings, setPOSReadings] = useState<POSReading[]>([]);
   const [loading, setLoading] = useState(false);

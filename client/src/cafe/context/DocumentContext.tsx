@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import type { ProcessedDocument } from '../types';
 import { useAuth } from './AuthContext';
 import { useWorkspace } from './WorkspaceContext';
+import { useDataWriteAccess } from '../hooks/useDataWriteAccess';
 import { useSession } from './SessionContext';
 import { db } from '../lib/firebase';
 import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, orderBy } from 'firebase/firestore';
@@ -38,7 +39,8 @@ const DocumentContext = createContext<DocumentContextValue | null>(null);
 
 export function DocumentProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { dataOwnerUid, canWrite } = useWorkspace();
+  const { dataOwnerUid } = useWorkspace();
+  const canWrite = useDataWriteAccess();
   const { currentSession, isAllSessionsView } = useSession();
   const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
   const [loading, setLoading] = useState(false);

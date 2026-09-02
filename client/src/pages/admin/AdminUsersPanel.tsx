@@ -34,6 +34,7 @@ import { AdminUserDetailPanel } from "./AdminUserDetailPanel";
 import { AdminCreateUserDialog } from "./AdminCreateUserDialog";
 import { subscriptionStatusClass } from "./adminUserUi";
 import { isPersonalPlan, parsePaystackPlanId } from "@shared/planCatalog";
+import { isMultiLoginMode } from "@shared/loginMode";
 import { toast } from "sonner";
 
 function formatDate(iso: string | null): string {
@@ -76,6 +77,7 @@ function exportUsageCsv(users: AdminUserSummary[], filename: string): void {
   const header = [
     "uid",
     "email",
+    "loginMode",
     "betaCohort",
     "lastActiveAt",
     "lastSignInAt",
@@ -90,6 +92,7 @@ function exportUsageCsv(users: AdminUserSummary[], filename: string): void {
     [
       u.uid,
       u.email ?? "",
+      u.loginMode ?? "",
       u.betaCohort ?? "",
       u.lastActiveAt ?? "",
       u.lastSignInAt ?? "",
@@ -116,6 +119,14 @@ function exportUsageCsv(users: AdminUserSummary[], filename: string): void {
 
 function isPersonalUser(user: AdminUserSummary): boolean {
   return isPersonalPlan(parsePaystackPlanId(user.planId));
+}
+
+function loginModeAdminLabel(
+  mode: AdminUserSummary["loginMode"],
+  t: (key: string) => string
+): string {
+  if (!mode) return "—";
+  return isMultiLoginMode(mode) ? t("adminLoginModeShared") : t("adminLoginModeExclusive");
 }
 
 export function AdminUsersPanel() {
@@ -411,6 +422,7 @@ export function AdminUsersPanel() {
             {user.uploads30d != null ? ` · ${user.uploads30d} uploads` : ""}
             {user.errors30d != null && user.errors30d > 0 ? ` · ${user.errors30d} errors` : ""}
             {user.betaCohort ? ` · ${user.betaCohort}` : ""}
+            {user.loginMode ? ` · ${loginModeAdminLabel(user.loginMode, t)}` : ""}
           </p>
         </button>
       </div>
@@ -492,6 +504,9 @@ export function AdminUsersPanel() {
         ) : (
           "—"
         )}
+      </td>
+      <td className="py-3.5 px-4 align-top text-muted-foreground text-xs">
+        {loginModeAdminLabel(user.loginMode, t)}
       </td>
       <td className="py-3.5 px-4 align-top text-right">
         <ChevronRight className="size-4 text-muted-foreground group-hover:text-brand-red transition-colors inline-block" />
@@ -750,6 +765,9 @@ export function AdminUsersPanel() {
                           </th>
                           <th className="py-3.5 px-4 text-left font-display text-[11px] uppercase tracking-wider text-muted-foreground w-24">
                             {t("adminUsersColCohort")}
+                          </th>
+                          <th className="py-3.5 px-4 text-left font-display text-[11px] uppercase tracking-wider text-muted-foreground w-28">
+                            {t("adminUsersColLoginMode")}
                           </th>
                           <th className="py-3.5 px-4 w-12" aria-hidden />
                         </tr>

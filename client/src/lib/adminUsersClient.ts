@@ -26,6 +26,7 @@ export type AdminUserSummary = {
   errors30d: number | null;
   uploads30d: number | null;
   googleDriveConnected: boolean;
+  loginMode: "exclusive" | "shared" | null;
 };
 
 export type AdminUserDetail = AdminUserSummary & {
