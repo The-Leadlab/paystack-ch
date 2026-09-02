@@ -54,6 +54,17 @@ export default function SignInPage() {
   const registrationClosed = isPaidRegistrationEnforced();
 
   useEffect(() => {
+    try {
+      if (sessionStorage.getItem('paystack_session_kicked') === '1') {
+        sessionStorage.removeItem('paystack_session_kicked');
+        setError(`${t('sessionKicked')} ${t('sessionKickedHint')}`);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [t]);
+
+  useEffect(() => {
     if (loading || !user) return;
     if (!checkoutSid) {
       setLocation(nextPath);

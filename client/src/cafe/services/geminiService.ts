@@ -20,6 +20,8 @@ import { prepareDocumentForAi } from "../lib/prepareDocumentForAi";
 import {
   getPdfPageCount,
   looksLikeMultiTicketPdf,
+  pdfPageLimitExceeded,
+  pdfPageLimitMessage,
   renderPdfPagesToJpegFiles,
   shouldSplitPdfToPageImages,
 } from "../lib/pdfPagesToImages";
@@ -184,7 +186,7 @@ function parseModelJsonResponse<T>(raw: string | undefined | null, label: string
   );
 }
 
-const withRetry = async <T>(fn: () => Promise<T>, retries = 2, delayMs = 800): Promise<T> => {
+const withRetry = async <T>(fn: () => Promise<T>, retries = 1, delayMs = 800): Promise<T> => {
   try {
     return await fn();
   } catch (error: unknown) {
@@ -877,52 +879,52 @@ function shouldRunExhaustivePdfPass(
   file: File,
   parsed: FinancialData,
   userHint?: string,
-  forceDeep = false
+  forceDeep = false,
+  pdfPageCount?: number
 ): boolean {
   if (isPaySlipFinancialData(parsed, file)) return false;
   if (forceDeep) return true;
 
-  const hint = (userHint || '').toLowerCase();
-  const name = (file.name || '').toLowerCase();
+  const hint = (userHint || "").toLowerCase();
+  const name = (file.name || "").toLowerCase();
   const hasMultiHint =
-    hint.includes('multi') ||
-    hint.includes('bulk') ||
-    hint.includes('all pages') ||
-    hint.includes('several') ||
-    hint.includes('multiple invoice') ||
-    name.includes('multi') ||
-    name.includes('bulk') ||
-    name.includes('z2');
-
-  // Explicit user/filename hint always triggers the second pass
+    hint.includes("multi") ||
+    hint.includes("bulk") ||
+    hint.includes("all pages") ||
+    hint.includes("several") ||
+    hint.includes("multiple invoice") ||
+    name.includes("multi") ||
+    name.includes("bulk") ||
+    name.includes("z2");
   if (hasMultiHint) return true;
 
   const extractedSubDocs = Array.isArray(parsed.subDocuments) ? parsed.subDocuments.length : 0;
-  const lineCount = Array.isArray(parsed.lineItems) ? parsed.lineItems.length : 0;
   const maxPage = maxPageMentionedInSubDocs(parsed);
-  // Multi-page binders are often ~80KB+; Gemini frequently stops after 2–3 invoices.
-  const likelyMultiPagePdf = file.size >= 80_000;
   const pageCoverageGap = maxPage >= 4 && maxPage > extractedSubDocs + 1;
+  const pages = pdfPageCount && pdfPageCount > 0 ? pdfPageCount : 0;
 
-  // Large PDF with few invoices — always re-scan (under-extraction of binders).
-  if (likelyMultiPagePdf && extractedSubDocs <= 3) {
-    return true;
-  }
+  // Ordinary single-page invoices: first pass + optional product recovery is enough.
+  if (pages === 1) return false;
 
-  if (extractedSubDocs >= 2 && (likelyMultiPagePdf || pageCoverageGap)) {
-    return true;
-  }
-
-  if (extractedSubDocs >= 1 && pageCoverageGap) {
-    return true;
-  }
-
-  const suspiciousUnderSplit = extractedSubDocs <= 1 && lineCount >= 6;
-  return (
-    (suspiciousUnderSplit && likelyMultiPagePdf) ||
-    (extractedSubDocs === 0 && likelyMultiPagePdf && lineCount >= 3)
-  );
+  if (pages >= 4 && extractedSubDocs <= 3) return true;
+  if (extractedSubDocs >= 2 && pageCoverageGap) return true;
+  if (extractedSubDocs >= 1 && pageCoverageGap) return true;
+  if (pages === 0 && (extractedSubDocs >= 2 || maxPage >= 4)) return true;
+  return false;
 }
+
+export type AnalyzeFinancialDocumentOptions = {
+  /** Admin beta: always run exhaustive + product recovery for non-payslip PDFs. */
+  forceDeepPdfReads?: boolean;
+  /** Force rasterizing each PDF page to JPEG before AI (ticket sheets). */
+  forcePdfPageSplit?: boolean;
+  /** Internal: skip page-split when already analyzing a page image. */
+  skipPdfPageSplit?: boolean;
+  /** Known PDF page count from pdf.js (avoids the old “≥80KB = multi-invoice” heuristic). */
+  pdfPageCount?: number;
+  /** Use inline bytes; skip a blocking Storage round-trip (small files / page images). */
+  preferInline?: boolean;
+};
 
 /** Count product-like lines (exclude synthetic invoice rollups). */
 function countProductLineItems(data: FinancialData): number {
@@ -1297,14 +1299,26 @@ function applySwissVatWarnings(data: FinancialData): FinancialData {
 }
 
 
-export type AnalyzeFinancialDocumentOptions = {
-  /** Admin beta: always run exhaustive + product recovery for non-payslip PDFs. */
-  forceDeepPdfReads?: boolean;
-  /** Force rasterizing each PDF page to JPEG before AI (ticket sheets). */
-  forcePdfPageSplit?: boolean;
-  /** Internal: skip page-split when already analyzing a page image. */
-  skipPdfPageSplit?: boolean;
-};
+async function mapPool<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  const n = Math.max(1, Math.min(concurrency, items.length));
+  await Promise.all(
+    Array.from({ length: n }, async () => {
+      while (true) {
+        const i = next;
+        next += 1;
+        if (i >= items.length) return;
+        out[i] = await fn(items[i], i);
+      }
+    })
+  );
+  return out;
+}
 
 /** Merge per-page analyses into one multi-receipt FinancialData. */
 function mergePdfPageAnalyses(pages: FinancialData[], sourceFileName: string): FinancialData {
@@ -1391,6 +1405,9 @@ export const analyzeFinancialDocument = async (
       const ticketLike =
         options?.forcePdfPageSplit === true || looksLikeMultiTicketPdf(file, userHint);
       const pageCount = await getPdfPageCount(file);
+      if (pdfPageLimitExceeded(pageCount)) {
+        throw new Error(pdfPageLimitMessage(pageCount));
+      }
       const split =
         shouldSplitPdfToPageImages(file, pageCount, userHint, options?.forcePdfPageSplit === true) &&
         !/pay\s*slip|salary|lohn|bulletin\s*de\s*salaire/i.test(`${file.name} ${userHint || ""}`);
@@ -1403,22 +1420,21 @@ export const analyzeFinancialDocument = async (
       if (doSplit) {
         console.log(`🧾 PDF page-split: ${file.name} → ${pageCount} page image(s)`);
         const images = await renderPdfPagesToJpegFiles(file, signal);
-        const pageResults: FinancialData[] = [];
-        for (let i = 0; i < images.length; i += 1) {
+        console.log(`🧾 Analyzing ${images.length} page image(s) (up to 3 in parallel)`);
+        const pageResults = await mapPool(images, 3, async (image, i) => {
           if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-          console.log(`🧾 Analyzing page ${i + 1}/${images.length}: ${images[i].name}`);
-          const pageData = await analyzeFinancialDocument(
-            images[i],
+          console.log(`🧾 Analyzing page ${i + 1}/${images.length}: ${image.name}`);
+          return analyzeFinancialDocument(
+            image,
             targetCurrency,
             userHint
               ? `${userHint} (page ${i + 1} of ${images.length} from ${file.name})`
               : `Page ${i + 1} of ${images.length} from multi-ticket PDF ${file.name}`,
             undefined,
             signal,
-            { skipPdfPageSplit: true, forceDeepPdfReads: false }
+            { skipPdfPageSplit: true, forceDeepPdfReads: false, preferInline: true }
           );
-          pageResults.push(pageData);
-        }
+        });
         let merged = mergePdfPageAnalyses(pageResults, file.name);
         merged = sanitizeFinancialDataForUi(applySwissVatWarnings(merged));
         if (merged.totalAmount !== undefined && (!merged.amountInCHF || merged.amountInCHF === 0)) {
@@ -1432,14 +1448,24 @@ export const analyzeFinancialDocument = async (
         return merged;
       }
     } catch (splitErr) {
+      if (splitErr instanceof Error && /PDF_PAGE_LIMIT/i.test(splitErr.message)) {
+        throw splitErr;
+      }
       console.warn("⚠️ PDF page-split failed; falling back to full-PDF analysis:", splitErr);
     }
   }
 
-  // Skip upload when caller already resolved storage (processDoc pre-uploads)
-  const storageRef = (existingStorage?.fileUrl && existingStorage?.storagePath)
-    ? { downloadURL: existingStorage.fileUrl, storagePath: existingStorage.storagePath, mimeType: file.type || 'application/octet-stream' }
-    : await ensureDocumentStorageForAi(file, existingStorage);
+  // Skip upload when caller already resolved storage, or when inline is enough.
+  const storageRef =
+    options?.preferInline === true
+      ? null
+      : existingStorage?.fileUrl && existingStorage?.storagePath
+        ? {
+            downloadURL: existingStorage.fileUrl,
+            storagePath: existingStorage.storagePath,
+            mimeType: file.type || "application/octet-stream",
+          }
+        : await ensureDocumentStorageForAi(file, existingStorage);
   const model = resolveDocumentModel();
   const mimeType = storageRef?.mimeType || file.type || 'application/octet-stream';
 
@@ -1753,7 +1779,7 @@ Return JSON only.`;
     const isPdf = mimeType === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 
     // Second-pass exhaustive extraction for multi-invoice binders (or deep beta).
-    if (isPdf && shouldRunExhaustivePdfPass(file, normalized, userHint, forceDeep)) {
+    if (isPdf && shouldRunExhaustivePdfPass(file, normalized, userHint, forceDeep, options?.pdfPageCount)) {
       const applyExhaustive = (exhaustive: ExhaustiveInvoicePass, label: string) => {
         if (!exhaustive.subDocuments || exhaustive.subDocuments.length === 0) return false;
         const currentSubCount = Array.isArray(normalized.subDocuments) ? normalized.subDocuments.length : 0;

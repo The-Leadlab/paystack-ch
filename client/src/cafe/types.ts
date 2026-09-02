@@ -244,6 +244,8 @@ export interface ProcessedDocument {
   status: 'pending' | 'processing' | 'completed' | 'error' | 'verifying' | 'skipped' | 'needs_review';
   data?: FinancialData;
   error?: string;
+  /** Stable family for i18n; `error` stays technical (tooltip). */
+  errorCode?: string;
   fileRaw?: File;
   fileDataUrl?: string; // Deprecated - kept for backward compatibility
   fileUrl?: string; // Firebase Storage download URL
@@ -251,6 +253,7 @@ export interface ProcessedDocument {
   restaurantId?: string;
   session_id?: string;
   created_at?: string;
+  updated_at?: string;
   fileHash?: string; // SHA-256 hash for duplicate detection
   persistedDocumentId?: string; // Firestore document id created at upload-time
   /** Full lineItems JSON parked in Storage when Firestore would exceed 1 MiB. */

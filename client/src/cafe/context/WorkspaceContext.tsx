@@ -7,8 +7,14 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "./AuthContext";
 import { apiUrl } from "@/lib/apiBase";
-
-export type WorkspaceRole = "owner" | "editor" | "viewer";
+import {
+  normalizeWorkspaceRole,
+  workspaceRoleCanExport,
+  workspaceRoleCanInvite,
+  workspaceRoleCanManageTeam,
+  workspaceRoleCanWrite,
+  type WorkspaceRole,
+} from "@shared/workspaceRoles";
 
 type WorkspaceContextValue = {
   loading: boolean;
@@ -19,6 +25,9 @@ type WorkspaceContextValue = {
   role: WorkspaceRole;
   isOwner: boolean;
   canWrite: boolean;
+  canInvite: boolean;
+  canManageTeam: boolean;
+  canExport: boolean;
   ownerEmail: string | null;
   refresh: () => Promise<void>;
   acceptInviteToken: (token: string) => Promise<void>;
@@ -48,8 +57,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       (snap) => {
         if (snap.exists() && snap.data()?.status === "active" && typeof snap.data()?.ownerUid === "string") {
           setOwnerUid(snap.data()!.ownerUid as string);
-          const r = snap.data()!.role;
-          setRole(r === "viewer" || r === "editor" ? r : "editor");
+          setRole(normalizeWorkspaceRole(snap.data()!.role));
           setOwnerEmail(typeof snap.data()!.ownerEmail === "string" ? (snap.data()!.ownerEmail as string) : null);
         } else {
           setOwnerUid(user.uid);
@@ -59,8 +67,6 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       },
       (err) => {
-        // Missing membership doc used to fail rules when resource.data was evaluated.
-        // Fall back to owner scope; avoid noisy console for expected permission-denied.
         if (import.meta.env.DEV) {
           console.warn("Workspace membership snapshot:", err);
         }
@@ -92,20 +98,24 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   );
 
   const refresh = useCallback(async () => {
-    // Snapshot listener keeps state fresh; this is a no-op hook for callers.
+    /* snapshot listener keeps state fresh */
   }, []);
 
   const value = useMemo<WorkspaceContextValue>(() => {
     const authUid = user?.uid ?? null;
     const dataOwnerUid = ownerUid ?? authUid;
     const isOwner = Boolean(authUid && dataOwnerUid && authUid === dataOwnerUid);
+    const effectiveRole: WorkspaceRole = isOwner ? "owner" : role;
     return {
       loading,
       authUid,
       dataOwnerUid,
-      role: isOwner ? "owner" : role,
+      role: effectiveRole,
       isOwner,
-      canWrite: isOwner || role === "editor",
+      canWrite: workspaceRoleCanWrite(effectiveRole, isOwner),
+      canInvite: workspaceRoleCanInvite(effectiveRole, isOwner),
+      canManageTeam: workspaceRoleCanManageTeam(effectiveRole, isOwner),
+      canExport: workspaceRoleCanExport(effectiveRole, isOwner),
       ownerEmail,
       refresh,
       acceptInviteToken,
@@ -121,7 +131,9 @@ export function useWorkspace() {
   return ctx;
 }
 
-/** Safe hook when provider may be absent (e.g. marketing pages). */
+/** Safe when WorkspaceProvider is not mounted (e.g. marketing pages). */
 export function useWorkspaceOptional(): WorkspaceContextValue | null {
   return useContext(WorkspaceContext);
 }
+
+export type { WorkspaceRole };

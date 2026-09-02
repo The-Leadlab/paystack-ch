@@ -42,7 +42,10 @@ function parseClassifierJson(raw: string): Record<string, unknown> {
 
 function accountLabel(code: string): string {
   const a = getSwissAccount(code);
-  return a ? `${a.labelFr} / ${a.labelEn}` : code;
+  if (!a) return code;
+  const lang =
+    typeof document !== "undefined" && document.documentElement.lang === "en" ? "en" : "fr";
+  return lang === "fr" ? a.labelFr : a.labelEn;
 }
 
 function normalizeClassification(

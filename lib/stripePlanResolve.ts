@@ -23,6 +23,10 @@ export function resolvePlanIdFromStripeSubscription(
       if (priceId === process.env.STRIPE_TEST_PRICE_STARTER?.trim()) return "starter";
       if (priceId === process.env.STRIPE_TEST_PRICE_BUSINESS?.trim()) return "business";
       if (priceId === process.env.STRIPE_TEST_PRICE_UNLIMITED?.trim()) return "unlimited";
+      if (priceId === process.env.STRIPE_TEST_PRICE_PERSONAL_YEAR?.trim()) return "personal";
+      if (priceId === process.env.STRIPE_TEST_PRICE_STARTER_YEAR?.trim()) return "starter";
+      if (priceId === process.env.STRIPE_TEST_PRICE_BUSINESS_YEAR?.trim()) return "business";
+      if (priceId === process.env.STRIPE_TEST_PRICE_UNLIMITED_YEAR?.trim()) return "unlimited";
       const legacyTest = process.env.STRIPE_TEST_PRICE_ID?.trim();
       if (legacyTest && priceId === legacyTest) {
         return parsePaystackPlanId(process.env.STRIPE_DEFAULT_PLAN_ID) || "starter";
@@ -32,6 +36,10 @@ export function resolvePlanIdFromStripeSubscription(
       if (priceId === process.env.STRIPE_PRICE_STARTER?.trim()) return "starter";
       if (priceId === process.env.STRIPE_PRICE_BUSINESS?.trim()) return "business";
       if (priceId === process.env.STRIPE_PRICE_UNLIMITED?.trim()) return "unlimited";
+      if (priceId === process.env.STRIPE_PRICE_PERSONAL_YEAR?.trim()) return "personal";
+      if (priceId === process.env.STRIPE_PRICE_STARTER_YEAR?.trim()) return "starter";
+      if (priceId === process.env.STRIPE_PRICE_BUSINESS_YEAR?.trim()) return "business";
+      if (priceId === process.env.STRIPE_PRICE_UNLIMITED_YEAR?.trim()) return "unlimited";
       const legacy = process.env.STRIPE_PRICE_ID?.trim();
       if (legacy && priceId === legacy) {
         return parsePaystackPlanId(process.env.STRIPE_DEFAULT_PLAN_ID) || "starter";

@@ -3,6 +3,7 @@ import { Upload, FileText, Loader, CheckCircle, XCircle, Play, StopCircle, Trash
 import { resolveDocumentProcessingTimeoutMs } from '../lib/documentProcessingTimeout';
 import { analyzeFinancialDocument } from '../services/geminiService';
 import { enrichFinancialDataWithSwissAccount } from '../services/swissAccountClassifierService';
+import { formatDocumentProcessError } from '../lib/documentProcessError';
 import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
 import { useSubscription } from '../context/SubscriptionContext';
 import { BUSINESS_DOCUMENT_ACCEPT, isBusinessDocumentFile } from '../lib/businessDocumentFile';
@@ -28,6 +29,7 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMode, setProcessingMode] = useState<'parallel' | 'sequential'>('parallel');
+  const [pageLimitNotice, setPageLimitNotice] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
   const stopProcessingRef = useRef(false);
@@ -45,6 +47,7 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
         startProcessing: 'Start Processing',
         stopProcessing: 'Stop Processing',
         clearAll: 'Clear All',
+        pageLimitBanner: '{count} PDF(s) exceed {max} pages and were not processed: {names}',
       },
       fr: {
         uploadTitle: 'Télécharger des documents',
@@ -57,23 +60,71 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
         startProcessing: 'Démarrer le traitement',
         stopProcessing: 'Arrêter',
         clearAll: 'Tout effacer',
+        pageLimitBanner: '{count} PDF dépasse(nt) {max} pages et n’ont pas été traités : {names}',
       },
     };
     return translations[language][key] || key;
   };
 
-  const handleFiles = (fileList: FileList | null) => {
+  const handleFiles = async (fileList: FileList | null) => {
     if (!fileList) return;
 
-    const newFiles: ProcessingFile[] = Array.from(fileList)
-      .filter((file) => isBusinessDocumentFile(file))
-      .map((file) => ({
+    const incoming = Array.from(fileList).filter((file) => isBusinessDocumentFile(file));
+    const overLimit: string[] = [];
+    let pdfHelpers: typeof import('../lib/pdfPagesToImages') | null = null;
+    try {
+      pdfHelpers = await import('../lib/pdfPagesToImages');
+    } catch {
+      pdfHelpers = null;
+    }
+
+    const newFiles: ProcessingFile[] = [];
+    for (const file of incoming) {
+      if (pdfHelpers?.isPdfFile(file)) {
+        try {
+          const pages = await pdfHelpers.getPdfPageCount(file);
+          if (pdfHelpers.pdfPageLimitExceeded(pages)) {
+            overLimit.push(file.name);
+            newFiles.push({
+              id: Math.random().toString(36).substr(2, 9),
+              name: file.name,
+              file,
+              status: 'error',
+              error: formatDocumentProcessError(
+                (key) => {
+                  if (key === 'dpErrPageLimit') {
+                    return language === 'fr'
+                      ? 'Ce PDF a {pages} pages. Le maximum est {max}. Découpez-le en fichiers plus petits, puis téléversez à nouveau.'
+                      : 'This PDF has {pages} pages. Maximum is {max}. Split it into smaller files, then upload again.';
+                  }
+                  return t(key);
+                },
+                'page_limit',
+                pdfHelpers.pdfPageLimitMessage(pages)
+              ),
+            });
+            continue;
+          }
+        } catch {
+          /* process later */
+        }
+      }
+      newFiles.push({
         id: Math.random().toString(36).substr(2, 9),
         name: file.name,
         file,
-        status: 'pending' as const,
-      }));
+        status: 'pending',
+      });
+    }
 
+    if (overLimit.length > 0) {
+      setPageLimitNotice(
+        t('pageLimitBanner')
+          .replace('{count}', String(overLimit.length))
+          .replace('{max}', '7')
+          .replace('{names}', overLimit.join(', '))
+      );
+    }
     setFiles((prev) => [...prev, ...newFiles]);
   };
 
@@ -128,7 +179,12 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
         try {
           pdfPageCount = await getPdfPageCount(fileItem.file);
           pdfPageSplit = shouldSplitPdfToPageImages(fileItem.file, pdfPageCount);
+          const { pdfPageLimitExceeded, pdfPageLimitMessage } = await import('../lib/pdfPagesToImages');
+          if (pdfPageLimitExceeded(pdfPageCount)) {
+            throw new Error(pdfPageLimitMessage(pdfPageCount));
+          }
         } catch (peekErr) {
+          if (peekErr instanceof Error && /PDF_PAGE_LIMIT/i.test(peekErr.message)) throw peekErr;
           console.warn('⚠️ PDF page-count peek failed:', peekErr);
           pdfPageSplit = ticketLike;
           pdfPageCount = ticketLike ? 5 : 1;
@@ -160,7 +216,7 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
           undefined,
           undefined,
           abortController.signal,
-          { forceDeepPdfReads, forcePdfPageSplit: pdfPageSplit }
+          { forceDeepPdfReads, forcePdfPageSplit: pdfPageSplit, pdfPageCount }
         ),
         timeoutPromise,
       ])) as any;
@@ -185,10 +241,24 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
     } catch (error) {
       console.error(`❌ Error processing ${fileItem.name}:`, error);
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      const shown = /PDF_PAGE_LIMIT/i.test(errorMsg)
+        ? formatDocumentProcessError(
+            (key) => {
+              if (key === 'dpErrPageLimit') {
+                return language === 'fr'
+                  ? 'Ce PDF a {pages} pages. Le maximum est {max}. Découpez-le en fichiers plus petits, puis téléversez à nouveau.'
+                  : 'This PDF has {pages} pages. Maximum is {max}. Split it into smaller files, then upload again.';
+              }
+              return t(key);
+            },
+            'page_limit',
+            errorMsg
+          )
+        : errorMsg;
       setFiles((prev) =>
         prev.map((f) =>
           f.id === fileItem.id
-            ? { ...f, status: 'error' as const, error: errorMsg }
+            ? { ...f, status: 'error' as const, error: shown }
             : f
         )
       );
@@ -280,6 +350,11 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
       </div>
 
       {/* Upload Area */}
+      {pageLimitNotice && (
+        <div className="mb-3 p-3 bg-red-600/10 border border-red-600 text-red-400 text-xs font-bold rounded">
+          {pageLimitNotice}
+        </div>
+      )}
       <div
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}

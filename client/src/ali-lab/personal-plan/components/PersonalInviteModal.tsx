@@ -18,6 +18,7 @@ import { usePersonalPlan } from "../context/PersonalPlanContext";
 
 type TeamListResponse = {
   isOwner: boolean;
+  canManageTeam?: boolean;
   members: Array<{ uid: string; email: string; role: string; status: string }>;
   invites: Array<{ id: string; email: string; role: string; status: string }>;
   seats: { used: number; max: number | null };
@@ -32,11 +33,11 @@ export function PersonalInviteModal() {
   const { inviteOpen, closeInvite } = usePersonalPlan();
   const { user } = useAuth();
   const { purchasePersonalAddon } = useSubscription();
-  const { isOwner, ownerEmail, role } = useWorkspace();
+  const { isOwner, ownerEmail, role, canManageTeam } = useWorkspace();
   const [data, setData] = useState<TeamListResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"editor" | "viewer">("editor");
+  const [inviteRole, setInviteRole] = useState<"member" | "accountant">("member");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -188,6 +189,15 @@ export function PersonalInviteModal() {
     }
   };
 
+  const manageTeam = isOwner || canManageTeam || data?.canManageTeam === true;
+
+  const roleLabel = (raw: string) => {
+    const r = raw.toLowerCase();
+    if (r === "accountant" || r === "viewer") return t("billingTeamRoleAccountant");
+    if (r === "member" || r === "editor") return t("billingTeamRoleMember");
+    return raw;
+  };
+
   const seats = data?.seats;
   const atLimit =
     seats != null && seats.max != null && seats.used >= seats.max && seats.max > 0;
@@ -214,7 +224,7 @@ export function PersonalInviteModal() {
               <p className="text-xs text-[var(--pp-on-surface)]">
                 {t("billingTeamMemberBanner")
                   .replace("{owner}", ownerEmail || data.memberOf.ownerEmail || "—")
-                  .replace("{role}", role || data.memberOf.role)}
+                  .replace("{role}", roleLabel(role || data.memberOf.role))}
               </p>
               <button
                 type="button"
@@ -232,7 +242,7 @@ export function PersonalInviteModal() {
               <Loader2 className="w-4 h-4 animate-spin" />
               …
             </div>
-          ) : isOwner ? (
+          ) : manageTeam ? (
             <>
               {seats ? (
                 <p className="text-xs text-[var(--pp-on-surface-variant)] flex items-center gap-1.5">
@@ -273,12 +283,12 @@ export function PersonalInviteModal() {
                 />
                 <select
                   value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as "editor" | "viewer")}
+                  onChange={(e) => setInviteRole(e.target.value as "member" | "accountant")}
                   className="pp-input h-10 px-3 text-sm text-[var(--pp-on-surface)]"
                   aria-label={t("billingTeamRole")}
                 >
-                  <option value="editor">{t("billingTeamRoleEditor")}</option>
-                  <option value="viewer">{t("billingTeamRoleViewer")}</option>
+                  <option value="member">{t("billingTeamRoleMember")}</option>
+                  <option value="accountant">{t("billingTeamRoleAccountant")}</option>
                 </select>
                 <button
                   type="button"
@@ -301,7 +311,7 @@ export function PersonalInviteModal() {
                   className="flex items-center justify-between gap-2 text-xs border-t border-[var(--pp-outline-variant)] pt-3"
                 >
                   <span className="truncate text-[var(--pp-on-surface)]">
-                    {inv.email} · {t("billingTeamPending")} · {inv.role}
+                    {inv.email} · {t("billingTeamPending")} · {roleLabel(inv.role)}
                   </span>
                   <button
                     type="button"
@@ -320,7 +330,7 @@ export function PersonalInviteModal() {
                   className="flex items-center justify-between gap-2 text-xs border-t border-[var(--pp-outline-variant)] pt-3"
                 >
                   <span className="truncate text-[var(--pp-on-surface)]">
-                    {m.email} · {t("billingTeamActive")} · {m.role}
+                    {m.email} · {t("billingTeamActive")} · {roleLabel(m.role)}
                   </span>
                   <button
                     type="button"

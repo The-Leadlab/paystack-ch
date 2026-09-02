@@ -16,7 +16,7 @@ export type GeminiProxyResult = {
 
 const MAX_BODY_BYTES = Number(process.env.GEMINI_MAX_REQUEST_BYTES || 18 * 1024 * 1024);
 const RATE_LIMIT_WINDOW_MS = Number(process.env.GEMINI_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
-const RATE_LIMIT_MAX = Number(process.env.GEMINI_RATE_LIMIT_MAX || 30);
+const RATE_LIMIT_MAX = Number(process.env.GEMINI_RATE_LIMIT_MAX || 120);
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
 
 function normalizeHeader(value: string | string[] | undefined): string | undefined {

@@ -95,6 +95,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
   const [planOverride, setPlanOverride] = useState<PaystackPlanId | "none">("none");
   const [planTestMode, setPlanTestMode] = useState(false);
   const [deepPdfInvoiceBeta, setDeepPdfInvoiceBeta] = useState(false);
+  const [betaCohort, setBetaCohort] = useState<string>("none");
   const [linkResult, setLinkResult] = useState<string | null>(null);
 
   const [editDisplayName, setEditDisplayName] = useState("");
@@ -114,6 +115,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
       setPlanOverride((detail.planId as PaystackPlanId) ?? "none");
       setPlanTestMode(detail.planTestMode);
       setDeepPdfInvoiceBeta(detail.deepPdfInvoiceBeta === true);
+      setBetaCohort(detail.betaCohort ?? "none");
       setEditDisplayName(detail.displayName ?? "");
       setEditEmail(detail.email ?? "");
       setEditPassword("");
@@ -344,6 +346,68 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
 
             {/* ── Profile ── */}
             <TabsContent value="profile" className="mt-0 space-y-4">
+              <div className={`${adminPanelCardClass} space-y-3`}>
+                <SectionTitle>{t("adminUserSectionActivity")}</SectionTitle>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <MetaRow label={t("adminUserLastActive")}>
+                    {formatDateTime(user.lastActiveAt ?? user.lastSignInAt)}
+                  </MetaRow>
+                  <MetaRow label={t("adminUsersColLastSignIn")}>
+                    {formatDateTime(user.lastSignInAt)}
+                  </MetaRow>
+                  <MetaRow label={t("adminUserLogins30d")}>{user.logins30d ?? "—"}</MetaRow>
+                  <MetaRow label={t("adminUserSessionHours30d")}>
+                    {user.sessionMinutes30d != null
+                      ? (user.sessionMinutes30d / 60).toFixed(1)
+                      : "—"}
+                  </MetaRow>
+                  <MetaRow label={t("adminUserDocsThisMonth")}>
+                    {user.usageThisMonth ?? "—"}
+                  </MetaRow>
+                  <MetaRow label={t("adminUserUploads30d")}>{user.uploads30d ?? "—"}</MetaRow>
+                  <MetaRow label={t("adminUserErrors30d")}>{user.errors30d ?? "—"}</MetaRow>
+                  <MetaRow label={t("adminUserDriveConnected")}>
+                    {user.googleDriveConnected ? t("adminUsersYes") : t("adminUsersNo")}
+                  </MetaRow>
+                </div>
+              </div>
+
+              <div className={`${adminPanelCardClass} space-y-3`}>
+                <SectionTitle>{t("adminUserBetaCohort")}</SectionTitle>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Select
+                    value={betaCohort}
+                    onValueChange={(v) => setBetaCohort(v)}
+                  >
+                    <SelectTrigger className="flex-1 bg-background border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover text-popover-foreground border-border">
+                      <SelectItem value="none">{t("adminUserBetaCohortNone")}</SelectItem>
+                      <SelectItem value="glanville">{t("adminUserBetaCohortGlanville")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="font-display bg-brand-red text-white hover:bg-brand-red/90 shrink-0"
+                    disabled={actionBusy !== null}
+                    onClick={() =>
+                      void runAction("betaCohort", {
+                        action: "set_beta_cohort",
+                        cohort: betaCohort === "none" ? null : betaCohort,
+                      })
+                    }
+                  >
+                    {actionBusy === "betaCohort" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      t("adminUserSavePlan")
+                    )}
+                  </Button>
+                </div>
+              </div>
+
               <div className={`${adminPanelCardClass} space-y-3`}>
                 <SectionTitle>{t("adminUserSectionSnapshot")}</SectionTitle>
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -590,7 +654,43 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                     variant="outline"
                     size="sm"
                     className={adminOutlineBtnClass}
-                    disabled={!user.subscriptionId || actionBusy !== null}
+                    disabled={!user.email || actionBusy !== null}
+                    onClick={() => void runAction("auditStripe", { action: "audit_stripe_billing" })}
+                  >
+                    {actionBusy === "auditStripe" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <CreditCard className="size-3.5" />
+                    )}
+                    {t("adminUserAuditStripe")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={adminOutlineBtnClass}
+                    disabled={!user.email || actionBusy !== null}
+                    onClick={() =>
+                      void runAction(
+                        "stopStripe",
+                        { action: "stop_stripe_billing" },
+                        t("adminUserConfirmStopStripe")
+                      )
+                    }
+                  >
+                    {actionBusy === "stopStripe" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <XCircle className="size-3.5" />
+                    )}
+                    {t("adminUserStopStripe")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={adminOutlineBtnClass}
+                    disabled={(!user.subscriptionId && !user.email && !user.stripeCustomerId) || actionBusy !== null}
                     onClick={() =>
                       void runAction(
                         "cancel",

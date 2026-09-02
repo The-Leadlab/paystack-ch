@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Verifies en/fr translation keys in LanguageContext.tsx stay in sync.
+ * Verifies en/fr translation keys stay in sync.
  * Usage: node scripts/i18n-key-parity.mjs
  */
 import fs from "node:fs";
@@ -8,30 +8,74 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const file = path.join(root, "client/src/cafe/context/LanguageContext.tsx");
-const s = fs.readFileSync(file, "utf8");
 
-const enBlock = s.match(/en:\s*\{([\s\S]*?)\n  \},\s*\n  fr:/)?.[1] ?? "";
-const frBlock = s.match(/fr:\s*\{([\s\S]*?)\n  \},?\s*\n\};\s*\n\nconst LanguageContext/)?.[1] ?? "";
-
-function keys(block) {
+function keysFromObjectLiteral(block) {
   return [...block.matchAll(/^\s+(\w+):/gm)].map((m) => m[1]);
 }
 
-const en = keys(enBlock);
-const fr = keys(frBlock);
-const enSet = new Set(en);
-const frSet = new Set(fr);
-const onlyEn = en.filter((k) => !frSet.has(k));
-const onlyFr = fr.filter((k) => !enSet.has(k));
+function compare(label, enKeys, frKeys) {
+  const enSet = new Set(enKeys);
+  const frSet = new Set(frKeys);
+  const onlyEn = enKeys.filter((k) => !frSet.has(k));
+  const onlyFr = frKeys.filter((k) => !enSet.has(k));
+  console.log(`${label}: en=${enKeys.length} fr=${frKeys.length}`);
+  let bad = false;
+  if (onlyEn.length) {
+    console.error(`  Keys only in en: ${onlyEn.join(", ")}`);
+    bad = true;
+  }
+  if (onlyFr.length) {
+    console.error(`  Keys only in fr: ${onlyFr.join(", ")}`);
+    bad = true;
+  }
+  if (!bad) console.log("  OK — en/fr key sets match.");
+  return !bad;
+}
 
-console.log(`LanguageContext: en=${en.length} fr=${fr.length}`);
-if (onlyEn.length) {
-  console.error("Keys only in en:", onlyEn.join(", "));
-  process.exit(1);
+function extractExportRecord(source, exportName) {
+  const re = new RegExp(`export const ${exportName}: Record<string, string> = \\{([\\s\\S]*?)\\n\\};`);
+  const m = source.match(re);
+  return m?.[1] ?? "";
 }
-if (onlyFr.length) {
-  console.error("Keys only in fr:", onlyFr.join(", "));
-  process.exit(1);
+
+let ok = true;
+
+const ctx = fs.readFileSync(path.join(root, "client/src/cafe/context/LanguageContext.tsx"), "utf8");
+function extractLangContextBlock(source, which) {
+  const normalized = source.replace(/\r\n/g, "\n");
+  if (which === "en") {
+    const start = normalized.indexOf("\n  en: {");
+    const end = normalized.indexOf("\n  fr: {", start + 1);
+    if (start < 0 || end < 0) return "";
+    return normalized.slice(start + "\n  en: {".length, end);
+  }
+  const start = normalized.indexOf("\n  fr: {");
+  const end = normalized.search(/\n\};\s*\nconst LanguageContext/);
+  if (start < 0 || end < 0) return "";
+  return normalized.slice(start + "\n  fr: {".length, end).replace(/\n  \},\s*$/, "");
 }
-console.log("OK — en/fr key sets match.");
+
+ok = compare(
+  "LanguageContext",
+  keysFromObjectLiteral(extractLangContextBlock(ctx, "en")),
+  keysFromObjectLiteral(extractLangContextBlock(ctx, "fr"))
+) && ok;
+
+const dash = fs.readFileSync(path.join(root, "client/src/cafe/i18n/dashboardTranslations.ts"), "utf8");
+ok =
+  compare(
+    "dashboardTranslations",
+    keysFromObjectLiteral(extractExportRecord(dash, "dashboardEn")),
+    keysFromObjectLiteral(extractExportRecord(dash, "dashboardFr"))
+  ) && ok;
+
+const tour = fs.readFileSync(path.join(root, "client/src/cafe/i18n/tourTranslations.ts"), "utf8");
+ok =
+  compare(
+    "tourTranslations",
+    keysFromObjectLiteral(extractExportRecord(tour, "tourEn")),
+    keysFromObjectLiteral(extractExportRecord(tour, "tourFr"))
+  ) && ok;
+
+if (!ok) process.exit(1);
+console.log("OK — all translation tables match.");

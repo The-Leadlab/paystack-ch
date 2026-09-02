@@ -23,9 +23,23 @@ import {
 } from '../services/swissPayrollService';
 import { exportToExcel } from '../services/excelService';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
-import { resolveDocumentProcessingTimeoutMs } from '../lib/documentProcessingTimeout';
+import {
+  resolveDocumentProcessingTimeoutMs,
+  SWISS_ACCOUNT_CLASSIFY_TIMEOUT_MS,
+} from '../lib/documentProcessingTimeout';
+import {
+  classifyDocumentProcessError,
+  formatDocumentProcessError,
+  isPageLimitError,
+  isSourceMissingError,
+} from '../lib/documentProcessError';
+import {
+  displayStatusForDocument,
+  isStaleProcessingDocument,
+} from '../lib/staleDocumentStatus';
 import { detectCategory, inferLineItemType } from '../services/categoryDetectionService';
 import { isCsvDocumentFile } from '../lib/businessDocumentFile';
+import { maxRawBytesForGeminiPayload } from '../lib/prepareDocumentForAi';
 import { hydrateProcessedDocumentLineItems } from '../lib/financialDataFirestorePayload';
 import {
   ProcessedDocument,
@@ -36,6 +50,9 @@ import {
   SwissVatRateLine,
 } from '../types';
 import { useSubscription } from '../context/SubscriptionContext';
+import { useAuth } from '../context/AuthContext';
+import { useWorkspace } from '../context/WorkspaceContext';
+import { logUserActivity } from '../lib/userActivity';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useExpenseCategoryMeta } from '../i18n/expenseCategoryI18n';
 import { formatIssuerForDisplay, invoicesDetectedIssuer, documentDisplayName, conjoinedInvoicesLabel } from '../i18n/documentDisplayI18n';
@@ -116,10 +133,10 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
               <table className="w-full border-collapse text-[9px]">
                 <thead>
                   <tr className="text-left text-slate-500 border-b border-white/10">
-                    <th className="py-1.5 pr-2 font-black uppercase">Date</th>
-                    <th className="py-1.5 pr-2 font-black uppercase">Flow</th>
-                    <th className="py-1.5 pr-2 font-black uppercase">Desc</th>
-                    <th className="py-1.5 font-black uppercase text-right">Amt</th>
+                    <th className="py-1.5 pr-2 font-black uppercase">{t('dpColDate')}</th>
+                    <th className="py-1.5 pr-2 font-black uppercase">{t('dpCsvColFlow')}</th>
+                    <th className="py-1.5 pr-2 font-black uppercase">{t('dpCsvColDesc')}</th>
+                    <th className="py-1.5 font-black uppercase text-right">{t('dpCsvColAmt')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -134,7 +151,7 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
                               : 'text-rose-400 font-bold'
                           }
                         >
-                          {row.type === 'INCOME' ? 'IN' : 'OUT'}
+                          {row.type === 'INCOME' ? t('dpFlowIn') : t('dpFlowOut')}
                         </span>
                       </td>
                       <td className="py-1.5 pr-2 truncate max-w-[140px] text-slate-300" title={row.description}>
@@ -219,7 +236,7 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
               <iframe 
                 src={displayUrl} 
                 className="w-full h-full rounded-lg"
-                title="Document Zoom"
+                title={t('dpDocZoomTitle')}
               />
             ) : (
               <img 
@@ -267,7 +284,7 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
               onClick={() => openDocumentInNewTab(doc)}
               className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-sm font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-lg text-[9px]"
             >
-              <ExternalLink className="w-4 h-4" /> Open Raw Trace
+              <ExternalLink className="w-4 h-4" /> {t('dpOpenRawTrace')}
             </button>
           )}
         </div>
@@ -366,7 +383,7 @@ const EditableLineItemsTable: React.FC<{
            <div className="relative flex-1 sm:flex-initial">
              <input
                type="text"
-               placeholder="Search items..."
+               placeholder={t('dpSearchItems')}
                value={searchTerm}
                onChange={(e) => setSearchTerm(e.target.value)}
                className="w-full sm:w-48 h-8 px-3 pl-8 bg-cdlp-card border border-cdlp-border rounded text-[10px] text-white placeholder-cdlp-muted outline-none focus:border-cdlp-gold transition-colors"
@@ -378,7 +395,7 @@ const EditableLineItemsTable: React.FC<{
              onClick={addNewRow}
              className="px-3 h-8 bg-cdlp-gold text-cdlp-black rounded text-[9px] font-black uppercase flex items-center gap-1 hover:bg-cdlp-gold-light transition-colors whitespace-nowrap"
            >
-             <Plus className="w-3.5 h-3.5" /> Add
+             <Plus className="w-3.5 h-3.5" /> {t('dpAddRow')}
            </button>
            <span className="text-[8px] sm:text-[9px] font-bold text-cdlp-muted opacity-40 uppercase tracking-widest whitespace-nowrap">
              {filteredItems.length}/{items.length}
@@ -391,12 +408,12 @@ const EditableLineItemsTable: React.FC<{
           <thead className="bg-cdlp-gold text-cdlp-black border-b border-cdlp-border">
             <tr className="font-bold uppercase text-[8px] tracking-widest">
               <th className="px-2 py-3 text-center w-10">✓</th>
-              <th className="px-2 py-3 text-left w-24">Date</th>
-              <th className="px-2 py-3 text-left min-w-[150px]">Description</th>
-              <th className="px-2 py-3 text-right w-28">Value ({currency})</th>
-              <th className="px-2 py-3 text-center w-20">Type</th>
-              <th className="px-2 py-3 text-left min-w-[120px]">Category</th>
-              <th className="px-2 py-3 text-center w-10">Del</th>
+              <th className="px-2 py-3 text-left w-24">{t('dpColDate')}</th>
+              <th className="px-2 py-3 text-left min-w-[150px]">{t('dashDescription')}</th>
+              <th className="px-2 py-3 text-right w-28">{t('dpValueCurrency').replace('{currency}', currency)}</th>
+              <th className="px-2 py-3 text-center w-20">{t('dpColType')}</th>
+              <th className="px-2 py-3 text-left min-w-[120px]">{t('dpCategory')}</th>
+              <th className="px-2 py-3 text-center w-10">{t('dpDel')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-cdlp-border">
@@ -408,7 +425,7 @@ const EditableLineItemsTable: React.FC<{
                     <button 
                       onClick={(e) => { e.stopPropagation(); toggleVerify(originalIdx); }}
                       className={`w-7 h-7 rounded-sm flex items-center justify-center transition-all ${item.isHumanVerified ? 'bg-emerald-600 text-white shadow-md' : 'bg-cdlp-card text-cdlp-muted hover:text-emerald-600 border border-cdlp-border'}`}
-                      title="Mark as verified"
+                      title={t('dpMarkVerified')}
                     >
                       <Check className={`w-3.5 h-3.5 ${item.isHumanVerified ? 'scale-110' : 'scale-90'}`} />
                     </button>
@@ -427,7 +444,7 @@ const EditableLineItemsTable: React.FC<{
                       value={item.description}
                       onChange={e => handleItemChange(originalIdx, 'description', e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      placeholder="Enter description..."
+                      placeholder={t('dpEnterDescription')}
                       className="w-full bg-cdlp-black border border-cdlp-border rounded px-2 py-1 font-bold text-white text-[10px] outline-none focus:border-cdlp-gold transition-colors placeholder-cdlp-muted"
                     />
                   </td>
@@ -459,9 +476,9 @@ const EditableLineItemsTable: React.FC<{
                         onChange={e => handleItemChange(originalIdx, 'category', e.target.value)}
                         onClick={(e) => e.stopPropagation()}
                         className="w-full bg-cdlp-black border border-cdlp-border rounded px-2 py-1 font-bold text-[9px] text-white outline-none focus:border-cdlp-gold transition-colors pr-6"
-                        title={item.category && item.category !== 'OTHER' ? '🤖 Auto-detected category (you can change it)' : 'Select category'}
+                        title={item.category && item.category !== 'OTHER' ? t('dpAutoDetectedCategory') : t('dpSelectCategory')}
                       >
-                        <option value="">-- Select --</option>
+                        <option value="">{t('dpSelectShort')}</option>
                         {CATEGORY_GROUPS.map(group => (
                           <optgroup key={group.id} label={group.label}>
                             {RESTAURANT_CATEGORIES.filter(cat => cat.group === group.id).map(cat => (
@@ -472,7 +489,7 @@ const EditableLineItemsTable: React.FC<{
                       </select>
                       {item.category && item.category !== 'OTHER' && item.category !== '' && (
                         <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none">
-                          <span className="text-[8px] bg-emerald-600/20 text-emerald-400 px-1 rounded" title="AI detected">🤖</span>
+                          <span className="text-[8px] bg-emerald-600/20 text-emerald-400 px-1 rounded" title={t('dpAiDetected')}>🤖</span>
                         </div>
                       )}
                     </div>
@@ -481,7 +498,7 @@ const EditableLineItemsTable: React.FC<{
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteRow(originalIdx); }}
                       className="w-7 h-7 rounded-sm flex items-center justify-center text-cdlp-muted hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                      title="Delete row"
+                      title={t('dpDeleteRow')}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -495,7 +512,7 @@ const EditableLineItemsTable: React.FC<{
       
       {filteredItems.length === 0 && searchTerm && (
         <div className="text-center py-8 text-cdlp-muted text-[10px]">
-          No items match "{searchTerm}"
+          {t('dpNoItemsMatch').replace('{q}', searchTerm)}
         </div>
       )}
     </div>
@@ -508,6 +525,7 @@ const EditablePaySlipTable: React.FC<{
   currency: string;
   onUpdate: (newItems: BankTransaction[]) => void;
 }> = ({ items, currency, onUpdate }) => {
+  const { t } = useLanguage();
   const handleItemChange = (idx: number, field: keyof BankTransaction, value: any) => {
     const next = [...items];
     next[idx] = { ...next[idx], [field]: value, isHumanVerified: false };
@@ -526,11 +544,11 @@ const EditablePaySlipTable: React.FC<{
         <div className="flex items-center gap-2">
           <ListOrdered className="w-4 h-4 text-emerald-500" />
           <h5 className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-cdlp-gold">
-            Pay Slip Components (Earnings / Deductions)
+            {t('dpPaySlipComponents')}
           </h5>
         </div>
         <span className="text-[8px] sm:text-[9px] font-bold text-cdlp-muted opacity-40 uppercase tracking-widest">
-          Records: {items.length}
+          {t('dpRecordsCount').replace('{n}', String(items.length))}
         </span>
       </div>
 
@@ -538,12 +556,12 @@ const EditablePaySlipTable: React.FC<{
         <table className="min-w-full text-xs">
           <thead className="bg-cdlp-gold text-cdlp-black border-b border-cdlp-border">
             <tr className="font-bold uppercase text-[8px] tracking-widest">
-              <th className="px-2 py-3 text-center w-10">Verify</th>
-              <th className="px-2 py-3 text-left w-24">Date</th>
-              <th className="px-2 py-3 text-left min-w-[180px]">Component</th>
-              <th className="px-2 py-3 text-right w-28">Amount ({currency})</th>
-              <th className="px-2 py-3 text-center w-24">Type</th>
-              <th className="px-2 py-3 text-left min-w-[140px]">Category</th>
+              <th className="px-2 py-3 text-center w-10">{t('dpVerify')}</th>
+              <th className="px-2 py-3 text-left w-24">{t('dpColDate')}</th>
+              <th className="px-2 py-3 text-left min-w-[180px]">{t('dpComponent')}</th>
+              <th className="px-2 py-3 text-right w-28">{t('dpValueCurrency').replace('{currency}', currency)}</th>
+              <th className="px-2 py-3 text-center w-24">{t('dpColType')}</th>
+              <th className="px-2 py-3 text-left min-w-[140px]">{t('dpCategory')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-cdlp-border">
@@ -600,8 +618,8 @@ const EditablePaySlipTable: React.FC<{
                         : 'bg-red-600/20 text-red-400'
                     }`}
                   >
-                    <option value="INCOME">EARN</option>
-                    <option value="EXPENSE">DEDUCT</option>
+                    <option value="INCOME">{t('dpEarn')}</option>
+                    <option value="EXPENSE">{t('dpDeduct')}</option>
                   </select>
                 </td>
                 <td className="px-2 py-3">
@@ -609,7 +627,7 @@ const EditablePaySlipTable: React.FC<{
                     value={item.category ?? ''}
                     onChange={(e) => handleItemChange(idx, 'category', e.target.value)}
                     className="w-full bg-transparent font-bold text-[9px] text-white outline-none border-b border-transparent focus:border-cdlp-gold"
-                    placeholder="e.g. AVS, LPP"
+                    placeholder={t('dpPayrollCategoryHint')}
                   />
                 </td>
               </tr>
@@ -655,6 +673,7 @@ const SwissVatBreakdownEditor: React.FC<{
   data: FinancialData;
   onApply: (next: FinancialData) => void;
 }> = ({ data, onApply }) => {
+  const { t } = useLanguage();
   const lines = data.swissVatBreakdown ?? [];
   const totals = data.swissVatReceiptTotals ?? {};
   const preview = data.swissVatFormPreview;
@@ -683,10 +702,10 @@ const SwissVatBreakdownEditor: React.FC<{
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h5 className="text-[10px] font-black uppercase tracking-widest text-cdlp-gold flex items-center gap-2">
-            <ScaleIcon className="w-3.5 h-3.5" /> Swiss TVA — multi-rate & form mapping
+            <ScaleIcon className="w-3.5 h-3.5" /> {t('dpSwissVatTitle')}
           </h5>
           <p className="text-[9px] text-cdlp-muted mt-1 max-w-xl">
-            Mirror ticket / facture columns (TVA %, base HT, TVA). Totals and form codes update the document header and exports.
+            {t('dpSwissVatHint')}
           </p>
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
@@ -696,7 +715,7 @@ const SwissVatBreakdownEditor: React.FC<{
               onClick={() => onApply(seedSwissTableFromDocument(data))}
               className="h-9 px-3 rounded-sm border border-cdlp-gold/50 bg-cdlp-gold/15 text-cdlp-gold text-[9px] font-black uppercase tracking-wider hover:bg-cdlp-gold/25"
             >
-              Add Swiss TVA table
+              {t('dpAddSwissVatTable')}
             </button>
           ) : (
             <>
@@ -712,7 +731,7 @@ const SwissVatBreakdownEditor: React.FC<{
                 }
                 className="h-9 px-3 rounded-sm border border-cdlp-border bg-cdlp-black text-[9px] font-black uppercase text-foreground hover:border-cdlp-gold/40"
               >
-                + Rate row
+                {t('dpAddRateRow')}
               </button>
               <button
                 type="button"
@@ -726,7 +745,7 @@ const SwissVatBreakdownEditor: React.FC<{
                 }
                 className="h-9 px-3 rounded-sm border border-red-600/30 bg-red-900/10 text-[9px] font-black uppercase text-red-400 hover:bg-red-900/20"
               >
-                Remove table
+                {t('dpRemoveTable')}
               </button>
             </>
           )}
@@ -739,10 +758,10 @@ const SwissVatBreakdownEditor: React.FC<{
             <table className="swiss-vat-table min-w-[640px] w-full text-[10px] border rounded-sm overflow-hidden">
               <thead className="uppercase font-black tracking-tight">
                 <tr>
-                  <th className="px-2 py-2 text-left w-24 border-b border-inherit">TVA %</th>
-                  <th className="px-2 py-2 text-right border-b border-inherit">Base HT</th>
-                  <th className="px-2 py-2 text-right border-b border-inherit">TVA</th>
-                  <th className="px-2 py-2 text-center w-28 border-b border-inherit">Calc</th>
+                  <th className="px-2 py-2 text-left w-24 border-b border-inherit">{t('dpVatPercent')}</th>
+                  <th className="px-2 py-2 text-right border-b border-inherit">{t('dpBaseHt')}</th>
+                  <th className="px-2 py-2 text-right border-b border-inherit">{t('dpVatCol')}</th>
+                  <th className="px-2 py-2 text-center w-28 border-b border-inherit">{t('dpCalc')}</th>
                   <th className="px-2 py-2 w-10 border-b border-inherit" />
                 </tr>
               </thead>
@@ -796,9 +815,9 @@ const SwissVatBreakdownEditor: React.FC<{
                         type="button"
                         onClick={() => calcRowVat(idx)}
                         className="h-8 px-2 rounded-sm border border-cdlp-gold text-[8px] font-black uppercase text-cdlp-gold hover:bg-cdlp-gold/15"
-                        title="TVA = base × rate %"
+                        title={t('dpTvaFormula')}
                       >
-                        Base×%
+                        {t('dpCalc')}
                       </button>
                     </td>
                     <td className="px-1 py-1.5 text-center">
@@ -806,7 +825,7 @@ const SwissVatBreakdownEditor: React.FC<{
                         type="button"
                         onClick={() => pushSynced({ swissVatBreakdown: lines.filter((_, i) => i !== idx) })}
                         className="p-1.5 rounded-sm text-cdlp-muted hover:text-red-400 hover:bg-red-900/20"
-                        title="Remove row"
+                        title={t('dpRemoveRow')}
                         disabled={lines.length <= 1}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -821,7 +840,7 @@ const SwissVatBreakdownEditor: React.FC<{
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
             <div>
               <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-1">
-                Total marchandise (HT)
+                {t('dpTotalMerchandiseHt')}
               </label>
               <input
                 type="number"
@@ -840,7 +859,7 @@ const SwissVatBreakdownEditor: React.FC<{
             </div>
             <div>
               <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-1">
-                Total TVA
+                {t('dpTotalVat')}
               </label>
               <input
                 type="number"
@@ -856,11 +875,11 @@ const SwissVatBreakdownEditor: React.FC<{
                   })
                 }
               />
-              <p className="text-[8px] text-cdlp-muted mt-1">With rate rows, TVA follows column sum.</p>
+              <p className="text-[8px] text-cdlp-muted mt-1">{t('dpVatFollowsColumn')}</p>
             </div>
             <div>
               <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-1">
-                Deposit
+                {t('dpDeposit')}
               </label>
               <input
                 type="number"
@@ -879,7 +898,7 @@ const SwissVatBreakdownEditor: React.FC<{
             </div>
             <div>
               <label className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest block mb-1">
-                Total CHF (TTC)
+                {t('dpTotalChfTtc')}
               </label>
               <input
                 type="number"
@@ -903,30 +922,30 @@ const SwissVatBreakdownEditor: React.FC<{
               <table className="swiss-vat-table min-w-[520px] w-full text-[9px] border rounded-sm overflow-hidden">
                 <thead className="uppercase font-black">
                   <tr>
-                    <th className="px-2 py-2 text-left border-b border-inherit">Form code</th>
-                    <th className="px-2 py-2 text-left border-b border-inherit">Description</th>
+                    <th className="px-2 py-2 text-left border-b border-inherit">{t('dpFormCode')}</th>
+                    <th className="px-2 py-2 text-left border-b border-inherit">{t('dashDescription')}</th>
                     <th className="px-2 py-2 text-right border-b border-inherit">CHF</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e8423f]">
                   <tr>
                     <td className="px-2 py-1.5 font-mono font-bold">200</td>
-                    <td className="px-2 py-1.5">Taxable turnover (HT)</td>
+                    <td className="px-2 py-1.5">{t('dpTaxableTurnover')}</td>
                     <td className="px-2 py-1.5 text-right font-mono font-bold">{(preview.code200 ?? 0).toFixed(2)}</td>
                   </tr>
                   <tr>
                     <td className="px-2 py-1.5 font-mono font-bold">220</td>
-                    <td className="px-2 py-1.5">TVA collected (sales)</td>
+                    <td className="px-2 py-1.5">{t('dpVatCollectedSales')}</td>
                     <td className="px-2 py-1.5 text-right font-mono font-bold">{(preview.code220 ?? 0).toFixed(2)}</td>
                   </tr>
                   <tr>
                     <td className="px-2 py-1.5 font-mono font-bold">400</td>
-                    <td className="px-2 py-1.5">TVA paid (purchases)</td>
+                    <td className="px-2 py-1.5">{t('dpVatPaidPurchases')}</td>
                     <td className="px-2 py-1.5 text-right font-mono font-bold">{(preview.code400 ?? 0).toFixed(2)}</td>
                   </tr>
                   <tr className="swiss-vat-table-row-total font-black">
                     <td className="px-2 py-1.5 font-mono">500</td>
-                    <td className="px-2 py-1.5">Net TVA (220 − 400)</td>
+                    <td className="px-2 py-1.5">{t('dpNetVat220400')}</td>
                     <td className="px-2 py-1.5 text-right font-mono">{(preview.code500 ?? 0).toFixed(2)}</td>
                   </tr>
                 </tbody>
@@ -2458,6 +2477,15 @@ function firestoreRecordId(doc: ProcessedDocument): string {
   return doc.id;
 }
 
+function documentErrorPatch(err: unknown): {
+  status: 'error';
+  error: string;
+  errorCode: string;
+} {
+  const error = err instanceof Error ? err.message : String(err || 'Unknown error');
+  return { status: 'error', error, errorCode: classifyDocumentProcessError(err) };
+}
+
 // Main Document Processor Component
 export const DocumentProcessor: React.FC<{ 
   documents: ProcessedDocument[], 
@@ -2471,11 +2499,14 @@ export const DocumentProcessor: React.FC<{
   onOpenDocumentHandled?: () => void,
 }> = ({ documents, updateDocument, onDeleteDocument, onDocumentQueued, onDataExtracted, onDocumentUpdated, openDocumentId, onOpenDocumentHandled }) => {
   const { enforcementEnabled, entitlements, documentsUsedThisMonth, billing } = useSubscription();
+  const { canWrite } = useWorkspace();
+  const { user } = useAuth();
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
   const docStatusLabel = (status: string) => {
     const map: Record<string, string> = {
       pending: t('dpStatusPending'),
+      queued: t('dpStatusQueued'),
       processing: t('dpStatusProcessing'),
       completed: t('dpStatusCompleted'),
       needs_review: t('dpStatusNeedAction'),
@@ -2485,6 +2516,8 @@ export const DocumentProcessor: React.FC<{
     return map[status] ?? status;
   };
   const [isProcessing, setIsProcessing] = useState(false);
+  const [activeProcessingKeys, setActiveProcessingKeys] = useState<Set<string>>(() => new Set());
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [reportingCurrency] = useState('CHF');
@@ -2510,6 +2543,34 @@ export const DocumentProcessor: React.FC<{
       .then((m) => m.clearDocumentFileCache())
       .catch(() => undefined);
   }, []);
+
+  const staleRecoveredRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const stale = documents.filter(
+      (d) => isStaleProcessingDocument(d) && !staleRecoveredRef.current.has(firestoreRecordId(d))
+    );
+    if (stale.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      for (const d of stale) {
+        if (cancelled) break;
+        const id = firestoreRecordId(d);
+        staleRecoveredRef.current.add(id);
+        try {
+          await updateDocument(id, {
+            status: 'pending',
+            error: undefined,
+            errorCode: undefined,
+          });
+        } catch (err) {
+          console.warn('Could not reset stale processing document:', id, err);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [documents, updateDocument]);
 
   /** Documents processed per batch; next batch starts only after the current batch completes. */
   const BATCH_SIZE = resolveDocumentBatchSize();
@@ -2645,6 +2706,30 @@ export const DocumentProcessor: React.FC<{
   const canProcessDoc = (doc: ProcessedDocument & { source?: 'firestore' | 'local' }) =>
     Boolean(doc.fileRaw || doc.fileUrl || doc.fileDataUrl || doc.persistedDocumentId);
 
+  const docHasLocalBytes = (d: ProcessedDocument) =>
+    Boolean(
+      d.fileRaw ||
+        recallDocumentFile({
+          firestoreId: d.id,
+          persistedDocumentId: d.persistedDocumentId,
+          fileHash: d.fileHash,
+          fileName: d.fileName,
+        })
+    );
+
+  const isManualQueueDoc = (d: ProcessedDocument) => {
+    if (!canProcessDoc(d as any)) return false;
+    if (d.status === 'pending' || d.status === 'skipped') return true;
+    if (d.status === 'error') {
+      if (isSourceMissingError(d.errorCode || d.error) && !docHasLocalBytes(d)) return false;
+      if (isPageLimitError(d.errorCode || d.error)) return false;
+      return true;
+    }
+    return false;
+  };
+
+  const manualQueueCount = allDocs.filter(isManualQueueDoc).length;
+
   const classifyDocFlowType = (data?: FinancialData): 'INCOME' | 'EXPENSE' | 'SALARY' => {
     const cat = String(data?.expenseCategory || '').toUpperCase();
     if (cat.includes('REVENUE') || cat.includes('SALES')) return 'INCOME';
@@ -2694,7 +2779,8 @@ export const DocumentProcessor: React.FC<{
   // not derived from `documents`/`localDocs`, which are scoped to the current session.
   const monthlyCompleted = documentsUsedThisMonth;
   const documentCap = entitlements.maxDocumentsPerMonth;
-  const documentLimitReached = enforcementEnabled && documentCap != null && monthlyCompleted >= documentCap;
+  const documentLimitReached =
+    !canWrite || (enforcementEnabled && documentCap != null && monthlyCompleted >= documentCap);
   const monthlyRemaining =
     enforcementEnabled && documentCap != null ? Math.max(0, documentCap - monthlyCompleted) : null;
 
@@ -2710,6 +2796,10 @@ export const DocumentProcessor: React.FC<{
   const addFiles = async (files: FileList | null) => {
     if (!files) return;
     setUploadError(null);
+    if (!canWrite) {
+      setUploadError(t('billingTeamReadOnlyUpload'));
+      return;
+    }
     if (documentLimitReached && documentCap != null) {
       setUploadError(t('planLimitDocuments').replace('{n}', String(documentCap)));
       return;
@@ -2751,21 +2841,44 @@ export const DocumentProcessor: React.FC<{
     if (duplicateNames.length > 0 || duplicateHashes.length > 0) {
       const messages = [];
       if (duplicateNames.length > 0) {
-        messages.push(`${duplicateNames.length} duplicate filename(s)`);
+        messages.push(t('dpDupFilenames').replace('{n}', String(duplicateNames.length)));
       }
       if (duplicateHashes.length > 0) {
-        messages.push(`${duplicateHashes.length} duplicate file(s) detected (same content)`);
+        messages.push(t('dpDupContent').replace('{n}', String(duplicateHashes.length)));
       }
-      setUploadError(`Ignored: ${messages.join(', ')}`);
+      setUploadError(t('dpIgnoredDuplicates').replace('{details}', messages.join(', ')));
     }
 
+    const overLimitNames: string[] = [];
     const news: ProcessedDocument[] = await Promise.all(
       uniqueFiles.map(async (f: File) => {
         const hash = fileHashCache.get(f)!;
+        let pageLimitMsg: string | null = null;
+        try {
+          const {
+            getPdfPageCount,
+            isPdfFile,
+            pdfPageLimitExceeded,
+            pdfPageLimitMessage,
+          } = await import('../lib/pdfPagesToImages');
+          if (isPdfFile(f)) {
+            const pages = await getPdfPageCount(f);
+            if (pdfPageLimitExceeded(pages)) {
+              pageLimitMsg = pdfPageLimitMessage(pages);
+              overLimitNames.push(f.name);
+            }
+          }
+        } catch (peekErr) {
+          console.warn('⚠️ PDF page-limit peek failed:', peekErr);
+        }
+
         let persistedDocumentId: string | undefined;
         try {
           if (onDocumentQueued) {
             persistedDocumentId = await onDocumentQueued(f.name, hash, f);
+            if (user?.uid) {
+              void logUserActivity(user.uid, 'doc_upload', { fileName: f.name });
+            }
           }
         } catch (queueErr: any) {
           return {
@@ -2774,8 +2887,37 @@ export const DocumentProcessor: React.FC<{
             status: 'error' as const,
             fileRaw: f,
             fileHash: hash,
-            error: `Failed to queue save: ${queueErr?.message || 'Unknown error'}`,
+            error: t('alertQueueSaveFailed').replace(
+              '{msg}',
+              queueErr?.message || t('errorUnknown')
+            ),
+            errorCode: 'save',
           };
+        }
+
+        if (pageLimitMsg) {
+          const errRow = {
+            id: Math.random().toString(36).substr(2, 9),
+            fileName: f.name,
+            status: 'error' as const,
+            fileRaw: f,
+            fileHash: hash,
+            persistedDocumentId,
+            error: pageLimitMsg,
+            errorCode: 'page_limit' as const,
+          };
+          if (persistedDocumentId) {
+            try {
+              await updateDocument(persistedDocumentId, {
+                status: 'error',
+                error: pageLimitMsg,
+                errorCode: 'page_limit',
+              });
+            } catch (patchErr) {
+              console.warn('Could not persist PDF page-limit status:', patchErr);
+            }
+          }
+          return errRow;
         }
 
         return {
@@ -2788,6 +2930,14 @@ export const DocumentProcessor: React.FC<{
         };
       })
     );
+
+    if (overLimitNames.length > 0) {
+      const banner = t('dpPdfPageLimitBanner')
+        .replace('{count}', String(overLimitNames.length))
+        .replace('{max}', '7')
+        .replace('{names}', overLimitNames.join(', '));
+      setUploadError((prev) => (prev ? `${prev} — ${banner}` : banner));
+    }
 
     for (const doc of news) {
       if (doc.fileRaw) {
@@ -2804,16 +2954,21 @@ export const DocumentProcessor: React.FC<{
 
     // Auto-start processing when new processable documents are added
     if (news.some(d => d.status === 'pending' && d.fileRaw) && !isProcessing) {
-      // Wait a beat so Firestore mirror + localDocs merge settle, then process with fileRaw attached.
-      setTimeout(() => processAllRef.current?.(), 400);
+      const onlyIds = news
+        .map((d) => d.persistedDocumentId || d.id)
+        .filter((id): id is string => Boolean(id));
+      setTimeout(() => processAllRef.current?.({ onlyIds, includeErrors: false }), 400);
     }
   };
 
-  const processAllRef = useRef<(() => void) | null>(null);
+  const processAllRef = useRef<
+    ((opts?: { onlyIds?: string[]; includeErrors?: boolean }) => void) | null
+  >(null);
 
   const processDoc = async (doc: ProcessedDocument & { source?: 'firestore' | 'local' }) => {
     const isFirestoreDoc = (doc as any).source === 'firestore';
     const firestoreId = isFirestoreDoc ? firestoreRecordId(doc) : undefined;
+    const rowKey = firestoreId || doc.persistedDocumentId || doc.id;
     const step = (msg: string) => console.log(`📄 [${doc.fileName}] ${msg}`);
     const withStepTimeout = async <T,>(p: Promise<T>, ms: number, label: string): Promise<T> => {
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -2837,16 +2992,17 @@ export const DocumentProcessor: React.FC<{
         d.id === doc.id ||
         (firestoreId && d.persistedDocumentId === firestoreId) ||
         (doc.fileName && d.fileName === doc.fileName)
-          ? { ...d, status: 'processing', error: undefined }
+          ? { ...d, status: 'processing', error: undefined, errorCode: undefined }
           : d
       )
     );
     if (isFirestoreDoc && firestoreId) {
-      await updateDocument(firestoreId, { status: 'processing', error: undefined });
+      await updateDocument(firestoreId, { status: 'processing', error: undefined, errorCode: undefined });
     }
 
     let storageForAi: { fileUrl?: string; storagePath?: string } | undefined;
 
+    setActiveProcessingKeys((prev) => new Set(prev).add(rowKey));
     try {
       console.log(`Processing: ${doc.fileName}`);
       step('resolving source file');
@@ -2961,9 +3117,10 @@ export const DocumentProcessor: React.FC<{
       if (enforcementEnabled && cap != null) {
         if (monthlyCompleted >= cap) {
           const msg = t('planLimitDocuments').replace('{n}', String(cap));
-          setLocalDocs((prev) => prev.map((d) => (d.id === doc.id ? { ...d, status: 'error', error: msg } : d)));
+          const patch = { status: 'error' as const, error: msg, errorCode: 'quota' as const };
+          setLocalDocs((prev) => prev.map((d) => (d.id === doc.id ? { ...d, ...patch } : d)));
           if (isFirestoreDoc && firestoreId) {
-            await updateDocument(firestoreId, { status: 'error', error: msg });
+            await updateDocument(firestoreId, patch);
           }
           return;
         }
@@ -2976,7 +3133,58 @@ export const DocumentProcessor: React.FC<{
             ? { fileUrl, storagePath: undefined as string | undefined }
             : undefined;
 
-      if (!storageForAi?.storagePath) {
+      const forceDeepPdfReads = billing?.deepPdfInvoiceBeta === true;
+      let pdfPageCount = 1;
+      let pdfPageSplit = false;
+      try {
+        step('pdf page-count / split detect');
+        const {
+          getPdfPageCount,
+          shouldSplitPdfToPageImages,
+          looksLikeMultiTicketPdf,
+        } = await import('../lib/pdfPagesToImages');
+        const ticketLike = looksLikeMultiTicketPdf(inputFile);
+        let peekedPages = false;
+        try {
+          pdfPageCount = await getPdfPageCount(inputFile);
+          peekedPages = true;
+          pdfPageSplit = shouldSplitPdfToPageImages(inputFile, pdfPageCount);
+          step(`pdf pages=${pdfPageCount} split=${pdfPageSplit}`);
+        } catch (peekErr) {
+          console.warn('⚠️ PDF page-count peek failed:', peekErr);
+          pdfPageSplit = ticketLike;
+          pdfPageCount = ticketLike ? 5 : 1;
+          step(`pdf peek failed; ticketLike=${ticketLike} assumedPages=${pdfPageCount}`);
+        }
+        if (ticketLike && pdfPageCount >= 2) pdfPageSplit = true;
+        if (peekedPages) {
+          const { pdfPageLimitExceeded, pdfPageLimitMessage } = await import('../lib/pdfPagesToImages');
+          if (pdfPageLimitExceeded(pdfPageCount)) {
+            throw new Error(pdfPageLimitMessage(pdfPageCount));
+          }
+        }
+      } catch (modErr) {
+        if (modErr instanceof Error && /PDF_PAGE_LIMIT/i.test(modErr.message)) {
+          throw modErr;
+        }
+        console.warn('⚠️ pdfPagesToImages module failed:', modErr);
+      }
+      if (pdfPageSplit) {
+        console.log(`🧾 Will page-split ${doc.fileName} (pages≈${pdfPageCount})`);
+      }
+
+      const canInline = inputFile.size <= maxRawBytesForGeminiPayload();
+      if (pdfPageSplit || (canInline && !storageForAi?.storagePath)) {
+        step(pdfPageSplit ? 'page-split — skip blocking Storage upload' : 'inline AI — Storage upload in background');
+        if (!storageForAi?.storagePath) {
+          void import('../lib/documentStorageForAi')
+            .then(({ ensureDocumentStorageForAi }) => ensureDocumentStorageForAi(inputFile, storageForAi))
+            .catch((uploadErr) => console.warn('Background Storage upload skipped:', uploadErr));
+        }
+        if (pdfPageSplit || canInline) {
+          storageForAi = pdfPageSplit ? undefined : storageForAi;
+        }
+      } else if (!storageForAi?.storagePath) {
         step('ensuring Storage upload for AI');
         const { ensureDocumentStorageForAi } = await import('../lib/documentStorageForAi');
         const uploaded = await withStepTimeout(
@@ -3004,36 +3212,6 @@ export const DocumentProcessor: React.FC<{
         step('reusing existing Storage path');
       }
 
-      const forceDeepPdfReads = billing?.deepPdfInvoiceBeta === true;
-      let pdfPageCount = 1;
-      let pdfPageSplit = false;
-      try {
-        step('pdf page-count / split detect');
-        const {
-          getPdfPageCount,
-          shouldSplitPdfToPageImages,
-          looksLikeMultiTicketPdf,
-        } = await import('../lib/pdfPagesToImages');
-        // Name heuristic first so we never block AI on a stuck PDF.js worker.
-        const ticketLike = looksLikeMultiTicketPdf(inputFile);
-        try {
-          pdfPageCount = await getPdfPageCount(inputFile);
-          pdfPageSplit = shouldSplitPdfToPageImages(inputFile, pdfPageCount);
-          step(`pdf pages=${pdfPageCount} split=${pdfPageSplit}`);
-        } catch (peekErr) {
-          console.warn('⚠️ PDF page-count peek failed:', peekErr);
-          // Assume multi-page ticket binder so analyze path still forces split (or times out cleanly).
-          pdfPageSplit = ticketLike;
-          pdfPageCount = ticketLike ? 5 : 1;
-          step(`pdf peek failed; ticketLike=${ticketLike} assumedPages=${pdfPageCount}`);
-        }
-        if (ticketLike && pdfPageCount >= 2) pdfPageSplit = true;
-      } catch (modErr) {
-        console.warn('⚠️ pdfPagesToImages module failed:', modErr);
-      }
-      if (pdfPageSplit) {
-        console.log(`🧾 Will page-split ${doc.fileName} (pages≈${pdfPageCount})`);
-      }
       const processingTimeoutMs = resolveDocumentProcessingTimeoutMs(inputFile, {
         forceDeepPdfReads,
         pdfPageCount,
@@ -3057,20 +3235,24 @@ export const DocumentProcessor: React.FC<{
           inputFile,
           reportingCurrency,
           undefined,
-          // Page-split path uploads each JPEG itself; avoid forcing the whole PDF through Gemini Storage.
           pdfPageSplit ? undefined : storageForAi,
           abortController.signal,
           {
             forceDeepPdfReads,
-            // Force split for ticket-named binders even if page peek failed.
             forcePdfPageSplit: pdfPageSplit,
+            pdfPageCount,
+            preferInline: pdfPageSplit || (!storageForAi?.storagePath && canInline),
           }
         ),
         timeoutPromise,
       ]);
       try {
         if (!isCsvDocumentFile(inputFile)) {
-          res = await enrichFinancialDataWithSwissAccount(res, abortController.signal);
+          res = await withStepTimeout(
+            enrichFinancialDataWithSwissAccount(res, abortController.signal),
+            SWISS_ACCOUNT_CLASSIFY_TIMEOUT_MS,
+            'Swiss account classify'
+          );
           console.log(
             `📒 Swiss account: ${res.swissAccountClassification?.account_code} (${((res.swissAccountClassification?.confidence || 0) * 100).toFixed(0)}%)`
           );
@@ -3093,7 +3275,7 @@ export const DocumentProcessor: React.FC<{
       );
       if (isFirestoreDoc && firestoreId) {
         try {
-          await updateDocument(firestoreId, { status: 'processing', error: undefined });
+          await updateDocument(firestoreId, { status: 'processing', error: undefined, errorCode: undefined });
         } catch {
           /* mirror best-effort */
         }
@@ -3111,43 +3293,59 @@ export const DocumentProcessor: React.FC<{
       } catch (saveErr: any) {
         console.error(`❌ Failed to save document: ${doc.fileName}`, saveErr);
         // Mark as error but keep the analyzed data
-        setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'error', error: `Failed to save: ${saveErr.message}` } : d));
+        const savePatch = documentErrorPatch(
+          new Error(`Failed to save: ${saveErr.message}`)
+        );
+        setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, ...savePatch } : d));
         if (isFirestoreDoc && firestoreId) {
-          await updateDocument(firestoreId, { status: 'error', error: `Failed to save: ${saveErr.message}` });
+          await updateDocument(firestoreId, savePatch);
         }
       }
     } catch (err: any) {
       console.error(`❌ Error: ${doc.fileName}`, err);
-      setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, status: 'error', error: err.message } : d));
+      const failPatch = documentErrorPatch(err);
+      if (user?.uid) {
+        void logUserActivity(user.uid, 'document_process_error', {
+          errorCode: failPatch.errorCode,
+          fileName: doc.fileName,
+        });
+      }
+      setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, ...failPatch } : d));
       if (isFirestoreDoc && firestoreId) {
-        await updateDocument(firestoreId, { status: 'error', error: err.message });
+        await updateDocument(firestoreId, failPatch);
       }
 
-      // Processing failed, so no document date is known — back up to Drive's "Uncategorised"
-      // folder rather than leave the document unfiled entirely.
-      if (storageForAi?.storagePath && storageForAi?.fileUrl) {
-        const driveStoragePath = storageForAi.storagePath;
-        const driveFileUrl = storageForAi.fileUrl;
+      if (storageForAi?.storagePath && storageForAi?.fileUrl && user?.uid) {
         void (async () => {
           try {
-            const { backupDocumentToGoogleDrive } = await import('../lib/googleDriveClient');
-            const { guessMimeType } = await import('../lib/documentStorageForAi');
-            await backupDocumentToGoogleDrive({
-              storagePath: driveStoragePath,
-              fileUrl: driveFileUrl,
-              filename: doc.fileName,
-              mimeType: guessMimeType(doc.fileName, doc.fileRaw?.type || ''),
+            const { postProcessDocumentStorage } = await import('../lib/postProcessDocumentStorage');
+            await postProcessDocumentStorage({
+              uid: user.uid,
+              fileName: doc.fileName,
+              fileUrl: storageForAi.fileUrl,
+              storagePath: storageForAi.storagePath,
+              fileRaw: doc.fileRaw,
             });
-          } catch (driveErr) {
-            console.warn('Google Drive backup skipped:', driveErr);
+          } catch (storageErr) {
+            console.warn('Post-process storage skipped:', storageErr);
           }
         })();
       }
+    } finally {
+      setActiveProcessingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(rowKey);
+        return next;
+      });
     }
   };
 
   const skipDoc = (docId: string) => {
-    setLocalDocs((prev) => prev.map((d) => d.id === docId ? { ...d, status: 'skipped' as const, error: 'Skipped by user' } : d));
+    setLocalDocs((prev) =>
+      prev.map((d) =>
+        d.id === docId ? { ...d, status: 'skipped' as const, error: 'Skipped by user' } : d
+      )
+    );
   };
 
   const retryDocument = async (doc: ProcessedDocument & { source?: 'firestore' | 'local' }) => {
@@ -3210,23 +3408,57 @@ export const DocumentProcessor: React.FC<{
     }
   };
 
-  const processAll = async () => {
+  const processAll = async (opts?: { onlyIds?: string[]; includeErrors?: boolean }) => {
     if (isProcessing) return;
     setIsProcessing(true);
     stopProcessingRef.current = false;
 
+    const includeErrors = opts?.includeErrors === true;
+    const only = opts?.onlyIds && opts.onlyIds.length > 0 ? new Set(opts.onlyIds) : null;
+    const hasBytes = (d: ProcessedDocument) =>
+      Boolean(
+        d.fileRaw ||
+          recallDocumentFile({
+            firestoreId: d.id,
+            persistedDocumentId: d.persistedDocumentId,
+            fileHash: d.fileHash,
+            fileName: d.fileName,
+          })
+      );
+
     const cap = entitlements.maxDocumentsPerMonth;
-    let pending = allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any));
+    let pending = allDocs.filter((d) => {
+      if (!canProcessDoc(d as any)) return false;
+      if (only) {
+        const hit =
+          only.has(d.id) ||
+          (d.persistedDocumentId ? only.has(d.persistedDocumentId) : false);
+        if (!hit) return false;
+      }
+      if (d.status === 'pending') return true;
+      if (!includeErrors) return false;
+      if (d.status === 'skipped') return true;
+      if (d.status === 'error') {
+        if (isSourceMissingError(d.error || d.errorCode) && !hasBytes(d)) return false;
+        if (isPageLimitError(d.error || d.errorCode)) return false;
+        return true;
+      }
+      return false;
+    });
     if (enforcementEnabled && cap != null) {
       const used = monthlyCompleted;
       const remaining = Math.max(0, cap - used);
       if (remaining === 0) {
         setUploadError(t('planLimitDocuments').replace('{n}', String(cap)));
+        setBatchProgress(null);
         setIsProcessing(false);
         return;
       }
       pending = pending.slice(0, remaining);
     }
+    const batchTotal = pending.length;
+    setBatchProgress({ done: 0, total: batchTotal });
+    let batchDone = 0;
     await runInDocumentBatches(
       pending,
       BATCH_SIZE,
@@ -3268,9 +3500,12 @@ export const DocumentProcessor: React.FC<{
           ...latest,
           ...(fileRaw ? { fileRaw } : {}),
         } as ProcessedDocument & { source?: 'firestore' | 'local' });
+        batchDone += 1;
+        setBatchProgress({ done: batchDone, total: batchTotal });
       }
     );
 
+    setBatchProgress(null);
     setIsProcessing(false);
   };
 
@@ -3313,6 +3548,10 @@ export const DocumentProcessor: React.FC<{
           </div>
         )}
 
+        {!canWrite ? (
+          <p className="mb-4 text-xs text-cdlp-gold/90 font-medium">{t('billingTeamReadOnlyBanner')}</p>
+        ) : null}
+
         <p className="text-[9px] font-bold uppercase tracking-wider text-cdlp-muted mb-2">{t('dpUploadDocuments')}</p>
 
         <label
@@ -3351,19 +3590,26 @@ export const DocumentProcessor: React.FC<{
           ) : (
             <button
               type="button"
-              onClick={processAll}
-              disabled={allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any)).length === 0}
+              onClick={() => void processAll({ includeErrors: true })}
+              disabled={manualQueueCount === 0}
               className="ba-btn-start"
             >
-              {t('dpStartProcessing').replace(
-                '{n}',
-                String(allDocs.filter((d) => isQueuedStatus(d.status) && canProcessDoc(d as any)).length)
-              )}
+              {t('dpStartProcessing').replace('{n}', String(manualQueueCount))}
             </button>
           )}
           <span className="text-[10px] text-cdlp-muted uppercase tracking-wider">
             {t('dpDone').replace('{done}', String(stats.completed)).replace('{total}', String(stats.total))}
+            {BATCH_SIZE > 1 ? ` · ${t('dpParallelHint').replace('{n}', String(BATCH_SIZE))}` : ''}
           </span>
+          {isProcessing && batchProgress ? (
+            <span className="text-[10px] text-cdlp-gold uppercase tracking-wider">
+              {t('dpBatchProgress')
+                .replace('{active}', String(activeProcessingKeys.size))
+                .replace('{queued}', String(Math.max(0, batchProgress.total - batchProgress.done - activeProcessingKeys.size)))
+                .replace('{done}', String(batchProgress.done))
+                .replace('{total}', String(batchProgress.total))}
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -3410,6 +3656,11 @@ export const DocumentProcessor: React.FC<{
                     doc.status === 'needs_review' || vatReview.needsAction;
                   const isActionable =
                     doc.status === 'completed' || doc.status === 'needs_review';
+                  const rowKey = doc.persistedDocumentId || doc.id;
+                  const displayStatus = displayStatusForDocument(doc, {
+                    isBatchRunning: isProcessing,
+                    activeKeys: activeProcessingKeys,
+                  });
                   return (
                     <React.Fragment key={doc.id}>
                       <tr 
@@ -3432,9 +3683,16 @@ export const DocumentProcessor: React.FC<{
                               <span className="px-2 py-0.5 bg-cdlp-gold/20 text-cdlp-gold text-[9px] font-bold uppercase rounded">{doc.data.issuer}</span>
                             </div>
                           )}
-                          {doc.status === 'error' && doc.error && (
-                            <p className="ml-5 mt-1 text-[9px] text-red-400/90 max-w-[280px] leading-snug" title={doc.error}>
-                              {doc.error}
+                          {doc.status === 'error' && (doc.error || doc.errorCode) && (
+                            <p
+                              className="ml-5 mt-1 text-[9px] text-red-400/90 max-w-[280px] leading-snug"
+                              title={doc.error || undefined}
+                            >
+                              {formatDocumentProcessError(
+                                t,
+                                doc.errorCode || classifyDocumentProcessError(doc.error),
+                                doc.error
+                              )}
                             </p>
                           )}
                         </td>
@@ -3511,35 +3769,20 @@ export const DocumentProcessor: React.FC<{
                               <span className="ba-status-pill ba-status-pill--pending">{docStatusLabel(doc.status)}</span>
                             ) : (
                               <span className="ba-status-pill ba-status-pill--pending inline-flex items-center gap-1">
-                                {doc.status === 'processing' ? (
+                                {displayStatus === 'processing' ? (
                                   <Loader2 className="w-3 h-3 animate-spin" />
                                 ) : null}
-                                {docStatusLabel(doc.status)}
+                                {docStatusLabel(displayStatus)}
                               </span>
                             )}
 
                             {doc.status === 'error' && (
                               <>
                                 {(() => {
-                                  const errText = String(doc.error || '');
-                                  const needsReattach =
-                                    /Storage download|Re-attach|Missing source|timed out/i.test(errText) ||
-                                    !recallDocumentFile({
-                                      firestoreId: doc.id,
-                                      persistedDocumentId: doc.persistedDocumentId,
-                                      fileHash: doc.fileHash,
-                                      fileName: doc.fileName,
-                                    });
-                                  const hasLocal =
-                                    Boolean(doc.fileRaw) ||
-                                    Boolean(
-                                      recallDocumentFile({
-                                        firestoreId: doc.id,
-                                        persistedDocumentId: doc.persistedDocumentId,
-                                        fileHash: doc.fileHash,
-                                        fileName: doc.fileName,
-                                      })
-                                    );
+                                  const errCode =
+                                    doc.errorCode || classifyDocumentProcessError(doc.error);
+                                  const hasLocal = docHasLocalBytes(doc);
+                                  const needsReattach = errCode === 'source_missing' || !hasLocal;
                                   return (
                                     <>
                                       {hasLocal && (

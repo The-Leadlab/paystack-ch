@@ -7,7 +7,7 @@ import { useLanguage } from "@/cafe/context/LanguageContext";
 import { firebaseReady } from "@/cafe/lib/firebase";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { AuthLayout } from "./auth/AuthLayout";
-import { isSelfServePlan, parsePaystackPlanId, SELECTED_PLAN_STORAGE_KEY, type PaystackPlanId } from "@shared/planCatalog";
+import { isSelfServePlan, parsePaystackPlanId, parseBillingInterval, SELECTED_PLAN_STORAGE_KEY, type PaystackPlanId } from "@shared/planCatalog";
 import { startGuestCheckoutSession } from "@/cafe/lib/stripeCheckoutClient";
 
 export default function StartTrialPage() {
@@ -30,6 +30,11 @@ export default function StartTrialPage() {
     return new URLSearchParams(qs).get("checkout") === "cancel";
   }, [search]);
 
+  const billingInterval = useMemo(() => {
+    const qs = search.startsWith("?") ? search.slice(1) : search;
+    return parseBillingInterval(new URLSearchParams(qs).get("interval"));
+  }, [search]);
+
   useEffect(() => {
     if (!firebaseReady || cancelled || redirectStarted.current) return;
     redirectStarted.current = true;
@@ -38,14 +43,14 @@ export default function StartTrialPage() {
         if (typeof sessionStorage !== "undefined") {
           sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, planId);
         }
-        const url = await startGuestCheckoutSession(planId);
+        const url = await startGuestCheckoutSession(planId, { billingInterval });
         window.location.href = url;
       } catch (e) {
         setErr(e instanceof Error ? e.message : String(e));
         redirectStarted.current = false;
       }
     })();
-  }, [firebaseReady, cancelled, planId]);
+  }, [firebaseReady, cancelled, planId, billingInterval]);
 
   if (!firebaseReady) {
     return <FirebaseMissing />;

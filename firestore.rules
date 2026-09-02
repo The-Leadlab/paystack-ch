@@ -27,7 +27,7 @@ service cloud.firestore {
         ownerUid() == dataOwner ||
         (
           isActiveMemberOf(dataOwner) &&
-          get(/databases/$(database)/documents/workspaceMembers/$(ownerUid())).data.role in ['editor', 'owner']
+          get(/databases/$(database)/documents/workspaceMembers/$(ownerUid())).data.role in ['editor', 'manager', 'member']
         )
       );
     }
@@ -231,6 +231,15 @@ service cloud.firestore {
       );
       allow create, update: if signedIn() && userId == ownerUid();
       allow delete: if false;
+    }
+
+    /** Beta usage telemetry — clients write their own events; admin reads via server API. */
+    match /userActivity/{eventId} {
+      allow create: if signedIn() &&
+        request.resource.data.uid == ownerUid() &&
+        request.resource.data.type is string &&
+        request.resource.data.at is string;
+      allow read, update, delete: if false;
     }
 
     match /pendingStripeCheckouts/{id} {

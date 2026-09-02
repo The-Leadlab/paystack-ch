@@ -19,6 +19,13 @@ export type AdminUserSummary = {
   usageThisMonth: number | null;
   appAdmin: boolean;
   deepPdfInvoiceBeta: boolean;
+  betaCohort: string | null;
+  lastActiveAt: string | null;
+  logins30d: number | null;
+  sessionMinutes30d: number | null;
+  errors30d: number | null;
+  uploads30d: number | null;
+  googleDriveConnected: boolean;
 };
 
 export type AdminUserDetail = AdminUserSummary & {
@@ -129,9 +136,12 @@ export type AdminUserActionBody =
   | { action: "disable_user" }
   | { action: "enable_user" }
   | { action: "delete_user" }
+  | { action: "audit_stripe_billing" }
+  | { action: "stop_stripe_billing" }
   | { action: "set_plan"; planId: string | null; planTestMode?: boolean }
   | { action: "set_app_admin"; enabled: boolean }
   | { action: "set_deep_pdf_invoice_beta"; enabled: boolean }
+  | { action: "set_beta_cohort"; cohort: string | null }
   | { action: "resend_verification" }
   | { action: "link_stripe_by_email" }
   | {

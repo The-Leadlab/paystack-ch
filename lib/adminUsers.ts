@@ -107,35 +107,127 @@ async function resolveStripeForCustomer(
   return null;
 }
 
-/**
- * Cancel any live Stripe subscription and clear chargeable billing fields.
- * Used when promoting to appAdmin or enabling planTestMode so Stripe cannot charge next cycle.
- */
-async function stopStripeBillingForUser(
-  uid: string,
-  billing: Record<string, unknown> | null
-): Promise<{ canceled: boolean; message: string }> {
-  const db = getFirestore();
-  const subscriptionId =
-    typeof billing?.subscriptionId === "string" ? billing.subscriptionId : null;
+const CHARGEABLE_STRIPE_STATUSES = new Set(["active", "trialing", "past_due", "unpaid"]);
 
-  let canceled = false;
+type StripeSubscriptionRef = {
+  id: string;
+  status: string;
+  customerId: string;
+  mode: "live" | "test";
+};
+
+async function listStripeSubscriptionsForUser(
+  billing: Record<string, unknown> | null,
+  email: string | null | undefined
+): Promise<StripeSubscriptionRef[]> {
+  const out: StripeSubscriptionRef[] = [];
+  const seen = new Set<string>();
+  const customerIds = new Set<string>();
+
+  const stripeCustomerId =
+    typeof billing?.stripeCustomerId === "string" ? billing.stripeCustomerId.trim() : "";
+  if (stripeCustomerId) customerIds.add(stripeCustomerId);
+
+  const subscriptionId =
+    typeof billing?.subscriptionId === "string" ? billing.subscriptionId.trim() : "";
   if (subscriptionId) {
     const resolved = await resolveStripeForSubscription(subscriptionId);
     if (resolved) {
       try {
-        const live = await resolved.stripe.subscriptions.retrieve(subscriptionId);
-        if (live.status !== "canceled") {
-          await resolved.stripe.subscriptions.cancel(subscriptionId, {
-            invoice_now: false,
-            prorate: false,
+        const sub = await resolved.stripe.subscriptions.retrieve(subscriptionId);
+        const customer =
+          typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? "";
+        if (customer) customerIds.add(customer);
+        if (!seen.has(sub.id)) {
+          seen.add(sub.id);
+          out.push({
+            id: sub.id,
+            status: sub.status,
+            customerId: customer,
+            mode: resolved.useTest ? "test" : "live",
           });
-          canceled = true;
         }
       } catch {
-        /* already gone or inaccessible — still clear Firestore */
+        /* subscription id stale */
       }
     }
+  }
+
+  const normalizedEmail = email?.trim().toLowerCase();
+  if (normalizedEmail) {
+    const found = await findStripeCustomerByEmail(normalizedEmail);
+    if (found) customerIds.add(found.customerId);
+  }
+
+  for (const customerId of customerIds) {
+    for (const useTest of [false, true] as const) {
+      const stripe = useTest ? getStripeTest() : getStripe();
+      if (!stripe) continue;
+      let resolvedCustomer: Stripe.Customer | Stripe.DeletedCustomer | null = null;
+      try {
+        resolvedCustomer = await stripe.customers.retrieve(customerId);
+      } catch {
+        continue;
+      }
+      if (!resolvedCustomer || ("deleted" in resolvedCustomer && resolvedCustomer.deleted)) continue;
+      try {
+        const subs = await stripe.subscriptions.list({
+          customer: customerId,
+          status: "all",
+          limit: 20,
+        });
+        for (const sub of subs.data) {
+          if (seen.has(sub.id)) continue;
+          seen.add(sub.id);
+          out.push({
+            id: sub.id,
+            status: sub.status,
+            customerId,
+            mode: useTest ? "test" : "live",
+          });
+        }
+      } catch {
+        /* try next mode */
+      }
+    }
+  }
+
+  return out;
+}
+
+async function cancelStripeSubscription(
+  stripe: Stripe,
+  subscriptionId: string
+): Promise<boolean> {
+  try {
+    const live = await stripe.subscriptions.retrieve(subscriptionId);
+    if (live.status === "canceled" || live.status === "incomplete_expired") return false;
+    await stripe.subscriptions.cancel(subscriptionId, { invoice_now: false, prorate: false });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Cancel any Stripe subscriptions tied to this user (Firestore id, customer id, or email lookup)
+ * and clear chargeable billing fields in Firestore.
+ */
+async function stopStripeBillingForUser(
+  uid: string,
+  billing: Record<string, unknown> | null,
+  email?: string | null
+): Promise<{ canceled: boolean; canceledCount: number; message: string; subscriptions: StripeSubscriptionRef[] }> {
+  const db = getFirestore();
+  const subscriptions = await listStripeSubscriptionsForUser(billing, email);
+  let canceledCount = 0;
+
+  for (const sub of subscriptions) {
+    if (!CHARGEABLE_STRIPE_STATUSES.has(sub.status)) continue;
+    const stripe = sub.mode === "test" ? getStripeTest() : getStripe();
+    if (!stripe) continue;
+    const didCancel = await cancelStripeSubscription(stripe, sub.id);
+    if (didCancel) canceledCount += 1;
   }
 
   await db.collection("users").doc(uid).set(
@@ -150,11 +242,23 @@ async function stopStripeBillingForUser(
     { merge: true }
   );
 
+  const chargeable = subscriptions.filter((s) => CHARGEABLE_STRIPE_STATUSES.has(s.status));
+  let message: string;
+  if (canceledCount > 0) {
+    message = `Canceled ${canceledCount} Stripe subscription(s) immediately — no further charges.`;
+  } else if (chargeable.length > 0) {
+    message = `Found ${chargeable.length} billable Stripe subscription(s) but could not cancel (check Stripe Dashboard).`;
+  } else if (subscriptions.length > 0) {
+    message = "Stripe subscriptions are already canceled or inactive.";
+  } else {
+    message = "No Stripe subscriptions found for this user.";
+  }
+
   return {
-    canceled,
-    message: canceled
-      ? "Stripe subscription canceled immediately — no further charges."
-      : "No live Stripe subscription to cancel (Firestore billing cleared).",
+    canceled: canceledCount > 0,
+    canceledCount,
+    message,
+    subscriptions,
   };
 }
 
@@ -365,9 +469,12 @@ export type AdminUserAction =
   | { action: "disable_user" }
   | { action: "enable_user" }
   | { action: "delete_user" }
+  | { action: "audit_stripe_billing" }
+  | { action: "stop_stripe_billing" }
   | { action: "set_plan"; planId: PaystackPlanId | null; planTestMode?: boolean }
   | { action: "set_app_admin"; enabled: boolean }
   | { action: "set_deep_pdf_invoice_beta"; enabled: boolean }
+  | { action: "set_beta_cohort"; cohort: string | null }
   | { action: "resend_verification" }
   | { action: "link_stripe_by_email" }
   | {
@@ -399,7 +506,14 @@ export async function runAdminUserAction(
 
   switch (body.action) {
     case "cancel_subscription": {
-      if (!subscriptionId) throw Object.assign(new Error("User has no active subscription."), { status: 400 });
+      if (!subscriptionId) {
+        const stop = await stopStripeBillingForUser(uid, billing, record.email);
+        const chargeable = stop.subscriptions.filter((s) => CHARGEABLE_STRIPE_STATUSES.has(s.status));
+        if (chargeable.length === 0) {
+          throw Object.assign(new Error("User has no active subscription."), { status: 400 });
+        }
+        return { ok: true, message: stop.message, data: { stripe: stop.subscriptions } };
+      }
       const resolved = await resolveStripeForSubscription(subscriptionId);
       if (!resolved) throw Object.assign(new Error("Could not resolve Stripe subscription."), { status: 400 });
       const { stripe } = resolved;
@@ -513,30 +627,72 @@ export async function runAdminUserAction(
     }
 
     case "disable_user": {
+      const stop = await stopStripeBillingForUser(uid, billing, record.email);
       await auth.updateUser(uid, { disabled: true });
-      return { ok: true, message: "User account disabled." };
+      await db.collection("users").doc(uid).set(
+        { disabled: true, updatedAt: FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+      return {
+        ok: true,
+        message: `User account disabled. ${stop.message}`,
+        data: { stripe: stop.subscriptions },
+      };
     }
 
     case "enable_user": {
       await auth.updateUser(uid, { disabled: false });
+      await db.collection("users").doc(uid).set(
+        { disabled: false, updatedAt: FieldValue.serverTimestamp() },
+        { merge: true }
+      );
       return { ok: true, message: "User account enabled." };
     }
 
     case "delete_user": {
+      const stop = await stopStripeBillingForUser(uid, billing, record.email);
       await auth.deleteUser(uid);
       try {
         await db.collection("users").doc(uid).delete();
       } catch {
         /* billing doc may not exist */
       }
-      return { ok: true, message: "User deleted from Firebase Auth." };
+      return {
+        ok: true,
+        message: `User deleted from Firebase Auth. ${stop.message}`,
+        data: { stripe: stop.subscriptions },
+      };
+    }
+
+    case "audit_stripe_billing": {
+      const subscriptions = await listStripeSubscriptionsForUser(billing, record.email);
+      const chargeable = subscriptions.filter((s) => CHARGEABLE_STRIPE_STATUSES.has(s.status));
+      return {
+        ok: true,
+        message:
+          chargeable.length > 0
+            ? `Billable: ${chargeable.length} subscription(s) — ${chargeable.map((s) => `${s.id} (${s.status}, ${s.mode})`).join("; ")}`
+            : subscriptions.length > 0
+              ? `No billable subscriptions (${subscriptions.length} inactive/canceled in Stripe).`
+              : "No Stripe subscriptions found for this email/customer.",
+        data: { subscriptions, chargeableCount: chargeable.length },
+      };
+    }
+
+    case "stop_stripe_billing": {
+      const stop = await stopStripeBillingForUser(uid, billing, record.email);
+      return {
+        ok: true,
+        message: stop.message,
+        data: { subscriptions: stop.subscriptions, canceledCount: stop.canceledCount },
+      };
     }
 
     case "set_plan": {
       const testMode = body.planTestMode === true;
       let stripeNote = "";
       if (testMode) {
-        const stop = await stopStripeBillingForUser(uid, billing);
+        const stop = await stopStripeBillingForUser(uid, billing, record.email);
         stripeNote = ` ${stop.message}`;
       }
       await db.collection("users").doc(uid).set(
@@ -568,7 +724,7 @@ export async function runAdminUserAction(
       const enabled = body.enabled === true;
       let stripeNote = "";
       if (enabled) {
-        const stop = await stopStripeBillingForUser(uid, billing);
+        const stop = await stopStripeBillingForUser(uid, billing, record.email);
         stripeNote = ` ${stop.message}`;
       }
       const existing = (record.customClaims ?? {}) as Record<string, unknown>;
@@ -611,6 +767,21 @@ export async function runAdminUserAction(
         message: enabled
           ? "Deep PDF invoice beta enabled — multi-page binders use exhaustive + product recovery passes."
           : "Deep PDF invoice beta disabled.",
+      };
+    }
+    case "set_beta_cohort": {
+      const cohort =
+        typeof body.cohort === "string" && body.cohort.trim() ? body.cohort.trim() : null;
+      await db.collection("users").doc(uid).set(
+        {
+          betaCohort: cohort ?? FieldValue.delete(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+      return {
+        ok: true,
+        message: cohort ? `Beta cohort set to “${cohort}”.` : "Beta cohort cleared.",
       };
     }
 
@@ -713,6 +884,26 @@ export async function runAdminUserAction(
       }
 
       await auth.updateUser(uid, updates);
+
+      if (body.disabled === true) {
+        const stop = await stopStripeBillingForUser(uid, billing, record.email);
+        await db.collection("users").doc(uid).set(
+          { disabled: true, updatedAt: FieldValue.serverTimestamp() },
+          { merge: true }
+        );
+        return {
+          ok: true,
+          message: `User profile updated. ${stop.message}`,
+          data: { stripe: stop.subscriptions },
+        };
+      }
+
+      if (typeof body.disabled === "boolean" && body.disabled === false) {
+        await db.collection("users").doc(uid).set(
+          { disabled: false, updatedAt: FieldValue.serverTimestamp() },
+          { merge: true }
+        );
+      }
 
       if (typeof updates.email === "string") {
         await db.collection("users").doc(uid).set(

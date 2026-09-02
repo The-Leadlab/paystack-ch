@@ -60,12 +60,57 @@ function hasLiveStripeSubscription(user: AdminUserSummary): boolean {
   return st === "active" || st === "trialing" || st === "past_due";
 }
 
-function sortSubscribedFirst(a: AdminUserSummary, b: AdminUserSummary): number {
+function sortUsersForAdmin(a: AdminUserSummary, b: AdminUserSummary): number {
   const aLive = hasLiveStripeSubscription(a) ? 0 : 1;
   const bLive = hasLiveStripeSubscription(b) ? 0 : 1;
   if (aLive !== bLive) return aLive - bLive;
+  const aActive = a.lastActiveAt ? new Date(a.lastActiveAt).getTime() : 0;
+  const bActive = b.lastActiveAt ? new Date(b.lastActiveAt).getTime() : 0;
+  if (aActive !== bActive) return bActive - aActive;
   if (a.appAdmin !== b.appAdmin) return a.appAdmin ? -1 : 1;
   return (a.email || a.uid).localeCompare(b.email || b.uid);
+}
+
+function exportUsageCsv(users: AdminUserSummary[], filename: string): void {
+  const header = [
+    "uid",
+    "email",
+    "betaCohort",
+    "lastActiveAt",
+    "lastSignInAt",
+    "logins30d",
+    "sessionMinutes30d",
+    "errors30d",
+    "uploads30d",
+    "docsThisMonth",
+    "googleDriveConnected",
+  ];
+  const rows = users.map((u) =>
+    [
+      u.uid,
+      u.email ?? "",
+      u.betaCohort ?? "",
+      u.lastActiveAt ?? "",
+      u.lastSignInAt ?? "",
+      u.logins30d ?? "",
+      u.sessionMinutes30d ?? "",
+      u.errors30d ?? "",
+      u.uploads30d ?? "",
+      u.usageThisMonth ?? "",
+      u.googleDriveConnected ? "yes" : "no",
+    ]
+      .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+      .join(",")
+  );
+  const blob = new Blob([[header.join(","), ...rows].join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 function isPersonalUser(user: AdminUserSummary): boolean {
@@ -115,7 +160,7 @@ export function AdminUsersPanel() {
     const filtered = users.filter((u) =>
       productTab === "personal" ? isPersonalUser(u) : !isPersonalUser(u)
     );
-    const sorted = [...filtered].sort(sortSubscribedFirst);
+    const sorted = [...filtered].sort(sortUsersForAdmin);
     const subscribed = sorted.filter(hasLiveStripeSubscription);
     const noSub = sorted.filter((u) => !hasLiveStripeSubscription(u));
     return {
@@ -208,7 +253,13 @@ export function AdminUsersPanel() {
           );
         } else if (kind === "archive") {
           await runAdminUserAction(user.uid, { action: "disable_user" });
-          setUsers((prev) => prev.map((u) => (u.uid === user.uid ? { ...u, disabled: true } : u)));
+          setUsers((prev) =>
+            prev.map((u) =>
+              u.uid === user.uid
+                ? { ...u, disabled: true, subscriptionStatus: "none", subscriptionId: null }
+                : u
+            )
+          );
         } else {
           await runAdminUserAction(user.uid, { action: "delete_user" });
           setUsers((prev) => prev.filter((u) => u.uid !== user.uid));
@@ -353,7 +404,8 @@ export function AdminUsersPanel() {
             ) : null}
           </div>
           <p className="text-[11px] text-muted-foreground mt-2">
-            {t("adminUsersColLastSignIn")}: {formatDate(user.lastSignInAt)}
+            {t("adminUsersColLastActive")}: {formatDate(user.lastActiveAt ?? user.lastSignInAt)}
+            {user.logins30d != null ? ` · ${user.logins30d} logins (30d)` : ""}
           </p>
         </button>
       </div>
@@ -409,7 +461,10 @@ export function AdminUsersPanel() {
         {user.emailVerified ? t("adminUsersYes") : t("adminUsersNo")}
       </td>
       <td className="py-3.5 px-4 align-top text-muted-foreground whitespace-nowrap">
-        {formatDate(user.lastSignInAt)}
+        {formatDate(user.lastActiveAt ?? user.lastSignInAt)}
+        {user.logins30d != null ? (
+          <div className="text-[10px] text-muted-foreground/80">{user.logins30d} logins</div>
+        ) : null}
       </td>
       <td className="py-3.5 px-4 align-top text-right">
         <ChevronRight className="size-4 text-muted-foreground group-hover:text-brand-red transition-colors inline-block" />
@@ -467,12 +522,17 @@ export function AdminUsersPanel() {
               variant="outline"
               size="icon"
               className="shrink-0 min-h-11 min-w-11 touch-manipulation"
-              onClick={() => void loadUsers(search)}
-              disabled={loading}
-              aria-label={t("adminUserRefresh")}
+              onClick={() => {
+                exportUsageCsv(tabUsers, `paystack-usage-${productTab}.csv`);
+                toast.success(t("adminUserExportCsvDone"));
+              }}
+              disabled={loading || tabUsers.length === 0}
+              aria-label={t("adminUserExportCsv")}
+              title={t("adminUserExportCsv")}
             >
-              <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+              <Archive className="size-4" />
             </Button>
+            <Button
           </div>
         </div>
       </div>
@@ -639,7 +699,7 @@ export function AdminUsersPanel() {
                             {t("adminUsersColVerified")}
                           </th>
                           <th className="py-3.5 px-4 text-left font-display text-[11px] uppercase tracking-wider text-muted-foreground w-36">
-                            {t("adminUsersColLastSignIn")}
+                            {t("adminUsersColLastActive")}
                           </th>
                           <th className="py-3.5 px-4 w-12" aria-hidden />
                         </tr>

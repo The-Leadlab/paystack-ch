@@ -11,108 +11,142 @@ import SectionLabel from "./SectionLabel";
 import { useMemo, useState } from "react";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import { PLAN_ENTERPRISE_SALES_MAILTO } from "@/cafe/components/PlanMarketingPanel";
+import {
+  annualMonthlyEquivalentChf,
+  PLAN_MONTHLY_PRICE_CHF,
+  type BillingInterval,
+  type PaystackPlanId,
+} from "@shared/planCatalog";
 
 type PricingTab = "business" | "personal";
+
+function formatChfPrice(amount: number): string {
+  return `${amount}.-`;
+}
 
 export default function PricingSection() {
   const { t, language } = useLanguage();
   const [tab, setTab] = useState<PricingTab>("business");
-  const trialHref = (plan: string) => `/start-trial?plan=${plan}`;
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>("month");
 
-  const businessPlans = useMemo(() => [
-    {
-      name: t("planStarterName"),
-      price: t("pricingStarterAmount"),
-      period: t("pricingPerMonth"),
-      description: t("planStarterDescription"),
-      features: [
-        t("planStarterFeature1"),
-        t("planStarterFeature2"),
-        t("planStarterFeature3"),
-        t("planStarterFeature4"),
-        t("planStarterFeature5"),
-        t("planStarterFeature6"),
-      ],
-      cta: t("ctaStartTrial"),
-      highlighted: false,
-      href: trialHref("starter"),
-    },
-    {
-      name: t("planBusinessName"),
-      price: t("pricingBusinessAmount"),
-      period: t("pricingPerMonth"),
-      description: t("planBusinessDescription"),
-      features: [
-        t("planBusinessFeature1"),
-        t("planBusinessFeature2"),
-        t("planBusinessFeature3"),
-        t("planBusinessFeature4"),
-        t("planBusinessFeature5"),
-        t("planBusinessFeature6"),
-        t("planBusinessFeature7"),
-      ],
-      cta: t("ctaStartTrial"),
-      highlighted: true,
-      href: trialHref("business"),
-    },
-    {
-      name: t("planUnlimitedName"),
-      price: t("pricingUnlimitedAmount"),
-      period: t("pricingPerMonth"),
-      description: t("planUnlimitedDescription"),
-      features: [
-        t("planUnlimitedFeature1"),
-        t("planUnlimitedFeature2"),
-        t("planUnlimitedFeature3"),
-        t("planUnlimitedFeature4"),
-        t("planUnlimitedFeature5"),
-        t("planUnlimitedFeature6"),
-      ],
-      cta: t("ctaStartTrial"),
-      highlighted: false,
-      href: trialHref("unlimited"),
-    },
-    {
-      name: t("planEnterpriseName"),
-      price: t("pricingCustom"),
-      period: "",
-      description: t("planEnterpriseDescription"),
-      features: [
-        t("planEnterpriseFeature1"),
-        t("planEnterpriseFeature2"),
-        t("planEnterpriseFeature3"),
-        t("planEnterpriseFeature4"),
-        t("planEnterpriseFeature5"),
-        t("planEnterpriseFeature6"),
-        t("planEnterpriseFeature7"),
-        t("planEnterpriseFeature8"),
-      ],
-      cta: t("ctaContactSales"),
-      highlighted: false,
-      href: PLAN_ENTERPRISE_SALES_MAILTO,
-      external: true,
-    },
-  ], [t, language]);
+  const trialHref = (plan: string) => {
+    const base = `/start-trial?plan=${plan}`;
+    return billingInterval === "year" ? `${base}&interval=year` : base;
+  };
 
-  const personalPlans = useMemo(() => [
-    {
-      name: t("planPersonalName"),
-      price: t("pricingPersonalAmount"),
-      period: t("pricingPerMonth"),
-      description: t("planPersonalDescription"),
-      features: [
-        t("planPersonalFeature1"),
-        t("planPersonalFeature2"),
-        t("planPersonalFeature3"),
-        t("planPersonalFeature4"),
-        t("planPersonalFeature5"),
-        t("planPersonalFeature6"),
-      ],
-      cta: t("ctaStartTrial"),
-      highlighted: true,
-      href: "/start-trial?product=personal",
-    },
-  ], [t, language]);
+  const personalTrialHref =
+    billingInterval === "year" ? "/start-trial?product=personal&interval=year" : "/start-trial?product=personal";
+
+  const priceFor = (planId: Exclude<PaystackPlanId, "enterprise">) => {
+    if (billingInterval === "year") {
+      return formatChfPrice(annualMonthlyEquivalentChf(planId));
+    }
+    return formatChfPrice(PLAN_MONTHLY_PRICE_CHF[planId]);
+  };
+
+  const periodLabel =
+    billingInterval === "year" ? `/${t("pricingPerMonth")} · ${t("pricingBilledYearly")}` : t("pricingPerMonth");
+
+  const businessPlans = useMemo(
+    () => [
+      {
+        name: t("planStarterName"),
+        price: priceFor("starter"),
+        period: periodLabel,
+        description: t("planStarterDescription"),
+        features: [
+          t("planStarterFeature1"),
+          t("planStarterFeature2"),
+          t("planStarterFeature3"),
+          t("planStarterFeature4"),
+          t("planStarterFeature5"),
+          t("planStarterFeature6"),
+        ],
+        cta: t("ctaStartTrial"),
+        highlighted: false,
+        href: trialHref("starter"),
+      },
+      {
+        name: t("planBusinessName"),
+        price: priceFor("business"),
+        period: periodLabel,
+        description: t("planBusinessDescription"),
+        features: [
+          t("planBusinessFeature1"),
+          t("planBusinessFeature2"),
+          t("planBusinessFeature3"),
+          t("planBusinessFeature4"),
+          t("planBusinessFeature5"),
+          t("planBusinessFeature6"),
+          t("planBusinessFeature7"),
+        ],
+        cta: t("ctaStartTrial"),
+        highlighted: true,
+        href: trialHref("business"),
+      },
+      {
+        name: t("planUnlimitedName"),
+        price: priceFor("unlimited"),
+        period: periodLabel,
+        description: t("planUnlimitedDescription"),
+        features: [
+          t("planUnlimitedFeature1"),
+          t("planUnlimitedFeature2"),
+          t("planUnlimitedFeature3"),
+          t("planUnlimitedFeature4"),
+          t("planUnlimitedFeature5"),
+          t("planUnlimitedFeature6"),
+        ],
+        cta: t("ctaStartTrial"),
+        highlighted: false,
+        href: trialHref("unlimited"),
+      },
+      {
+        name: t("planEnterpriseName"),
+        price: t("pricingCustom"),
+        period: "",
+        description: t("planEnterpriseDescription"),
+        features: [
+          t("planEnterpriseFeature1"),
+          t("planEnterpriseFeature2"),
+          t("planEnterpriseFeature3"),
+          t("planEnterpriseFeature4"),
+          t("planEnterpriseFeature5"),
+          t("planEnterpriseFeature6"),
+          t("planEnterpriseFeature7"),
+          t("planEnterpriseFeature8"),
+        ],
+        cta: t("ctaContactSales"),
+        highlighted: false,
+        href: PLAN_ENTERPRISE_SALES_MAILTO,
+        external: true,
+      },
+    ],
+    [t, language, billingInterval, periodLabel]
+  );
+
+  const personalPlans = useMemo(
+    () => [
+      {
+        name: t("planPersonalName"),
+        price: priceFor("personal"),
+        period: periodLabel,
+        description: t("planPersonalDescription"),
+        features: [
+          t("planPersonalFeature1"),
+          t("planPersonalFeature2"),
+          t("planPersonalFeature3"),
+          t("planPersonalFeature4"),
+          t("planPersonalFeature5"),
+          t("planPersonalFeature6"),
+        ],
+        cta: t("ctaStartTrial"),
+        highlighted: true,
+        href: personalTrialHref,
+      },
+    ],
+    [t, language, billingInterval, periodLabel, personalTrialHref]
+  );
 
   const plans = tab === "personal" ? personalPlans : businessPlans;
 
@@ -138,6 +172,34 @@ export default function PricingSection() {
             </p>
           </div>
         </ScrollReveal>
+
+        <div className="flex flex-wrap gap-2 mb-6 items-center">
+          <button
+            type="button"
+            onClick={() => setBillingInterval("month")}
+            className={`font-display text-sm px-5 py-2.5 rounded-lg border transition-colors ${
+              billingInterval === "month"
+                ? "bg-brand-red text-white border-brand-red"
+                : "bg-card text-foreground border-border hover:border-brand-red/40"
+            }`}
+          >
+            {t("pricingIntervalMonthly")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setBillingInterval("year")}
+            className={`font-display text-sm px-5 py-2.5 rounded-lg border transition-colors ${
+              billingInterval === "year"
+                ? "bg-brand-red text-white border-brand-red"
+                : "bg-card text-foreground border-border hover:border-brand-red/40"
+            }`}
+          >
+            {t("pricingIntervalAnnual")}
+          </button>
+          {billingInterval === "year" ? (
+            <span className="text-sm text-muted-foreground font-editorial">{t("pricingAnnualFootnote")}</span>
+          ) : null}
+        </div>
 
         <div className="flex gap-2 mb-12 flex-wrap">
           <button

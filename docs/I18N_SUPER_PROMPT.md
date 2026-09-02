@@ -19,7 +19,7 @@ Use this document when fixing **hard-coded copy**, **language switcher bugs**, o
 
 **Storage:** `localStorage` key `paystack_language` — values `en` or `fr`. First visit defaults to **French** unless the user previously chose English.
 
-**API:** `const { language, setLanguage, t } = useLanguage()` — `t('someKey')` returns the string for the active language; missing keys echo the key name (visible bug).
+See **`docs/DOCUMENT_BATCH_I18N_ERRORS_SUPER_PROMPT.md`**: dashboard + tour tables are included in `node scripts/i18n-key-parity.mjs`. Document errors use `errorCode` + `t('dpErr…')` so toggling language rewrites the sentence.
 
 **Ali lab is isolated:** `/ali` wraps content in `LabLanguageProvider` (`AliLabShell.tsx`). It does **not** read `useLanguage()` from the global provider. The DE/IT switcher lives only in `DeItPanel.tsx`; the rest of the lab UI stays English unless migrated.
 

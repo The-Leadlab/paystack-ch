@@ -179,7 +179,9 @@ export function RestaurantDashboard() {
 
   // Show the upgrade prompt once per dashboard load if the account already sits at its monthly cap.
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [showUnlimitedNudge, setShowUnlimitedNudge] = useState(false);
   const upgradePromptShownRef = useRef(false);
+  const unlimitedNudgeShownRef = useRef(false);
   useEffect(() => {
     if (subscriptionLoading || upgradePromptShownRef.current) return;
     const cap = entitlements.maxDocumentsPerMonth;
@@ -188,6 +190,25 @@ export function RestaurantDashboard() {
     }
     upgradePromptShownRef.current = true;
   }, [subscriptionLoading, enforcementEnabled, entitlements.maxDocumentsPerMonth, documentsUsedThisMonth]);
+
+  useEffect(() => {
+    if (subscriptionLoading || unlimitedNudgeShownRef.current || showUpgradePrompt) return;
+    if (billing?.planId !== 'business') return;
+    const cap = entitlements.maxDocumentsPerMonth;
+    if (!enforcementEnabled || cap == null) return;
+    if (documentsUsedThisMonth >= cap) return;
+    if (documentsUsedThisMonth >= cap * 0.8) {
+      setShowUnlimitedNudge(true);
+    }
+    unlimitedNudgeShownRef.current = true;
+  }, [
+    subscriptionLoading,
+    enforcementEnabled,
+    entitlements.maxDocumentsPerMonth,
+    documentsUsedThisMonth,
+    billing?.planId,
+    showUpgradePrompt,
+  ]);
 
   const [planTestPickerOpen, setPlanTestPickerOpen] = useState(false);
 
@@ -574,25 +595,23 @@ export function RestaurantDashboard() {
       }
     }
 
-    // AI processing has now concluded successfully and the document's own date is known — back
-    // up to Google Drive directly into that week's subfolder in a single upload.
+    // AI processing has now concluded successfully and the document's own date is known —
+    // mirror to Google Drive and optionally download locally per storagePrefs.
     const docForDrive = documents.find((d) => d.id === documentId);
-    if (docForDrive?.storagePath && docForDrive?.fileUrl) {
-      const driveStoragePath = docForDrive.storagePath;
-      const driveFileUrl = docForDrive.fileUrl;
+    if (docForDrive?.storagePath && docForDrive?.fileUrl && user?.uid) {
       void (async () => {
         try {
-          const { backupDocumentToGoogleDrive } = await import('../lib/googleDriveClient');
-          const { guessMimeType } = await import('../lib/documentStorageForAi');
-          await backupDocumentToGoogleDrive({
-            storagePath: driveStoragePath,
-            fileUrl: driveFileUrl,
-            filename: fileName,
-            mimeType: guessMimeType(fileName, fileRaw?.type || ''),
+          const { postProcessDocumentStorage } = await import('../lib/postProcessDocumentStorage');
+          await postProcessDocumentStorage({
+            uid: user.uid,
+            fileName,
+            fileUrl: docForDrive.fileUrl,
+            storagePath: docForDrive.storagePath,
+            fileRaw,
             documentDate: data.date || undefined,
           });
-        } catch (driveErr) {
-          console.warn('Google Drive backup skipped:', driveErr);
+        } catch (storageErr) {
+          console.warn('Post-process storage skipped:', storageErr);
         }
       })();
     }
@@ -810,13 +829,26 @@ export function RestaurantDashboard() {
           onSkip={businessTour.skip}
         />
       ) : null}
-      {showUpgradePrompt && entitlements.maxDocumentsPerMonth != null && (
+      {showUpgradePrompt && entitlements.maxDocumentsPerMonth != null ? (
         <UpgradePromptModal
-          documentCap={entitlements.maxDocumentsPerMonth}
+          title={t('upgradePromptTitle')}
+          body={t('planLimitDocuments').replace('{n}', String(entitlements.maxDocumentsPerMonth))}
+          primaryCta={t('subscriptionManageBilling')}
           onClose={() => setShowUpgradePrompt(false)}
-          onOpenBilling={openBillingTab}
+          onPrimary={openBillingTab}
         />
-      )}
+      ) : null}
+      {showUnlimitedNudge && entitlements.maxDocumentsPerMonth != null ? (
+        <UpgradePromptModal
+          title={t('upgradeNudgeUnlimitedTitle')}
+          body={t('upgradeNudgeUnlimitedBody')
+            .replace('{used}', String(documentsUsedThisMonth))
+            .replace('{cap}', String(entitlements.maxDocumentsPerMonth))}
+          primaryCta={t('upgradeNudgeUnlimitedCta')}
+          onClose={() => setShowUnlimitedNudge(false)}
+          onPrimary={openBillingTab}
+        />
+      ) : null}
       {isPlanTestUser && !showBusinessOnboarding ? (
         <>
           {billing?.planId ? <PlanTestBanner onSwitch={() => setPlanTestPickerOpen(true)} /> : null}

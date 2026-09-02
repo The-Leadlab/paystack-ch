@@ -7,6 +7,7 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import {
   isSelfServePlan,
   parsePaystackPlanId,
+  parseBillingInterval,
   productLineForPlan,
   entitlementsForPlan,
   type PaystackPlanId,
@@ -160,16 +161,21 @@ export async function dispatchStripeEvent(
         break;
       }
       const planFromSession = parsePaystackPlanId(session.metadata?.planId);
+      const intervalFromSession = parseBillingInterval(session.metadata?.billingInterval);
       const needsUid = !fullSub.metadata?.firebaseUid;
       const needsPlan =
         Boolean(planFromSession && isSelfServePlan(planFromSession)) &&
         parsePaystackPlanId(fullSub.metadata?.planId) !== planFromSession;
-      if (needsUid || needsPlan) {
+      const needsInterval =
+        parseBillingInterval(fullSub.metadata?.billingInterval) !== intervalFromSession &&
+        intervalFromSession === "year";
+      if (needsUid || needsPlan || needsInterval) {
         await stripe.subscriptions.update(subId, {
           metadata: {
             ...(fullSub.metadata ?? {}),
             firebaseUid: uid,
             ...(planFromSession && isSelfServePlan(planFromSession) ? { planId: planFromSession } : {}),
+            ...(needsInterval ? { billingInterval: intervalFromSession } : {}),
           },
         });
         fullSub = await stripe.subscriptions.retrieve(subId);
@@ -288,7 +294,7 @@ export async function runStripeWebhook(
 
 export async function runCreateCheckoutSession(
   authorization: string | undefined,
-  body: { planId?: string },
+  body: { planId?: string; billingInterval?: string },
   headers: HeaderMap,
   useTestStripe = false
 ): Promise<{ status: number; json: Record<string, unknown> }> {
@@ -313,9 +319,10 @@ export async function runCreateCheckoutSession(
   }
 
   const checkoutPlanId: PaystackPlanId = requestedPlan && isSelfServePlan(requestedPlan) ? requestedPlan : "starter";
+  const billingInterval = parseBillingInterval(body?.billingInterval);
   let lineItem: Stripe.Checkout.SessionCreateParams.LineItem | null = null;
   try {
-    lineItem = stripeCheckoutLineItemForPlan(checkoutPlanId, useTestStripe);
+    lineItem = stripeCheckoutLineItemForPlan(checkoutPlanId, useTestStripe, billingInterval);
   } catch (e) {
     return { status: 503, json: { error: e instanceof Error ? e.message : "Invalid Stripe price configuration" } };
   }
@@ -355,7 +362,7 @@ export async function runCreateCheckoutSession(
     const email = verifiedEmail || undefined;
     const origin = publicAppOriginFromHeaders(headers);
     const appPath = checkoutPlanId === "personal" ? "/personal/overview" : "/app";
-    const metadata = { firebaseUid: uid, planId: checkoutPlanId, productLine: productLineForPlan(checkoutPlanId) };
+    const metadata = { firebaseUid: uid, planId: checkoutPlanId, productLine: productLineForPlan(checkoutPlanId), billingInterval };
     await assertRecurringChfPrice(stripe, lineItem);
     const session = await stripe.checkout.sessions.create(
       buildSubscriptionCheckoutParams({

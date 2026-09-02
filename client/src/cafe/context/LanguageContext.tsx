@@ -285,7 +285,7 @@ const translations = {
       'Permanently delete {n} selected user(s) from Firebase Auth? This cannot be undone.',
     adminUsersConfirmArchiveTitle: 'Archive users?',
     adminUsersConfirmArchiveBody:
-      'Disable / archive {n} selected user(s)? They will not be able to sign in until re-enabled.',
+      'Disable / archive {n} selected user(s)? They cannot sign in and any live Stripe subscription will be canceled immediately.',
     adminUsersConfirmCancel: 'Cancel',
     adminUsersConfirmContinue: 'Confirm',
     adminUsersBulkAdminDone: 'Made {n} user(s) admin (Stripe canceled where needed).',
@@ -372,6 +372,19 @@ const translations = {
     adminUserSectionInvoices: 'Recent invoices',
     adminUserProviders: 'Sign-in providers',
     adminUserDocsThisMonth: 'Documents this month',
+    adminUserSectionActivity: 'Usage (30 days)',
+    adminUserLogins30d: 'Logins (30d)',
+    adminUserSessionHours30d: 'Session hours (30d)',
+    adminUserErrors30d: 'Processing errors (30d)',
+    adminUserUploads30d: 'Uploads queued (30d)',
+    adminUserLastActive: 'Last active',
+    adminUserBetaCohort: 'Beta cohort',
+    adminUserBetaCohortNone: 'None',
+    adminUserBetaCohortGlanville: 'Glanville accountants',
+    adminUserDriveConnected: 'Google Drive',
+    adminUserExportCsv: 'Export usage CSV',
+    adminUserExportCsvDone: 'Usage CSV downloaded.',
+    adminUsersColLastActive: 'Last active',
     adminUserPeriodEnd: 'Current period ends',
     adminUserPeriodStart: 'Current period starts',
     adminUserSubStart: 'Subscription start',
@@ -391,6 +404,8 @@ const translations = {
     adminUserCancelScheduled: 'Cancellation scheduled at period end',
     adminUserActiveCoupon: 'Active coupon',
     adminUserCancelSub: 'Cancel at period end',
+    adminUserAuditStripe: 'Check Stripe billing',
+    adminUserStopStripe: 'Cancel all Stripe billing',
     adminUserReactivateSub: 'Reactivate',
     adminUserRefund: 'Refund last payment',
     adminUserApplyCoupon: 'Apply coupon',
@@ -407,8 +422,11 @@ const translations = {
     adminUserLinkGenerated: 'Link generated — copy and send to the user:',
     adminUserLinkCopied: 'Link copied',
     adminUserConfirmCancel: 'Cancel this subscription at the end of the billing period?',
+    adminUserConfirmStopStripe:
+      'Cancel ALL Stripe subscriptions for this user immediately? Use this if they were disabled but still appear in Stripe.',
     adminUserConfirmRefund: 'Issue a full refund for the last paid invoice?',
-    adminUserConfirmDisable: 'Disable this user account? They will not be able to sign in.',
+    adminUserConfirmDisable:
+      'Disable this user? They cannot sign in and any live Stripe subscription will be canceled immediately.',
     adminUserConfirmDelete: 'Permanently delete this user from Firebase Auth? This cannot be undone.',
     adminUserSectionEditProfile: 'Edit profile',
     adminUserDisplayName: 'Display name',
@@ -538,6 +556,13 @@ const translations = {
     billingTeamSeatsUnlimited: '{used} seats (unlimited)',
     billingTeamRole: 'Role',
     billingTeamRoleEditor: 'Editor',
+    billingTeamRoleMember: 'Team member (upload)',
+    billingTeamRoleManager: 'Manager (upload + invites)',
+    billingTeamRoleAccountant: 'Accountant (read + export)',
+    pricingIntervalMonthly: 'Monthly',
+    pricingIntervalAnnual: 'Annual',
+    pricingBilledYearly: 'billed yearly',
+    pricingAnnualFootnote: 'Save about 10% vs paying monthly.',
     billingTeamRoleViewer: 'Viewer',
     billingTeamPending: 'Pending',
     billingTeamActive: 'Active',
@@ -615,6 +640,13 @@ const translations = {
     planLimitEmployees: 'Your plan allows up to {n} employee slot(s). Upgrade to add more.',
     upgradePromptTitle: 'Document limit reached',
     upgradePromptDismiss: 'Maybe later',
+    upgradeNudgeUnlimitedTitle: 'Running low on document capacity',
+    upgradeNudgeUnlimitedBody:
+      'You have used {used} of {cap} documents this month on Business. Upgrade to Unlimited before you hit the cap.',
+    upgradeNudgeUnlimitedCta: 'View Unlimited plan',
+    billingIntervalAnnualActive: 'Billed annually',
+    billingTeamReadOnlyBanner: 'Read-only access — you can view and export but cannot upload documents.',
+    billingTeamReadOnlyUpload: 'Read-only access — uploads are disabled for your role.',
     reportsAdvancedLocked: 'Advanced PDF exports and Swiss TVA statements require Business or higher.',
 
     planSummaryTitle: 'Your subscription',
@@ -1407,7 +1439,7 @@ const translations = {
       'Supprimer definitivement {n} utilisateur(s) de Firebase Auth ? Irreversible.',
     adminUsersConfirmArchiveTitle: 'Archiver des utilisateurs ?',
     adminUsersConfirmArchiveBody:
-      'Desactiver / archiver {n} utilisateur(s) ? Ils ne pourront plus se connecter tant qu\'ils ne sont pas reactives.',
+      'Desactiver / archiver {n} utilisateur(s) ? Connexion impossible et tout abonnement Stripe actif sera resilie immediatement.',
     adminUsersConfirmCancel: 'Annuler',
     adminUsersConfirmContinue: 'Confirmer',
     adminUsersBulkAdminDone: '{n} utilisateur(s) passes admin (Stripe annule si besoin).',
@@ -1495,6 +1527,19 @@ const translations = {
     adminUserSectionInvoices: 'Factures recentes',
     adminUserProviders: 'Fournisseurs de connexion',
     adminUserDocsThisMonth: 'Documents ce mois',
+    adminUserSectionActivity: 'Utilisation (30 jours)',
+    adminUserLogins30d: 'Connexions (30j)',
+    adminUserSessionHours30d: 'Heures de session (30j)',
+    adminUserErrors30d: 'Erreurs de traitement (30j)',
+    adminUserUploads30d: 'Uploads en file (30j)',
+    adminUserLastActive: 'Derniere activite',
+    adminUserBetaCohort: 'Cohorte beta',
+    adminUserBetaCohortNone: 'Aucune',
+    adminUserBetaCohortGlanville: 'Comptables Glanville',
+    adminUserDriveConnected: 'Google Drive',
+    adminUserExportCsv: 'Exporter CSV utilisation',
+    adminUserExportCsvDone: 'CSV d\'utilisation telecharge.',
+    adminUsersColLastActive: 'Derniere activite',
     adminUserPeriodEnd: 'Fin de periode en cours',
     adminUserPeriodStart: 'Debut de periode',
     adminUserSubStart: 'Debut abonnement',
@@ -1514,6 +1559,8 @@ const translations = {
     adminUserCancelScheduled: 'Resiliation prevue en fin de periode',
     adminUserActiveCoupon: 'Coupon actif',
     adminUserCancelSub: 'Resilier en fin de periode',
+    adminUserAuditStripe: 'Verifier Stripe',
+    adminUserStopStripe: 'Resilier tout Stripe',
     adminUserReactivateSub: 'Reactiver',
     adminUserRefund: 'Rembourser dernier paiement',
     adminUserApplyCoupon: 'Appliquer coupon',
@@ -1530,8 +1577,11 @@ const translations = {
     adminUserLinkGenerated: 'Lien genere — copiez et envoyez a l\'utilisateur :',
     adminUserLinkCopied: 'Lien copie',
     adminUserConfirmCancel: 'Resilier cet abonnement en fin de periode ?',
+    adminUserConfirmStopStripe:
+      'Resilier TOUS les abonnements Stripe de cet utilisateur immediatement ? A utiliser si le compte est desactive mais Stripe facture encore.',
     adminUserConfirmRefund: 'Rembourser integralement la derniere facture payee ?',
-    adminUserConfirmDisable: 'Desactiver ce compte ? L\'utilisateur ne pourra plus se connecter.',
+    adminUserConfirmDisable:
+      'Desactiver ce compte ? Connexion impossible et tout abonnement Stripe actif sera resilie immediatement.',
     adminUserConfirmDelete: 'Supprimer definitivement cet utilisateur de Firebase Auth ? Action irreversible.',
     adminUserSectionEditProfile: 'Modifier le profil',
     adminUserDisplayName: 'Nom affiche',
@@ -1661,6 +1711,13 @@ const translations = {
     billingTeamSeatsUnlimited: '{used} sieges (illimite)',
     billingTeamRole: 'Role',
     billingTeamRoleEditor: 'Editeur',
+    billingTeamRoleMember: 'Membre (upload)',
+    billingTeamRoleManager: 'Manager (upload + invitations)',
+    billingTeamRoleAccountant: 'Comptable (lecture + export)',
+    pricingIntervalMonthly: 'Mensuel',
+    pricingIntervalAnnual: 'Annuel',
+    pricingBilledYearly: 'facture annuellement',
+    pricingAnnualFootnote: 'Environ 10 % moins qu\'en mensuel.',
     billingTeamRoleViewer: 'Lecteur',
     billingTeamPending: 'En attente',
     billingTeamActive: 'Actif',
@@ -1737,6 +1794,13 @@ const translations = {
     planLimitEmployees: 'Votre offre autorise au plus {n} employe(s). Passez a une offre superieure pour en ajouter.',
     upgradePromptTitle: 'Plafond de documents atteint',
     upgradePromptDismiss: 'Plus tard',
+    upgradeNudgeUnlimitedTitle: 'Capacite documentaire bientot atteinte',
+    upgradeNudgeUnlimitedBody:
+      'Vous avez utilise {used} sur {cap} documents ce mois avec Business. Passez a Unlimited avant le plafond.',
+    upgradeNudgeUnlimitedCta: 'Voir l\'offre Unlimited',
+    billingIntervalAnnualActive: 'Facturation annuelle',
+    billingTeamReadOnlyBanner: 'Acces lecture seule — consultation et export, pas d\'upload.',
+    billingTeamReadOnlyUpload: 'Acces lecture seule — les uploads sont desactives pour votre role.',
     reportsAdvancedLocked: 'Les exports PDF avances et les declarations TVA suisses necessitent l\'offre Business ou superieure.',
 
     planSummaryTitle: 'Votre abonnement',
@@ -2286,7 +2350,14 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, [language]);
 
   const t = (key: string): string => {
-    return translations[language][key as keyof typeof translations['en']] || key;
+    const table = translations[language] as Record<string, string>;
+    const hit = table[key];
+    if (hit) return hit;
+    const enHit = (translations.en as Record<string, string>)[key];
+    if (import.meta.env.DEV && !hit) {
+      console.warn(`[i18n] missing "${key}" for ${language}`);
+    }
+    return enHit || key;
   };
 
   const setLanguage = (lang: Language) => {

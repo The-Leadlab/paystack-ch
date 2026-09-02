@@ -108,7 +108,7 @@ export function checkoutSuccessSessionId(search: string): string | null {
 /** Start guest trial checkout. Pass `{ useTestStripe: true }` only from `/admin` operator tools. */
 export async function startGuestCheckoutSession(
   planId: string | undefined,
-  opts?: { useTestStripe?: boolean; sandboxSource?: "build" | "query" }
+  opts?: { useTestStripe?: boolean; sandboxSource?: "build" | "query"; billingInterval?: "month" | "year" }
 ): Promise<string> {
   const useTest = Boolean(opts?.useTestStripe);
   const sandboxSource = useTest ? (opts?.sandboxSource ?? "query") : undefined;
@@ -118,6 +118,7 @@ export async function startGuestCheckoutSession(
     body: JSON.stringify({
       planId: planId ?? undefined,
       stripeTest: useTest,
+      billingInterval: opts?.billingInterval ?? "month",
       ...(sandboxSource ? { stripeSandboxSource: sandboxSource } : {}),
     }),
   });

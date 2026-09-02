@@ -15,9 +15,11 @@ import {
   effectiveTeamSeats,
   entitlementsForPlan,
   parsePaystackPlanId,
+  parseBillingInterval,
   personalDocumentsLimit,
   type PaystackPlanId,
   type PlanEntitlements,
+  type BillingInterval,
 } from '@shared/planCatalog';
 import { STRIPE_BILLING_PATH_LIVE, parseStripeFetchResponse } from '../lib/stripeCheckoutClient';
 import { apiUrl } from '@/lib/apiBase';
@@ -37,6 +39,7 @@ type UserBillingSnapshot = {
   planTestMode: boolean;
   /** Admin beta: force deep multi-page invoice extraction. */
   deepPdfInvoiceBeta: boolean;
+  billingInterval: BillingInterval | null;
 };
 
 type SubscriptionContextValue = {
@@ -59,7 +62,7 @@ type SubscriptionContextValue = {
   /** Ops sandbox: simulate starter / business / unlimited without Stripe. */
   isPlanTestUser: boolean;
   setPlanTestPlan: (planId: PaystackPlanId) => Promise<void>;
-  startCheckout: (planId?: PaystackPlanId | null) => Promise<void>;
+  startCheckout: (planId?: PaystackPlanId | null, billingInterval?: BillingInterval) => Promise<void>;
   openCustomerPortal: () => Promise<void>;
   /** End trial immediately (no charge) or schedule cancel at period end for paid plans. */
   cancelSubscription: (opts?: { immediate?: boolean }) => Promise<{ canceled: string; wasTrialing: boolean }>;
@@ -118,6 +121,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             appAdmin: false,
             planTestMode: false,
             deepPdfInvoiceBeta: false,
+            billingInterval: null,
           });
           setDocumentsUsedThisMonth(0);
           setPersonalDocumentsUsedThisMonth(0);
@@ -144,6 +148,10 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             appAdmin: d.appAdmin === true,
             planTestMode: d.planTestMode === true,
             deepPdfInvoiceBeta: d.deepPdfInvoiceBeta === true,
+            billingInterval:
+              d.billingInterval === 'year' || d.billingInterval === 'month'
+                ? (d.billingInterval as BillingInterval)
+                : parseBillingInterval(d.billingInterval),
           });
           const usage = d.usage as Record<string, unknown> | undefined;
           const month = currentMonthKey();
@@ -171,6 +179,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           appAdmin: false,
           planTestMode: false,
           deepPdfInvoiceBeta: false,
+          billingInterval: null,
         });
         setDocumentsUsedThisMonth(0);
         setPersonalDocumentsUsedThisMonth(0);
@@ -247,7 +256,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   );
 
   const startCheckout = useCallback(
-    async (planIdArg?: PaystackPlanId | null) => {
+    async (planIdArg?: PaystackPlanId | null, billingInterval?: BillingInterval) => {
       if (!user) throw new Error('Not signed in');
       const fromStorage =
         typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(SELECTED_PLAN_STORAGE_KEY) : null;
@@ -260,7 +269,10 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ planId: resolved ?? undefined }),
+        body: JSON.stringify({
+          planId: resolved ?? undefined,
+          billingInterval: billingInterval ?? 'month',
+        }),
       });
       const { json, errorMessage } = await parseStripeFetchResponse(res);
       if (!json) throw new Error(errorMessage || 'Checkout failed');

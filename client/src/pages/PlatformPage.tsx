@@ -9,6 +9,7 @@ import { POSProvider } from "@/cafe/context/POSContext";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { EmailVerificationGate } from "@/cafe/components/EmailVerificationGate";
 import { DashboardLoadingShell } from "@/cafe/components/DashboardLoadingShell";
+import { UserActivityTracker } from "@/cafe/components/UserActivityTracker";
 import { SubscriptionProvider, useSubscription } from "@/cafe/context/SubscriptionContext";
 import { WorkspaceProvider, useWorkspace } from "@/cafe/context/WorkspaceContext";
 import { SubscriptionGate } from "@/cafe/components/SubscriptionGate";
@@ -146,6 +147,7 @@ function PlatformContent() {
 
   return (
     <WorkspaceProvider>
+      <UserActivityTracker />
       <SubscriptionProvider>
         <TeamInviteAcceptEffect />
         <SubscriptionGate>

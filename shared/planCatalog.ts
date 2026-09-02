@@ -29,6 +29,8 @@ export type PaystackPlanId = "personal" | "starter" | "business" | "unlimited" |
 /** Which product surface a plan belongs to. */
 export type PaystackProductLine = "personal" | "restaurant";
 
+export type BillingInterval = "month" | "year";
+
 /** Public list prices (CHF/month) — keep in sync with landing copy and STRIPE_PRICE_* env. */
 export const PLAN_MONTHLY_PRICE_CHF: Record<Exclude<PaystackPlanId, "enterprise">, number> = {
   personal: 20,
@@ -36,6 +38,24 @@ export const PLAN_MONTHLY_PRICE_CHF: Record<Exclude<PaystackPlanId, "enterprise"
   business: 59,
   unlimited: 499,
 };
+
+/** Annual total (CHF/year) — ~10% off vs 12× monthly. Unlimited uses operator target CHF 5 390. */
+export const PLAN_ANNUAL_PRICE_CHF: Record<Exclude<PaystackPlanId, "enterprise">, number> = {
+  personal: 216,
+  starter: 313,
+  business: 637,
+  unlimited: 5390,
+};
+
+export function annualMonthlyEquivalentChf(
+  planId: Exclude<PaystackPlanId, "enterprise">
+): number {
+  return Math.round(PLAN_ANNUAL_PRICE_CHF[planId] / 12);
+}
+
+export function parseBillingInterval(raw: unknown): BillingInterval {
+  return String(raw || "").toLowerCase() === "year" ? "year" : "month";
+}
 
 /** Personal: owner + 1 free invite. */
 export const PERSONAL_INCLUDED_SEATS = 2;
@@ -245,7 +265,41 @@ export function effectiveTeamSeats(
 }
 
 /** Resolve Stripe recurring Price id from plan (server env). */
-export function stripePriceIdForPlan(planId: PaystackPlanId, useTestPrices = false): string | null {
+export function stripePriceIdForPlan(
+  planId: PaystackPlanId,
+  useTestPrices = false,
+  interval: BillingInterval = "month"
+): string | null {
+  if (interval === "year") {
+    if (useTestPrices) {
+      const yearEnv =
+        planId === "personal"
+          ? process.env.STRIPE_TEST_PRICE_PERSONAL_YEAR
+          : planId === "starter"
+            ? process.env.STRIPE_TEST_PRICE_STARTER_YEAR
+            : planId === "business"
+              ? process.env.STRIPE_TEST_PRICE_BUSINESS_YEAR
+              : planId === "unlimited"
+                ? process.env.STRIPE_TEST_PRICE_UNLIMITED_YEAR
+                : null;
+      const yv = yearEnv?.trim();
+      if (yv) return yv;
+    } else {
+      const yearEnv =
+        planId === "personal"
+          ? process.env.STRIPE_PRICE_PERSONAL_YEAR
+          : planId === "starter"
+            ? process.env.STRIPE_PRICE_STARTER_YEAR
+            : planId === "business"
+              ? process.env.STRIPE_PRICE_BUSINESS_YEAR
+              : planId === "unlimited"
+                ? process.env.STRIPE_PRICE_UNLIMITED_YEAR
+                : null;
+      const yv = yearEnv?.trim();
+      if (yv) return yv;
+    }
+    return null;
+  }
   if (useTestPrices) {
     const env =
       planId === "personal"

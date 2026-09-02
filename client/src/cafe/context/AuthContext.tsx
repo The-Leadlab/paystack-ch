@@ -18,6 +18,19 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, firebaseReady } from '../lib/firebase';
 import { emailVerificationActionCodeSettings } from '../lib/firebaseEmailAction';
 import {
+  claimActiveClientSession,
+  clearLocalClientSessionId,
+  getLocalClientSessionId,
+  isSingleActiveSessionEnabled,
+  verifyActiveClientSession,
+  watchActiveClientSession,
+} from '../lib/activeClientSession';
+import {
+  clearLoginActivitySessionFlag,
+  logLoginActivityOnce,
+  logUserActivity,
+} from '../lib/userActivity';
+import {
   AUTH_ERR_REGISTRATION_CLOSED,
   type AuthAccessOptions,
   checkPublicAuthAccess,
@@ -96,7 +109,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(timeout);
       setUser(firebaseUser ?? null);
       setLoading(false);
-      if (firebaseUser) void ensureUserBillingStub(firebaseUser);
+      if (firebaseUser) {
+        void ensureUserBillingStub(firebaseUser);
+        logLoginActivityOnce(firebaseUser.uid);
+        const local = getLocalClientSessionId();
+        if (isSingleActiveSessionEnabled() && !local) {
+          void claimActiveClientSession(firebaseUser.uid);
+        } else if (local) {
+          void verifyActiveClientSession(firebaseUser.uid).then((ok) => {
+            if (!ok && auth) {
+              try {
+                sessionStorage.setItem('paystack_session_kicked', '1');
+              } catch {
+                /* ignore */
+              }
+              void firebaseSignOut(auth);
+            }
+          });
+        }
+      }
     });
     return () => {
       clearTimeout(timeout);
@@ -104,12 +135,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!user?.uid || !isSingleActiveSessionEnabled()) return;
+    return watchActiveClientSession(user.uid, () => {
+      try {
+        sessionStorage.setItem('paystack_session_kicked', '1');
+      } catch {
+        /* ignore */
+      }
+      if (auth) void firebaseSignOut(auth);
+    });
+  }, [user?.uid]);
+
+  const afterAuthSessionClaim = async () => {
+    if (!auth?.currentUser || !isSingleActiveSessionEnabled()) return;
+    await claimActiveClientSession(auth.currentUser.uid);
+  };
+
   const signIn = async (email: string, password: string) => {
     if (!auth) {
       return { error: new Error('Firebase is not configured.') };
     }
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      await afterAuthSessionClaim();
       return { error: null };
     } catch (err) {
       return { error: err instanceof Error ? err : new Error(String(err)) };
@@ -135,6 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await updateProfile(newUser, { displayName });
       }
       await sendEmailVerification(newUser, emailVerificationActionCodeSettings());
+      await claimActiveClientSession(newUser.uid);
       return { error: null };
     } catch (err) {
       return { error: err instanceof Error ? err : new Error(String(err)) };
@@ -165,12 +215,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await firebaseSignOut(auth);
         return { error: new Error(denied) };
       }
+      await afterAuthSessionClaim();
       return { error: null };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       // Stale popup event after a successful session — treat as non-fatal if user is signed in.
       if (msg.includes('Pending promise was never set') && auth.currentUser) {
         console.warn('⚠️ Google sign-in hit stale Auth popup event; session already present.');
+        await afterAuthSessionClaim();
         return { error: null };
       }
       return { error: err instanceof Error ? err : new Error(String(err)) };
@@ -216,6 +268,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    const uid = auth?.currentUser?.uid;
+    if (uid) {
+      void logUserActivity(uid, 'logout');
+    }
+    clearLoginActivitySessionFlag();
+    clearLocalClientSessionId();
     if (auth) await firebaseSignOut(auth);
   };
 

@@ -22,8 +22,20 @@ const JPEG_QUALITY = 0.86;
 const PAGE_COUNT_TIMEOUT_MS = 15_000;
 const RENDER_TIMEOUT_MS = 90_000;
 
-function isPdfFile(file: File): boolean {
+/** Business document PDFs above this are rejected (notify + do not run AI). */
+export const MAX_DOCUMENT_PDF_PAGES = 7;
+
+export function isPdfFile(file: File): boolean {
   return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+}
+
+export function pdfPageLimitExceeded(pageCount: number): boolean {
+  return Number.isFinite(pageCount) && pageCount > MAX_DOCUMENT_PDF_PAGES;
+}
+
+/** Stable technical message so the UI can show pages vs max in EN/FR. */
+export function pdfPageLimitMessage(pageCount: number): string {
+  return `PDF_PAGE_LIMIT:${pageCount}:${MAX_DOCUMENT_PDF_PAGES}`;
 }
 
 function ticketReceiptHaystack(file: File, userHint?: string): string {
@@ -147,6 +159,9 @@ export async function renderPdfPagesToJpegFiles(
   const out: File[] = [];
 
   try {
+    if (pdfPageLimitExceeded(doc.numPages)) {
+      throw new Error(pdfPageLimitMessage(doc.numPages));
+    }
     const renderAll = async () => {
       for (let pageNum = 1; pageNum <= doc.numPages; pageNum += 1) {
         if (signal?.aborted) throw new DOMException("Aborted", "AbortError");

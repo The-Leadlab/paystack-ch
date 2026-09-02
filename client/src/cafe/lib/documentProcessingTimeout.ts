@@ -1,9 +1,18 @@
 import { GEMINI_CLIENT_FETCH_TIMEOUT_MS } from "@shared/geminiTimeouts";
 
+const MAX_WALL_MS = 12 * 60_000;
+const TYPICAL_PDF_MS = 240_000;
+const IMAGE_MS = 120_000;
+const DEEP_PDF_MS = 420_000;
+const PAGE_SPLIT_BASE_MS = 90_000;
+const PAGE_SPLIT_PER_PAGE_MS = 50_000;
+
 /**
- * Wall-clock limit for one document (may include 2–3 Gemini API calls for multi-invoice PDFs,
- * or N sequential page-image analyses for ticket sheets).
+ * Wall-clock limit for one document.
  * Override with VITE_DOCUMENT_PROCESSING_TIMEOUT_MS (milliseconds), min 120000.
+ *
+ * Do not multiply the full serverless Gemini timeout (~292s) by 3 for ordinary PDFs —
+ * that made a 41-file serial queue take over an hour even when most files were healthy.
  */
 export function resolveDocumentProcessingTimeoutMs(
   file: File,
@@ -18,33 +27,30 @@ export function resolveDocumentProcessingTimeoutMs(
   const env = import.meta.env.VITE_DOCUMENT_PROCESSING_TIMEOUT_MS?.trim();
   const fromEnv = env ? Number(env) : NaN;
   if (!Number.isNaN(fromEnv) && fromEnv >= 120_000) {
-    return Math.min(fromEnv, 1_800_000);
+    return Math.min(fromEnv, MAX_WALL_MS);
   }
   const mb = file.size / (1024 * 1024);
   const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 
-  // Small non-PDF images rarely need the exhaustive second pass — use a tighter timeout.
-  if (!isPdf && mb <= 5) return 180_000;
-  if (!isPdf) return 300_000;
-
-  // PDFs: size-tiered timeouts
-  let perFile = 300_000;
-  if (mb > 24) perFile = 900_000;
-  else if (mb > 12) perFile = 600_000;
-  else if (mb > 5) perFile = 420_000;
-
-  // Main + exhaustive + product recovery (+ upload margin).
-  const deepLikely = opts?.forceDeepPdfReads === true || mb >= 0.08;
-  const passMultiplier = deepLikely ? 3 : 2;
-  const multiPassFloor = GEMINI_CLIENT_FETCH_TIMEOUT_MS * passMultiplier + 45_000;
-
-  // Ticket/receipt page-split: one Gemini call per page (+ render margin).
-  const pages = Math.max(1, opts?.pdfPageCount || 1);
-  if (opts?.pdfPageSplit === true || pages >= 2) {
-    const pageSplitBudget =
-      pages * (GEMINI_CLIENT_FETCH_TIMEOUT_MS + 30_000) + 90_000;
-    return Math.min(1_800_000, Math.max(perFile, multiPassFloor, pageSplitBudget));
+  if (!isPdf) {
+    return mb <= 8 ? IMAGE_MS : 180_000;
   }
 
-  return Math.max(perFile, multiPassFloor);
+  const pages = Math.max(1, opts?.pdfPageCount || 1);
+  if (opts?.pdfPageSplit === true) {
+    const pageSplitBudget = PAGE_SPLIT_BASE_MS + pages * PAGE_SPLIT_PER_PAGE_MS;
+    return Math.min(MAX_WALL_MS, Math.max(TYPICAL_PDF_MS, pageSplitBudget));
+  }
+
+  if (opts?.forceDeepPdfReads === true) {
+    return Math.min(MAX_WALL_MS, Math.max(DEEP_PDF_MS, GEMINI_CLIENT_FETCH_TIMEOUT_MS + 45_000));
+  }
+
+  if (mb > 24) return Math.min(MAX_WALL_MS, 540_000);
+  if (mb > 12) return 360_000;
+  if (mb > 5) return 300_000;
+  return TYPICAL_PDF_MS;
 }
+
+/** Swiss account classify is optional — must not inherit the main Gemini fetch timeout. */
+export const SWISS_ACCOUNT_CLASSIFY_TIMEOUT_MS = 20_000;

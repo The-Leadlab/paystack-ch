@@ -6,6 +6,9 @@ import { useSubscription } from '../context/SubscriptionContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useWorkspaceOptional } from '../context/WorkspaceContext';
 import type { PaystackPlanId } from '@shared/planCatalog';
+import {
+  type BillingInterval,
+} from '@shared/planCatalog';
 import { parseTaxRegion, type TaxRegion } from '@shared/taxRegions';
 import { PlanMarketingFeatureBullets, PlanMarketingPanel, PLAN_ENTERPRISE_SALES_MAILTO } from './PlanMarketingPanel';
 import { GoogleDriveConnectPanel } from './GoogleDriveConnectPanel';
@@ -43,6 +46,7 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
   const [cancelMsg, setCancelMsg] = useState<string | null>(null);
   const [cancelErr, setCancelErr] = useState<string | null>(null);
   const [upgradePlan, setUpgradePlan] = useState<PaystackPlanId | null>(billing?.planId ?? 'starter');
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>('month');
   const [upgradeBusy, setUpgradeBusy] = useState(false);
   const [upgradeErr, setUpgradeErr] = useState<string | null>(null);
   const [planTestBusy, setPlanTestBusy] = useState(false);
@@ -185,7 +189,7 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
     setUpgradeErr(null);
     setUpgradeBusy(true);
     try {
-      await startCheckout(upgradePlan);
+      await startCheckout(upgradePlan, billingInterval);
     } catch (e) {
       setUpgradeErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -287,6 +291,11 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
             ) : null}
           </div>
           <p className="text-lg font-black ba-field-value tracking-tight">{planDisplayName(planId, t)}</p>
+          {billing?.billingInterval === 'year' ? (
+            <p className="text-[10px] text-cdlp-muted font-bold uppercase tracking-tight">
+              {t('billingIntervalAnnualActive')}
+            </p>
+          ) : null}
           {trialHint ? (
             <p className="text-[10px] text-cdlp-gold/75 font-bold uppercase tracking-tight">{trialHint}</p>
           ) : null}
@@ -332,6 +341,33 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
             {t('billingUpgradeTitle')}
           </h2>
           <p className="text-xs text-cdlp-muted leading-relaxed">{t('billingUpgradeBody')}</p>
+          <div className="flex flex-wrap gap-2 items-center">
+            <button
+              type="button"
+              onClick={() => setBillingInterval('month')}
+              className={`rounded-md border px-3 py-2 text-[10px] font-black uppercase tracking-tight transition-colors ${
+                billingInterval === 'month'
+                  ? 'border-cdlp-gold/70 bg-cdlp-cream/50 text-white'
+                  : 'border-cdlp-border bg-cdlp-dark/30 text-cdlp-muted hover:border-cdlp-gold/35'
+              }`}
+            >
+              {t('pricingIntervalMonthly')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingInterval('year')}
+              className={`rounded-md border px-3 py-2 text-[10px] font-black uppercase tracking-tight transition-colors ${
+                billingInterval === 'year'
+                  ? 'border-cdlp-gold/70 bg-cdlp-cream/50 text-white'
+                  : 'border-cdlp-border bg-cdlp-dark/30 text-cdlp-muted hover:border-cdlp-gold/35'
+              }`}
+            >
+              {t('pricingIntervalAnnual')}
+            </button>
+            {billingInterval === 'year' ? (
+              <span className="text-[10px] text-cdlp-muted">{t('pricingAnnualFootnote')}</span>
+            ) : null}
+          </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label={t('billingUpgradeTitle')}>
             {UPGRADE_PLANS.map((id) => (
               <button

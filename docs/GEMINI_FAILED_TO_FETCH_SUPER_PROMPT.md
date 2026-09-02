@@ -19,7 +19,8 @@ and **PROCESS AGAIN**. Amounts stay `0.00 CHF`.
 | Mount `/api/gemini/*` **in Vite** (no 8787 required for AI) | `vite.config.ts` → `vitePluginGeminiLocalApi` |
 | Stop proxying `/api/gemini` to 8787 | `vite.config.ts` |
 | Retry once + clearer local error; `same-origin` for relative URLs | `client/src/cafe/lib/geminiApiFetch.ts` |
-| Default document concurrency **1** | `client/src/cafe/lib/runDocumentBatches.ts` |
+| Default document concurrency **4** (was 1). Cap 6. Huge PDFs still share the proxy. | `client/src/cafe/lib/runDocumentBatches.ts` |
+| Default proxy rate limit **120 / 10 min** per uid (was 30). Override `GEMINI_RATE_LIMIT_MAX` on Vercel. | `lib/geminiProxy.ts` |
 | Guard oversized inline bodies before fetch | `client/src/cafe/lib/geminiClient.ts` |
 
 ## Local checklist

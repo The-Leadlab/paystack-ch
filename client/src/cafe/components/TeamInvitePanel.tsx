@@ -8,6 +8,7 @@ import { apiUrl } from "@/lib/apiBase";
 
 type TeamListResponse = {
   isOwner: boolean;
+  canManageTeam?: boolean;
   members: Array<{ uid: string; email: string; role: string; status: string }>;
   invites: Array<{ id: string; email: string; role: string; status: string }>;
   seats: { used: number; max: number | null };
@@ -18,11 +19,11 @@ export function TeamInvitePanel() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { entitlements } = useSubscription();
-  const { isOwner, ownerEmail, role } = useWorkspace();
+  const { isOwner, ownerEmail, role, canInvite, canManageTeam } = useWorkspace();
   const [data, setData] = useState<TeamListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"editor" | "viewer">("editor");
+  const [inviteRole, setInviteRole] = useState<"member" | "manager" | "accountant">("member");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -121,6 +122,16 @@ export function TeamInvitePanel() {
     }
   };
 
+  const roleLabel = (raw: string) => {
+    const r = raw.toLowerCase();
+    if (r === "manager") return t("billingTeamRoleManager");
+    if (r === "accountant" || r === "viewer") return t("billingTeamRoleAccountant");
+    if (r === "member" || r === "editor") return t("billingTeamRoleMember");
+    return raw;
+  };
+
+  const manageTeam = canManageTeam || data?.canManageTeam === true;
+
   const seatsLabel =
     data?.seats.max == null
       ? t("billingTeamSeatsUnlimited").replace("{used}", String(data?.seats.used ?? 1))
@@ -140,7 +151,7 @@ export function TeamInvitePanel() {
         <p className="text-xs text-cdlp-gold/90 font-medium">
           {t("billingTeamMemberBanner")
             .replace("{owner}", ownerEmail)
-            .replace("{role}", role)}
+            .replace("{role}", roleLabel(role))}
         </p>
       ) : null}
 
@@ -166,9 +177,11 @@ export function TeamInvitePanel() {
 
       {isOwner && starterLocked ? (
         <p className="text-xs text-amber-400/90">{t("billingTeamStarterLocked")}</p>
+      ) : manageTeam && !isOwner && starterLocked ? (
+        <p className="text-xs text-amber-400/90">{t("billingTeamStarterLocked")}</p>
       ) : null}
 
-      {isOwner && !starterLocked ? (
+      {canInvite && !starterLocked ? (
         <div className="flex flex-wrap gap-2 items-end">
           <div className="flex-1 min-w-[12rem]">
             <label className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted mb-1 block">
@@ -188,11 +201,14 @@ export function TeamInvitePanel() {
             </label>
             <select
               value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value as "editor" | "viewer")}
+              onChange={(e) =>
+                setInviteRole(e.target.value as "member" | "manager" | "accountant")
+              }
               className="ba-verify-field"
             >
-              <option value="editor">{t("billingTeamRoleEditor")}</option>
-              <option value="viewer">{t("billingTeamRoleViewer")}</option>
+              <option value="member">{t("billingTeamRoleMember")}</option>
+              <option value="manager">{t("billingTeamRoleManager")}</option>
+              <option value="accountant">{t("billingTeamRoleAccountant")}</option>
             </select>
           </div>
           <button
@@ -221,9 +237,9 @@ export function TeamInvitePanel() {
             <span className="ba-field-value font-medium">{m.email}</span>
             <span className="flex items-center gap-2">
               <span className="uppercase text-[10px] font-black text-cdlp-muted">
-                {m.role} · {t("billingTeamActive")}
+                {roleLabel(m.role)} · {t("billingTeamActive")}
               </span>
-              {isOwner ? (
+              {manageTeam ? (
                 <button
                   type="button"
                   className="underline text-[10px] text-cdlp-muted hover:text-white"
@@ -236,7 +252,7 @@ export function TeamInvitePanel() {
             </span>
           </li>
         ))}
-        {isOwner
+        {manageTeam
           ? data?.invites.map((inv) => (
               <li
                 key={inv.id}
@@ -245,7 +261,7 @@ export function TeamInvitePanel() {
                 <span className="text-cdlp-muted">{inv.email}</span>
                 <span className="flex items-center gap-2">
                   <span className="uppercase text-[10px] font-black text-amber-500/90">
-                    {inv.role} · {t("billingTeamPending")}
+                    {roleLabel(inv.role)} · {t("billingTeamPending")}
                   </span>
                   <button
                     type="button"

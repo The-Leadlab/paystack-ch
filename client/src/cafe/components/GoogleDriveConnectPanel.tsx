@@ -12,6 +12,13 @@ import {
   type GoogleDriveStatus,
 } from '../lib/googleDriveClient';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
+import {
+  DEFAULT_STORAGE_PREFS,
+  loadStoragePrefs,
+  saveStoragePrefs,
+  type StoragePrefs,
+} from '../lib/storagePrefs';
 
 function parseDriveErrorReason(raw: string | null): GoogleDriveErrorReason | null {
   if (!raw) return null;
@@ -36,7 +43,9 @@ export function GoogleDriveConnectPanel({
   returnPath?: string;
 }) {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [status, setStatus] = useState<GoogleDriveStatus | null>(null);
+  const [storagePrefs, setStoragePrefs] = useState<StoragePrefs>(DEFAULT_STORAGE_PREFS);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [busy, setBusy] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -57,6 +66,22 @@ export function GoogleDriveConnectPanel({
   useEffect(() => {
     void loadStatus();
   }, []);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    void loadStoragePrefs(user.uid).then(setStoragePrefs);
+  }, [user?.uid]);
+
+  const persistStoragePrefs = async (next: StoragePrefs) => {
+    setStoragePrefs(next);
+    if (!user?.uid) return;
+    try {
+      await saveStoragePrefs(user.uid, next);
+      toast.success(t('driveStorageSaved'));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
+  };
 
   // Land here after the OAuth redirect round-trip (see server/googleDrive.ts's callback route).
   useEffect(() => {
@@ -182,7 +207,42 @@ export function GoogleDriveConnectPanel({
           {t('driveChecking')}
         </div>
       ) : connected && !needsReconnect ? (
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="space-y-3">
+          <div className="rounded-md border border-cdlp-border/80 bg-cdlp-dark/40 px-3 py-3 space-y-3 text-[11px] text-cdlp-muted">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={storagePrefs.driveMirror}
+                disabled={busy}
+                onChange={(e) =>
+                  void persistStoragePrefs({ ...storagePrefs, driveMirror: e.target.checked })
+                }
+              />
+              <span>
+                <span className="font-semibold text-white/90">{t('driveStorageMirror')}</span>
+                <span className="block mt-0.5 leading-relaxed">{t('driveStorageMirrorHint')}</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={storagePrefs.localDownload}
+                disabled={busy}
+                onChange={(e) =>
+                  void persistStoragePrefs({ ...storagePrefs, localDownload: e.target.checked })
+                }
+              />
+              <span>
+                <span className="font-semibold text-white/90">{t('driveStorageLocalDownload')}</span>
+                <span className="block mt-0.5 leading-relaxed">
+                  {t('driveStorageLocalDownloadHint')}
+                </span>
+              </span>
+            </label>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
           {onDriveSync ? (
             <button
               type="button"
@@ -212,12 +272,32 @@ export function GoogleDriveConnectPanel({
             {t('driveDisconnect')}
           </button>
         </div>
+        </div>
       ) : (
         <div className="space-y-3">
           <p className="flex items-start gap-2 text-[11px] leading-relaxed rounded-md border border-cdlp-border/80 bg-cdlp-dark/40 px-3 py-2.5 text-cdlp-muted">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-cdlp-gold/80" aria-hidden />
             <span>{t('driveUnverifiedWarning')}</span>
           </p>
+          {user?.uid ? (
+            <label className="flex items-start gap-2 text-[11px] text-cdlp-muted cursor-pointer px-1">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={storagePrefs.localDownload}
+                disabled={busy}
+                onChange={(e) =>
+                  void persistStoragePrefs({ ...storagePrefs, localDownload: e.target.checked })
+                }
+              />
+              <span>
+                <span className="font-semibold text-white/90">{t('driveStorageLocalDownload')}</span>
+                <span className="block mt-0.5 leading-relaxed">
+                  {t('driveStorageLocalDownloadHint')}
+                </span>
+              </span>
+            </label>
+          ) : null}
           <button
             type="button"
             disabled={busy}

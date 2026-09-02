@@ -6,6 +6,11 @@ import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
 import { ensureFirebaseAdmin, hasFirebaseAdminCredentials } from "./firebaseAdmin.js";
 import { parsePaystackPlanId, type PaystackPlanId } from "../shared/planCatalog.js";
+import {
+  aggregateUserAnalytics,
+  googleDriveConnectedFromBilling,
+  type UserAnalyticsRollup,
+} from "./userAnalytics.js";
 
 export type AdminUserSummary = {
   uid: string;
@@ -28,6 +33,14 @@ export type AdminUserSummary = {
   appAdmin: boolean;
   /** Force deep multi-page / multi-invoice PDF extraction. */
   deepPdfInvoiceBeta: boolean;
+  /** Operator beta cohort tag (e.g. glanville). */
+  betaCohort: string | null;
+  lastActiveAt: string | null;
+  logins30d: number | null;
+  sessionMinutes30d: number | null;
+  errors30d: number | null;
+  uploads30d: number | null;
+  googleDriveConnected: boolean;
 };
 
 export type CreateAdminUserInput = {
@@ -71,6 +84,21 @@ export function summaryFromAuthAndBilling(
   billing: Record<string, unknown> | null
 ): AdminUserSummary {
   const usage = billing?.usage as Record<string, number> | undefined;
+  const analyticsRaw =
+    billing?.analytics && typeof billing.analytics === "object"
+      ? (billing.analytics as Record<string, unknown>)
+      : null;
+  const rollup: UserAnalyticsRollup = aggregateUserAnalytics(analyticsRaw);
+  const lastActiveAt =
+    rollup.lastActiveAt ??
+    tsToIso(analyticsRaw?.lastActiveAt) ??
+    record.metadata.lastSignInTime ??
+    null;
+  const betaCohort =
+    typeof billing?.betaCohort === "string" && billing.betaCohort.trim()
+      ? billing.betaCohort.trim()
+      : null;
+
   return {
     uid: record.uid,
     email: record.email ?? null,
@@ -90,6 +118,13 @@ export function summaryFromAuthAndBilling(
     usageThisMonth: usageForCurrentMonth(usage),
     appAdmin: billing?.appAdmin === true || record.customClaims?.appAdmin === true,
     deepPdfInvoiceBeta: billing?.deepPdfInvoiceBeta === true,
+    betaCohort,
+    lastActiveAt,
+    logins30d: rollup.logins30d,
+    sessionMinutes30d: rollup.sessionMinutes30d,
+    errors30d: rollup.errors30d,
+    uploads30d: rollup.uploads30d,
+    googleDriveConnected: googleDriveConnectedFromBilling(billing),
   };
 }
 

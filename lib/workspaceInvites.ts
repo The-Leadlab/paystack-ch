@@ -5,12 +5,19 @@
 import { createHash, randomBytes } from "node:crypto";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import { effectiveTeamSeats, parsePaystackPlanId } from "../shared/planCatalog.js";
+import {
+  parseWorkspaceInviteRole,
+  normalizeWorkspaceRole,
+  type WorkspaceRole,
+  workspaceRoleCanInvite,
+  workspaceRoleCanManageTeam,
+} from "../shared/workspaceRoles.js";
 import { ensureFirebaseAdmin, hasFirebaseAdminCredentials } from "./firebaseAdmin.js";
 import { publicAppOriginFromHeaders, isAllowedBrowserOrigin, type HeaderMap } from "./stripeCore.js";
 import { sendResendEmail } from "./resendEmail.js";
 import { verifyFirebaseUser } from "./verifyFirebaseIdToken.js";
 
-export type WorkspaceRole = "owner" | "editor" | "viewer";
+export type { WorkspaceRole } from "../shared/workspaceRoles.js";
 
 const INVITES = "workspaceInvites";
 const MEMBERS = "workspaceMembers";
@@ -96,20 +103,43 @@ export async function runTeamAction(
   }
 }
 
+async function resolveWorkspaceActor(
+  uid: string
+): Promise<{ workspaceOwnerUid: string; role: WorkspaceRole; isOwner: boolean; canManageTeam: boolean }> {
+  const db = getFirestore();
+  const membership = await db.collection(MEMBERS).doc(uid).get();
+  if (membership.exists && membership.get("status") === "active") {
+    const role = normalizeWorkspaceRole(membership.get("role"));
+    const ownerUid = String(membership.get("ownerUid") || "");
+    return {
+      workspaceOwnerUid: ownerUid,
+      role,
+      isOwner: false,
+      canManageTeam: workspaceRoleCanManageTeam(role, false),
+    };
+  }
+  return {
+    workspaceOwnerUid: uid,
+    role: "owner",
+    isOwner: true,
+    canManageTeam: true,
+  };
+}
+
 async function listTeam(uid: string, authEmail: string | null) {
   const db = getFirestore();
   const membership = await db.collection(MEMBERS).doc(uid).get();
+  const actor = await resolveWorkspaceActor(uid);
+  const ownerUid = actor.workspaceOwnerUid;
+
   const memberOf =
-    membership.exists && membership.get("status") === "active"
+    membership.exists && membership.get("status") === "active" && !actor.isOwner
       ? {
-          ownerUid: membership.get("ownerUid") as string,
-          role: membership.get("role") as WorkspaceRole,
+          ownerUid,
+          role: actor.role,
           ownerEmail: (membership.get("ownerEmail") as string) || null,
         }
       : null;
-
-  const ownerUid = memberOf?.ownerUid || uid;
-  const isOwner = !memberOf;
 
   const membersSnap = await db.collection(MEMBERS).where("ownerUid", "==", ownerUid).where("status", "==", "active").get();
   const members = membersSnap.docs.map((d) => ({
@@ -120,7 +150,7 @@ async function listTeam(uid: string, authEmail: string | null) {
   }));
 
   let invites: Array<{ id: string; email: string; role: WorkspaceRole; status: string; expiresAt: string | null }> = [];
-  if (isOwner) {
+  if (actor.canManageTeam) {
     const invitesSnap = await db.collection(INVITES).where("ownerUid", "==", ownerUid).where("status", "==", "pending").get();
     invites = invitesSnap.docs.map((d) => {
       const exp = d.get("expiresAt") as Timestamp | undefined;
@@ -141,7 +171,8 @@ async function listTeam(uid: string, authEmail: string | null) {
     status: 200,
     json: {
       ownerUid,
-      isOwner,
+      isOwner: actor.isOwner,
+      canManageTeam: actor.canManageTeam,
       authEmail,
       memberOf,
       members,
@@ -151,28 +182,51 @@ async function listTeam(uid: string, authEmail: string | null) {
   };
 }
 
+async function resolveInviteActor(
+  uid: string,
+  authEmail: string | null
+): Promise<{ workspaceOwnerUid: string; actorEmail: string | null }> {
+  const db = getFirestore();
+  const membership = await db.collection(MEMBERS).doc(uid).get();
+  if (membership.exists && membership.get("status") === "active") {
+    const role = membership.get("role") as WorkspaceRole;
+    const ownerUid = String(membership.get("ownerUid") || "");
+    if (!workspaceRoleCanInvite(normalizeWorkspaceRole(role), false)) {
+      throw Object.assign(new Error("Only the workspace owner or manager can send invites."), {
+        status: 403,
+      });
+    }
+    return {
+      workspaceOwnerUid: ownerUid,
+      actorEmail: authEmail,
+    };
+  }
+  return { workspaceOwnerUid: uid, actorEmail: authEmail };
+}
+
 async function createInvite(
-  ownerUid: string,
-  ownerEmail: string | null,
+  callerUid: string,
+  callerEmail: string | null,
   body: Record<string, unknown>,
   headers: HeaderMap
 ) {
+  const { workspaceOwnerUid, actorEmail } = await resolveInviteActor(callerUid, callerEmail);
   const email = normalizeEmail(String(body.email || ""));
   if (!email || !email.includes("@")) {
     return { status: 400, json: { error: "Valid invite email is required." } };
   }
-  if (ownerEmail && email === ownerEmail) {
+  if (actorEmail && email === actorEmail) {
     return { status: 400, json: { error: "You cannot invite yourself." } };
   }
 
-  const membership = await getFirestore().collection(MEMBERS).doc(ownerUid).get();
-  if (membership.exists && membership.get("status") === "active") {
-    return { status: 403, json: { error: "Only the workspace owner can send invites." } };
+  const ownerSnap = await getFirestore().collection("users").doc(workspaceOwnerUid).get();
+  const ownerEmail = typeof ownerSnap.get("email") === "string" ? (ownerSnap.get("email") as string) : null;
+  if (ownerEmail && email === normalizeEmail(ownerEmail)) {
+    return { status: 400, json: { error: "You cannot invite the workspace owner." } };
   }
 
-  const ownerSnap = await getFirestore().collection("users").doc(ownerUid).get();
   const ownerPlanId = parsePaystackPlanId(ownerSnap.get("planId"));
-  const maxSeats = await ownerPlanSeats(ownerUid);
+  const maxSeats = await ownerPlanSeats(workspaceOwnerUid);
   if (maxSeats != null && maxSeats <= 1) {
     return {
       status: 403,
@@ -182,7 +236,7 @@ async function createInvite(
       },
     };
   }
-  const used = await countSeatsUsed(ownerUid);
+  const used = await countSeatsUsed(workspaceOwnerUid);
   if (maxSeats != null && used >= maxSeats) {
     return {
       status: 403,
@@ -194,13 +248,12 @@ async function createInvite(
     };
   }
 
-  const roleRaw = String(body.role || "editor").toLowerCase();
-  const role: WorkspaceRole = roleRaw === "viewer" ? "viewer" : "editor";
+  const role = parseWorkspaceInviteRole(String(body.role || "member"));
 
   const db = getFirestore();
   const existingPending = await db
     .collection(INVITES)
-    .where("ownerUid", "==", ownerUid)
+    .where("ownerUid", "==", workspaceOwnerUid)
     .where("email", "==", email)
     .where("status", "==", "pending")
     .limit(1)
@@ -213,7 +266,7 @@ async function createInvite(
   const inviteRef = db.collection(INVITES).doc();
   const expiresAt = Timestamp.fromMillis(Date.now() + INVITE_TTL_MS);
   await inviteRef.set({
-    ownerUid,
+    ownerUid: workspaceOwnerUid,
     ownerEmail: ownerEmail || null,
     email,
     role,
@@ -249,19 +302,28 @@ async function createInvite(
   };
 }
 
-async function revokeInvite(ownerUid: string, inviteId: string) {
+async function revokeInvite(callerUid: string, inviteId: string) {
   if (!inviteId) return { status: 400, json: { error: "inviteId required" } };
+  const actor = await resolveWorkspaceActor(callerUid);
+  if (!actor.canManageTeam) {
+    return { status: 403, json: { error: "Only the workspace owner or manager can revoke invites." } };
+  }
   const ref = getFirestore().collection(INVITES).doc(inviteId);
   const snap = await ref.get();
-  if (!snap.exists || snap.get("ownerUid") !== ownerUid) {
+  if (!snap.exists || snap.get("ownerUid") !== actor.workspaceOwnerUid) {
     return { status: 404, json: { error: "Invite not found." } };
   }
   await ref.set({ status: "revoked", revokedAt: FieldValue.serverTimestamp() }, { merge: true });
   return { status: 200, json: { ok: true } };
 }
 
-async function removeMember(ownerUid: string, memberUid: string) {
+async function removeMember(callerUid: string, memberUid: string) {
   if (!memberUid) return { status: 400, json: { error: "memberUid required" } };
+  const actor = await resolveWorkspaceActor(callerUid);
+  if (!actor.canManageTeam) {
+    return { status: 403, json: { error: "Only the workspace owner or manager can remove members." } };
+  }
+  const ownerUid = actor.workspaceOwnerUid;
   if (memberUid === ownerUid) {
     return { status: 400, json: { error: "Cannot remove the owner." } };
   }
@@ -316,7 +378,7 @@ async function acceptInvite(uid: string, authEmail: string | null, rawToken: str
     return { status: 403, json: { error: "This workspace is full." } };
   }
 
-  const role = (inviteDoc.get("role") as WorkspaceRole) || "editor";
+  const role = parseWorkspaceInviteRole(String(inviteDoc.get("role") || "member"));
   const ownerEmail = (inviteDoc.get("ownerEmail") as string) || null;
 
   await db.collection(MEMBERS).doc(uid).set({

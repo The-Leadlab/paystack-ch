@@ -9,8 +9,11 @@ import Stripe from "stripe";
 import {
   isSelfServePlan,
   parsePaystackPlanId,
+  parseBillingInterval,
+  PLAN_ANNUAL_PRICE_CHF,
   productLineForPlan,
   stripePriceIdForPlan,
+  type BillingInterval,
   type PaystackPlanId,
 } from "../shared/planCatalog.js";
 import {
@@ -125,32 +128,56 @@ function parseChfAmount(raw: string): number | null {
 
 export function stripeCheckoutLineItemForPlan(
   planId: PaystackPlanId,
-  useTestPrices = false
+  useTestPrices = false,
+  interval: BillingInterval = "month"
 ): Stripe.Checkout.SessionCreateParams.LineItem | null {
-  const fromPlan = stripePriceIdForPlan(planId, useTestPrices);
+  const fromPlan = stripePriceIdForPlan(planId, useTestPrices, interval);
   const raw =
     fromPlan ||
-    (useTestPrices ? process.env.STRIPE_TEST_PRICE_ID?.trim() : process.env.STRIPE_PRICE_ID?.trim()) ||
-    null;
+    (interval === "month"
+      ? (useTestPrices ? process.env.STRIPE_TEST_PRICE_ID?.trim() : process.env.STRIPE_PRICE_ID?.trim()) ||
+        null
+      : null);
   if (!raw) return null;
 
   if (raw.startsWith("price_")) {
     return { price: raw, quantity: 1 };
   }
 
-  const unitAmount = parseChfAmount(raw);
-  if (unitAmount === null) {
+  const unitAmount = raw ? parseChfAmount(raw) : null;
+  if (unitAmount === null && interval !== "year") {
     throw new Error(
       `Invalid Stripe price configuration for ${planId}. Use a Stripe Price ID (price_...) or a CHF amount like 29.`
     );
+  }
+
+  const annualTotal =
+    interval === "year" && planId !== "enterprise"
+      ? PLAN_ANNUAL_PRICE_CHF[planId as Exclude<PaystackPlanId, "enterprise">]
+      : null;
+
+  if (annualTotal != null && unitAmount === null) {
+    return {
+      quantity: 1,
+      price_data: {
+        currency: "chf",
+        unit_amount: annualTotal,
+        recurring: { interval: "year" },
+        product_data: { name: planDisplayName(planId) },
+      },
+    };
+  }
+
+  if (unitAmount === null) {
+    return null;
   }
 
   return {
     quantity: 1,
     price_data: {
       currency: "chf",
-      unit_amount: unitAmount,
-      recurring: { interval: "month" },
+      unit_amount: annualTotal ?? unitAmount,
+      recurring: { interval: interval === "year" ? "year" : "month" },
       product_data: { name: planDisplayName(planId) },
     },
   };
@@ -158,7 +185,7 @@ export function stripeCheckoutLineItemForPlan(
 
 /** Pre-login checkout: 7-day trial + card on Stripe, then user creates account and links session. */
 export async function runCreateCheckoutSessionGuest(
-  body: { planId?: string; stripeTest?: boolean; stripeSandboxSource?: "build" | "query" | "server" },
+  body: { planId?: string; billingInterval?: string; stripeTest?: boolean; stripeSandboxSource?: "build" | "query" | "server" },
   headers: HeaderMap,
   options?: { useTestStripe?: boolean; sandboxSource?: "build" | "query" | "server" }
 ): Promise<{ status: number; json: Record<string, unknown> }> {
@@ -203,9 +230,10 @@ export async function runCreateCheckoutSessionGuest(
   }
 
   const checkoutPlanId: PaystackPlanId = requestedPlan && isSelfServePlan(requestedPlan) ? requestedPlan : "starter";
+  const billingInterval = parseBillingInterval(body?.billingInterval);
   let lineItem: Stripe.Checkout.SessionCreateParams.LineItem | null = null;
   try {
-    lineItem = stripeCheckoutLineItemForPlan(checkoutPlanId, useTest);
+    lineItem = stripeCheckoutLineItemForPlan(checkoutPlanId, useTest, billingInterval);
   } catch (e) {
     return { status: 503, json: { error: e instanceof Error ? e.message : "Invalid Stripe price configuration" } };
   }
@@ -226,6 +254,7 @@ export async function runCreateCheckoutSessionGuest(
     const metadata = {
       planId: checkoutPlanId,
       productLine: productLineForPlan(checkoutPlanId),
+      billingInterval,
       pendingFirebaseLink: "1",
     };
     await assertRecurringChfPrice(stripe, lineItem);
