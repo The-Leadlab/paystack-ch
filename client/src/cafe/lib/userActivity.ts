@@ -18,9 +18,25 @@ export type UserActivityType =
   | 'doc_processed'
   | 'document_process_error';
 
-const LOGIN_SESSION_KEY = 'paystack_activity_login_logged';
+/** Metadata only — never document body / OCR / line items. */
+export type UserActivityMeta = {
+  errorCode?: DocumentProcessErrorCode | string;
+  /** Short technical / user-facing error (truncated). */
+  errorMessage?: string;
+  fileName?: string;
+  pageCount?: number;
+  durationMs?: number;
+  fileSizeBytes?: number;
+  mimeType?: string;
+  sessionId?: string;
+  pdfPageSplit?: boolean;
+};
 
-type DailyBucketKey = 'logins' | 'sessionMinutes' | 'errors' | 'uploads';
+const LOGIN_SESSION_KEY = 'paystack_activity_login_logged';
+const MAX_ERROR_MESSAGE = 280;
+const MAX_FILE_NAME = 200;
+
+type DailyBucketKey = 'logins' | 'sessionMinutes' | 'errors' | 'uploads' | 'processed';
 
 function todayKey(): string {
   return new Date().toISOString().slice(0, 10);
@@ -28,6 +44,27 @@ function todayKey(): string {
 
 function dailyField(day: string, field: DailyBucketKey): string {
   return `analytics.daily.${day}.${field}`;
+}
+
+function sanitizeMeta(meta?: UserActivityMeta): UserActivityMeta | null {
+  if (!meta) return null;
+  const out: UserActivityMeta = {};
+  if (meta.errorCode) out.errorCode = String(meta.errorCode).slice(0, 80);
+  if (meta.errorMessage) out.errorMessage = String(meta.errorMessage).slice(0, MAX_ERROR_MESSAGE);
+  if (meta.fileName) out.fileName = String(meta.fileName).slice(0, MAX_FILE_NAME);
+  if (typeof meta.pageCount === 'number' && Number.isFinite(meta.pageCount)) {
+    out.pageCount = Math.max(0, Math.round(meta.pageCount));
+  }
+  if (typeof meta.durationMs === 'number' && Number.isFinite(meta.durationMs)) {
+    out.durationMs = Math.max(0, Math.round(meta.durationMs));
+  }
+  if (typeof meta.fileSizeBytes === 'number' && Number.isFinite(meta.fileSizeBytes)) {
+    out.fileSizeBytes = Math.max(0, Math.round(meta.fileSizeBytes));
+  }
+  if (meta.mimeType) out.mimeType = String(meta.mimeType).slice(0, 80);
+  if (meta.sessionId) out.sessionId = String(meta.sessionId).slice(0, 80);
+  if (typeof meta.pdfPageSplit === 'boolean') out.pdfPageSplit = meta.pdfPageSplit;
+  return Object.keys(out).length ? out : null;
 }
 
 async function bumpDaily(uid: string, field: DailyBucketKey, amount = 1): Promise<void> {
@@ -59,16 +96,17 @@ async function bumpDaily(uid: string, field: DailyBucketKey, amount = 1): Promis
 export async function logUserActivity(
   uid: string,
   type: UserActivityType,
-  meta?: { errorCode?: DocumentProcessErrorCode | string; fileName?: string }
+  meta?: UserActivityMeta
 ): Promise<void> {
   if (!db || !uid) return;
   const at = new Date().toISOString();
+  const cleanMeta = sanitizeMeta(meta);
   try {
     await addDoc(collection(db, 'userActivity'), {
       uid,
       type,
       at,
-      meta: meta ?? null,
+      meta: cleanMeta,
     });
   } catch {
     /* event log is best-effort */
@@ -87,6 +125,8 @@ export async function logUserActivity(
     patch[dailyField(day, 'sessionMinutes')] = increment(5);
   } else if (type === 'doc_upload') {
     patch[dailyField(day, 'uploads')] = increment(1);
+  } else if (type === 'doc_processed') {
+    patch[dailyField(day, 'processed')] = increment(1);
   } else if (type === 'document_process_error') {
     patch[dailyField(day, 'errors')] = increment(1);
   }
@@ -96,7 +136,19 @@ export async function logUserActivity(
   } catch {
     try {
       await setDoc(userRef, { analytics: { lastActiveAt: serverTimestamp() } }, { merge: true });
-      await bumpDaily(uid, type === 'session_heartbeat' ? 'sessionMinutes' : type === 'login' ? 'logins' : type === 'doc_upload' ? 'uploads' : type === 'document_process_error' ? 'errors' : 'logins', type === 'session_heartbeat' ? 5 : 1);
+      const field: DailyBucketKey =
+        type === 'session_heartbeat'
+          ? 'sessionMinutes'
+          : type === 'login'
+            ? 'logins'
+            : type === 'doc_upload'
+              ? 'uploads'
+              : type === 'doc_processed'
+                ? 'processed'
+                : type === 'document_process_error'
+                  ? 'errors'
+                  : 'logins';
+      await bumpDaily(uid, field, type === 'session_heartbeat' ? 5 : 1);
     } catch {
       /* ignore */
     }

@@ -183,3 +183,44 @@ export async function runAdminUserAction(
     body: JSON.stringify({ uid, ...body }),
   });
 }
+
+export type AdminActivityEvent = {
+  id: string;
+  type: string;
+  at: string;
+  meta: {
+    errorCode?: string;
+    errorMessage?: string;
+    fileName?: string;
+    pageCount?: number;
+    durationMs?: number;
+    fileSizeBytes?: number;
+    mimeType?: string;
+    sessionId?: string;
+    pdfPageSplit?: boolean;
+  } | null;
+};
+
+export type AdminDocumentSnapshot = {
+  id: string;
+  fileName: string | null;
+  status: string | null;
+  error: string | null;
+  errorCode: string | null;
+  pageCount: number | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  sessionId: string | null;
+  mimeType: string | null;
+  fileSizeBytes: number | null;
+};
+
+export async function listAdminUserActivity(
+  uid: string,
+  options?: { limit?: number; errorsOnly?: boolean }
+): Promise<{ events: AdminActivityEvent[]; documents: AdminDocumentSnapshot[] }> {
+  const params = new URLSearchParams({ uid });
+  if (options?.limit) params.set("limit", String(options.limit));
+  if (options?.errorsOnly) params.set("errorsOnly", "1");
+  return adminFetch(`/api/admin/user-activity?${params.toString()}`);
+}

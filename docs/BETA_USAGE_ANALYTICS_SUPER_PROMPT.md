@@ -19,7 +19,9 @@
 
 ## Schema
 
-`userActivity/{auto}`: `{ uid, type, at, meta?: { errorCode?, fileName?, durationMs? } }`
+`userActivity/{auto}`: `{ uid, type, at, meta?: { errorCode?, errorMessage?, fileName?, pageCount?, durationMs?, fileSizeBytes?, mimeType?, pdfPageSplit? } }`
+
+**Admin UI:** User detail → **Activity & logs** tab — event timeline + recent document metadata (no content).
 
 `users/{uid}` aggregates (updated by Cloud Function or client batch):
 `analytics: { logins30d, lastLoginAt, sessionMinutes30d, errors30d, lastActiveAt }`

@@ -2877,7 +2877,11 @@ export const DocumentProcessor: React.FC<{
           if (onDocumentQueued) {
             persistedDocumentId = await onDocumentQueued(f.name, hash, f);
             if (user?.uid) {
-              void logUserActivity(user.uid, 'doc_upload', { fileName: f.name });
+              void logUserActivity(user.uid, 'doc_upload', {
+                fileName: f.name,
+                fileSizeBytes: f.size,
+                mimeType: f.type || undefined,
+              });
             }
           }
         } catch (queueErr: any) {
@@ -2969,6 +2973,11 @@ export const DocumentProcessor: React.FC<{
     const isFirestoreDoc = (doc as any).source === 'firestore';
     const firestoreId = isFirestoreDoc ? firestoreRecordId(doc) : undefined;
     const rowKey = firestoreId || doc.persistedDocumentId || doc.id;
+    const processStartedAt = Date.now();
+    let trackedPageCount: number | undefined;
+    let trackedPageSplit = false;
+    let trackedFileSize: number | undefined;
+    let trackedMime: string | undefined;
     const step = (msg: string) => console.log(`📄 [${doc.fileName}] ${msg}`);
     const withStepTimeout = async <T,>(p: Promise<T>, ms: number, label: string): Promise<T> => {
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -3095,6 +3104,8 @@ export const DocumentProcessor: React.FC<{
         );
       }
       step(`source ready (${(inputFile.size / 1024).toFixed(0)} KB)`);
+      trackedFileSize = inputFile.size;
+      trackedMime = inputFile.type || undefined;
       rememberDocumentFile({
         file: inputFile,
         firestoreId: latest.persistedDocumentId || firestoreId,
@@ -3149,14 +3160,19 @@ export const DocumentProcessor: React.FC<{
           pdfPageCount = await getPdfPageCount(inputFile);
           peekedPages = true;
           pdfPageSplit = shouldSplitPdfToPageImages(inputFile, pdfPageCount);
+          trackedPageCount = pdfPageCount;
+          trackedPageSplit = pdfPageSplit;
           step(`pdf pages=${pdfPageCount} split=${pdfPageSplit}`);
         } catch (peekErr) {
           console.warn('⚠️ PDF page-count peek failed:', peekErr);
           pdfPageSplit = ticketLike;
           pdfPageCount = ticketLike ? 5 : 1;
+          trackedPageCount = pdfPageCount;
+          trackedPageSplit = pdfPageSplit;
           step(`pdf peek failed; ticketLike=${ticketLike} assumedPages=${pdfPageCount}`);
         }
         if (ticketLike && pdfPageCount >= 2) pdfPageSplit = true;
+        trackedPageSplit = pdfPageSplit;
         if (peekedPages) {
           const { pdfPageLimitExceeded, pdfPageLimitMessage } = await import('../lib/pdfPagesToImages');
           if (pdfPageLimitExceeded(pdfPageCount)) {
@@ -3275,7 +3291,14 @@ export const DocumentProcessor: React.FC<{
       );
       if (isFirestoreDoc && firestoreId) {
         try {
-          await updateDocument(firestoreId, { status: 'processing', error: undefined, errorCode: undefined });
+          await updateDocument(firestoreId, {
+            status: 'processing',
+            error: undefined,
+            errorCode: undefined,
+            ...(trackedPageCount != null ? { pageCount: trackedPageCount } : {}),
+            ...(trackedFileSize != null ? { fileSizeBytes: trackedFileSize } : {}),
+            ...(trackedMime ? { mimeType: trackedMime } : {}),
+          });
         } catch {
           /* mirror best-effort */
         }
@@ -3290,6 +3313,16 @@ export const DocumentProcessor: React.FC<{
             d.id === doc.id ? { ...d, status: 'completed', data: res, created_at: completedAt } : d
           )
         );
+        if (user?.uid) {
+          void logUserActivity(user.uid, 'doc_processed', {
+            fileName: doc.fileName,
+            pageCount: trackedPageCount,
+            durationMs: Date.now() - processStartedAt,
+            fileSizeBytes: trackedFileSize,
+            mimeType: trackedMime,
+            pdfPageSplit: trackedPageSplit,
+          });
+        }
       } catch (saveErr: any) {
         console.error(`❌ Failed to save document: ${doc.fileName}`, saveErr);
         // Mark as error but keep the analyzed data
@@ -3300,6 +3333,18 @@ export const DocumentProcessor: React.FC<{
         if (isFirestoreDoc && firestoreId) {
           await updateDocument(firestoreId, savePatch);
         }
+        if (user?.uid) {
+          void logUserActivity(user.uid, 'document_process_error', {
+            errorCode: savePatch.errorCode,
+            errorMessage: savePatch.error,
+            fileName: doc.fileName,
+            pageCount: trackedPageCount,
+            durationMs: Date.now() - processStartedAt,
+            fileSizeBytes: trackedFileSize,
+            mimeType: trackedMime,
+            pdfPageSplit: trackedPageSplit,
+          });
+        }
       }
     } catch (err: any) {
       console.error(`❌ Error: ${doc.fileName}`, err);
@@ -3307,7 +3352,13 @@ export const DocumentProcessor: React.FC<{
       if (user?.uid) {
         void logUserActivity(user.uid, 'document_process_error', {
           errorCode: failPatch.errorCode,
+          errorMessage: failPatch.error,
           fileName: doc.fileName,
+          pageCount: trackedPageCount,
+          durationMs: Date.now() - processStartedAt,
+          fileSizeBytes: trackedFileSize,
+          mimeType: trackedMime,
+          pdfPageSplit: trackedPageSplit,
         });
       }
       setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, ...failPatch } : d));

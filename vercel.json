@@ -45,6 +45,10 @@
       "maxDuration": 30,
       "includeFiles": "{lib,shared}/**"
     },
+    "api/admin/user-activity.ts": {
+      "maxDuration": 30,
+      "includeFiles": "{lib,shared}/**"
+    },
     "api/admin/session.ts": {
       "includeFiles": "lib/**"
     },
