@@ -215,10 +215,58 @@ export type AdminDocumentSnapshot = {
   fileSizeBytes: number | null;
 };
 
+export type AdminWorkSession = {
+  id: string;
+  name: string;
+  createdAt: string | null;
+  isActive: boolean;
+  isPinned: boolean;
+  documentCount: number;
+  completedCount: number;
+  errorCount: number;
+  pendingCount: number;
+  processingCount: number;
+  totalPages: number | null;
+  avgDurationMs: number | null;
+  errors: Array<{
+    fileName: string | null;
+    errorCode: string | null;
+    errorMessage: string | null;
+    at: string | null;
+  }>;
+};
+
+export type AdminLoginVisit = {
+  id: string;
+  at: string;
+};
+
+export type AdminUsageSummary = {
+  loginCount: number;
+  lastLoginAt: string | null;
+  workSessionCount: number;
+  documentCount: number;
+  completedCount: number;
+  errorCount: number;
+  lastWorkSessionId: string | null;
+  lastWorkSessionName: string | null;
+  lastWorkSessionDocs: number;
+  lastWorkSessionErrors: number;
+  lastWorkSessionCompleted: number;
+};
+
+export type AdminUserUsageInsights = {
+  summary: AdminUsageSummary;
+  logins: AdminLoginVisit[];
+  workSessions: AdminWorkSession[];
+  events: AdminActivityEvent[];
+  documents: AdminDocumentSnapshot[];
+};
+
 export async function listAdminUserActivity(
   uid: string,
   options?: { limit?: number; errorsOnly?: boolean }
-): Promise<{ events: AdminActivityEvent[]; documents: AdminDocumentSnapshot[] }> {
+): Promise<AdminUserUsageInsights> {
   const params = new URLSearchParams({ uid });
   if (options?.limit) params.set("limit", String(options.limit));
   if (options?.errorsOnly) params.set("errorsOnly", "1");

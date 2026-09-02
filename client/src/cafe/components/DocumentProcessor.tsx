@@ -51,6 +51,7 @@ import {
 } from '../types';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useAuth } from '../context/AuthContext';
+import { useSession } from '../context/SessionContext';
 import { useDataWriteAccess } from '../hooks/useDataWriteAccess';
 import { logUserActivity } from '../lib/userActivity';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
@@ -2501,6 +2502,8 @@ export const DocumentProcessor: React.FC<{
   const { enforcementEnabled, entitlements, documentsUsedThisMonth, billing } = useSubscription();
   const canWrite = useDataWriteAccess();
   const { user } = useAuth();
+  const { currentSession } = useSession();
+  const activitySessionId = currentSession?.id;
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
   const docStatusLabel = (status: string) => {
@@ -2881,6 +2884,7 @@ export const DocumentProcessor: React.FC<{
                 fileName: f.name,
                 fileSizeBytes: f.size,
                 mimeType: f.type || undefined,
+                sessionId: activitySessionId,
               });
             }
           }
@@ -3321,6 +3325,7 @@ export const DocumentProcessor: React.FC<{
             fileSizeBytes: trackedFileSize,
             mimeType: trackedMime,
             pdfPageSplit: trackedPageSplit,
+            sessionId: activitySessionId,
           });
         }
       } catch (saveErr: any) {
@@ -3343,6 +3348,7 @@ export const DocumentProcessor: React.FC<{
             fileSizeBytes: trackedFileSize,
             mimeType: trackedMime,
             pdfPageSplit: trackedPageSplit,
+            sessionId: activitySessionId,
           });
         }
       }
@@ -3359,6 +3365,7 @@ export const DocumentProcessor: React.FC<{
           fileSizeBytes: trackedFileSize,
           mimeType: trackedMime,
           pdfPageSplit: trackedPageSplit,
+          sessionId: activitySessionId,
         });
       }
       setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, ...failPatch } : d));

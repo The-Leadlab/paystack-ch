@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   Activity,
-  AlertTriangle,
   ArrowLeft,
   Ban,
   CheckCircle2,
   Copy,
   CreditCard,
   ExternalLink,
-  FileText,
   KeyRound,
   Loader2,
   Mail,
@@ -39,6 +37,9 @@ import {
   runAdminUserAction,
   type AdminActivityEvent,
   type AdminDocumentSnapshot,
+  type AdminLoginVisit,
+  type AdminUsageSummary,
+  type AdminWorkSession,
   type AdminUserDetail,
 } from "@/lib/adminUsersClient";
 import { toast } from "sonner";
@@ -50,6 +51,7 @@ import {
   subscriptionStatusClass,
   verifiedStatusClass,
 } from "./adminUserUi";
+import { AdminUserUsageInsightsPanel } from "./AdminUserUsageInsightsPanel";
 
 type Props = {
   uid: string;
@@ -57,7 +59,7 @@ type Props = {
   onUserUpdated: () => void;
 };
 
-type DetailTab = "profile" | "activity" | "billing" | "actions" | "invoices";
+type DetailTab = "profile" | "usage" | "billing" | "actions" | "invoices";
 
 function formatMoney(cents: number, currency: string): string {
   return new Intl.NumberFormat(undefined, {
@@ -92,33 +94,6 @@ function MetaRow({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function formatDuration(ms: number | null | undefined): string {
-  if (ms == null || !Number.isFinite(ms)) return "—";
-  if (ms < 1000) return `${Math.round(ms)} ms`;
-  const sec = ms / 1000;
-  if (sec < 60) return `${sec.toFixed(1)} s`;
-  const min = Math.floor(sec / 60);
-  const rem = Math.round(sec % 60);
-  return `${min}m ${rem}s`;
-}
-
-function formatBytes(bytes: number | null | undefined): string {
-  if (bytes == null || !Number.isFinite(bytes)) return "—";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function activityTypeLabel(type: string, t: (k: string) => string): string {
-  if (type === "login") return t("adminActivityTypeLogin");
-  if (type === "logout") return t("adminActivityTypeLogout");
-  if (type === "session_heartbeat") return t("adminActivityTypeHeartbeat");
-  if (type === "doc_upload") return t("adminActivityTypeUpload");
-  if (type === "doc_processed") return t("adminActivityTypeProcessed");
-  if (type === "document_process_error") return t("adminActivityTypeError");
-  return type;
-}
-
 export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
   const { t } = useLanguage();
   const [user, setUser] = useState<AdminUserDetail | null>(null);
@@ -141,6 +116,9 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
   const [actionPassword, setActionPassword] = useState("");
   const [activityEvents, setActivityEvents] = useState<AdminActivityEvent[]>([]);
   const [activityDocuments, setActivityDocuments] = useState<AdminDocumentSnapshot[]>([]);
+  const [workSessions, setWorkSessions] = useState<AdminWorkSession[]>([]);
+  const [loginVisits, setLoginVisits] = useState<AdminLoginVisit[]>([]);
+  const [usageSummary, setUsageSummary] = useState<AdminUsageSummary | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityErrorsOnly, setActivityErrorsOnly] = useState(false);
 
@@ -175,11 +153,14 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
     setActivityLoading(true);
     try {
       const data = await listAdminUserActivity(uid, {
-        limit: 100,
+        limit: 150,
         errorsOnly: activityErrorsOnly,
       });
       setActivityEvents(data.events);
       setActivityDocuments(data.documents);
+      setWorkSessions(data.workSessions ?? []);
+      setLoginVisits(data.logins ?? []);
+      setUsageSummary(data.summary ?? null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
@@ -188,7 +169,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
   }, [uid, activityErrorsOnly]);
 
   useEffect(() => {
-    if (activeTab === "activity") void loadActivity();
+    if (activeTab === "usage") void loadActivity();
   }, [activeTab, loadActivity]);
 
   const runAction = async (
@@ -277,7 +258,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
 
   const detailTabs: { id: DetailTab; label: string }[] = [
     { id: "profile", label: t("adminUserTabProfile") },
-    { id: "activity", label: t("adminUserTabActivity") },
+    { id: "usage", label: t("adminUserTabUsage") },
     { id: "billing", label: t("adminUserTabBilling") },
     { id: "actions", label: t("adminUserTabActions") },
     { id: "invoices", label: t("adminUserTabInvoices") },
@@ -394,11 +375,11 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                   value={tab.id}
                   className="font-display data-[state=active]:bg-card data-[state=active]:text-foreground px-3 sm:px-4 py-2.5 min-h-11 text-xs sm:text-sm touch-manipulation gap-1.5"
                 >
-                  {tab.id === "activity" ? <Activity className="size-3.5 opacity-70" /> : null}
+                  {tab.id === "usage" ? <Activity className="size-3.5 opacity-70" /> : null}
                   {tab.id === "actions" ? <Shield className="size-3.5 opacity-70" /> : null}
                   {tab.label}
-                  {tab.id === "activity" && activityEvents.length > 0 ? (
-                    <span className="ml-0.5 text-[10px] opacity-70">({activityEvents.length})</span>
+                  {tab.id === "usage" && workSessions.length > 0 ? (
+                    <span className="ml-0.5 text-[10px] opacity-70">({workSessions.length})</span>
                   ) : null}
                   {tab.id === "invoices" && user.stripeInvoices.length > 0 ? (
                     <span className="ml-0.5 text-[10px] opacity-70">({user.stripeInvoices.length})</span>
@@ -596,201 +577,19 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
               </div>
             </TabsContent>
 
-            {/* ── Activity / logs ── */}
-            <TabsContent value="activity" className="mt-0 space-y-4">
-              <div className={`${adminPanelCardClass} space-y-3`}>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <SectionTitle>{t("adminActivityLogTitle")}</SectionTitle>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={activityErrorsOnly ? "default" : "outline"}
-                      className={`font-display text-xs ${activityErrorsOnly ? "bg-brand-red text-white hover:bg-brand-red/90" : ""}`}
-                      onClick={() => setActivityErrorsOnly((v) => !v)}
-                    >
-                      <AlertTriangle className="size-3.5 mr-1" />
-                      {t("adminActivityErrorsOnly")}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className={`${adminOutlineBtnClass} text-xs`}
-                      disabled={activityLoading}
-                      onClick={() => void loadActivity()}
-                    >
-                      <RefreshCw className={`size-3.5 ${activityLoading ? "animate-spin" : ""}`} />
-                      {t("adminUserRefresh")}
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">{t("adminActivityPrivacyHint")}</p>
-                {activityLoading && activityEvents.length === 0 ? (
-                  <div className="py-8 flex justify-center">
-                    <Loader2 className="size-6 animate-spin text-brand-red" />
-                  </div>
-                ) : activityEvents.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4">{t("adminActivityEmpty")}</p>
-                ) : (
-                  <div className="overflow-x-auto rounded-lg border border-border">
-                    <table className="w-full text-sm min-w-[720px]">
-                      <thead>
-                        <tr className="border-b bg-muted/40 text-left">
-                          <th className="px-3 py-2 font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                            {t("adminActivityColWhen")}
-                          </th>
-                          <th className="px-3 py-2 font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                            {t("adminActivityColType")}
-                          </th>
-                          <th className="px-3 py-2 font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                            {t("adminActivityColFile")}
-                          </th>
-                          <th className="px-3 py-2 font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                            {t("adminActivityColPages")}
-                          </th>
-                          <th className="px-3 py-2 font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                            {t("adminActivityColDuration")}
-                          </th>
-                          <th className="px-3 py-2 font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                            {t("adminActivityColDetail")}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {activityEvents.map((ev) => (
-                          <tr key={ev.id} className="border-b last:border-0 align-top">
-                            <td className="px-3 py-2 whitespace-nowrap text-muted-foreground text-xs">
-                              {formatDateTime(ev.at || null)}
-                            </td>
-                            <td className="px-3 py-2">
-                              <span
-                                className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-medium ${
-                                  ev.type === "document_process_error"
-                                    ? "border-destructive/40 bg-destructive/10 text-destructive"
-                                    : ev.type === "doc_processed"
-                                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
-                                      : "border-border bg-muted/40"
-                                }`}
-                              >
-                                {activityTypeLabel(ev.type, t)}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 max-w-[180px]">
-                              <span className="truncate block" title={ev.meta?.fileName || undefined}>
-                                {ev.meta?.fileName || "—"}
-                              </span>
-                              {ev.meta?.fileSizeBytes != null ? (
-                                <span className="text-[10px] text-muted-foreground">
-                                  {formatBytes(ev.meta.fileSizeBytes)}
-                                  {ev.meta.mimeType ? ` · ${ev.meta.mimeType}` : ""}
-                                </span>
-                              ) : null}
-                            </td>
-                            <td className="px-3 py-2 tabular-nums text-muted-foreground">
-                              {ev.meta?.pageCount ?? "—"}
-                              {ev.meta?.pdfPageSplit ? (
-                                <span className="block text-[10px]">{t("adminActivityPageSplit")}</span>
-                              ) : null}
-                            </td>
-                            <td className="px-3 py-2 tabular-nums text-muted-foreground whitespace-nowrap">
-                              {formatDuration(ev.meta?.durationMs)}
-                            </td>
-                            <td className="px-3 py-2 text-xs text-muted-foreground max-w-[240px]">
-                              {ev.meta?.errorCode ? (
-                                <span className="font-mono text-destructive">{ev.meta.errorCode}</span>
-                              ) : null}
-                              {ev.meta?.errorMessage ? (
-                                <p className="mt-0.5 line-clamp-3" title={ev.meta.errorMessage}>
-                                  {ev.meta.errorMessage}
-                                </p>
-                              ) : !ev.meta?.errorCode ? (
-                                "—"
-                              ) : null}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              <div className={`${adminPanelCardClass} space-y-3`}>
-                <SectionTitle>
-                  <span className="inline-flex items-center gap-1.5">
-                    <FileText className="size-3.5" />
-                    {t("adminActivityDocsTitle")}
-                  </span>
-                </SectionTitle>
-                <p className="text-xs text-muted-foreground">{t("adminActivityDocsHint")}</p>
-                {activityDocuments.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-2">{t("adminActivityDocsEmpty")}</p>
-                ) : (
-                  <div className="overflow-x-auto rounded-lg border border-border">
-                    <table className="w-full text-sm min-w-[640px]">
-                      <thead>
-                        <tr className="border-b bg-muted/40 text-left">
-                          <th className="px-3 py-2 font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                            {t("adminActivityColFile")}
-                          </th>
-                          <th className="px-3 py-2 font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                            {t("adminUsersColStatus")}
-                          </th>
-                          <th className="px-3 py-2 font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                            {t("adminActivityColPages")}
-                          </th>
-                          <th className="px-3 py-2 font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                            {t("adminActivityColWhen")}
-                          </th>
-                          <th className="px-3 py-2 font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                            {t("adminActivityColDetail")}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {activityDocuments.map((d) => (
-                          <tr key={d.id} className="border-b last:border-0 align-top">
-                            <td className="px-3 py-2 max-w-[200px]">
-                              <span className="truncate block font-medium" title={d.fileName || undefined}>
-                                {d.fileName || "—"}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground font-mono">{d.id.slice(0, 10)}…</span>
-                            </td>
-                            <td className="px-3 py-2">
-                              <span
-                                className={`inline-flex rounded-md border px-1.5 py-0.5 text-[11px] ${
-                                  d.status === "error"
-                                    ? "border-destructive/40 text-destructive"
-                                    : "border-border"
-                                }`}
-                              >
-                                {d.status || "—"}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 tabular-nums text-muted-foreground">
-                              {d.pageCount ?? "—"}
-                            </td>
-                            <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
-                              {formatDateTime(d.createdAt)}
-                            </td>
-                            <td className="px-3 py-2 text-xs text-muted-foreground max-w-[220px]">
-                              {d.errorCode ? <span className="font-mono">{d.errorCode}</span> : null}
-                              {d.error ? (
-                                <p className="line-clamp-2 mt-0.5" title={d.error}>
-                                  {d.error}
-                                </p>
-                              ) : !d.errorCode ? (
-                                "—"
-                              ) : null}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+            {/* ── Usage insights ── */}
+            <TabsContent value="usage" className="mt-0">
+              <AdminUserUsageInsightsPanel
+                loading={activityLoading}
+                errorsOnly={activityErrorsOnly}
+                onToggleErrorsOnly={() => setActivityErrorsOnly((v) => !v)}
+                onRefresh={() => void loadActivity()}
+                summary={usageSummary}
+                logins={loginVisits}
+                workSessions={workSessions}
+                events={activityEvents}
+                documents={activityDocuments}
+              />
             </TabsContent>
 
             {/* ── Billing ── */}

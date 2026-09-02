@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { requireAdminSession } from "../../lib/adminSession.js";
-import { listAdminUserActivity } from "../../lib/adminUserActivity.js";
+import { listAdminUserUsageInsights } from "../../lib/adminUserActivity.js";
 
 function sendJson(res: VercelResponse, status: number, body: unknown): void {
   res.status(status).setHeader("Content-Type", "application/json; charset=utf-8").end(JSON.stringify(body));
@@ -14,7 +14,7 @@ function cookieHeader(req: VercelRequest): string | null {
 }
 
 /**
- * GET `?uid=&limit=&errorsOnly=1` — activity log + recent document metadata (no content).
+ * GET `?uid=&limit=&errorsOnly=1` — usage insights: logins, work sessions, events, docs metadata.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   try {
@@ -39,14 +39,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return;
     }
 
-    const limitRaw = typeof req.query.limit === "string" ? parseInt(req.query.limit, 10) : 80;
+    const limitRaw = typeof req.query.limit === "string" ? parseInt(req.query.limit, 10) : 120;
     const errorsOnly =
       req.query.errorsOnly === "1" ||
       req.query.errorsOnly === "true" ||
       req.query.errorsOnly === "yes";
 
-    const result = await listAdminUserActivity(uid, {
-      limit: Number.isFinite(limitRaw) ? limitRaw : 80,
+    const result = await listAdminUserUsageInsights(uid, {
+      limit: Number.isFinite(limitRaw) ? limitRaw : 120,
       errorsOnly,
     });
     sendJson(res, 200, result);
