@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Archive,
   ChevronRight,
+  Download,
   Loader2,
   Plus,
   RefreshCw,
@@ -406,6 +407,10 @@ export function AdminUsersPanel() {
           <p className="text-[11px] text-muted-foreground mt-2">
             {t("adminUsersColLastActive")}: {formatDate(user.lastActiveAt ?? user.lastSignInAt)}
             {user.logins30d != null ? ` · ${user.logins30d} logins (30d)` : ""}
+            {user.usageThisMonth != null ? ` · ${user.usageThisMonth} docs/mo` : ""}
+            {user.uploads30d != null ? ` · ${user.uploads30d} uploads` : ""}
+            {user.errors30d != null && user.errors30d > 0 ? ` · ${user.errors30d} errors` : ""}
+            {user.betaCohort ? ` · ${user.betaCohort}` : ""}
           </p>
         </button>
       </div>
@@ -465,6 +470,28 @@ export function AdminUsersPanel() {
         {user.logins30d != null ? (
           <div className="text-[10px] text-muted-foreground/80">{user.logins30d} logins</div>
         ) : null}
+      </td>
+      <td className="py-3.5 px-4 align-top text-muted-foreground tabular-nums">
+        {user.usageThisMonth ?? "—"}
+      </td>
+      <td className="py-3.5 px-4 align-top text-muted-foreground tabular-nums">
+        {user.uploads30d ?? "—"}
+      </td>
+      <td className="py-3.5 px-4 align-top text-muted-foreground tabular-nums">
+        {user.errors30d != null && user.errors30d > 0 ? (
+          <span className="text-destructive font-medium">{user.errors30d}</span>
+        ) : (
+          (user.errors30d ?? "—")
+        )}
+      </td>
+      <td className="py-3.5 px-4 align-top text-muted-foreground">
+        {user.betaCohort ? (
+          <Badge variant="outline" className="text-[10px] capitalize">
+            {user.betaCohort}
+          </Badge>
+        ) : (
+          "—"
+        )}
       </td>
       <td className="py-3.5 px-4 align-top text-right">
         <ChevronRight className="size-4 text-muted-foreground group-hover:text-brand-red transition-colors inline-block" />
@@ -530,9 +557,20 @@ export function AdminUsersPanel() {
               aria-label={t("adminUserExportCsv")}
               title={t("adminUserExportCsv")}
             >
-              <Archive className="size-4" />
+              <Download className="size-4" />
             </Button>
             <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="shrink-0 min-h-11 min-w-11 touch-manipulation"
+              onClick={() => void loadUsers(search)}
+              disabled={loading}
+              aria-label={t("adminUserRefresh")}
+              title={t("adminUserRefresh")}
+            >
+              <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
           </div>
         </div>
       </div>
@@ -671,7 +709,7 @@ export function AdminUsersPanel() {
                     {section.title} ({section.rows.length})
                   </p>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm min-w-[880px]">
+                    <table className="w-full text-sm min-w-[1120px]">
                       <thead>
                         <tr className="border-b bg-muted/50">
                           <th className="py-3.5 px-3 w-10">
@@ -700,6 +738,18 @@ export function AdminUsersPanel() {
                           </th>
                           <th className="py-3.5 px-4 text-left font-display text-[11px] uppercase tracking-wider text-muted-foreground w-36">
                             {t("adminUsersColLastActive")}
+                          </th>
+                          <th className="py-3.5 px-4 text-left font-display text-[11px] uppercase tracking-wider text-muted-foreground w-20">
+                            {t("adminUsersColDocsMonth")}
+                          </th>
+                          <th className="py-3.5 px-4 text-left font-display text-[11px] uppercase tracking-wider text-muted-foreground w-20">
+                            {t("adminUsersColUploads30d")}
+                          </th>
+                          <th className="py-3.5 px-4 text-left font-display text-[11px] uppercase tracking-wider text-muted-foreground w-20">
+                            {t("adminUsersColErrors30d")}
+                          </th>
+                          <th className="py-3.5 px-4 text-left font-display text-[11px] uppercase tracking-wider text-muted-foreground w-24">
+                            {t("adminUsersColCohort")}
                           </th>
                           <th className="py-3.5 px-4 w-12" aria-hidden />
                         </tr>
