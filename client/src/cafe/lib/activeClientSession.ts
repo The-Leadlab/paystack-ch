@@ -1,6 +1,5 @@
 import { doc, getDoc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
-import { isMultiLoginMode, parseLoginMode, type LoginMode } from '@shared/loginMode';
 
 const STORAGE_KEY = 'paystack_client_session_id';
 const ROLE_KEY = 'paystack_client_session_role';
@@ -72,10 +71,12 @@ export async function claimActiveClientSession(uid: string): Promise<string> {
   return id;
 }
 
-/** Register login — shared mode keeps existing primary; exclusive mode claims session. */
+/**
+ * Register login for shared multi-login (all accounts).
+ * If another browser already holds primary, this client stays view-only.
+ */
 export async function registerClientSession(
-  uid: string,
-  loginMode?: LoginMode
+  uid: string
 ): Promise<{ sessionId: string; role: ClientSessionRole }> {
   const id = crypto.randomUUID();
   setLocalClientSessionId(id);
@@ -83,12 +84,10 @@ export async function registerClientSession(
 
   const snap = await getDoc(doc(db, 'users', uid));
   const data = snap.data();
-  const mode = loginMode ?? parseLoginMode(data?.loginMode);
   const remote = data?.activeClientSessionId;
 
   if (
     isSingleActiveSessionEnabled() &&
-    isMultiLoginMode(mode) &&
     typeof remote === 'string' &&
     remote.length > 0 &&
     remote !== id
@@ -109,23 +108,25 @@ export async function registerClientSession(
   return { sessionId: id, role: 'primary' };
 }
 
-/** Reconcile viewer vs primary after tab refresh (shared login mode). */
+/** Reconcile viewer vs primary after tab refresh. */
 export async function syncClientSessionRole(uid: string): Promise<StoredClientRole> {
   const local = getLocalClientSessionId();
   if (!local || !db) return getClientSessionRole();
 
   const snap = await getDoc(doc(db, 'users', uid));
   const data = snap.data();
-  const mode = parseLoginMode(data?.loginMode);
   const remote = data?.activeClientSessionId;
 
   if (
     isSingleActiveSessionEnabled() &&
-    isMultiLoginMode(mode) &&
     typeof remote === 'string' &&
     remote.length > 0 &&
     remote !== local
   ) {
+    // Keep contributor grants across refresh when already approved.
+    if (getClientSessionRole() === 'contributor') {
+      return 'contributor';
+    }
     setClientSessionRole('viewer');
     return 'viewer';
   }
@@ -138,31 +139,15 @@ export async function syncClientSessionRole(uid: string): Promise<StoredClientRo
   return getClientSessionRole();
 }
 
-export async function verifyActiveClientSession(uid: string): Promise<boolean> {
-  if (!isSingleActiveSessionEnabled()) return true;
-  const local = getLocalClientSessionId();
-  if (!local || !db) return true;
-  const snap = await getDoc(doc(db, 'users', uid));
-  const data = snap.data();
-  const remote = data?.activeClientSessionId;
-  if (typeof remote !== 'string' || !remote) return true;
-  if (remote === local) return true;
-  if (isMultiLoginMode(data?.loginMode)) return true;
-  return false;
+/** Shared multi-login never kicks; both clients may stay signed in. */
+export async function verifyActiveClientSession(_uid: string): Promise<boolean> {
+  return true;
 }
 
+/** Shared multi-login: do not sign out when another client is primary. */
 export function watchActiveClientSession(
-  uid: string,
-  onKicked: () => void
+  _uid: string,
+  _onKicked: () => void
 ): () => void {
-  if (!isSingleActiveSessionEnabled() || !db) return () => undefined;
-  const local = getLocalClientSessionId();
-  if (!local) return () => undefined;
-  return onSnapshot(doc(db, 'users', uid), (snap) => {
-    const data = snap.data();
-    const remote = data?.activeClientSessionId;
-    if (typeof remote !== 'string' || !remote || remote === local) return;
-    if (isMultiLoginMode(data?.loginMode)) return;
-    onKicked();
-  });
+  return () => undefined;
 }

@@ -44,7 +44,6 @@ import {
 } from "@/lib/adminUsersClient";
 import { toast } from "sonner";
 import type { PaystackPlanId } from "@shared/planCatalog";
-import { isMultiLoginMode } from "@shared/loginMode";
 import {
   adminOutlineBtnClass,
   adminPanelCardClass,
@@ -414,11 +413,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                     {user.googleDriveConnected ? t("adminUsersYes") : t("adminUsersNo")}
                   </MetaRow>
                   <MetaRow label={t("adminUsersColLoginMode")}>
-                    {user.loginMode
-                      ? isMultiLoginMode(user.loginMode)
-                        ? t("adminLoginModeShared")
-                        : t("adminLoginModeExclusive")
-                      : "—"}
+                    {t("adminLoginModeShared")}
                   </MetaRow>
                 </div>
               </div>
