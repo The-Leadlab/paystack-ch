@@ -1,5 +1,5 @@
-import { useWorkspace } from "./WorkspaceContext";
-import { useClientSessionAccess } from "./ClientSessionAccessContext";
+import { useWorkspace } from "../context/WorkspaceContext";
+import { useClientSessionAccess } from "../context/ClientSessionAccessContext";
 
 /** Workspace role + shared-login client session (primary / viewer / contributor). */
 export function useDataWriteAccess(): boolean {
