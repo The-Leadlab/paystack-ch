@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { useLanguage } from "../context/LanguageContext";
 import { useSession } from "../context/SessionContext";
+import { useDataWriteAccess } from "../hooks/useDataWriteAccess";
 import { defaultSessionName } from "../lib/formatLocalDateTime";
 
 const namedKey = (sessionId: string) => `paystack_session_named_${sessionId}`;
@@ -18,11 +19,15 @@ const namedKey = (sessionId: string) => `paystack_session_named_${sessionId}`;
 export function SessionNamePrompt() {
   const { t } = useLanguage();
   const { currentSession, renameSession, loading } = useSession();
+  const canWrite = useDataWriteAccess();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
 
   useEffect(() => {
-    if (loading || !currentSession?.id) return;
+    if (loading || !currentSession?.id || !canWrite) {
+      setOpen(false);
+      return;
+    }
     try {
       if (sessionStorage.getItem(namedKey(currentSession.id)) === "1") return;
     } catch {
@@ -30,7 +35,7 @@ export function SessionNamePrompt() {
     }
     setName(currentSession.name || defaultSessionName());
     setOpen(true);
-  }, [currentSession?.id, currentSession?.name, loading]);
+  }, [currentSession?.id, currentSession?.name, loading, canWrite]);
 
   const finish = (save: boolean) => {
     if (!currentSession?.id) return;
@@ -45,7 +50,7 @@ export function SessionNamePrompt() {
     setOpen(false);
   };
 
-  if (!currentSession) return null;
+  if (!currentSession || !canWrite) return null;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && finish(false)}>

@@ -139,15 +139,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Shared multi-login: second same-account clients stay signed in as viewers (no kick).
   useEffect(() => {
     if (!user?.uid || !isSingleActiveSessionEnabled()) return;
     return watchActiveClientSession(user.uid, () => {
-      try {
-        sessionStorage.setItem('paystack_session_kicked', '1');
-      } catch {
-        /* ignore */
-      }
-      if (auth) void firebaseSignOut(auth);
+      /* exclusive kick disabled — shared protocol only */
     });
   }, [user?.uid]);
 

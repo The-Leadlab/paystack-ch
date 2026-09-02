@@ -34,7 +34,6 @@ import { AdminUserDetailPanel } from "./AdminUserDetailPanel";
 import { AdminCreateUserDialog } from "./AdminCreateUserDialog";
 import { subscriptionStatusClass } from "./adminUserUi";
 import { isPersonalPlan, parsePaystackPlanId } from "@shared/planCatalog";
-import { isMultiLoginMode } from "@shared/loginMode";
 import { toast } from "sonner";
 
 function formatDate(iso: string | null): string {
@@ -122,11 +121,11 @@ function isPersonalUser(user: AdminUserSummary): boolean {
 }
 
 function loginModeAdminLabel(
-  mode: AdminUserSummary["loginMode"],
+  _mode: AdminUserSummary["loginMode"],
   t: (key: string) => string
 ): string {
-  if (!mode) return "—";
-  return isMultiLoginMode(mode) ? t("adminLoginModeShared") : t("adminLoginModeExclusive");
+  // All accounts use shared multi-login (view-only → request → session).
+  return t("adminLoginModeShared");
 }
 
 export function AdminUsersPanel() {

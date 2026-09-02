@@ -1,29 +1,26 @@
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import {
-  parseLoginMode,
+  DEFAULT_LOGIN_MODE,
   SELECTED_LOGIN_MODE_STORAGE_KEY,
   type LoginMode,
 } from "@shared/loginMode";
 
 export function readSelectedLoginMode(): LoginMode {
-  try {
-    return parseLoginMode(sessionStorage.getItem(SELECTED_LOGIN_MODE_STORAGE_KEY));
-  } catch {
-    return "exclusive";
-  }
+  return DEFAULT_LOGIN_MODE;
 }
 
-export function storeSelectedLoginMode(mode: LoginMode): void {
+/** No-op store kept for call-site compatibility; product no longer offers a choice. */
+export function storeSelectedLoginMode(_mode?: LoginMode): void {
   try {
-    sessionStorage.setItem(SELECTED_LOGIN_MODE_STORAGE_KEY, mode);
+    sessionStorage.setItem(SELECTED_LOGIN_MODE_STORAGE_KEY, DEFAULT_LOGIN_MODE);
   } catch {
     /* ignore */
   }
 }
 
-export async function persistLoginModeToUser(uid: string, mode?: LoginMode): Promise<void> {
+/** Always persist shared multi-login so second same-account logins enter view mode. */
+export async function persistLoginModeToUser(uid: string, _mode?: LoginMode): Promise<void> {
   if (!db) return;
-  const loginMode = mode ?? readSelectedLoginMode();
-  await setDoc(doc(db, "users", uid), { loginMode }, { merge: true });
+  await setDoc(doc(db, "users", uid), { loginMode: DEFAULT_LOGIN_MODE }, { merge: true });
 }

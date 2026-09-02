@@ -6,11 +6,9 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { doc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "./AuthContext";
-import { db } from "../lib/firebase";
 import { getClientSessionRole, setClientSessionRole } from "../lib/activeClientSession";
-import { isMultiLoginMode, parseLoginMode, type LoginMode } from "@shared/loginMode";
+import { DEFAULT_LOGIN_MODE, type LoginMode } from "@shared/loginMode";
 import type { ClientSessionRole } from "../lib/activeClientSession";
 import {
   createSessionAccessRequest,
@@ -44,20 +42,12 @@ type Props = {
 
 export function ClientSessionAccessProvider({ children, currentSessionId }: Props) {
   const { user } = useAuth();
-  const [loginMode, setLoginMode] = useState<LoginMode>("exclusive");
   const [role, setRole] = useState<ClientAccessRole>(() => getClientSessionRole());
   const [grantedSessionId, setGrantedSessionIdState] = useState<string | null>(
     () => getContributorSessionId()
   );
   const [pendingRequests, setPendingRequests] = useState<SessionAccessRequest[]>([]);
   const [myRequest, setMyRequest] = useState<SessionAccessRequest | null>(null);
-
-  useEffect(() => {
-    if (!user?.uid || !db) return;
-    return onSnapshot(doc(db, "users", user.uid), (snap) => {
-      setLoginMode(parseLoginMode(snap.data()?.loginMode));
-    });
-  }, [user?.uid]);
 
   useEffect(() => {
     setRole(getClientSessionRole());
@@ -105,7 +95,7 @@ export function ClientSessionAccessProvider({ children, currentSessionId }: Prop
       Boolean(grantedSessionId && currentSessionId && grantedSessionId === currentSessionId);
     const canMutateData = role === "primary" || contributorActive;
     return {
-      loginMode,
+      loginMode: DEFAULT_LOGIN_MODE,
       role,
       isViewOnly,
       canMutateData,
@@ -116,7 +106,6 @@ export function ClientSessionAccessProvider({ children, currentSessionId }: Prop
       setGrantedSession,
     };
   }, [
-    loginMode,
     role,
     grantedSessionId,
     currentSessionId,
@@ -135,7 +124,7 @@ export function useClientSessionAccess(): ClientSessionAccessValue {
   const ctx = useContext(ClientSessionAccessContext);
   if (!ctx) {
     return {
-      loginMode: "exclusive",
+      loginMode: DEFAULT_LOGIN_MODE,
       role: "primary",
       isViewOnly: false,
       canMutateData: true,
@@ -149,6 +138,6 @@ export function useClientSessionAccess(): ClientSessionAccessValue {
   return ctx;
 }
 
-export function isSharedLoginAccount(mode: LoginMode): boolean {
-  return isMultiLoginMode(mode);
+export function isSharedLoginAccount(_mode?: LoginMode): boolean {
+  return true;
 }
