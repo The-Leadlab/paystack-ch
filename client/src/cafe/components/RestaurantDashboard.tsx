@@ -11,6 +11,7 @@ import { useChfLocale, useFormatChf, useLanguage } from '../context/LanguageCont
 import { formatIssuerForDisplay, formatMonthYearLabel, parseMonthKey, parseInvoicesDetectedCount, documentDisplayName, conjoinedInvoicesLabel, supplierGroupKeysForDocument, normalizeEntityKey } from '../i18n/documentDisplayI18n';
 import { useDocuments } from '../context/DocumentContext';
 import { usePOS } from '../context/POSContext';
+import { DocumentProcessor } from './DocumentProcessor';
 import { SessionAccessShell } from "@/cafe/components/SessionAccessShell";
 import { SessionAccessBanner } from "@/cafe/components/SessionAccessBanner";
 import { SessionNamePrompt } from "@/cafe/components/SessionNamePrompt";
