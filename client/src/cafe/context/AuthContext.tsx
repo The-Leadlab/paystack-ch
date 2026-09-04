@@ -26,7 +26,7 @@ import {
   verifyActiveClientSession,
   watchActiveClientSession,
 } from '../lib/activeClientSession';
-import { clearClientPresence } from '../lib/clientPresence';
+import { clearClientPresence, watchOwnSessionKick } from '../lib/clientPresence';
 import { persistLoginModeToUser } from '../lib/persistLoginMode';
 import {
   clearLoginActivitySessionFlag,
@@ -154,6 +154,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       if (auth) void firebaseSignOut(auth);
     });
+  }, [user?.uid]);
+
+  // Shared-login: host removed this browser from the presence list
+  useEffect(() => {
+    if (!user?.uid) return;
+    const markKickedAndSignOut = () => {
+      try {
+        sessionStorage.setItem('paystack_session_kicked', '1');
+      } catch {
+        /* ignore */
+      }
+      if (auth) void firebaseSignOut(auth);
+    };
+    return watchOwnSessionKick(user.uid, markKickedAndSignOut);
   }, [user?.uid]);
 
   const afterAuthSessionClaim = async () => {

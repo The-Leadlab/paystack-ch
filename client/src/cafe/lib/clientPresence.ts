@@ -112,6 +112,60 @@ export async function clearClientPresence(uid: string): Promise<void> {
   }
 }
 
+/** Host removes another browser from the live presence list. */
+export async function removeRemoteClientPresence(
+  uid: string,
+  clientSessionId: string
+): Promise<void> {
+  if (!clientSessionId || !db) return;
+  const local = getLocalClientSessionId();
+  if (local && local === clientSessionId) return;
+  await deleteDoc(doc(db, "users", uid, "clientPresence", clientSessionId));
+}
+
+/**
+ * Persist a kick so the remote tab signs out even if it keeps heartbeating.
+ * Cleared when that browser signs in again with a new client session id.
+ */
+export async function kickSharedClientSession(
+  uid: string,
+  clientSessionId: string
+): Promise<void> {
+  if (!clientSessionId || !db) return;
+  const local = getLocalClientSessionId();
+  if (local && local === clientSessionId) return;
+  await setDoc(
+    doc(db, "users", uid, "sessionKicks", clientSessionId),
+    {
+      clientSessionId,
+      kickedAt: serverTimestamp(),
+      byClientSessionId: local ?? null,
+    },
+    { merge: true }
+  );
+  try {
+    await removeRemoteClientPresence(uid, clientSessionId);
+  } catch {
+    /* presence cleanup is best-effort */
+  }
+}
+
+export function watchOwnSessionKick(
+  uid: string,
+  onKicked: () => void
+): Unsubscribe {
+  if (!db) return () => undefined;
+  const local = getLocalClientSessionId();
+  if (!local) return () => undefined;
+  return onSnapshot(
+    doc(db, "users", uid, "sessionKicks", local),
+    (snap) => {
+      if (snap.exists()) onKicked();
+    },
+    () => undefined
+  );
+}
+
 const STALE_MS = 90_000;
 
 export function watchClientPresence(

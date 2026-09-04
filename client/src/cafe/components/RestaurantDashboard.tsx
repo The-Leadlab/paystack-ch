@@ -949,23 +949,16 @@ export function RestaurantDashboard() {
           {!sidebarCollapsed ? (
             <div className="flex items-center justify-between gap-1">
               <span className="text-[10px] text-cdlp-muted truncate min-w-0">{user?.email}</span>
-              <div className="flex items-center gap-1 shrink-0">
-                <SharedLoginPresenceBalls />
-                <button
-                  type="button"
-                  onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
-                  className="shrink-0 px-1.5 py-0.5 rounded border border-cdlp-border text-[9px] font-bold text-cdlp-muted uppercase flex items-center gap-0.5"
-                >
-                  <Globe className="w-2.5 h-2.5" />
-                  {language === 'en' ? 'ENG' : 'FR'}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
+                className="shrink-0 px-1.5 py-0.5 rounded border border-cdlp-border text-[9px] font-bold text-cdlp-muted uppercase flex items-center gap-0.5"
+              >
+                <Globe className="w-2.5 h-2.5" />
+                {language === 'en' ? 'ENG' : 'FR'}
+              </button>
             </div>
-          ) : (
-            <div className="flex justify-center py-0.5">
-              <SharedLoginPresenceBalls compact />
-            </div>
-          )}
+          ) : null}
 
           {!sidebarCollapsed ? (
             <button
@@ -1210,6 +1203,9 @@ export function RestaurantDashboard() {
         className="flex-1 min-w-0 flex flex-col overflow-hidden"
         aria-label={t('financialDashboard')}
       >
+        <div className="hidden md:flex shrink-0 items-center justify-end gap-2 px-4 sm:px-5 md:px-6 lg:px-8 pt-3 pb-0">
+          <SharedLoginPresenceBalls compact />
+        </div>
         {/* Tab Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 lg:px-8 custom-scrollbar pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-6 [-webkit-overflow-scrolling:touch]">
           {activeTab === 'dashboard' && (
