@@ -60,7 +60,7 @@ type Props = {
 
 export function ClientSessionAccessProvider({ children, currentSessionId }: Props) {
   const { user } = useAuth();
-  const [loginMode, setLoginMode] = useState<LoginMode>("exclusive");
+  const [loginMode, setLoginMode] = useState<LoginMode>("shared");
   const [role, setRole] = useState<ClientAccessRole>(() => getClientSessionRole());
   const [grantedSessionId, setGrantedSessionIdState] = useState<string | null>(
     () => getContributorSessionId()
@@ -228,7 +228,7 @@ export function useClientSessionAccess(): ClientSessionAccessValue {
   const ctx = useContext(ClientSessionAccessContext);
   if (!ctx) {
     return {
-      loginMode: "exclusive",
+      loginMode: "shared",
       role: "primary",
       isViewOnly: false,
       canMutateData: true,

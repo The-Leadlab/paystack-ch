@@ -22,7 +22,7 @@ export default function StartTrialPage() {
   const { t } = useLanguage();
   const search = useSearch();
   const [err, setErr] = useState<string | null>(null);
-  const [loginMode, setLoginMode] = useState<LoginMode>("exclusive");
+  const [loginMode, setLoginMode] = useState<LoginMode>("shared");
   const [confirmed, setConfirmed] = useState(false);
   const redirectStarted = useRef(false);
 
@@ -49,7 +49,7 @@ export default function StartTrialPage() {
 
   useEffect(() => {
     if (isPersonal) {
-      storeSelectedLoginMode("exclusive");
+      storeSelectedLoginMode("shared");
       setConfirmed(true);
     }
   }, [isPersonal]);

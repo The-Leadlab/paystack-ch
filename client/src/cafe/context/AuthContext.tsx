@@ -116,22 +116,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (firebaseUser) {
         void ensureUserBillingStub(firebaseUser);
         logLoginActivityOnce(firebaseUser.uid);
-        const local = getLocalClientSessionId();
-        if (isSingleActiveSessionEnabled() && !local) {
-          void registerClientSession(firebaseUser.uid);
-        } else if (local) {
-          void syncClientSessionRole(firebaseUser.uid);
-          void verifyActiveClientSession(firebaseUser.uid).then((ok) => {
-            if (!ok && auth) {
-              try {
-                sessionStorage.setItem('paystack_session_kicked', '1');
-              } catch {
-                /* ignore */
-              }
-              void firebaseSignOut(auth);
+        void (async () => {
+          // Migrate missing/exclusive → shared unless checkout just chose exclusive
+          await persistLoginModeToUser(firebaseUser.uid);
+          if (!isSingleActiveSessionEnabled()) return;
+          const local = getLocalClientSessionId();
+          if (!local) {
+            await registerClientSession(firebaseUser.uid);
+            return;
+          }
+          await syncClientSessionRole(firebaseUser.uid);
+          const ok = await verifyActiveClientSession(firebaseUser.uid);
+          if (!ok && auth) {
+            try {
+              sessionStorage.setItem('paystack_session_kicked', '1');
+            } catch {
+              /* ignore */
             }
-          });
-        }
+            void firebaseSignOut(auth);
+          }
+        })();
       }
     });
     return () => {
