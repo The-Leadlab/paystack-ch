@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Moon, Sun } from "lucide-react";
+import { Languages, Moon, Sun } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/cafe/context/LanguageContext";
@@ -64,7 +64,9 @@ export function OnboardingLanguageToggle({ className }: { className?: string }) 
       aria-label={language === "en" ? t("navSwitchToFrench") : t("navSwitchToEnglish")}
       title={`${t("languageToggleLabel")}: ${short}`}
     >
-      <span aria-hidden>🌐</span>
+      <span aria-hidden>
+        <Languages className="size-3.5 shrink-0" />
+      </span>
       <span>{language === "en" ? t("languageToggleShortEn") : t("languageToggleShortFr")}</span>
     </button>
   );
@@ -110,6 +112,7 @@ export function OnboardingStepShell({
           className="min-w-0"
         />
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <OnboardingLanguageToggle />
           <OnboardingThemeToggle />
           <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[color:var(--color-cdlp-muted)] tabular-nums">
             {stepIndex + 1} / {stepCount}

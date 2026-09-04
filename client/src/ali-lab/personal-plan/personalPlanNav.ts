@@ -14,7 +14,8 @@ export type PersonalPlanSurface = "lab" | "app";
 
 export type PersonalPlanNavItem = {
   id: string;
-  label: string;
+  /** i18n key in labStrings / LanguageContext via useLabLanguage().t */
+  labelKey: string;
   icon: LucideIcon;
   featureId: string;
   /** Shown in the compact mobile bar (max 4 + more). */
@@ -23,13 +24,13 @@ export type PersonalPlanNavItem = {
 
 /** Primary nav — same features in lab (`/ali`) and production personal (`/personal`). */
 export const PERSONAL_PLAN_NAV: PersonalPlanNavItem[] = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard, featureId: "overview", mobilePrimary: true },
-  { id: "budget", label: "Budget", icon: Wallet, featureId: "budgeting", mobilePrimary: true },
-  { id: "reports", label: "Reports", icon: BarChart3, featureId: "forecasting" },
-  { id: "savings", label: "Savings", icon: PiggyBank, featureId: "goals", mobilePrimary: true },
-  { id: "investments", label: "Investments", icon: TrendingUp, featureId: "investments" },
-  { id: "bills", label: "Bills", icon: Receipt, featureId: "bill-reminders", mobilePrimary: true },
-  { id: "settings", label: "Settings", icon: Settings, featureId: "settings" },
+  { id: "overview", labelKey: "navOverview", icon: LayoutDashboard, featureId: "overview", mobilePrimary: true },
+  { id: "budget", labelKey: "navBudget", icon: Wallet, featureId: "budgeting", mobilePrimary: true },
+  { id: "reports", labelKey: "navReports", icon: BarChart3, featureId: "forecasting" },
+  { id: "savings", labelKey: "navSavings", icon: PiggyBank, featureId: "goals", mobilePrimary: true },
+  { id: "investments", labelKey: "navInvestments", icon: TrendingUp, featureId: "investments" },
+  { id: "bills", labelKey: "navBills", icon: Receipt, featureId: "bill-reminders", mobilePrimary: true },
+  { id: "settings", labelKey: "navSettings", icon: Settings, featureId: "settings" },
 ];
 
 export const PERSONAL_PLAN_DEFAULT_FEATURE = "overview";
@@ -45,7 +46,7 @@ export function personalPlanNavHref(item: PersonalPlanNavItem, surface: Personal
 
 export const PERSONAL_PLAN_LAB_NAV: PersonalPlanNavItem = {
   id: "lab",
-  label: "Lab features",
+  labelKey: "navLabFeatures",
   icon: FlaskConical,
   featureId: "automation-rules",
 };

@@ -9,7 +9,14 @@ import React, {
 import { doc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "./AuthContext";
 import { db } from "../lib/firebase";
-import { getClientSessionRole, setClientSessionRole } from "../lib/activeClientSession";
+import {
+  getClientSessionRole,
+  setClientSessionRole,
+  getLocalClientSessionId,
+  touchSharedPrimaryActivity,
+  tryClaimIdleSharedPrimary,
+  syncClientSessionRole,
+} from "../lib/activeClientSession";
 import { isMultiLoginMode, parseLoginMode, type LoginMode } from "@shared/loginMode";
 import type { ClientSessionRole } from "../lib/activeClientSession";
 import {
@@ -20,6 +27,13 @@ import {
   watchPendingSessionAccessRequests,
   type SessionAccessRequest,
 } from "../lib/sessionAccessRequests";
+import {
+  clearClientPresence,
+  presenceNameForId,
+  upsertClientPresence,
+  watchClientPresence,
+  type ClientPresence,
+} from "../lib/clientPresence";
 
 export type ClientAccessRole = ClientSessionRole | "contributor";
 
@@ -31,7 +45,9 @@ type ClientSessionAccessValue = {
   grantedSessionId: string | null;
   pendingRequests: SessionAccessRequest[];
   myRequest: SessionAccessRequest | null;
-  requestUploadAccess: () => Promise<void>;
+  /** Live shared-login presence (self + peers). Empty when exclusive mode. */
+  presence: ClientPresence[];
+  requestUploadAccess: () => Promise<"claimed" | "requested">;
   setGrantedSession: (sessionId: string | null) => void;
 };
 
@@ -51,6 +67,7 @@ export function ClientSessionAccessProvider({ children, currentSessionId }: Prop
   );
   const [pendingRequests, setPendingRequests] = useState<SessionAccessRequest[]>([]);
   const [myRequest, setMyRequest] = useState<SessionAccessRequest | null>(null);
+  const [presence, setPresence] = useState<ClientPresence[]>([]);
 
   useEffect(() => {
     if (!user?.uid || !db) return;
@@ -65,6 +82,15 @@ export function ClientSessionAccessProvider({ children, currentSessionId }: Prop
     if (stored) {
       setGrantedSessionIdState(stored);
     }
+    if (!user?.uid) return;
+    let cancelled = false;
+    void syncClientSessionRole(user.uid).then((next) => {
+      if (cancelled) return;
+      setRole(next);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [user?.uid]);
 
   useEffect(() => {
@@ -84,6 +110,61 @@ export function ClientSessionAccessProvider({ children, currentSessionId }: Prop
     });
   }, [user?.uid, role]);
 
+  // Presence heartbeats + host keepalive for shared multi-login
+  useEffect(() => {
+    if (!user?.uid || !isMultiLoginMode(loginMode)) {
+      setPresence([]);
+      return;
+    }
+    let cancelled = false;
+    const beat = () => {
+      if (cancelled) return;
+      const currentRole = getClientSessionRole();
+      void upsertClientPresence(user.uid, currentRole === "contributor" ? "contributor" : currentRole);
+      if (currentRole === "primary") {
+        void touchSharedPrimaryActivity(user.uid);
+      }
+    };
+    beat();
+    const interval = window.setInterval(beat, 25_000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") beat();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    const unsub = watchClientPresence(user.uid, setPresence);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVis);
+      unsub();
+      void clearClientPresence(user.uid);
+    };
+  }, [user?.uid, loginMode, role]);
+
+  // Viewers periodically take over if the host has been idle ~15 minutes
+  useEffect(() => {
+    if (!user?.uid || !isMultiLoginMode(loginMode)) return;
+    if (role === "primary") return;
+
+    let cancelled = false;
+    const attempt = async () => {
+      if (cancelled || document.visibilityState === "hidden") return;
+      const next = await tryClaimIdleSharedPrimary(user.uid);
+      if (cancelled) return;
+      if (next === "primary") {
+        setRole("primary");
+        void upsertClientPresence(user.uid, "primary");
+      }
+    };
+
+    void attempt();
+    const interval = window.setInterval(() => void attempt(), 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [user?.uid, loginMode, role]);
+
   const setGrantedSession = useCallback((sessionId: string | null) => {
     setContributorSessionId(sessionId);
     setGrantedSessionIdState(sessionId);
@@ -93,9 +174,19 @@ export function ClientSessionAccessProvider({ children, currentSessionId }: Prop
     }
   }, []);
 
-  const requestUploadAccess = useCallback(async () => {
-    if (!user?.uid) return;
-    await createSessionAccessRequest(user.uid);
+  const requestUploadAccess = useCallback(async (): Promise<"claimed" | "requested"> => {
+    if (!user?.uid) return "requested";
+    // If host is already idle, become host instead of asking nobody
+    const next = await tryClaimIdleSharedPrimary(user.uid);
+    if (next === "primary") {
+      setRole("primary");
+      void upsertClientPresence(user.uid, "primary");
+      return "claimed";
+    }
+    const local = getLocalClientSessionId();
+    const label = local ? presenceNameForId(local, "viewer") : undefined;
+    await createSessionAccessRequest(user.uid, label);
+    return "requested";
   }, [user?.uid]);
 
   const value = useMemo<ClientSessionAccessValue>(() => {
@@ -112,6 +203,7 @@ export function ClientSessionAccessProvider({ children, currentSessionId }: Prop
       grantedSessionId,
       pendingRequests,
       myRequest,
+      presence: isMultiLoginMode(loginMode) ? presence : [],
       requestUploadAccess,
       setGrantedSession,
     };
@@ -122,6 +214,7 @@ export function ClientSessionAccessProvider({ children, currentSessionId }: Prop
     currentSessionId,
     pendingRequests,
     myRequest,
+    presence,
     requestUploadAccess,
     setGrantedSession,
   ]);
@@ -142,7 +235,8 @@ export function useClientSessionAccess(): ClientSessionAccessValue {
       grantedSessionId: null,
       pendingRequests: [],
       myRequest: null,
-      requestUploadAccess: async () => undefined,
+      presence: [],
+      requestUploadAccess: async () => "requested" as const,
       setGrantedSession: () => undefined,
     };
   }

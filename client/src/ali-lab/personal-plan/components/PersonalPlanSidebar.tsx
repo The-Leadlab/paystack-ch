@@ -24,6 +24,7 @@ import { usePersonalPlan } from "../context/PersonalPlanContext";
 import { useCanOpenBusinessDashboard } from "@/cafe/hooks/useProductLineAccess";
 import { brandLockupSrc, brandMarkSrc, BRAND_LOGO_SIZE, BRAND_LOCKUP_HEIGHT } from "@/const/branding";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useLabLanguage } from "../../context/LabLanguageContext";
 import { PersonalSessionsControl } from "./PersonalSessionsControl";
 
 const SECONDARY_FEATURE_IDS = new Set([
@@ -44,6 +45,7 @@ function PersonalPlanMoreSheet({
   onClose: () => void;
   showBusinessLink: boolean;
 }) {
+  const { t } = useLabLanguage();
   const { openTransaction } = usePersonalPlan();
   const secondary = PERSONAL_PLAN_NAV.filter((item) => !item.mobilePrimary && item.featureId !== "overview");
 
@@ -59,6 +61,7 @@ function PersonalPlanMoreSheet({
       >
         {secondary.map((item) => {
           const Icon = item.icon;
+          const label = t(item.labelKey as Parameters<typeof t>[0]);
           return (
             <Link
               key={item.id}
@@ -71,7 +74,7 @@ function PersonalPlanMoreSheet({
               data-active={isNavActive(item, featureId)}
             >
               <Icon className="size-3.5 shrink-0" />
-              {item.label}
+              {label}
             </Link>
           );
         })}
@@ -84,7 +87,7 @@ function PersonalPlanMoreSheet({
           className="pp-sidebar-action pp-sidebar-action--primary mt-1"
         >
           <Plus className="size-3.5" />
-          Add transaction
+          {t("stmtAddTx")}
         </button>
         {surface === "app" ? (
           showBusinessLink ? (
@@ -94,7 +97,7 @@ function PersonalPlanMoreSheet({
               className="pp-sidebar-action pp-sidebar-action--accent mt-1"
             >
               <Briefcase className="size-3.5" />
-              Business dashboard
+              {t("businessDashboardLink")}
             </Link>
           ) : null
         ) : (
@@ -105,7 +108,7 @@ function PersonalPlanMoreSheet({
               className="pp-sidebar-action pp-sidebar-action--muted mt-1"
             >
               <Briefcase className="size-3.5" />
-              Production personal
+              {t("productionPersonalLink")}
             </Link>
             <button
               type="button"
@@ -118,7 +121,7 @@ function PersonalPlanMoreSheet({
               className="pp-sidebar-action pp-sidebar-action--muted"
             >
               <Lock className="size-3.5" />
-              Lock lab
+              {t("lockLab")}
             </button>
           </>
         )}
@@ -138,6 +141,7 @@ export function PersonalPlanSidebar({
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
 }) {
+  const { t } = useLabLanguage();
   const { openTransaction } = usePersonalPlan();
   const showBusinessLink = useCanOpenBusinessDashboard();
   const { theme } = useTheme();
@@ -188,8 +192,8 @@ export function PersonalPlanSidebar({
               data-tour="sidebar-collapse"
               onClick={onToggleCollapsed}
               className="p-1.5 rounded border border-[var(--pp-border)] text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-primary)] shrink-0"
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              title={collapsed ? "Expand" : "Collapse"}
+              aria-label={collapsed ? t("sidebarExpand") : t("sidebarCollapse")}
+              title={collapsed ? t("sidebarExpand") : t("sidebarCollapse")}
             >
               {collapsed ? <PanelLeftOpen className="size-3.5" /> : <PanelLeftClose className="size-3.5" />}
             </button>
@@ -197,27 +201,28 @@ export function PersonalPlanSidebar({
         </div>
         {!collapsed ? (
           <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--pp-on-surface-variant)] truncate px-0.5">
-            {surface === "app" ? "Personal" : "Lab · Personal"}
+            {surface === "app" ? t("navPersonal") : t("navLabPersonal")}
           </p>
         ) : null}
         <PersonalSessionsControl compact iconOnly={collapsed} align="left" />
       </div>
 
-      <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden" aria-label="Personal navigation">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden" aria-label={t("navPersonalAria")}>
         {PERSONAL_PLAN_NAV.map((item) => {
           const active = isNavActive(item, featureId);
           const Icon = item.icon;
+          const label = t(item.labelKey as Parameters<typeof t>[0]);
           return (
             <Link
               key={item.id}
               href={personalPlanNavHref(item, surface)}
-              title={item.label}
+              title={label}
               data-tour={`nav-${item.featureId}`}
               data-active={active}
               className={cn("pp-nav-btn", collapsed && "pp-nav-btn--rail", active && "pp-nav-active")}
             >
               <Icon className="size-3.5 shrink-0" />
-              {!collapsed ? <span>{item.label}</span> : null}
+              {!collapsed ? <span>{label}</span> : null}
             </Link>
           );
         })}
@@ -245,25 +250,25 @@ export function PersonalPlanSidebar({
           type="button"
           data-tour="add-transaction"
           onClick={() => openTransaction()}
-          title="Add transaction"
+          title={t("stmtAddTx")}
           className={cn(
             "pp-sidebar-action pp-sidebar-action--primary",
             collapsed && "pp-sidebar-action--rail"
           )}
         >
           <Plus className="size-3.5 shrink-0" />
-          {!collapsed ? <span>Add transaction</span> : null}
+          {!collapsed ? <span>{t("stmtAddTx")}</span> : null}
         </button>
         {surface === "lab" ? (
           !collapsed ? (
             <>
               <Link href={businessAppPath()} className="pp-sidebar-action pp-sidebar-action--muted">
                 <Briefcase className="size-3.5 shrink-0" />
-                Business /app
+                {t("businessAppLink")}
               </Link>
               <Link href={personalAppHomePath()} className="pp-sidebar-action pp-sidebar-action--muted">
                 <Briefcase className="size-3.5 shrink-0" />
-                Production personal
+                {t("productionPersonalLink")}
               </Link>
               <button
                 type="button"
@@ -271,14 +276,14 @@ export function PersonalPlanSidebar({
                 className="pp-sidebar-action pp-sidebar-action--muted"
               >
                 <Lock className="size-3.5 shrink-0" />
-                Lock lab
+                {t("lockLab")}
               </button>
             </>
           ) : (
             <button
               type="button"
               onClick={() => void lockLab()}
-              title="Lock lab"
+              title={t("lockLab")}
               className="pp-sidebar-action pp-sidebar-action--muted pp-sidebar-action--rail"
             >
               <Lock className="size-3.5" />
@@ -287,7 +292,7 @@ export function PersonalPlanSidebar({
         ) : showBusinessLink ? (
           <Link
             href={businessAppPath()}
-            title="Business dashboard"
+            title={t("businessDashboardLink")}
             data-tour="business-link"
             className={cn(
               "pp-sidebar-action pp-sidebar-action--accent",
@@ -295,7 +300,7 @@ export function PersonalPlanSidebar({
             )}
           >
             <Briefcase className="size-3.5 shrink-0" />
-            {!collapsed ? <span>Business dashboard</span> : null}
+            {!collapsed ? <span>{t("businessDashboardLink")}</span> : null}
           </Link>
         ) : null}
       </div>
@@ -310,6 +315,7 @@ export function PersonalPlanMobileNav({
   featureId: string | undefined;
   surface?: PersonalPlanSurface;
 }) {
+  const { t } = useLabLanguage();
   const { openTransaction } = usePersonalPlan();
   const [moreOpen, setMoreOpen] = useState(false);
   const showBusinessLink = useCanOpenBusinessDashboard();
@@ -319,21 +325,22 @@ export function PersonalPlanMobileNav({
     <>
       <nav
         className="pp-mobile-nav md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-stretch justify-between gap-1 px-1 pb-[env(safe-area-inset-bottom)] pt-1"
-        aria-label="Personal mobile navigation"
+        aria-label={t("navMobileAria")}
       >
         {primary.map((item) => {
           const active = isNavActive(item, featureId);
           const Icon = item.icon;
+          const label = t(item.labelKey as Parameters<typeof t>[0]);
           return (
             <Link
               key={item.id}
               href={personalPlanNavHref(item, surface)}
               data-active={active}
               className="pp-mobile-nav-btn"
-              aria-label={item.label}
+              aria-label={label}
             >
               <Icon className="size-5 shrink-0" aria-hidden />
-              <span className="leading-tight text-center px-0.5">{item.label}</span>
+              <span className="leading-tight text-center px-0.5">{label}</span>
             </Link>
           );
         })}
@@ -341,19 +348,19 @@ export function PersonalPlanMobileNav({
           type="button"
           onClick={() => openTransaction()}
           className="pp-mobile-nav-btn pp-mobile-nav-fab max-w-[3.5rem]"
-          aria-label="Add transaction"
+          aria-label={t("stmtAddTx")}
         >
           <Plus className="size-5" />
-          <span>Add</span>
+          <span>{t("navAddShort")}</span>
         </button>
         <button
           type="button"
           onClick={() => setMoreOpen(true)}
           className="pp-mobile-nav-btn"
-          aria-label="More"
+          aria-label={t("navMore")}
         >
           <MoreHorizontal className="size-5" />
-          <span>More</span>
+          <span>{t("navMore")}</span>
         </button>
       </nav>
       {moreOpen ? (

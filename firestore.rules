@@ -236,6 +236,12 @@ service cloud.firestore {
         allow read, create, update: if signedIn() && userId == ownerUid();
         allow delete: if false;
       }
+
+      /** Shared-login presence balls — each browser writes its own doc. */
+      match /clientPresence/{clientSessionId} {
+        allow read: if signedIn() && userId == ownerUid();
+        allow create, update, delete: if signedIn() && userId == ownerUid();
+      }
     }
 
     /** Beta usage telemetry — clients write their own events; admin reads via server API. */

@@ -40,7 +40,7 @@ export const tourEn: Record<string, string> = {
   bizOnboardWelcomeSubtitle:
     'Swiss restaurant finances — sessions, documents, revenue, and VAT.',
   bizOnboardWelcomeNote:
-    'Personal money stays on /personal — never mixed into Revenue.',
+    'Personal money stays in Personal — never mixed into Revenue.',
   bizOnboardWorkspaceTitle: 'Your restaurant workspace',
   bizOnboardWorkspaceSubtitle:
     'If you already picked a client, you’re set. Otherwise create one from the client list.',
@@ -221,7 +221,7 @@ export const tourFr: Record<string, string> = {
   bizOnboardWelcomeSubtitle:
     'Finances de restaurants suisses — sessions, documents, revenus et TVA.',
   bizOnboardWelcomeNote:
-    'L’argent personnel reste sur /personal — jamais mélangé aux revenus.',
+    'L’argent personnel reste sur l’espace Personnel — jamais mélangé aux revenus.',
   bizOnboardWorkspaceTitle: 'Votre espace restaurant',
   bizOnboardWorkspaceSubtitle:
     'Si vous avez déjà choisi un client, c’est bon. Sinon créez-en un depuis la liste.',

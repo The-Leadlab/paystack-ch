@@ -6,7 +6,7 @@ import { PersonalPeriodFilter } from "./PersonalPeriodFilter";
 
 /** Slim sticky bar — calendar period filter + refresh. */
 export function PersonalPlanHeader({ title }: { title?: string }) {
-  const { t: labT } = useLabLanguage();
+  const { t } = useLabLanguage();
   const { month } = usePersonalPlan();
   const ledger = usePersonalBudgetLedger(month);
 
@@ -26,7 +26,7 @@ export function PersonalPlanHeader({ title }: { title?: string }) {
         className="p-1.5 rounded border border-[var(--pp-border)] hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)] transition-colors text-[var(--pp-on-surface-variant)] shrink-0"
         onClick={() => void ledger.refresh()}
         disabled={ledger.loading}
-        aria-label={labT("month") ? "Refresh" : "Refresh"}
+        aria-label={t("refreshAria")}
       >
         <RefreshCw className={`size-3.5 ${ledger.loading ? "animate-spin" : ""}`} />
       </button>

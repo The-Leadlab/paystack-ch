@@ -21,7 +21,8 @@ export function PersonalPeriodFilter({
 
   const monthLabel = (() => {
     const [y, m] = month.split("-").map(Number);
-    return new Date(y, m - 1, 1).toLocaleDateString(lang === "fr" ? "fr-CH" : "de-CH", {
+    const locale = lang === "fr" ? "fr-CH" : lang === "it" ? "it-CH" : lang === "de" ? "de-CH" : "en-CH";
+    return new Date(y, m - 1, 1).toLocaleDateString(locale, {
       month: "long",
       year: "numeric",
     });
@@ -44,8 +45,8 @@ export function PersonalPeriodFilter({
         type="button"
         className="p-1 rounded text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-primary)] hover:bg-[var(--pp-surface-highest)]"
         onClick={() => setMonth(shiftMonth(month, -1))}
-        aria-label="Previous month"
-        title="Previous month"
+        aria-label={t("monthPrev")}
+        title={t("monthPrev")}
       >
         <ChevronLeft className="size-3.5" />
       </button>
@@ -66,8 +67,8 @@ export function PersonalPeriodFilter({
         type="button"
         className="p-1 rounded text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-primary)] hover:bg-[var(--pp-surface-highest)]"
         onClick={() => setMonth(shiftMonth(month, 1))}
-        aria-label="Next month"
-        title="Next month"
+        aria-label={t("monthNext")}
+        title={t("monthNext")}
       >
         <ChevronRight className="size-3.5" />
       </button>
@@ -75,9 +76,9 @@ export function PersonalPeriodFilter({
         type="button"
         className="hidden sm:inline text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-primary)]"
         onClick={() => setMonth(currentMonthKey())}
-        title="Jump to current month"
+        title={t("monthJumpCurrent")}
       >
-        Today
+        {t("monthToday")}
       </button>
     </div>
   );

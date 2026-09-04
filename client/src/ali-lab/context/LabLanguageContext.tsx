@@ -18,9 +18,11 @@ export function LabLanguageProvider({ children }: { children: ReactNode }) {
   const { language: globalLang, setLanguage: setGlobalLang } = useLanguage();
   const [lang, setLangState] = useState<LabLang>(() => globalToLab(globalLang));
 
+  // Always follow production EN/FR so /personal and /app never mix languages.
+  // DE/IT only stick when the user picks them explicitly inside the lab.
   useEffect(() => {
     if (globalLang === "en" || globalLang === "fr") {
-      setLangState((prev) => (prev === "de" || prev === "it" ? prev : globalLang));
+      setLangState(globalLang);
     }
   }, [globalLang]);
 

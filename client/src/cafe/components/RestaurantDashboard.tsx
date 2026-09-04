@@ -14,6 +14,7 @@ import { usePOS } from '../context/POSContext';
 import { DocumentProcessor } from './DocumentProcessor';
 import { SessionAccessShell } from "@/cafe/components/SessionAccessShell";
 import { SessionAccessBanner } from "@/cafe/components/SessionAccessBanner";
+import { SharedLoginPresenceBalls } from "@/cafe/components/SharedLoginPresenceBalls";
 import { SessionNamePrompt } from "@/cafe/components/SessionNamePrompt";
 import { BusinessKpiCard } from './BusinessKpiCard';
 import { BusinessSidebarNav, type BusinessTab } from './BusinessSidebarNav';
@@ -876,6 +877,7 @@ export function RestaurantDashboard() {
           />
         </div>
         <div className="flex items-center gap-2">
+          <SharedLoginPresenceBalls compact />
           <button
             type="button"
             onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
@@ -947,16 +949,23 @@ export function RestaurantDashboard() {
           {!sidebarCollapsed ? (
             <div className="flex items-center justify-between gap-1">
               <span className="text-[10px] text-cdlp-muted truncate min-w-0">{user?.email}</span>
-              <button
-                type="button"
-                onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
-                className="shrink-0 px-1.5 py-0.5 rounded border border-cdlp-border text-[9px] font-bold text-cdlp-muted uppercase flex items-center gap-0.5"
-              >
-                <Globe className="w-2.5 h-2.5" />
-                {language === 'en' ? 'ENG' : 'FR'}
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <SharedLoginPresenceBalls />
+                <button
+                  type="button"
+                  onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
+                  className="shrink-0 px-1.5 py-0.5 rounded border border-cdlp-border text-[9px] font-bold text-cdlp-muted uppercase flex items-center gap-0.5"
+                >
+                  <Globe className="w-2.5 h-2.5" />
+                  {language === 'en' ? 'ENG' : 'FR'}
+                </button>
+              </div>
             </div>
-          ) : null}
+          ) : (
+            <div className="flex justify-center py-0.5">
+              <SharedLoginPresenceBalls compact />
+            </div>
+          )}
 
           {!sidebarCollapsed ? (
             <button

@@ -26,6 +26,7 @@ import {
   verifyActiveClientSession,
   watchActiveClientSession,
 } from '../lib/activeClientSession';
+import { clearClientPresence } from '../lib/clientPresence';
 import { persistLoginModeToUser } from '../lib/persistLoginMode';
 import {
   clearLoginActivitySessionFlag,
@@ -277,6 +278,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const uid = auth?.currentUser?.uid;
     if (uid) {
       void logUserActivity(uid, 'logout');
+      await clearClientPresence(uid);
     }
     clearLoginActivitySessionFlag();
     clearLocalClientSessionId();

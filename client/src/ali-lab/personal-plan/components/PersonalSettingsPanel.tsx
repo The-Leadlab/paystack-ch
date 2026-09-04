@@ -27,7 +27,7 @@ const LANGS: LabLang[] = ["en", "fr", "de", "it"];
 
 /** Everything formerly scattered on Overview / header — one quiet Settings screen. */
 export function PersonalSettingsPanel() {
-  const { lang, setLang } = useLabLanguage();
+  const { lang, setLang, t: labT } = useLabLanguage();
   const { t } = useLanguage();
   const { surface, openInvite } = usePersonalPlan();
   const { theme, toggleTheme, switchable } = useTheme();
@@ -37,21 +37,23 @@ export function PersonalSettingsPanel() {
 
   const cap = entitlements.maxPersonalDocumentsPerMonth ?? PERSONAL_BASE_DOC_LIMIT;
   const used = Math.max(ledger.totalImportCount, personalDocumentsUsedThisMonth);
+  /** Production personal stays EN/FR only — DE/IT are lab-only and caused mixed UI. */
+  const langs: LabLang[] = surface === "app" ? ["en", "fr"] : LANGS;
 
   return (
     <div className="space-y-5 max-w-2xl" data-tour="panel-settings">
       <GlassCard className="p-4 space-y-3">
-        <p className="text-sm font-semibold">Sessions</p>
+        <p className="text-sm font-semibold">{labT("settingsSessionsTitle")}</p>
         <p className="text-[11px] text-[var(--pp-on-surface-variant)]">
-          Organize statement uploads. Current session filters Overview and Budget.
+          {labT("settingsSessionsHint")}
         </p>
         <PersonalSessionsControl />
       </GlassCard>
 
       <GlassCard className="p-4 space-y-3">
-        <p className="text-sm font-semibold">Language & appearance</p>
+        <p className="text-sm font-semibold">{labT("settingsLanguageTitle")}</p>
         <div className="flex flex-wrap items-center gap-2">
-          {LANGS.map((l) => (
+          {langs.map((l) => (
             <button
               key={l}
               type="button"
@@ -79,12 +81,12 @@ export function PersonalSettingsPanel() {
       </GlassCard>
 
       <GlassCard className="p-4 space-y-2">
-        <p className="text-sm font-semibold">Uploads</p>
+        <p className="text-sm font-semibold">{labT("settingsUploadsTitle")}</p>
         <p className="text-xs text-[var(--pp-on-surface-variant)]">
           <span className="font-semibold text-[var(--pp-on-surface)] pp-tabular">
             {used}/{cap}
           </span>{" "}
-          documents across all sessions
+          {labT("settingsUploadsHint")}
         </p>
       </GlassCard>
 
@@ -92,9 +94,9 @@ export function PersonalSettingsPanel() {
 
       {surface === "app" ? (
         <GlassCard className="p-4 space-y-3">
-          <p className="text-sm font-semibold">Household</p>
+          <p className="text-sm font-semibold">{labT("settingsHouseholdTitle")}</p>
           <p className="text-[11px] text-[var(--pp-on-surface-variant)]">
-            Invite someone to see your personal Overview, Budget, Reports, and statements.
+            {labT("settingsHouseholdHint")}
           </p>
           <button
             type="button"
@@ -102,7 +104,7 @@ export function PersonalSettingsPanel() {
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--pp-outline-variant)] text-xs font-bold hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)]"
           >
             <UserPlus className="size-4" />
-            Invite
+            {labT("settingsInviteCta")}
           </button>
         </GlassCard>
       ) : null}
@@ -145,7 +147,7 @@ export function PersonalSettingsPanel() {
           className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-primary)]"
         >
           <Briefcase className="size-4" />
-          Business dashboard
+          {labT("businessDashboardLink")}
         </Link>
       ) : null}
     </div>

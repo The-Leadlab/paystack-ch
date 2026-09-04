@@ -29,7 +29,10 @@ export function SessionAccessBanner() {
     myRequest,
     requestUploadAccess,
     grantedSessionId,
+    presence,
   } = useClientSessionAccess();
+  /** Presence balls own request/approve when peers are online. */
+  const presenceUiActive = presence.length > 0;
 
   const [busy, setBusy] = useState(false);
   const [approveOpen, setApproveOpen] = useState(false);
@@ -41,6 +44,17 @@ export function SessionAccessBanner() {
     const match = sessions.find((s) => s.id === grantedSessionId);
     if (match) setCurrentSession(match);
   }, [grantedSessionId, sessions, setCurrentSession]);
+
+  if (presenceUiActive) {
+    if (role === "contributor" && grantedSessionId) {
+      return (
+        <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm text-foreground">
+          {t("sessionAccessContributorHint")}
+        </div>
+      );
+    }
+    return null;
+  }
 
   if (role === "primary" && pendingRequests.length === 0) return null;
   if (role !== "primary" && !isViewOnly && role !== "contributor") return null;
@@ -88,10 +102,19 @@ export function SessionAccessBanner() {
   const onRequest = async () => {
     setBusy(true);
     try {
-      await requestUploadAccess();
-      toast.success(t("sessionAccessRequestSent"));
+      const result = await requestUploadAccess();
+      if (result === "claimed") {
+        toast.success(t("sessionAccessBecameHost"));
+      } else {
+        toast.success(t("sessionAccessRequestSent"));
+      }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/permission|insufficient/i.test(msg)) {
+        toast.error(t("sessionAccessPermissionError"));
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setBusy(false);
     }
