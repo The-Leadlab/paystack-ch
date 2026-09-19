@@ -510,7 +510,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                       value={editPhone}
                       onChange={(e) => setEditPhone(e.target.value)}
                       className="bg-background"
-                      placeholder="+41 78 757 59 93"
+                      placeholder="+41 76 543 21 11"
                       inputMode="tel"
                       autoComplete="tel"
                     />

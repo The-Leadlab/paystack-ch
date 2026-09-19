@@ -407,7 +407,7 @@ const translations = {
     adminUserStripeMatchPending:
       'Stripe customer found by email but not saved on this user yet. Click “Link Stripe by email” to repair billing.',
     adminUserPhoneHint:
-      'Use international format, e.g. +41 78 757 59 93. Swiss local numbers like 078… are converted automatically.',
+      'Use international format, e.g. +41 76 543 21 11. Swiss local numbers like 076… are converted automatically.',
     adminUserCancelScheduled: 'Cancellation scheduled at period end',
     adminUserActiveCoupon: 'Active coupon',
     adminUserCancelSub: 'Cancel at period end',
@@ -1616,7 +1616,7 @@ const translations = {
     adminUserStripeMatchPending:
       'Client Stripe trouve par e-mail mais pas encore enregistre. Cliquez sur « Lier Stripe par e-mail » pour reparer.',
     adminUserPhoneHint:
-      'Format international, ex. +41 78 757 59 93. Les numeros suisses locaux (078…) sont convertis automatiquement.',
+      'Format international, ex. +41 76 543 21 11. Les numeros suisses locaux (076…) sont convertis automatiquement.',
     adminUserCancelScheduled: 'Resiliation prevue en fin de periode',
     adminUserActiveCoupon: 'Coupon actif',
     adminUserCancelSub: 'Resilier en fin de periode',

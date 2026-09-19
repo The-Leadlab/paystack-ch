@@ -1,6 +1,6 @@
 /**
  * Normalize phone numbers to E.164 for Firebase Auth (and Stripe).
- * Defaults to Switzerland (+41) when the user enters a national number like 078 757 59 93.
+ * Defaults to Switzerland (+41) when the user enters a national number like 076 543 21 11.
  */
 export function normalizePhoneToE164(
   raw: string,
@@ -39,7 +39,7 @@ export function normalizePhoneToE164(
   if (!/^\+[1-9]\d{7,14}$/.test(candidate)) {
     throw Object.assign(
       new Error(
-        `Phone number must be E.164 (e.g. +41 78 757 59 93). Got: ${trimmed}`
+        `Phone number must be E.164 (e.g. +41 76 543 21 11). Got: ${trimmed}`
       ),
       { status: 400, code: "invalid_phone" }
     );

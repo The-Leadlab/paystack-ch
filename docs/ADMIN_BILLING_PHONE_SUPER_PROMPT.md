@@ -1,6 +1,6 @@
 # Admin user billing & phone — Super Prompt
 
-Voice QA (Joshua, 2026-07-15) on Amy Barker’s account: missing Stripe customer ID after checkout, need clear billing dates, and Swiss phone save failed E.164.
+Voice QA (Joshua, 2026-07-15) on operator account (cafe de la place): missing Stripe customer ID after checkout, need clear billing dates, and Swiss phone save failed E.164.
 
 ---
 
@@ -8,7 +8,7 @@ Voice QA (Joshua, 2026-07-15) on Amy Barker’s account: missing Stripe customer
 
 1. **Missing Stripe customer** — Firestore has plan/status but no `stripeCustomerId` (checkout link failed or partial write). Admin Invoices tab showed only “no Stripe customer ID”.
 2. **Billing dates incomplete** — Operators need: subscription start, payment cycle (period start/end), last payment date, late or not.
-3. **Phone E.164** — Entering `0787575993` failed Firebase Auth (“must be a non-empty E.164…”).
+3. **Phone E.164** — Entering `0765432111` failed Firebase Auth (“must be a non-empty E.164…”).
 4. **Mobile header** — Logo wordmark overlapped “OPERATOR / Admin” on phones.
 
 ---
@@ -26,12 +26,12 @@ Voice QA (Joshua, 2026-07-15) on Amy Barker’s account: missing Stripe customer
 
 ---
 
-## Operator QA (Amy / similar)
+## Operator QA (cafe de la place / similar)
 
 - [ ] Open user without `stripeCustomerId` → Billing shows match warning **or** empty + Link button  
 - [ ] **Link Stripe by email** → customer + sub saved; invoices load  
 - [ ] Billing shows start / period / last payment / late status  
-- [ ] Profile phone `0787575993` → saves as `+41787575993`  
+- [ ] Profile phone `0765432111` → saves as `+41765432111`  
 - [ ] `/admin` on phone: logo and title do not overlap; EN/FR toggle readable  
 
 ---
