@@ -3,12 +3,12 @@ import { normalizePhoneToE164 } from "../lib/phoneE164.js";
 
 describe("normalizePhoneToE164", () => {
   it("converts Swiss local mobiles to +41", () => {
-    expect(normalizePhoneToE164("0787575993")).toBe("+41787575993");
-    expect(normalizePhoneToE164("078 757 59 93")).toBe("+41787575993");
+    expect(normalizePhoneToE164("0765432111")).toBe("+41765432111");
+    expect(normalizePhoneToE164("076 543 21 11")).toBe("+41765432111");
   });
 
   it("keeps valid E.164", () => {
-    expect(normalizePhoneToE164("+41787575993")).toBe("+41787575993");
+    expect(normalizePhoneToE164("+41765432111")).toBe("+41765432111");
   });
 
   it("returns null for empty", () => {
