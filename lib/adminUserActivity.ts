@@ -88,6 +88,7 @@ export type AdminUsageSummary = {
   lastWorkSessionDocs: number;
   lastWorkSessionErrors: number;
   lastWorkSessionCompleted: number;
+  generatedAt: string;
 };
 
 export type AdminUserUsageInsights = {
@@ -167,6 +168,99 @@ function mapEvent(id: string, data: Record<string, unknown>): AdminActivityEvent
   };
 }
 
+const OWNER_FIELDS = ["restaurantId", "restaurant_id", "userId", "uid"] as const;
+
+function newerIso(a: string | null, b: string | null): string | null {
+  if (!a) return b;
+  if (!b) return a;
+  return a >= b ? a : b;
+}
+
+function preferRicherDocument(a: AdminDocumentSnapshot, b: AdminDocumentSnapshot): AdminDocumentSnapshot {
+  return {
+    id: a.id,
+    fileName: a.fileName || b.fileName,
+    status: a.status || b.status,
+    error: a.error || b.error,
+    errorCode: a.errorCode || b.errorCode,
+    lastError: a.lastError || b.lastError,
+    lastErrorCode: a.lastErrorCode || b.lastErrorCode,
+    lastErrorAt: newerIso(a.lastErrorAt, b.lastErrorAt),
+    errorResolvedAt: newerIso(a.errorResolvedAt, b.errorResolvedAt),
+    pageCount: a.pageCount ?? b.pageCount,
+    createdAt: newerIso(a.createdAt, b.createdAt) ?? a.createdAt,
+    updatedAt: newerIso(a.updatedAt, b.updatedAt),
+    sessionId: a.sessionId || b.sessionId,
+    mimeType: a.mimeType || b.mimeType,
+    fileSizeBytes: a.fileSizeBytes ?? b.fileSizeBytes,
+  };
+}
+
+export function mergeDocumentsById(lists: AdminDocumentSnapshot[][]): AdminDocumentSnapshot[] {
+  const map = new Map<string, AdminDocumentSnapshot>();
+  for (const list of lists) {
+    for (const doc of list) {
+      if (!doc.id) continue;
+      const existing = map.get(doc.id);
+      map.set(doc.id, existing ? preferRicherDocument(existing, doc) : doc);
+    }
+  }
+  return [...map.values()].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+}
+
+/** Files logged in userActivity but missing from the documents query (owner-field mismatch). */
+export function documentsFromActivityEvents(events: AdminActivityEvent[]): AdminDocumentSnapshot[] {
+  const out: AdminDocumentSnapshot[] = [];
+  const seen = new Set<string>();
+  for (const ev of events) {
+    if (ev.type !== "doc_upload" && ev.type !== "doc_processed" && ev.type !== "document_process_error") {
+      continue;
+    }
+    const id = ev.meta?.documentId;
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    const status =
+      ev.type === "doc_processed" ? "completed" : ev.type === "document_process_error" ? "error" : "processing";
+    out.push({
+      id,
+      fileName: ev.meta?.fileName ?? null,
+      status,
+      error: ev.type === "document_process_error" ? ev.meta?.errorMessage ?? null : null,
+      errorCode: ev.type === "document_process_error" ? ev.meta?.errorCode ?? null : null,
+      lastError: ev.type === "document_process_error" ? ev.meta?.errorMessage ?? null : null,
+      lastErrorCode: ev.type === "document_process_error" ? ev.meta?.errorCode ?? null : null,
+      lastErrorAt: ev.type === "document_process_error" ? ev.at || null : null,
+      errorResolvedAt: null,
+      pageCount: ev.meta?.pageCount ?? null,
+      createdAt: ev.at || null,
+      updatedAt: ev.at || null,
+      sessionId: ev.meta?.sessionId ?? null,
+      mimeType: ev.meta?.mimeType ?? null,
+      fileSizeBytes: ev.meta?.fileSizeBytes ?? null,
+    });
+  }
+  return out;
+}
+
+async function queryByOwnerField(
+  collection: string,
+  field: string,
+  uid: string,
+  limit: number,
+  orderField?: string
+) {
+  const db = getFirestore();
+  const col = db.collection(collection);
+  if (orderField) {
+    try {
+      return await col.where(field, "==", uid).orderBy(orderField, "desc").limit(limit).get();
+    } catch {
+      /* missing composite index — fall through */
+    }
+  }
+  return col.where(field, "==", uid).limit(limit).get();
+}
+
 async function loadActivityEvents(
   uid: string,
   limit: number,
@@ -195,26 +289,18 @@ async function loadActivityEvents(
   }
 }
 
-async function loadDocuments(uid: string, limit = 200): Promise<AdminDocumentSnapshot[]> {
-  const db = getFirestore();
-  try {
-    let snap;
-    try {
-      snap = await db
-        .collection("documents")
-        .where("restaurantId", "==", uid)
-        .orderBy("created_at", "desc")
-        .limit(limit)
-        .get();
-    } catch {
-      snap = await db.collection("documents").where("restaurantId", "==", uid).limit(limit).get();
-    }
-    return snap.docs
-      .map((d) => mapDocument(d.id, d.data() as Record<string, unknown>))
-      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
-  } catch {
-    return [];
-  }
+async function loadDocuments(uid: string, limit = 250): Promise<AdminDocumentSnapshot[]> {
+  const lists = await Promise.all(
+    OWNER_FIELDS.map(async (field) => {
+      try {
+        const snap = await queryByOwnerField("documents", field, uid, limit, "created_at");
+        return snap.docs.map((d) => mapDocument(d.id, d.data() as Record<string, unknown>));
+      } catch {
+        return [] as AdminDocumentSnapshot[];
+      }
+    })
+  );
+  return mergeDocumentsById(lists).slice(0, limit);
 }
 
 async function loadWorkSessions(uid: string): Promise<
@@ -226,37 +312,34 @@ async function loadWorkSessions(uid: string): Promise<
     isPinned: boolean;
   }>
 > {
-  const db = getFirestore();
-  try {
-    let snap;
-    try {
-      snap = await db
-        .collection("sessions")
-        .where("restaurantId", "==", uid)
-        .orderBy("createdAt", "desc")
-        .limit(100)
-        .get();
-    } catch {
-      snap = await db.collection("sessions").where("restaurantId", "==", uid).limit(100).get();
-    }
-    return snap.docs
-      .map((d) => {
-        const data = d.data() as Record<string, unknown>;
-        return {
-          id: d.id,
-          name: typeof data.name === "string" && data.name.trim() ? data.name : "Untitled session",
-          createdAt:
-            typeof data.created_at === "string"
-              ? data.created_at
-              : tsToIso(data.createdAt) ?? tsToIso(data.created_at),
-          isActive: data.isActive === true || data.is_active === true,
-          isPinned: data.isPinned === true || data.is_pinned === true,
-        };
-      })
-      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
-  } catch {
-    return [];
-  }
+  const map = new Map<
+    string,
+    { id: string; name: string; createdAt: string | null; isActive: boolean; isPinned: boolean }
+  >();
+  await Promise.all(
+    OWNER_FIELDS.map(async (field) => {
+      try {
+        const snap = await queryByOwnerField("sessions", field, uid, 100, "createdAt");
+        for (const d of snap.docs) {
+          if (map.has(d.id)) continue;
+          const data = d.data() as Record<string, unknown>;
+          map.set(d.id, {
+            id: d.id,
+            name: typeof data.name === "string" && data.name.trim() ? data.name : "Untitled session",
+            createdAt:
+              typeof data.created_at === "string"
+                ? data.created_at
+                : tsToIso(data.createdAt) ?? tsToIso(data.created_at),
+            isActive: data.isActive === true || data.is_active === true,
+            isPinned: data.isPinned === true || data.is_pinned === true,
+          });
+        }
+      } catch {
+        /* ignore this owner field */
+      }
+    })
+  );
+  return [...map.values()].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 }
 
 function errorsForSession(entries: ErrorLogEntry[]) {
@@ -423,16 +506,17 @@ export async function listAdminUserUsageInsights(
     errorEvents.map((e) => ({ id: e.id, at: e.at, meta: e.meta })),
     documents
   );
+  const mergedDocuments = mergeDocumentsById([documents, documentsFromActivityEvents(events)]);
   const errorSummary = summarizeErrorLog(errorLog);
-  const workSessions = buildWorkSessionRollups(sessions, documents, events, errorLog);
+  const workSessions = buildWorkSessionRollups(sessions, mergedDocuments, events, errorLog);
   const last = workSessions.find((s) => s.id !== "__unassigned__") ?? workSessions[0] ?? null;
 
   const summary: AdminUsageSummary = {
     loginCount: loginEvents.length,
     lastLoginAt: loginEvents[0]?.at ?? null,
     workSessionCount: workSessions.filter((s) => s.id !== "__unassigned__").length,
-    documentCount: documents.length,
-    completedCount: documents.filter((d) => d.status === "completed" || d.status === "needs_review")
+    documentCount: mergedDocuments.length,
+    completedCount: mergedDocuments.filter((d) => d.status === "completed" || d.status === "needs_review")
       .length,
     errorCount: errorSummary.loggedCount,
     openErrorCount: errorSummary.openCount,
@@ -442,6 +526,7 @@ export async function listAdminUserUsageInsights(
     lastWorkSessionDocs: last?.documentCount ?? 0,
     lastWorkSessionErrors: last?.errorCount ?? 0,
     lastWorkSessionCompleted: last?.completedCount ?? 0,
+    generatedAt: new Date().toISOString(),
   };
 
   return {
@@ -449,7 +534,7 @@ export async function listAdminUserUsageInsights(
     logins: loginEvents.map((e) => ({ id: e.id, at: e.at })),
     workSessions,
     events,
-    documents: documents.slice(0, 60),
+    documents: mergedDocuments.slice(0, 200),
     errorLog,
   };
 }

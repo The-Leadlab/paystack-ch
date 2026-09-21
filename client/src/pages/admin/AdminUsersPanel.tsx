@@ -32,7 +32,7 @@ import {
 } from "@/lib/adminUsersClient";
 import { AdminUserDetailPanel } from "./AdminUserDetailPanel";
 import { AdminCreateUserDialog } from "./AdminCreateUserDialog";
-import { subscriptionStatusClass } from "./adminUserUi";
+import { adminPlanLabel, subscriptionStatusClass } from "./adminUserUi";
 import { isPersonalPlan, parsePaystackPlanId } from "@shared/planCatalog";
 import { isMultiLoginMode } from "@shared/loginMode";
 import { toast } from "sonner";
@@ -392,8 +392,12 @@ export function AdminUsersPanel() {
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-2">
             {user.planId ? (
-              <span className="font-display text-[10px] font-bold uppercase text-muted-foreground">{user.planId}</span>
-            ) : null}
+              <span className="font-display text-[10px] font-bold uppercase text-muted-foreground">
+                {adminPlanLabel(user.planId, t)}
+              </span>
+            ) : (
+              <span className="text-[10px] text-muted-foreground">{t("adminUserNoPlanAssigned")}</span>
+            )}
             <span
               className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${subscriptionStatusClass(user.subscriptionStatus)}`}
             >
@@ -448,9 +452,9 @@ export function AdminUsersPanel() {
       <td className="py-3.5 px-4 align-top">
         <div className="flex flex-col gap-1">
           {user.planId ? (
-            <span className="font-display text-xs font-bold uppercase">{user.planId}</span>
+            <span className="font-display text-xs font-bold uppercase">{adminPlanLabel(user.planId, t)}</span>
           ) : (
-            <span className="text-muted-foreground">—</span>
+            <span className="text-muted-foreground">{t("adminUserNoPlanAssigned")}</span>
           )}
           {user.planTestMode ? (
             <Badge variant="outline" className="w-fit text-[10px]">

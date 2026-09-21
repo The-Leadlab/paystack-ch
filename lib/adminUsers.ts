@@ -7,7 +7,7 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import type Stripe from "stripe";
 import { ensureFirebaseAdmin, hasFirebaseAdminCredentials } from "./firebaseAdmin.js";
 import { getStripe, getStripeTest } from "./stripeCore.js";
-import type { PaystackPlanId } from "../shared/planCatalog.js";
+import { parsePaystackPlanId, type PaystackPlanId } from "../shared/planCatalog.js";
 import { resolvePlanIdFromStripeSubscription } from "./stripePlanResolve.js";
 import { normalizePhoneToE164 } from "./phoneE164.js";
 import { syncSubscriptionToFirestore } from "./syncSubscriptionToFirestore.js";
@@ -689,6 +689,10 @@ export async function runAdminUserAction(
     }
 
     case "set_plan": {
+      const planId = body.planId ? parsePaystackPlanId(body.planId) : null;
+      if (body.planId && !planId) {
+        throw Object.assign(new Error("Invalid plan id."), { status: 400 });
+      }
       const testMode = body.planTestMode === true;
       let stripeNote = "";
       if (testMode) {
@@ -697,15 +701,15 @@ export async function runAdminUserAction(
       }
       await db.collection("users").doc(uid).set(
         {
-          planId: body.planId,
+          planId,
           planTestMode: testMode,
           ...(testMode
             ? {
                 // Simulated entitlements only — Stripe already cleared above.
-                subscriptionStatus: body.planId ? "none" : "none",
+                subscriptionStatus: "none",
                 subscriptionId: null,
               }
-            : body.planId
+            : planId
               ? { subscriptionStatus: "active" }
               : { subscriptionStatus: "none", planId: null }),
           updatedAt: FieldValue.serverTimestamp(),
@@ -714,8 +718,8 @@ export async function runAdminUserAction(
       );
       return {
         ok: true,
-        message: body.planId
-          ? `Plan set to ${body.planId}${testMode ? " (test mode — Stripe will not charge)." : ""}.${stripeNote}`
+        message: planId
+          ? `Plan set to ${planId}${testMode ? " (test mode — Stripe will not charge)." : ""}.${stripeNote}`
           : `Plan cleared.${stripeNote}`,
       };
     }

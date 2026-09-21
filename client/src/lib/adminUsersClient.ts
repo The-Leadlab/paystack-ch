@@ -261,6 +261,7 @@ export type AdminUsageSummary = {
   lastWorkSessionDocs: number;
   lastWorkSessionErrors: number;
   lastWorkSessionCompleted: number;
+  generatedAt?: string;
 };
 
 export type AdminErrorLogEntry = {

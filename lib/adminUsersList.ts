@@ -200,7 +200,7 @@ export async function createAdminUser(
     .set(
       {
         email,
-        subscriptionStatus: input.planId ? "active" : "none",
+        subscriptionStatus: input.planTestMode ? "none" : input.planId ? "active" : "none",
         planId: input.planId ?? null,
         planTestMode: input.planTestMode === true,
         updatedAt: FieldValue.serverTimestamp(),

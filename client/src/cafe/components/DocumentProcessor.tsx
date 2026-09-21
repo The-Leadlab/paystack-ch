@@ -14,6 +14,8 @@ import {
   resolvePayrollAmounts,
   resolvePayrollSettlementMode,
   resolveEmployeePaymentAmount,
+  resolveGrossPayFromFinancialData,
+  isPayrollSummaryComponent,
   settlementModeForPermit,
   totalEmployerPayrollCost,
   documentTableDisplayAmount,
@@ -1172,34 +1174,20 @@ const VerificationHub: React.FC<{
       newData.amountInCHF = r !== 1 ? Math.round(v * r * 100) / 100 : Math.round(v * 100) / 100;
     }
     
-    // Pay slips: net pay is derived from earnings (INCOME) minus deductions (EXPENSE)
+    // Pay slips: labeled Salaire brut / Chèque salarié win over summing every INCOME row
+    // (salaire général + brut + chèque would inflate gross).
     if (field === 'paySlip') {
       const nextPaySlip: PaySlipAnalysis = value ?? { employee: { name: '' }, employer: { name: '' } };
-      const components = nextPaySlip.components ?? [];
-      const gross = components
-        .filter((c) => c.type === 'INCOME')
-        .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-      const deductions = components
-        .filter((c) => c.type === 'EXPENSE')
-        .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-      const net = gross - deductions;
-
       const nextCurrency = nextPaySlip.currency || newData.originalCurrency || 'CHF';
+      const permitType = nextPaySlip.permitType ?? 'B';
 
       newData.originalCurrency = nextCurrency;
-      const permitType = nextPaySlip.permitType ?? 'B';
       newData.paySlip = {
         ...nextPaySlip,
         permitType,
         currency: nextCurrency,
-        grossPay: gross,
-        netPay: net,
       };
-
       newData.vatAmount = 0;
-      const employerGross = gross > 0 ? gross : net;
-      newData.totalAmount = employerGross;
-      newData.amountInCHF = employerGross;
       newData = applyPayrollPaymentFields(newData);
     }
 
@@ -1338,9 +1326,9 @@ const VerificationHub: React.FC<{
 
   const currentPaySlip: PaySlipAnalysis = editedData.paySlip ?? { employee: { name: '' }, employer: { name: '' }, components: [] };
   const paySlipComponents = currentPaySlip.components ?? [];
-  const computedGrossPay = paySlipComponents.filter((c) => c.type === 'INCOME').reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const computedDeductions = paySlipComponents.filter((c) => c.type === 'EXPENSE').reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const computedNetPay = computedGrossPay > 0 ? computedGrossPay - computedDeductions : Number(currentPaySlip.netPay || editedData.netAmount || 0);
+  const computedDeductions = paySlipComponents
+    .filter((c) => c.type === 'EXPENSE' && !isPayrollSummaryComponent(c.description))
+    .reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const payrollSettlement: PayrollSettlementMode = resolvePayrollSettlementMode(editedData);
   const payrollPreviewLines = buildPayrollExpenseLines(
     editedData,
@@ -1348,19 +1336,26 @@ const VerificationHub: React.FC<{
     payrollSettlement
   );
   const payrollAmounts = resolvePayrollAmounts(editedData);
-  const computedEmployeePayment = resolveEmployeePaymentAmount(editedData);
+  const computedGrossPay = payrollAmounts.gross;
+  const computedNetPay =
+    payrollAmounts.netSalary > 0
+      ? payrollAmounts.netSalary
+      : computedGrossPay > 0
+        ? computedGrossPay - computedDeductions
+        : Number(currentPaySlip.netPay || editedData.netAmount || 0);
+  const computedEmployeePayment = payrollAmounts.employeePayment;
   const computedStatePayment = payrollAmounts.statePayment;
 
   const setPermitAndMode = (permit: SwissPermitType) => {
     const mode = settlementModeForPermit(permit);
     const nextPaySlip = { ...currentPaySlip, permitType: permit };
-    const gross = computedGrossPay || Number(nextPaySlip.grossPay || 0);
-    const employerGross = gross > 0 ? gross : computedEmployeePayment;
+    const nextData = { ...editedData, paySlip: nextPaySlip, payrollSettlementMode: mode };
+    const gross =
+      resolveGrossPayFromFinancialData(nextData) || Number(nextPaySlip.grossPay || 0);
+    const employerGross = gross > 0 ? gross : resolveEmployeePaymentAmount(nextData);
     onUpdate(
       applyPayrollPaymentFields({
-        ...editedData,
-        paySlip: nextPaySlip,
-        payrollSettlementMode: mode,
+        ...nextData,
         totalAmount: employerGross,
         amountInCHF: employerGross,
       })

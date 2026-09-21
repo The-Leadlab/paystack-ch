@@ -21,6 +21,97 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+export type PayrollLineKind =
+  | "gross_total"
+  | "net_total"
+  | "payment"
+  | "base_salary"
+  | "advance"
+  | "other";
+
+/** Strip accents so "chèque salarié" / "salaire général" match reliably. */
+export function normalizePayrollLabel(description: string | null | undefined): string {
+  return String(description || "")
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Swiss/French payslip row kind.
+ * "Salaire général" is base pay (a component). "Salaire brut" is the labeled GROSS TOTAL.
+ * "Chèque salarié" is the amount actually paid to the employee — not gross.
+ */
+export function payrollLineKind(description: string | null | undefined): PayrollLineKind {
+  const d = normalizePayrollLabel(description);
+  if (!d) return "other";
+
+  if (/(acompte|avance|advance|anticipo)/.test(d) && !/sans acompte/.test(d)) return "advance";
+
+  if (
+    /cheque\s*salarie|cheque\s*salaire|net\s*a\s*(payer|verser)|net\s*to\s*pay|montant\s*verse|a\s*payer\s*au\s*salarie|versement(\s*salar)?|lohnauszahlung|\bauszahlung\b|remittance|virement(\s*salar)?|paiement(\s*final|\s*salar)/.test(
+      d
+    )
+  ) {
+    return "payment";
+  }
+
+  if (
+    /salaire\s*brut|brut\s*total|total\s*brut|montant\s*brut|remuneration\s*brute|bruttolohn|brutto\s*lohn|retribuzion[ei]\s*lord|gross\s*pay|gross\s*salary|total\s*gross/.test(
+      d
+    )
+  ) {
+    return "gross_total";
+  }
+
+  if (
+    /salaire\s*net|nettolohn|netto\s*lohn|retribuzion[ei]\s*nett|net\s*pay|net\s*salary|total\s*net/.test(d)
+  ) {
+    return "net_total";
+  }
+
+  if (
+    /salaire\s*general|salaire\s*de\s*base|salaire\s*mensuel|salaire\s*horaire|basic\s*salary|base\s*salary|grundlohn|lohnansatz|stipendio\s*base|retribuzione\s*base/.test(
+      d
+    )
+  ) {
+    return "base_salary";
+  }
+
+  return "other";
+}
+
+export function isPayrollSummaryComponent(description: string | null | undefined): boolean {
+  const kind = payrollLineKind(description);
+  return kind === "gross_total" || kind === "net_total" || kind === "payment";
+}
+
+function firstComponentAmount(
+  components: BankTransaction[],
+  kind: PayrollLineKind
+): number {
+  for (const c of components) {
+    if (payrollLineKind(c.description) !== kind) continue;
+    const amt = Math.abs(Number(c.amount) || 0);
+    if (amt > 0) return round2(amt);
+  }
+  return 0;
+}
+
+function earningComponents(components: BankTransaction[]): BankTransaction[] {
+  return components.filter(
+    (c) => c.type === "INCOME" && !isPayrollSummaryComponent(c.description)
+  );
+}
+
+function deductionComponents(components: BankTransaction[]): BankTransaction[] {
+  return components.filter(
+    (c) => c.type === "EXPENSE" && !isPayrollSummaryComponent(c.description)
+  );
+}
+
 /** Net salary paid to employee (dashboard Payroll card). */
 export function isNetPayrollCategory(category: string): boolean {
   return category === "PAYROLL";
@@ -65,20 +156,22 @@ export function resolvePayrollSettlementMode(data: FinancialData): PayrollSettle
 
 export function resolveNetPayFromFinancialData(data: FinancialData): number {
   const components = data.paySlip?.components ?? [];
-  const grossFromComponents = components
-    .filter((c) => c.type === "INCOME")
-    .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-  const deductionsFromComponents = components
-    .filter((c) => c.type === "EXPENSE")
-    .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-  const netFromComponents = grossFromComponents - deductionsFromComponents;
-  if (netFromComponents > 0) return round2(netFromComponents);
+  const labeledNet = firstComponentAmount(components, "net_total");
+  if (labeledNet > 0) return labeledNet;
 
   const directNet = Number(data.paySlip?.netPay || 0);
   if (directNet > 0) return round2(directNet);
 
   const netAmount = Number(data.netAmount || 0);
   if (netAmount > 0) return round2(netAmount);
+
+  const earnings = earningComponents(components).reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+  const deductions = deductionComponents(components).reduce(
+    (sum, c) => sum + (Number(c.amount) || 0),
+    0
+  );
+  const netFromComponents = earnings - deductions;
+  if (netFromComponents > 0) return round2(netFromComponents);
 
   const total = Number(data.totalAmount || 0);
   const gross = Number(data.paySlip?.grossPay || 0);
@@ -89,16 +182,41 @@ export function resolveNetPayFromFinancialData(data: FinancialData): number {
 
 export function resolveGrossPayFromFinancialData(data: FinancialData): number {
   const components = data.paySlip?.components ?? [];
-  const grossFromComponents = components
-    .filter((c) => c.type === "INCOME")
-    .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-  if (grossFromComponents > 0) return round2(grossFromComponents);
+  const labeledGross = firstComponentAmount(components, "gross_total");
+  if (labeledGross > 0) return labeledGross;
 
-  const directGross = Number(data.paySlip?.grossPay || 0);
-  if (directGross > 0) return round2(directGross);
+  const printed = Number(data.paySlip?.grossPay || 0);
+  const baseSalary = firstComponentAmount(components, "base_salary");
+  const labeledPay = firstComponentAmount(components, "payment");
+  const explicitPay = Number(data.paySlip?.paymentToEmployee || 0);
+  const paymentAmt = labeledPay > 0 ? labeledPay : explicitPay;
+  const earningSum = earningComponents(components).reduce(
+    (sum, c) => sum + (Number(c.amount) || 0),
+    0
+  );
+
+  const printedIsBase =
+    printed > 0 && baseSalary > 0 && Math.abs(printed - baseSalary) < 0.02;
+  const printedIsPayment =
+    printed > 0 && paymentAmt > 0 && Math.abs(printed - paymentAmt) < 0.02;
+
+  // Never keep "salaire général" or "chèque salarié" as salaire brut when real earnings exist.
+  if (printed > 0 && !printedIsPayment && !printedIsBase) {
+    return round2(printed);
+  }
+  if (printedIsBase && earningSum > printed + 0.02) {
+    return round2(earningSum);
+  }
+  if (printedIsPayment) {
+    if (earningSum > printed + 0.02) return round2(earningSum);
+    if (baseSalary > printed + 0.02) return round2(baseSalary);
+    if (earningSum > 0) return round2(earningSum);
+  }
+  if (printed > 0 && !printedIsPayment) return round2(printed);
+  if (earningSum > 0) return round2(earningSum);
 
   const total = Number(data.totalAmount || 0);
-  const net = resolveNetPayFromFinancialData(data);
+  const net = Number(data.paySlip?.netPay || data.netAmount || 0);
   if (total > 0 && net > 0 && total > net) return round2(total);
   if (total > 0 && net <= 0) return round2(total);
 
@@ -121,17 +239,31 @@ export function resolveEmployeePaymentAmount(data: FinancialData): number {
   const components = ps?.components ?? [];
 
   const explicit = Number(ps?.paymentToEmployee ?? 0);
+  const labeledCheque = firstComponentAmount(components, "payment");
   if (explicit > 0 && (gross <= 0 || explicit <= gross + 0.01)) {
+    if (
+      labeledCheque > 0 &&
+      gross > 0 &&
+      Math.abs(explicit - gross) < 0.02 &&
+      labeledCheque < gross - 0.02
+    ) {
+      return labeledCheque;
+    }
     return round2(explicit);
+  }
+
+  if (labeledCheque > 0 && (gross <= 0 || labeledCheque <= gross + 0.01)) {
+    return labeledCheque;
   }
 
   const paymentLines = components.filter(
     (c) =>
-      (/\b(payment|remittance|virement|paiement|überweisung|versamento|vergütung)\b/i.test(
+      payrollLineKind(c.description) === "payment" ||
+      ((/\b(payment|remittance|virement|paiement|überweisung|versamento|vergütung|cheque)\b/i.test(
         c.description || ""
       ) ||
         /^(payment|remittance|virement|paiement)\b/i.test((c.description || "").trim())) &&
-      !/advance|acompte|avance/i.test(c.description || "")
+        payrollLineKind(c.description) !== "advance")
   );
   if (paymentLines.length > 0) {
     const amt = Math.abs(Number(paymentLines[paymentLines.length - 1].amount) || 0);
@@ -231,20 +363,55 @@ export function totalEmployerPayrollCost(data: FinancialData): number {
   return employeePayment + statePayment;
 }
 
-/** Sync paySlip.paymentToEmployee and netAmount from extracted components. */
+/** Copy labeled Swiss/French totals off component rows, then sync payment fields. */
 export function applyPayrollPaymentFields(data: FinancialData): FinancialData {
   if (!data.paySlip) return data;
-  const employeePayment = resolveEmployeePaymentAmount(data);
-  const gross = resolveGrossPayFromFinancialData(data);
-  return {
+  const components = data.paySlip.components ?? [];
+  const labeledGross = firstComponentAmount(components, "gross_total");
+  const labeledNet = firstComponentAmount(components, "net_total");
+  const labeledPay = firstComponentAmount(components, "payment");
+  const baseSalary = firstComponentAmount(components, "base_salary");
+
+  let grossPay = Number(data.paySlip.grossPay || 0);
+  const earningSum = earningComponents(components).reduce(
+    (sum, c) => sum + (Number(c.amount) || 0),
+    0
+  );
+  if (labeledGross > 0) {
+    grossPay = labeledGross;
+  } else if (earningSum > 0) {
+    const looksLikeBase = baseSalary > 0 && Math.abs(grossPay - baseSalary) < 0.02;
+    const looksLikeCheque = labeledPay > 0 && Math.abs(grossPay - labeledPay) < 0.02;
+    if (grossPay <= 0 || looksLikeBase || looksLikeCheque) {
+      if (earningSum > grossPay + 0.02 || grossPay <= 0) grossPay = earningSum;
+    }
+  }
+
+  const netPay = labeledNet > 0 ? labeledNet : Number(data.paySlip.netPay || 0);
+  const withLabels: FinancialData = {
     ...data,
     paySlip: {
       ...data.paySlip,
-      paymentToEmployee: employeePayment > 0 ? employeePayment : data.paySlip.paymentToEmployee,
-      grossPay: data.paySlip.grossPay ?? (gross > 0 ? gross : undefined),
+      grossPay: grossPay > 0 ? grossPay : data.paySlip.grossPay,
+      netPay: netPay > 0 ? netPay : data.paySlip.netPay,
+      paymentToEmployee:
+        labeledPay > 0 ? labeledPay : data.paySlip.paymentToEmployee,
     },
-    netAmount: employeePayment > 0 ? employeePayment : data.netAmount,
-    totalAmount: gross > 0 ? gross : data.totalAmount,
-    amountInCHF: gross > 0 ? gross : data.amountInCHF,
+  };
+
+  const employeePayment = resolveEmployeePaymentAmount(withLabels);
+  const gross = resolveGrossPayFromFinancialData(withLabels);
+  return {
+    ...withLabels,
+    paySlip: {
+      ...withLabels.paySlip!,
+      paymentToEmployee:
+        employeePayment > 0 ? employeePayment : withLabels.paySlip?.paymentToEmployee,
+      grossPay: gross > 0 ? gross : withLabels.paySlip?.grossPay,
+      netPay: netPay > 0 ? netPay : withLabels.paySlip?.netPay,
+    },
+    netAmount: employeePayment > 0 ? employeePayment : withLabels.netAmount,
+    totalAmount: gross > 0 ? gross : withLabels.totalAmount,
+    amountInCHF: gross > 0 ? gross : withLabels.amountInCHF,
   };
 }

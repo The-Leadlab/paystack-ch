@@ -370,6 +370,11 @@ const translations = {
     adminUserSectionAccount: 'Account',
     adminUserSectionBilling: 'Billing & subscription',
     adminUserSectionPlanOverride: 'Plan override (Firestore)',
+    adminUserAssignPlan: 'Assign plan',
+    adminUserAssignPlanHint:
+      'Choose the plan this account should test or use. For testers, leave Test mode on so they get those limits without a Stripe charge.',
+    adminUserCurrentPlan: 'Current plan',
+    adminUserNoPlanAssigned: 'No plan assigned',
     adminUserSectionActions: 'Account actions',
     adminUserSectionInvoices: 'Recent invoices',
     adminUserProviders: 'Sign-in providers',
@@ -468,6 +473,9 @@ const translations = {
     adminUsagePrivacyHint:
       'Customer-success view: every login, every work session, file counts and a permanent error log. Metadata only — never document content. Logged errors stay after a file is fixed or deleted.',
     adminUsageOverviewTitle: 'Engagement overview',
+    adminUsageLastSynced: 'Last synced {time}',
+    adminUsageAutoRefresh:
+      'Counts come from documents and sessions stored for this account, plus upload events. This view refreshes while the page is open.',
     adminUsageKpiLogins: 'Logins recorded',
     adminUsageKpiSessions: 'Work sessions',
     adminUsageKpiDocs: 'Documents (total)',
@@ -1598,6 +1606,11 @@ const translations = {
     adminUserSectionAccount: 'Compte',
     adminUserSectionBilling: 'Facturation et abonnement',
     adminUserSectionPlanOverride: 'Override offre (Firestore)',
+    adminUserAssignPlan: 'Attribuer une offre',
+    adminUserAssignPlanHint:
+      'Choisissez l\'offre que ce compte doit tester ou utiliser. Pour les testeurs, laissez le mode test actif afin d\'appliquer les plafonds sans facturation Stripe.',
+    adminUserCurrentPlan: 'Offre actuelle',
+    adminUserNoPlanAssigned: 'Aucune offre attribuee',
     adminUserSectionActions: 'Actions compte',
     adminUserSectionInvoices: 'Factures recentes',
     adminUserProviders: 'Fournisseurs de connexion',
@@ -1696,6 +1709,9 @@ const translations = {
     adminUsagePrivacyHint:
       'Vue customer success : chaque connexion, chaque session de travail, volumes et un journal d\'erreurs permanent. Metadonnees uniquement. Les erreurs restees journalisees apres correction ou suppression.',
     adminUsageOverviewTitle: 'Vue d\'engagement',
+    adminUsageLastSynced: 'Derniere synchro {time}',
+    adminUsageAutoRefresh:
+      'Les totaux viennent des documents et sessions enregistres pour ce compte, plus les evenements d\'upload. Cette vue se rafraichit tant que la page est ouverte.',
     adminUsageKpiLogins: 'Connexions',
     adminUsageKpiSessions: 'Sessions de travail',
     adminUsageKpiDocs: 'Documents (total)',

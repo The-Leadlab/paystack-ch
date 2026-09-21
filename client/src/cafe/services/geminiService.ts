@@ -1500,7 +1500,11 @@ export const analyzeFinancialDocument = async (
           type: Type.STRING,
           description: "Invoice / facture / Beleg / reference number if printed (not in issuer).",
         },
-        totalAmount: { type: Type.NUMBER, description: "Total amount INCLUDING VAT (TTC)" },
+        totalAmount: {
+          type: Type.NUMBER,
+          description:
+            "Total INCLUDING VAT (TTC). For Pay Slips: copy labeled 'Salaire brut' / Bruttolohn only — NEVER salaire général and NEVER chèque salarié.",
+        },
         originalCurrency: { type: Type.STRING },
         vatAmount: {
           type: Type.NUMBER,
@@ -1508,7 +1512,11 @@ export const analyzeFinancialDocument = async (
             "TVA/VAT amount in document currency. Prefer printed Total TVA or sum of swissVatBreakdown. Only 0 if truly exempt/not shown.",
         },
         vatRate: { type: Type.NUMBER, description: "VAT rate % when a single rate applies (e.g. 8.1, 2.6)." },
-        netAmount: { type: Type.NUMBER, description: "Amount BEFORE VAT (HT)" },
+        netAmount: {
+          type: Type.NUMBER,
+          description:
+            "Amount BEFORE VAT (HT). For Pay Slips: labeled 'Chèque salarié' / Net à payer (cash paid to employee), not salaire brut.",
+        },
         expenseCategory: { 
           type: Type.STRING,
           description: "Specific category based on issuer"
@@ -1573,15 +1581,30 @@ export const analyzeFinancialDocument = async (
             periodEnd: { type: Type.STRING },
             payDate: { type: Type.STRING },
             currency: { type: Type.STRING },
-            grossPay: { type: Type.NUMBER },
-            netPay: { type: Type.NUMBER },
+            permitType: {
+              type: Type.STRING,
+              enum: ["B", "C", "G", "F", "CH", "UNKNOWN"],
+              description: "Swiss permit if printed (Permis B/C/G/F or CH). Default UNKNOWN.",
+            },
+            grossPay: {
+              type: Type.NUMBER,
+              description:
+                "EXACT number printed on the row whose label is 'Salaire brut' / 'Total brut' / Bruttolohn / Gross pay. Match the SECOND word: brut ≠ général. NEVER copy 'Salaire général', 'Salaire de base', or 'Chèque salarié' here.",
+            },
+            netPay: {
+              type: Type.NUMBER,
+              description:
+                "EXACT number on the row labeled 'Salaire net' / Nettolohn. If Chèque salarié differs (advances), netPay stays Salaire net and paymentToEmployee stays the cheque.",
+            },
             paymentToEmployee: {
               type: Type.NUMBER,
               description:
-                "Actual bank Payment/Remittance to employee (after advance on salary if shown). Not the printed net before advance.",
+                "EXACT number on 'Chèque salarié' / 'Net à payer' / Paiement / Virement / Remittance — cash actually paid to the employee after acomptes. Not salaire brut, not salaire général, not a sum of those rows.",
             },
             components: {
               type: Type.ARRAY,
+              description:
+                "Each earning/deduction LINE from the tables. Salaire général = one INCOME line. AVS/AC/LPP/impôt/acompte = EXPENSE lines. Do NOT add Salaire brut, Salaire net, or Chèque salarié as components (those go only in grossPay / netPay / paymentToEmployee).",
               items: {
                 type: Type.OBJECT,
                 properties: {
@@ -1690,7 +1713,7 @@ CRITICAL RULES:
 4. For EXPENSE documents: ALWAYS assign a precise category — NEVER use "OTHER" when you can classify. Prefer one of: FOOD_SUPPLIES, BEVERAGES, RESTAURANT_SUPPLIES, PACKAGING, CLEANING, MAINTENANCE, RENT, UTILITIES, INSURANCE, TELECOM, BANK_FEES, ACCOUNTING, MARKETING, DELIVERY, OFFICE_SUPPLIES, LICENSES, TAXES, PAYROLL, PAYROLL_TAXES, SUPPLIERS, BILLS. Use issuer name + line items to decide (e.g. Transgourmet/Aligro → FOOD_SUPPLIES; Swisscom → TELECOM; landlord → RENT).
 5. Extract key financial data (amounts, printed dates, issuer). DATE RULE: date MUST be the date printed on the invoice/receipt/ticket (Facture du / Datum / Date), converted to YYYY-MM-DD. Swiss DD.MM.YYYY → YYYY-MM-DD. NEVER use today's date, upload date, or processing date.
 6. For bank statements: extract ALL transactions into lineItems
-7. For payslips: extract employee/employer info and components
+7. For payslips (bulletin de salaire / fiche de paie / Lohnabrechnung): read EVERY page and EVERY totals block (often at the bottom). Copy labeled totals exactly — see PAY SLIP RULES below.
 8. Extract VAT if shown (TVA, VAT, MwSt, Tax labels). Prefer explicit Total TVA; else sum multi-rate columns; else derive gross−net. Do not leave vatAmount=0 when TVA is visible.
 9. For multi-document files (NOT pay slips): use subDocuments array — one entry per separate supplier invoice only
 10. READ ALL PAGES of the PDF. Do not summarize only the first page.
@@ -1710,7 +1733,7 @@ CRITICAL RULES:
 24. DISTINCT-INVOICE RULE: Two visually similar invoices on different dates/pages are DISTINCT entries. Do not merge them unless they are clearly the same invoice continued across pages.
 25. PHOTO MODE: If input is a smartphone photo/screenshot, first infer orientation, rotate mentally, then read all visible fields. Ignore background clutter, shadows, fingers, and perspective distortion.
 26. OCR MODE: If text is partially unreadable, return best-effort values for readable fields and safe defaults for unreadable fields. Never invent amounts or names.
-27. NUMBER SAFETY: Every numeric field must be a plain finite number (no currency symbols, commas, NaN, null, infinity, or strings).
+27. NUMBER SAFETY: Every numeric field must be a plain finite number (no currency symbols, commas, NaN, null, infinity, or strings). Swiss 4'250.50 → 4250.50.
 28. STRING SAFETY: Keep all string fields concise, plain text, and free of control characters.
 29. SWISS TVA ACCOUNTANT MODE: Extract TVA with accountant-level precision (TVA/VAT/MwSt labels), preserving values exactly as shown.
 30. If an invoice/receipt appears taxable but no explicit TVA is found, set vatAmount=0 and add a short warning sentence in forensicAlerts.
@@ -1720,13 +1743,31 @@ CRITICAL RULES:
 34. After filling swissVatBreakdown, set top-level vatAmount to the sum of column TVA amounts and netAmount to merchandise HT when available.
 35. For each subDocuments entry that is a receipt/invoice with a printed multi-rate TVA grid, also populate that sub-entry's swissVatBreakdown and swissVatReceiptTotals when visible.
 36. PAY SLIPS ONLY: documentType MUST be "Pay Slip". Set subDocuments to an empty array []. Never emit multiple subDocuments for one payslip — it is ONE document, not multiple invoices.
-37. PAY SLIPS ONLY: Put totals in paySlip.grossPay, paySlip.netPay (printed net salary), paySlip.paymentToEmployee (final Payment/Remittance/Virement to employee after any advance), and top-level totalAmount = gross pay for payroll; do not duplicate the same salary as two invoice blocks.
-38. PAY SLIPS ONLY: The business posts two payments for tax-at-source employees: (1) paymentToEmployee to the employee, (2) grossPay minus paymentToEmployee to the state for taxes and social contributions. If an advance on salary is deducted before payment, paymentToEmployee is the final Payment line, not netPay.
-39. ITEMS vs INVOICES: lineItems are products/services ON an invoice. Never create a subDocuments entry per line item. subDocuments are ONLY for distinct invoices/receipts (different supplier, invoice number, or separate receipt). One invoice with 20 products → subDocuments empty or one entry + 20 lineItems. A PDF with 3 separate supplier invoices → 3 subDocuments (label "3 invoices detected"), not "items".
-40. PER-ITEM DETECTION (CRITICAL): For Invoice / Ticket/Receipt / Bulletin de livraison / Lieferschein, extract EVERY visible product or service line into lineItems (description, amount; quantity and unitPrice when printed). NEVER collapse an itemized invoice into a single lineItem equal to Montant final / Total TTC. If the PDF has an article table, returning only one total row is a hard failure.
-41. SWISS DELIVERY / BEVERAGE TABLES: Columns often include Article, Désignation, Contenu, Quantité, Unité, Prix, Valeur, TVA, Consigne. One lineItem per article row: description=Désignation, quantity=package count when clear, unitPrice=Prix, amount=Valeur. If Consigne>0, also add "Consigne — {Désignation}" as a separate EXPENSE line with amount=Consigne. Include recycling tax / logistics / eco-tax footer lines as their own lineItems. Skip sous-total and total rows.
-42. SAME-SUPPLIER COMMANDE BLOCKS: Multiple "Commande" / "Bulletin de livraison" sections from the SAME issuer under ONE Montant final = ONE invoice. Put ALL article rows into top-level lineItems (and into that single subDocument.lineItems if you emit one sub). Do NOT create one subDocuments entry per Commande unless each block is a separately payable invoice with its own total due.
-43. CATEGORY HINT: Beverage wholesalers (Feldschlösschen, Heineken, Coca-Cola, Valaisanne, etc.) → expenseCategory BEVERAGES; food wholesalers → FOOD_SUPPLIES.
+37. PAY SLIP LABELS — READ THE SECOND WORD. "Salaire général", "Salaire brut", "Salaire net" are THREE DIFFERENT ROWS with THREE DIFFERENT AMOUNTS. Copy each from its OWN labeled row. Never substitute a nearby "salaire …" amount.
+   - "Salaire général" / "Salaire de base" / "Salaire mensuel" / Grundlohn = BASE SALARY COMPONENT only → paySlip.components INCOME. NEVER put this in grossPay, totalAmount, netPay, or paymentToEmployee.
+   - "Salaire brut" / "Total brut" / Bruttolohn / Retribuzione lorda = GROSS TOTAL of all earnings → paySlip.grossPay AND top-level totalAmount. This is usually in a totals/footer block and is typically larger than salaire général (général + heures supp + 13e + indemnités).
+   - "Salaire net" / Nettolohn = printed NET after social deductions → paySlip.netPay.
+   - "Chèque salarié" / "Net à payer" / "Net à verser" / Paiement / Virement / Remittance / Auszahlung = CASH PAID TO THE EMPLOYEE (after acomptes/avances) → paySlip.paymentToEmployee AND top-level netAmount. This is not salaire brut and not salaire général.
+38. PAY SLIP READING METHOD: Read the WHOLE bulletin — every page, header (employeur/salarié/période/permis), the earnings table, the deductions table, AND the footer totals (often at the bottom of the last page). Copy labeled totals; do not invent them by summing if a labeled total exists. If labeled Salaire brut disagrees with the sum of earning lines, TRUST THE LABELED SALAIRE BRUT ROW. NEVER calculate gross as salaire général + salaire brut + chèque salarié (that triple-counts).
+39. PAY SLIP COMPONENTS: List each earning line (salaire général, heures supp, 13e, indemnités, allocations familiales) as INCOME and each deduction (AVS/AI/APG, AC, LPP, impôt à la source, acompte/avance) as EXPENSE. Do NOT also list Salaire brut, Salaire net, or Chèque salarié as components — those belong only in the dedicated total fields.
+40. PAY SLIP MATH CHECK (after copying labels, do not invent new totals):
+   - grossPay MUST equal the labeled Salaire brut row.
+   - grossPay MUST be >= salaire général. If they are equal, that is OK only when there are no other earning lines.
+   - paymentToEmployee MUST equal the labeled Chèque salarié / Net à payer row and MUST be <= grossPay.
+   - If an acompte/avance is deducted, paymentToEmployee is the cheque line, not salaire net.
+   - For tax-at-source (permis B/G/F) the employer posts (1) paymentToEmployee to the employee and (2) grossPay minus paymentToEmployee to the state.
+41. PAY SLIP HARD FAILURES:
+   - Using salaire général as salaire brut.
+   - Using chèque salarié as salaire brut.
+   - Using salaire brut as chèque salarié.
+   - Summing général + brut + chèque into totalAmount.
+   - Reading only page 1 when totals are on a later page.
+   EXAMPLE (do not copy these numbers; copy the document's numbers): Salaire général 4200, heures supp 400, Salaire brut 4600, Salaire net 3900, acompte 100, Chèque salarié 3800 → grossPay=4600, netPay=3900, paymentToEmployee=3800, components include 4200 + 400 + deductions, not the three totals.
+42. ITEMS vs INVOICES: lineItems are products/services ON an invoice. Never create a subDocuments entry per line item. subDocuments are ONLY for distinct invoices/receipts (different supplier, invoice number, or separate receipt). One invoice with 20 products → subDocuments empty or one entry + 20 lineItems. A PDF with 3 separate supplier invoices → 3 subDocuments (label "3 invoices detected"), not "items".
+43. PER-ITEM DETECTION (CRITICAL): For Invoice / Ticket/Receipt / Bulletin de livraison / Lieferschein, extract EVERY visible product or service line into lineItems (description, amount; quantity and unitPrice when printed). NEVER collapse an itemized invoice into a single lineItem equal to Montant final / Total TTC. If the PDF has an article table, returning only one total row is a hard failure.
+44. SWISS DELIVERY / BEVERAGE TABLES: Columns often include Article, Désignation, Contenu, Quantité, Unité, Prix, Valeur, TVA, Consigne. One lineItem per article row: description=Désignation, quantity=package count when clear, unitPrice=Prix, amount=Valeur. If Consigne>0, also add "Consigne — {Désignation}" as a separate EXPENSE line with amount=Consigne. Include recycling tax / logistics / eco-tax footer lines as their own lineItems. Skip sous-total and total rows.
+45. SAME-SUPPLIER COMMANDE BLOCKS: Multiple "Commande" / "Bulletin de livraison" sections from the SAME issuer under ONE Montant final = ONE invoice. Put ALL article rows into top-level lineItems (and into that single subDocument.lineItems if you emit one sub). Do NOT create one subDocuments entry per Commande unless each block is a separately payable invoice with its own total due.
+46. CATEGORY HINT: Beverage wholesalers (Feldschlösschen, Heineken, Coca-Cola, Valaisanne, etc.) → expenseCategory BEVERAGES; food wholesalers → FOOD_SUPPLIES.
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings

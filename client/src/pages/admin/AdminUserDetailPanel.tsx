@@ -44,11 +44,12 @@ import {
   type AdminUserDetail,
 } from "@/lib/adminUsersClient";
 import { toast } from "sonner";
-import type { PaystackPlanId } from "@shared/planCatalog";
+import { ADMIN_ASSIGNABLE_PLANS, type PaystackPlanId } from "@shared/planCatalog";
 import { isMultiLoginMode } from "@shared/loginMode";
 import {
   adminOutlineBtnClass,
   adminPanelCardClass,
+  adminPlanLabel,
   subscriptionStatusClass,
   verifiedStatusClass,
 } from "./adminUserUi";
@@ -131,7 +132,8 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
       const detail = await getAdminUser(uid);
       setUser(detail);
       setPlanOverride((detail.planId as PaystackPlanId) ?? "none");
-      setPlanTestMode(detail.planTestMode);
+      const liveStripe = Boolean(detail.subscriptionId) && !detail.planTestMode && !detail.appAdmin;
+      setPlanTestMode(detail.planTestMode || (!liveStripe && !detail.planId));
       setDeepPdfInvoiceBeta(detail.deepPdfInvoiceBeta === true);
       setBetaCohort(detail.betaCohort ?? "none");
       setEditDisplayName(detail.displayName ?? "");
@@ -151,11 +153,11 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
     void loadUser();
   }, [loadUser]);
 
-  const loadActivity = useCallback(async () => {
-    setActivityLoading(true);
+  const loadActivity = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setActivityLoading(true);
     try {
       const data = await listAdminUserActivity(uid, {
-        limit: 150,
+        limit: 200,
         errorsOnly: activityErrorsOnly,
       });
       setActivityEvents(data.events);
@@ -165,14 +167,22 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
       setUsageSummary(data.summary ?? null);
       setErrorLog(data.errorLog ?? []);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      if (!opts?.silent) toast.error(e instanceof Error ? e.message : String(e));
     } finally {
-      setActivityLoading(false);
+      if (!opts?.silent) setActivityLoading(false);
     }
   }, [uid, activityErrorsOnly]);
 
   useEffect(() => {
-    if (activeTab === "usage") void loadActivity();
+    void loadActivity();
+  }, [loadActivity]);
+
+  useEffect(() => {
+    const ms = activeTab === "usage" ? 15000 : 45000;
+    const id = window.setInterval(() => {
+      void loadActivity({ silent: true });
+    }, ms);
+    return () => window.clearInterval(id);
   }, [activeTab, loadActivity]);
 
   const runAction = async (
@@ -242,17 +252,29 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
     }
   };
 
-  const planLabel = (id: PaystackPlanId) => {
-    if (id === "starter") return t("planStarterName");
-    if (id === "business") return t("planBusinessName");
-    if (id === "unlimited") return t("planUnlimitedName");
-    if (id === "enterprise") return t("planEnterpriseName");
-    return id;
-  };
+  const planLabel = (id: PaystackPlanId) => adminPlanLabel(id, t);
 
   const copyUid = () => {
     void navigator.clipboard.writeText(uid);
     toast.success(t("adminUserUidCopied"));
+  };
+
+  const hasLiveStripe =
+    Boolean(user?.subscriptionId) &&
+    !user?.planTestMode &&
+    !user?.appAdmin &&
+    ["active", "trialing", "past_due"].includes((user?.subscriptionStatus || "").toLowerCase());
+
+  const saveAssignedPlan = () => {
+    void runAction(
+      "setPlan",
+      {
+        action: "set_plan",
+        planId: planOverride === "none" ? null : planOverride,
+        planTestMode,
+      },
+      planTestMode && hasLiveStripe ? t("adminUserConfirmTestMode") : undefined
+    );
   };
 
   const isPasswordUser = user?.providerIds.includes("password");
@@ -293,7 +315,10 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
             variant="outline"
             size="sm"
             className={`${adminOutlineBtnClass} min-h-10 shrink-0`}
-            onClick={() => void loadUser()}
+            onClick={() => {
+              void loadUser();
+              void loadActivity();
+            }}
             disabled={loading}
           >
             <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -343,7 +368,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                 </div>
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   <span className="inline-flex items-center rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-display font-semibold uppercase">
-                    {user.planId ?? t("adminUserNoPlan")}
+                    {adminPlanLabel(user.planId, t)}
                   </span>
                   <span
                     className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${subscriptionStatusClass(user.subscriptionStatus)}`}
@@ -368,6 +393,64 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className={`${adminPanelCardClass} space-y-3`}>
+            <SectionTitle>{t("adminUserAssignPlan")}</SectionTitle>
+            <p className="text-xs text-muted-foreground leading-relaxed">{t("adminUserAssignPlanHint")}</p>
+            <p className="text-sm">
+              <span className="text-muted-foreground">{t("adminUserCurrentPlan")}: </span>
+              <span className="font-semibold">{adminPlanLabel(user.planId, t)}</span>
+              {user.planTestMode ? (
+                <span className="ml-2 inline-flex items-center rounded-md border border-amber-500/40 bg-amber-500/15 text-amber-800 dark:text-amber-200 px-2 py-0.5 text-[11px] font-medium">
+                  {t("adminUsersTestMode")}
+                </span>
+              ) : null}
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+              <button
+                type="button"
+                onClick={() => setPlanOverride("none")}
+                className={`rounded-md border px-2 py-2.5 text-[11px] font-display font-semibold uppercase tracking-tight min-h-11 ${
+                  planOverride === "none"
+                    ? "border-brand-red bg-brand-red/10 text-foreground"
+                    : "border-border text-muted-foreground hover:border-brand-red/40"
+                }`}
+              >
+                {t("adminUserNoPlan")}
+              </button>
+              {ADMIN_ASSIGNABLE_PLANS.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setPlanOverride(id)}
+                  className={`rounded-md border px-2 py-2.5 text-[11px] font-display font-semibold uppercase tracking-tight min-h-11 ${
+                    planOverride === id
+                      ? "border-brand-red bg-brand-red/10 text-foreground"
+                      : "border-border text-muted-foreground hover:border-brand-red/40"
+                  }`}
+                >
+                  {planLabel(id)}
+                </button>
+              ))}
+            </div>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={planTestMode}
+                onChange={(e) => setPlanTestMode(e.target.checked)}
+              />
+              {t("adminUsersTestMode")}
+            </label>
+            <Button
+              type="button"
+              size="sm"
+              className="font-display bg-brand-red text-white hover:bg-brand-red/90"
+              disabled={actionBusy !== null}
+              onClick={saveAssignedPlan}
+            >
+              {actionBusy === "setPlan" ? <Loader2 className="size-3.5 animate-spin" /> : t("adminUserSavePlan")}
+            </Button>
           </div>
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DetailTab)} className="gap-5">
@@ -867,6 +950,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
 
               <div className={`${adminPanelCardClass} space-y-3`}>
                 <SectionTitle>{t("adminUserSectionPlanOverride")}</SectionTitle>
+                <p className="text-xs text-muted-foreground">{t("adminUserAssignPlanHint")}</p>
                 <div className="flex gap-2">
                   <Select
                     value={planOverride}
@@ -877,7 +961,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                     </SelectTrigger>
                     <SelectContent className="bg-popover text-popover-foreground border-border">
                       <SelectItem value="none">{t("adminUserNoPlan")}</SelectItem>
-                      {(["starter", "business", "unlimited", "enterprise"] as const).map((id) => (
+                      {ADMIN_ASSIGNABLE_PLANS.map((id) => (
                         <SelectItem key={id} value={id}>
                           {planLabel(id)}
                         </SelectItem>
@@ -889,17 +973,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                     size="sm"
                     className="font-display bg-brand-red text-white hover:bg-brand-red/90 shrink-0"
                     disabled={actionBusy !== null}
-                    onClick={() =>
-                      void runAction(
-                        "setPlan",
-                        {
-                          action: "set_plan",
-                          planId: planOverride === "none" ? null : planOverride,
-                          planTestMode,
-                        },
-                        planTestMode ? t("adminUserConfirmTestMode") : undefined
-                      )
-                    }
+                    onClick={saveAssignedPlan}
                   >
                     {actionBusy === "setPlan" ? (
                       <Loader2 className="size-3.5 animate-spin" />

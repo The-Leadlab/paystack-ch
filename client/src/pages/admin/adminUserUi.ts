@@ -1,3 +1,21 @@
+import { ADMIN_ASSIGNABLE_PLANS, type PaystackPlanId } from "@shared/planCatalog";
+
+export { ADMIN_ASSIGNABLE_PLANS };
+
+export function adminPlanLabel(id: string | null | undefined, t: (k: string) => string): string {
+  if (!id) return t("adminUserNoPlanAssigned");
+  if (id === "personal") return t("planPersonalName");
+  if (id === "starter") return t("planStarterName");
+  if (id === "business") return t("planBusinessName");
+  if (id === "unlimited") return t("planUnlimitedName");
+  if (id === "enterprise") return t("planEnterpriseName");
+  return id;
+}
+
+export function isAdminAssignablePlan(id: string | null | undefined): id is PaystackPlanId {
+  return ADMIN_ASSIGNABLE_PLANS.includes(id as PaystackPlanId);
+}
+
 /** Semantic badge/button classes for admin user status — avoid brand-red for positive states. */
 
 export function subscriptionStatusClass(status: string | null | undefined): string {

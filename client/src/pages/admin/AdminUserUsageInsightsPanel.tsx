@@ -122,7 +122,13 @@ export function AdminUserUsageInsightsPanel({
             </Button>
           </div>
         </div>
+        <p className="text-xs text-muted-foreground">{t("adminUsageAutoRefresh")}</p>
         <p className="text-xs text-muted-foreground">{t("adminUsagePrivacyHint")}</p>
+        {summary?.generatedAt ? (
+          <p className="text-[11px] text-muted-foreground">
+            {t("adminUsageLastSynced").replace("{time}", formatDateTime(summary.generatedAt))}
+          </p>
+        ) : null}
         {loading && !summary ? (
           <div className="py-8 flex justify-center">
             <Loader2 className="size-6 animate-spin text-brand-red" />

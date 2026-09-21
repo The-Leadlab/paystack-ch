@@ -20,8 +20,8 @@ import {
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import { createAdminUser } from "@/lib/adminUsersClient";
 import { toast } from "sonner";
-import type { PaystackPlanId } from "@shared/planCatalog";
-import { adminOutlineBtnClass, adminPanelCardClass } from "./adminUserUi";
+import { ADMIN_ASSIGNABLE_PLANS, type PaystackPlanId } from "@shared/planCatalog";
+import { adminOutlineBtnClass, adminPanelCardClass, adminPlanLabel } from "./adminUserUi";
 
 type Props = {
   open: boolean;
@@ -37,7 +37,7 @@ export function AdminCreateUserDialog({ open, onOpenChange, onCreated }: Props) 
   const [planId, setPlanId] = useState<PaystackPlanId | "none">("none");
   const [emailVerified, setEmailVerified] = useState(false);
   const [disabled, setDisabled] = useState(false);
-  const [planTestMode, setPlanTestMode] = useState(false);
+  const [planTestMode, setPlanTestMode] = useState(true);
   const [busy, setBusy] = useState(false);
 
   const reset = () => {
@@ -47,16 +47,10 @@ export function AdminCreateUserDialog({ open, onOpenChange, onCreated }: Props) 
     setPlanId("none");
     setEmailVerified(false);
     setDisabled(false);
-    setPlanTestMode(false);
+    setPlanTestMode(true);
   };
 
-  const planLabel = (id: PaystackPlanId) => {
-    if (id === "starter") return t("planStarterName");
-    if (id === "business") return t("planBusinessName");
-    if (id === "unlimited") return t("planUnlimitedName");
-    if (id === "enterprise") return t("planEnterpriseName");
-    return id;
-  };
+  const planLabel = (id: PaystackPlanId) => adminPlanLabel(id, t);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -146,7 +140,7 @@ export function AdminCreateUserDialog({ open, onOpenChange, onCreated }: Props) 
               </SelectTrigger>
               <SelectContent className="bg-popover text-popover-foreground border-border">
                 <SelectItem value="none">{t("adminUserNoPlan")}</SelectItem>
-                {(["starter", "business", "unlimited", "enterprise"] as const).map((id) => (
+                {ADMIN_ASSIGNABLE_PLANS.map((id) => (
                   <SelectItem key={id} value={id}>
                     {planLabel(id)}
                   </SelectItem>

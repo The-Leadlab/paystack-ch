@@ -234,6 +234,15 @@ export function isSelfServePlan(id: PaystackPlanId): boolean {
   return id !== "enterprise";
 }
 
+/** Plans an admin can assign for testers or overrides (includes Personal + Enterprise). */
+export const ADMIN_ASSIGNABLE_PLANS: PaystackPlanId[] = [
+  "personal",
+  "starter",
+  "business",
+  "unlimited",
+  "enterprise",
+];
+
 export function entitlementsForPlan(planId: PaystackPlanId | null | undefined): PlanEntitlements {
   if (!planId) return PLAN_ENTITLEMENTS.starter;
   return PLAN_ENTITLEMENTS[planId] ?? PLAN_ENTITLEMENTS.starter;
