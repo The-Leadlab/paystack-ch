@@ -5,7 +5,7 @@ import { useWorkspace } from './WorkspaceContext';
 import { useDataWriteAccess } from '../hooks/useDataWriteAccess';
 import { useSession } from './SessionContext';
 import { db } from '../lib/firebase';
-import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, orderBy } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, orderBy, deleteField } from 'firebase/firestore';
 import { dedupeProcessedDocuments } from '../lib/dedupeProcessedDocuments';
 import { packDocumentUpdatesForFirestore } from '../lib/financialDataFirestorePayload';
 
@@ -201,7 +201,25 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
       try {
         const packed = await packDocumentUpdatesForFirestore(documentId, uid, updates);
         const docRef = doc(db, 'documents', documentId);
-        const cleanedUpdates = removeUndefinedDeep(packed.forFirestore);
+        const cleanedUpdates = removeUndefinedDeep(packed.forFirestore) as Record<string, unknown>;
+        const existing = documents.find((d) => d.id === documentId);
+        const clearingError =
+          Object.prototype.hasOwnProperty.call(updates, 'error') && !updates.error;
+        const resolving =
+          updates.status != null &&
+          updates.status !== 'error' &&
+          Boolean(existing?.error || existing?.errorCode || existing?.lastError);
+        if ((clearingError || resolving) && (existing?.error || existing?.errorCode)) {
+          const now = new Date().toISOString();
+          cleanedUpdates.lastError = existing.error ?? existing.lastError ?? null;
+          cleanedUpdates.lastErrorCode = existing.errorCode ?? existing.lastErrorCode ?? null;
+          cleanedUpdates.lastErrorAt = now;
+          if (updates.status === 'completed' || updates.status === 'needs_review') {
+            cleanedUpdates.errorResolvedAt = now;
+          }
+          cleanedUpdates.error = deleteField();
+          cleanedUpdates.errorCode = deleteField();
+        }
         await updateDoc(docRef, cleanedUpdates as any);
         setDocuments((prev) =>
           prev.map((d) => (d.id === documentId ? { ...d, ...packed.forLocal } : d))
@@ -212,7 +230,7 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [canWrite, dataOwnerUid]
+    [canWrite, dataOwnerUid, documents]
   );
 
   const deleteDocument = useCallback(async (documentId: string) => {

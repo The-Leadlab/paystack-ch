@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { PasswordField } from "@/components/PasswordField";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import { useAuth } from "@/cafe/context/AuthContext";
 import { firebaseReady } from "@/cafe/lib/firebase";
@@ -244,15 +245,16 @@ export default function AdminSignInPage() {
                     <Label htmlFor="admin-password" className="font-display text-xs">
                       {t("authPasswordLabel")}
                     </Label>
-                    <Input
+                    <PasswordField
                       id="admin-password"
-                      type="password"
                       autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       minLength={6}
                       className="font-editorial"
+                      revealLabel={t("authShowPassword")}
+                      hideLabel={t("authHidePassword")}
                     />
                   </div>
                   {error ? (

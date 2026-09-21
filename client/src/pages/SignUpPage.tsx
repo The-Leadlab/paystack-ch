@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { PasswordField } from "@/components/PasswordField";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import { useAuth } from "@/cafe/context/AuthContext";
 import { firebaseReady } from "@/cafe/lib/firebase";
@@ -270,15 +271,16 @@ export default function SignUpPage() {
               <Label htmlFor="signup-password" className="font-display text-xs">
                 {t("authPasswordLabel")}
               </Label>
-              <Input
+              <PasswordField
                 id="signup-password"
-                type="password"
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
                 className="font-editorial"
+                revealLabel={t("authShowPassword")}
+                hideLabel={t("authHidePassword")}
               />
             </div>
             {error ? (

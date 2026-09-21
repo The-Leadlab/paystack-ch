@@ -40,6 +40,7 @@ import {
   type AdminLoginVisit,
   type AdminUsageSummary,
   type AdminWorkSession,
+  type AdminErrorLogEntry,
   type AdminUserDetail,
 } from "@/lib/adminUsersClient";
 import { toast } from "sonner";
@@ -119,6 +120,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
   const [workSessions, setWorkSessions] = useState<AdminWorkSession[]>([]);
   const [loginVisits, setLoginVisits] = useState<AdminLoginVisit[]>([]);
   const [usageSummary, setUsageSummary] = useState<AdminUsageSummary | null>(null);
+  const [errorLog, setErrorLog] = useState<AdminErrorLogEntry[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityErrorsOnly, setActivityErrorsOnly] = useState(false);
 
@@ -161,6 +163,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
       setWorkSessions(data.workSessions ?? []);
       setLoginVisits(data.logins ?? []);
       setUsageSummary(data.summary ?? null);
+      setErrorLog(data.errorLog ?? []);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
@@ -589,6 +592,7 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                 workSessions={workSessions}
                 events={activityEvents}
                 documents={activityDocuments}
+                errorLog={errorLog}
               />
             </TabsContent>
 

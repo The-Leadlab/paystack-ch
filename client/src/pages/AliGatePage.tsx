@@ -2,9 +2,9 @@ import { useState, type FormEvent } from "react";
 import { Link, useSearch } from "wouter";
 import { Lock, Loader2, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { PasswordField } from "@/components/PasswordField";
 import { AuthLayout } from "./auth/AuthLayout";
 import { verifyAliLabPassword } from "@/lib/aliLabGateClient";
 import { SeoNoIndex } from "@/components/SeoNoIndex";
@@ -51,14 +51,15 @@ export default function AliGatePage() {
                 <Label htmlFor="ali-gate-password" className="font-display text-xs">
                   Lab password
                 </Label>
-                <Input
+                <PasswordField
                   id="ali-gate-password"
-                  type="password"
                   autoComplete="off"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="font-editorial"
+                  revealLabel={t("authShowPassword")}
+                  hideLabel={t("authHidePassword")}
                 />
               </div>
               {err ? <p className="text-sm text-destructive font-medium">{err}</p> : null}

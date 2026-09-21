@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import {
   getTaxRegionConfig,
-  parseTaxRegion,
   type TaxRegion,
 } from "@shared/taxRegions";
+import { resolveTaxRegion } from "@shared/jurisdiction";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../lib/firebase";
 
@@ -29,7 +29,12 @@ export function useTaxRegion(): { taxRegion: TaxRegion; loading: boolean } {
       try {
         const snapshot = await getDoc(doc(db, "users", user.uid));
         if (!cancelled)
-          setTaxRegion(parseTaxRegion(snapshot.data()?.taxRegion));
+          setTaxRegion(
+            resolveTaxRegion({
+              taxRegion: snapshot.data()?.taxRegion,
+              incorporationCountry: snapshot.data()?.incorporationCountry,
+            })
+          );
       } catch (error) {
         console.warn("Could not load tax region:", error);
         if (!cancelled) setTaxRegion("ch");

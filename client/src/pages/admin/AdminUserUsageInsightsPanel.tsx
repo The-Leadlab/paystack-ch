@@ -14,6 +14,7 @@ import { useLanguage } from "@/cafe/context/LanguageContext";
 import type {
   AdminActivityEvent,
   AdminDocumentSnapshot,
+  AdminErrorLogEntry,
   AdminLoginVisit,
   AdminUsageSummary,
   AdminWorkSession,
@@ -74,6 +75,7 @@ type Props = {
   workSessions: AdminWorkSession[];
   events: AdminActivityEvent[];
   documents: AdminDocumentSnapshot[];
+  errorLog: AdminErrorLogEntry[];
 };
 
 export function AdminUserUsageInsightsPanel({
@@ -86,6 +88,7 @@ export function AdminUserUsageInsightsPanel({
   workSessions,
   events,
   documents,
+  errorLog,
 }: Props) {
   const { t } = useLanguage();
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
@@ -132,7 +135,15 @@ export function AdminUserUsageInsightsPanel({
             <Kpi
               label={t("adminUsageKpiErrors")}
               value={summary?.errorCount ?? "—"}
-              danger={(summary?.errorCount ?? 0) > 0}
+            />
+            <Kpi
+              label={t("adminUsageKpiOpenErrors")}
+              value={summary?.openErrorCount ?? "—"}
+              danger={(summary?.openErrorCount ?? 0) > 0}
+            />
+            <Kpi
+              label={t("adminUsageKpiResolvedErrors")}
+              value={summary?.resolvedErrorCount ?? "—"}
             />
             <Kpi label={t("adminUsageKpiCompleted")} value={summary?.completedCount ?? "—"} />
             <Kpi
@@ -149,6 +160,51 @@ export function AdminUserUsageInsightsPanel({
               value={summary?.lastWorkSessionErrors ?? "—"}
               danger={(summary?.lastWorkSessionErrors ?? 0) > 0}
             />
+          </div>
+        )}
+      </div>
+
+      <div className={`${adminPanelCardClass} space-y-3`}>
+        <SectionTitle>
+          <span className="inline-flex items-center gap-1.5">
+            <AlertTriangle className="size-3.5" />
+            {t("adminUsageErrorLogTitle")}
+          </span>
+        </SectionTitle>
+        <p className="text-xs text-muted-foreground">{t("adminUsageErrorLogHint")}</p>
+        {errorLog.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">{t("adminUsageErrorLogEmpty")}</p>
+        ) : (
+          <div className="max-h-64 overflow-y-auto rounded-lg border border-border divide-y">
+            {errorLog.map((entry) => (
+              <div key={entry.id} className="px-3 py-2 text-sm space-y-0.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium truncate">{entry.fileName || "—"}</span>
+                  <span
+                    className={`text-[10px] font-display uppercase tracking-wider ${
+                      entry.status === "open"
+                        ? "text-destructive"
+                        : entry.status === "resolved"
+                          ? "text-emerald-700 dark:text-emerald-300"
+                          : "text-muted-foreground"
+                    }`}
+                  >
+                    {entry.status === "open"
+                      ? t("adminUsageErrorOpen")
+                      : entry.status === "resolved"
+                        ? t("adminUsageErrorResolved")
+                        : t("adminUsageErrorArchived")}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">{formatDateTime(entry.at)}</p>
+                {entry.errorCode ? (
+                  <p className="font-mono text-xs text-destructive">{entry.errorCode}</p>
+                ) : null}
+                {entry.errorMessage ? (
+                  <p className="text-xs text-muted-foreground line-clamp-2">{entry.errorMessage}</p>
+                ) : null}
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -246,6 +302,15 @@ export function AdminUserUsageInsightsPanel({
                             {session.errors.map((err, idx) => (
                               <li key={`${session.id}-err-${idx}`} className="px-2 py-1.5 text-xs">
                                 <p className="font-medium truncate">{err.fileName || "—"}</p>
+                                {err.status ? (
+                                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                    {err.status === "open"
+                                      ? t("adminUsageErrorOpen")
+                                      : err.status === "resolved"
+                                        ? t("adminUsageErrorResolved")
+                                        : t("adminUsageErrorArchived")}
+                                  </p>
+                                ) : null}
                                 {err.errorCode ? (
                                   <p className="font-mono text-destructive">{err.errorCode}</p>
                                 ) : null}

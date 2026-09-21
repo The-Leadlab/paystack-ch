@@ -246,6 +246,10 @@ export interface ProcessedDocument {
   error?: string;
   /** Stable family for i18n; `error` stays technical (tooltip). */
   errorCode?: string;
+  lastError?: string;
+  lastErrorCode?: string;
+  lastErrorAt?: string;
+  errorResolvedAt?: string;
   fileRaw?: File;
   fileDataUrl?: string; // Deprecated - kept for backward compatibility
   fileUrl?: string; // Firebase Storage download URL

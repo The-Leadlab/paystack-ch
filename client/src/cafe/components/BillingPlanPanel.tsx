@@ -10,6 +10,11 @@ import {
   type BillingInterval,
 } from '@shared/planCatalog';
 import { parseTaxRegion, type TaxRegion } from '@shared/taxRegions';
+import {
+  parseJurisdictionCountry,
+  taxRegionFromIncorporation,
+  type JurisdictionCountry,
+} from '@shared/jurisdiction';
 import { PlanMarketingFeatureBullets, PlanMarketingPanel, PLAN_ENTERPRISE_SALES_MAILTO } from './PlanMarketingPanel';
 import { GoogleDriveConnectPanel } from './GoogleDriveConnectPanel';
 import { TeamInvitePanel } from './TeamInvitePanel';
@@ -58,6 +63,8 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
   const [passwordMsg, setPasswordMsg] = useState<string | null>(null);
   const [passwordErr, setPasswordErr] = useState<string | null>(null);
   const [taxRegion, setTaxRegion] = useState<TaxRegion>('ch');
+  const [residencyCountry, setResidencyCountry] = useState<JurisdictionCountry>('ch');
+  const [incorporationCountry, setIncorporationCountry] = useState<JurisdictionCountry>('ch');
   const [taxRegionLoading, setTaxRegionLoading] = useState(Boolean(user?.uid));
   const [taxRegionSaving, setTaxRegionSaving] = useState(false);
   const [taxRegionError, setTaxRegionError] = useState<string | null>(null);
@@ -148,7 +155,12 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
       setTaxRegionLoading(true);
       try {
         const snapshot = await getDoc(doc(db, 'users', user.uid));
-        if (!cancelled) setTaxRegion(parseTaxRegion(snapshot.data()?.taxRegion));
+        if (!cancelled) {
+          const data = snapshot.data();
+          setTaxRegion(parseTaxRegion(data?.taxRegion));
+          setResidencyCountry(parseJurisdictionCountry(data?.residencyCountry));
+          setIncorporationCountry(parseJurisdictionCountry(data?.incorporationCountry ?? data?.taxRegion === 'uk' ? 'gb' : 'ch'));
+        }
       } catch (error) {
         console.warn('Could not load tax region:', error);
       } finally {
@@ -162,19 +174,38 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
     };
   }, [user?.uid]);
 
-  const saveTaxRegion = async (nextRegion: TaxRegion) => {
+  const saveJurisdiction = async (patch: {
+    residencyCountry?: JurisdictionCountry;
+    incorporationCountry?: JurisdictionCountry;
+    taxRegion?: TaxRegion;
+  }) => {
     if (!user?.uid || !db) return;
     setTaxRegionError(null);
     setTaxRegionSaving(true);
     try {
-      await updateDoc(doc(db, 'users', user.uid), { taxRegion: nextRegion });
-      setTaxRegion(nextRegion);
+      const nextIncorporation = patch.incorporationCountry ?? incorporationCountry;
+      const nextResidency = patch.residencyCountry ?? residencyCountry;
+      const nextTax =
+        patch.taxRegion ??
+        (patch.incorporationCountry ? taxRegionFromIncorporation(nextIncorporation) : taxRegion);
+      await updateDoc(doc(db, 'users', user.uid), {
+        residencyCountry: nextResidency,
+        incorporationCountry: nextIncorporation,
+        taxRegion: nextTax,
+      });
+      setResidencyCountry(nextResidency);
+      setIncorporationCountry(nextIncorporation);
+      setTaxRegion(nextTax);
     } catch (error) {
-      console.error('Could not save tax region:', error);
-      setTaxRegionError(t('billingTaxRegionSaveError'));
+      console.error('Could not save jurisdiction:', error);
+      setTaxRegionError(t('billingJurisdictionSaveError'));
     } finally {
       setTaxRegionSaving(false);
     }
+  };
+
+  const saveTaxRegion = async (nextRegion: TaxRegion) => {
+    await saveJurisdiction({ taxRegion: nextRegion });
   };
 
   const handleUpgrade = async () => {
@@ -470,7 +501,44 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
           {t('billingAccountEmail')}{' '}
           <span className="font-bold ba-field-value">{user?.email ?? '—'}</span>
         </p>
-        <div className="max-w-md">
+        <div className="max-w-md space-y-4">
+          <div>
+            <label htmlFor="residency-country" className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted mb-2 block">
+              {t('billingResidencyLabel')}
+            </label>
+            <select
+              id="residency-country"
+              value={residencyCountry}
+              disabled={taxRegionLoading || taxRegionSaving || !user?.uid}
+              onChange={(event) => void saveJurisdiction({ residencyCountry: event.target.value as JurisdictionCountry })}
+              className="ba-verify-field"
+            >
+              <option value="ch">{t('billingJurisdictionCh')}</option>
+              <option value="gb">{t('billingJurisdictionUk')}</option>
+              <option value="fr" disabled>
+                {t('billingJurisdictionFr')}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="incorporation-country" className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted mb-2 block">
+              {t('billingIncorporationLabel')}
+            </label>
+            <select
+              id="incorporation-country"
+              value={incorporationCountry}
+              disabled={taxRegionLoading || taxRegionSaving || !user?.uid}
+              onChange={(event) => void saveJurisdiction({ incorporationCountry: event.target.value as JurisdictionCountry })}
+              className="ba-verify-field"
+            >
+              <option value="ch">{t('billingJurisdictionCh')}</option>
+              <option value="gb">{t('billingJurisdictionUk')}</option>
+              <option value="fr" disabled>
+                {t('billingJurisdictionFr')}
+              </option>
+            </select>
+          </div>
+          <div>
           <label htmlFor="tax-region" className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted mb-2 block">
             {t('billingTaxRegionLabel')}
           </label>
@@ -485,8 +553,9 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
             <option value="uk">{t('billingTaxRegionUk')}</option>
             <option value="off">{t('billingTaxRegionOff')}</option>
           </select>
-          <p className="mt-2 text-xs text-cdlp-muted">{t('billingTaxRegionHint')}</p>
+          <p className="mt-2 text-xs text-cdlp-muted">{t('billingJurisdictionHint')}</p>
           {taxRegionError ? <p className="mt-2 text-xs text-red-400 font-medium">{taxRegionError}</p> : null}
+          </div>
         </div>
         {isPasswordUser ? (
           <form onSubmit={handlePasswordChange} className="space-y-3 max-w-md">

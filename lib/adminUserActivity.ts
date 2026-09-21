@@ -5,6 +5,11 @@
 import { getFirestore } from "firebase-admin/firestore";
 import { ensureFirebaseAdmin, hasFirebaseAdminCredentials } from "./firebaseAdmin.js";
 import { tsToIso } from "./adminUsersList.js";
+import {
+  buildErrorLog,
+  summarizeErrorLog,
+  type ErrorLogEntry,
+} from "./errorLog.js";
 
 export type AdminActivityEvent = {
   id: string;
@@ -19,6 +24,7 @@ export type AdminActivityEvent = {
     fileSizeBytes?: number;
     mimeType?: string;
     sessionId?: string;
+    documentId?: string;
     pdfPageSplit?: boolean;
   } | null;
 };
@@ -29,6 +35,10 @@ export type AdminDocumentSnapshot = {
   status: string | null;
   error: string | null;
   errorCode: string | null;
+  lastError: string | null;
+  lastErrorCode: string | null;
+  lastErrorAt: string | null;
+  errorResolvedAt: string | null;
   pageCount: number | null;
   createdAt: string | null;
   updatedAt: string | null;
@@ -55,6 +65,7 @@ export type AdminWorkSession = {
     errorCode: string | null;
     errorMessage: string | null;
     at: string | null;
+    status?: "open" | "resolved" | "archived";
   }>;
 };
 
@@ -70,6 +81,8 @@ export type AdminUsageSummary = {
   documentCount: number;
   completedCount: number;
   errorCount: number;
+  openErrorCount: number;
+  resolvedErrorCount: number;
   lastWorkSessionId: string | null;
   lastWorkSessionName: string | null;
   lastWorkSessionDocs: number;
@@ -83,6 +96,7 @@ export type AdminUserUsageInsights = {
   workSessions: AdminWorkSession[];
   events: AdminActivityEvent[];
   documents: AdminDocumentSnapshot[];
+  errorLog: ErrorLogEntry[];
 };
 
 function asMeta(raw: unknown): AdminActivityEvent["meta"] {
@@ -97,6 +111,7 @@ function asMeta(raw: unknown): AdminActivityEvent["meta"] {
   if (typeof m.fileSizeBytes === "number") out.fileSizeBytes = m.fileSizeBytes;
   if (typeof m.mimeType === "string") out.mimeType = m.mimeType;
   if (typeof m.sessionId === "string") out.sessionId = m.sessionId;
+  if (typeof m.documentId === "string") out.documentId = m.documentId;
   if (typeof m.pdfPageSplit === "boolean") out.pdfPageSplit = m.pdfPageSplit;
   return Object.keys(out).length ? out : null;
 }
@@ -108,6 +123,11 @@ function mapDocument(id: string, data: Record<string, unknown>): AdminDocumentSn
     status: typeof data.status === "string" ? data.status : null,
     error: typeof data.error === "string" ? data.error.slice(0, 280) : null,
     errorCode: typeof data.errorCode === "string" ? data.errorCode : null,
+    lastError: typeof data.lastError === "string" ? data.lastError.slice(0, 280) : null,
+    lastErrorCode: typeof data.lastErrorCode === "string" ? data.lastErrorCode : null,
+    lastErrorAt: typeof data.lastErrorAt === "string" ? data.lastErrorAt : tsToIso(data.lastErrorAt),
+    errorResolvedAt:
+      typeof data.errorResolvedAt === "string" ? data.errorResolvedAt : tsToIso(data.errorResolvedAt),
     pageCount:
       typeof data.pageCount === "number"
         ? data.pageCount
@@ -239,6 +259,16 @@ async function loadWorkSessions(uid: string): Promise<
   }
 }
 
+function errorsForSession(entries: ErrorLogEntry[]) {
+  return entries.slice(0, 40).map((e) => ({
+    fileName: e.fileName,
+    errorCode: e.errorCode,
+    errorMessage: e.errorMessage,
+    at: e.at,
+    status: e.status,
+  }));
+}
+
 function buildWorkSessionRollups(
   sessions: Array<{
     id: string;
@@ -248,7 +278,8 @@ function buildWorkSessionRollups(
     isPinned: boolean;
   }>,
   documents: AdminDocumentSnapshot[],
-  events: AdminActivityEvent[]
+  events: AdminActivityEvent[],
+  errorLog: ErrorLogEntry[]
 ): AdminWorkSession[] {
   const bySession = new Map<string, AdminDocumentSnapshot[]>();
   const unassigned: AdminDocumentSnapshot[] = [];
@@ -262,14 +293,16 @@ function buildWorkSessionRollups(
     }
   }
 
-  const errorEventsBySession = new Map<string, AdminActivityEvent[]>();
-  for (const ev of events) {
-    if (ev.type !== "document_process_error") continue;
-    const sid = ev.meta?.sessionId;
-    if (!sid) continue;
-    const list = errorEventsBySession.get(sid) ?? [];
-    list.push(ev);
-    errorEventsBySession.set(sid, list);
+  const logBySession = new Map<string, ErrorLogEntry[]>();
+  const unassignedLog: ErrorLogEntry[] = [];
+  for (const entry of errorLog) {
+    if (entry.sessionId) {
+      const list = logBySession.get(entry.sessionId) ?? [];
+      list.push(entry);
+      logBySession.set(entry.sessionId, list);
+    } else {
+      unassignedLog.push(entry);
+    }
   }
 
   const durationBySession = new Map<string, number[]>();
@@ -283,31 +316,12 @@ function buildWorkSessionRollups(
   const knownIds = new Set(sessions.map((s) => s.id));
   const rows: AdminWorkSession[] = sessions.map((s) => {
     const docs = bySession.get(s.id) ?? [];
+    const logged = logBySession.get(s.id) ?? [];
     const completedCount = docs.filter((d) => d.status === "completed" || d.status === "needs_review").length;
-    const errorCount = docs.filter((d) => d.status === "error").length;
     const pendingCount = docs.filter((d) => d.status === "pending" || d.status === "queued").length;
     const processingCount = docs.filter((d) => d.status === "processing").length;
     const pages = docs.map((d) => d.pageCount).filter((n): n is number => typeof n === "number");
     const durations = durationBySession.get(s.id) ?? [];
-    const docErrors = docs
-      .filter((d) => d.status === "error" || d.error || d.errorCode)
-      .map((d) => ({
-        fileName: d.fileName,
-        errorCode: d.errorCode,
-        errorMessage: d.error,
-        at: d.updatedAt || d.createdAt,
-      }));
-    const eventErrors = (errorEventsBySession.get(s.id) ?? []).map((ev) => ({
-      fileName: ev.meta?.fileName ?? null,
-      errorCode: ev.meta?.errorCode ?? null,
-      errorMessage: ev.meta?.errorMessage ?? null,
-      at: ev.at || null,
-    }));
-    const seen = new Set(docErrors.map((e) => `${e.fileName}|${e.errorCode}|${e.at}`));
-    for (const e of eventErrors) {
-      const key = `${e.fileName}|${e.errorCode}|${e.at}`;
-      if (!seen.has(key)) docErrors.push(e);
-    }
 
     return {
       id: s.id,
@@ -317,14 +331,14 @@ function buildWorkSessionRollups(
       isPinned: s.isPinned,
       documentCount: docs.length,
       completedCount,
-      errorCount: Math.max(errorCount, docErrors.length),
+      errorCount: logged.length,
       pendingCount,
       processingCount,
       totalPages: pages.length ? pages.reduce((a, b) => a + b, 0) : null,
       avgDurationMs: durations.length
         ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
         : null,
-      errors: docErrors.slice(0, 40),
+      errors: errorsForSession(logged),
     };
   });
 
@@ -332,7 +346,7 @@ function buildWorkSessionRollups(
   for (const [sid, docs] of bySession) {
     if (knownIds.has(sid)) continue;
     const completedCount = docs.filter((d) => d.status === "completed" || d.status === "needs_review").length;
-    const errorCount = docs.filter((d) => d.status === "error").length;
+    const logged = logBySession.get(sid) ?? [];
     rows.push({
       id: sid,
       name: `Session ${sid.slice(0, 8)}…`,
@@ -341,46 +355,30 @@ function buildWorkSessionRollups(
       isPinned: false,
       documentCount: docs.length,
       completedCount,
-      errorCount,
+      errorCount: logged.length,
       pendingCount: docs.filter((d) => d.status === "pending").length,
       processingCount: docs.filter((d) => d.status === "processing").length,
       totalPages: null,
       avgDurationMs: null,
-      errors: docs
-        .filter((d) => d.status === "error" || d.error)
-        .map((d) => ({
-          fileName: d.fileName,
-          errorCode: d.errorCode,
-          errorMessage: d.error,
-          at: d.updatedAt || d.createdAt,
-        }))
-        .slice(0, 40),
+      errors: errorsForSession(logged),
     });
   }
 
-  if (unassigned.length > 0) {
+  if (unassigned.length > 0 || unassignedLog.length > 0) {
     rows.push({
       id: "__unassigned__",
       name: "Unassigned documents",
-      createdAt: unassigned[0]?.createdAt ?? null,
+      createdAt: unassigned[0]?.createdAt ?? unassignedLog[0]?.at ?? null,
       isActive: false,
       isPinned: false,
       documentCount: unassigned.length,
       completedCount: unassigned.filter((d) => d.status === "completed").length,
-      errorCount: unassigned.filter((d) => d.status === "error").length,
+      errorCount: unassignedLog.length,
       pendingCount: unassigned.filter((d) => d.status === "pending").length,
       processingCount: unassigned.filter((d) => d.status === "processing").length,
       totalPages: null,
       avgDurationMs: null,
-      errors: unassigned
-        .filter((d) => d.status === "error" || d.error)
-        .map((d) => ({
-          fileName: d.fileName,
-          errorCode: d.errorCode,
-          errorMessage: d.error,
-          at: d.updatedAt || d.createdAt,
-        }))
-        .slice(0, 40),
+      errors: errorsForSession(unassignedLog),
     });
   }
 
@@ -406,8 +404,9 @@ export async function listAdminUserUsageInsights(
   ensureFirebaseAdmin();
 
   const limit = Math.min(Math.max(options?.limit ?? 120, 1), 300);
-  const [events, documents, sessions] = await Promise.all([
+  const [events, errorEvents, documents, sessions] = await Promise.all([
     loadActivityEvents(uid, limit, options?.errorsOnly),
+    loadActivityEvents(uid, 300, true),
     loadDocuments(uid, 250),
     loadWorkSessions(uid),
   ]);
@@ -420,7 +419,12 @@ export async function listAdminUserUsageInsights(
     loginEvents = allForLogins.filter((e) => e.type === "login");
   }
 
-  const workSessions = buildWorkSessionRollups(sessions, documents, events);
+  const errorLog = buildErrorLog(
+    errorEvents.map((e) => ({ id: e.id, at: e.at, meta: e.meta })),
+    documents
+  );
+  const errorSummary = summarizeErrorLog(errorLog);
+  const workSessions = buildWorkSessionRollups(sessions, documents, events, errorLog);
   const last = workSessions.find((s) => s.id !== "__unassigned__") ?? workSessions[0] ?? null;
 
   const summary: AdminUsageSummary = {
@@ -430,7 +434,9 @@ export async function listAdminUserUsageInsights(
     documentCount: documents.length,
     completedCount: documents.filter((d) => d.status === "completed" || d.status === "needs_review")
       .length,
-    errorCount: documents.filter((d) => d.status === "error").length,
+    errorCount: errorSummary.loggedCount,
+    openErrorCount: errorSummary.openCount,
+    resolvedErrorCount: errorSummary.resolvedCount,
     lastWorkSessionId: last?.id ?? null,
     lastWorkSessionName: last?.name ?? null,
     lastWorkSessionDocs: last?.documentCount ?? 0,
@@ -444,5 +450,6 @@ export async function listAdminUserUsageInsights(
     workSessions,
     events,
     documents: documents.slice(0, 60),
+    errorLog,
   };
 }

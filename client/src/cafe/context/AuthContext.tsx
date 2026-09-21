@@ -46,8 +46,15 @@ async function ensureUserBillingStub(firebaseUser: FirebaseUser): Promise<void> 
     const ref = doc(db, 'users', firebaseUser.uid);
     const snap = await getDoc(ref);
     if (snap.exists()) {
-      if (!Object.prototype.hasOwnProperty.call(snap.data(), 'taxRegion')) {
-        await setDoc(ref, { taxRegion: 'ch' }, { merge: true });
+      const data = snap.data() as Record<string, unknown>;
+      const patch: Record<string, unknown> = {};
+      if (!Object.prototype.hasOwnProperty.call(data, 'taxRegion')) patch.taxRegion = 'ch';
+      if (!Object.prototype.hasOwnProperty.call(data, 'residencyCountry')) patch.residencyCountry = 'ch';
+      if (!Object.prototype.hasOwnProperty.call(data, 'incorporationCountry')) {
+        patch.incorporationCountry = data.taxRegion === 'uk' ? 'gb' : 'ch';
+      }
+      if (Object.keys(patch).length > 0) {
+        await setDoc(ref, patch, { merge: true });
       }
       return;
     }
@@ -57,6 +64,8 @@ async function ensureUserBillingStub(firebaseUser: FirebaseUser): Promise<void> 
         subscriptionStatus: 'none',
         email: firebaseUser.email ?? '',
         taxRegion: 'ch',
+        residencyCountry: 'ch',
+        incorporationCountry: 'ch',
       },
       { merge: true }
     );

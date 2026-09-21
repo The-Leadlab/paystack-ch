@@ -29,6 +29,7 @@ export type UserActivityMeta = {
   fileSizeBytes?: number;
   mimeType?: string;
   sessionId?: string;
+  documentId?: string;
   pdfPageSplit?: boolean;
 };
 
@@ -63,6 +64,7 @@ function sanitizeMeta(meta?: UserActivityMeta): UserActivityMeta | null {
   }
   if (meta.mimeType) out.mimeType = String(meta.mimeType).slice(0, 80);
   if (meta.sessionId) out.sessionId = String(meta.sessionId).slice(0, 80);
+  if (meta.documentId) out.documentId = String(meta.documentId).slice(0, 80);
   if (typeof meta.pdfPageSplit === 'boolean') out.pdfPageSplit = meta.pdfPageSplit;
   return Object.keys(out).length ? out : null;
 }

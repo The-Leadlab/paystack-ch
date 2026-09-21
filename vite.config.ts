@@ -4,7 +4,7 @@ import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
-import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
+import { redactSensitive } from "./lib/redactSensitive";
 
 // =============================================================================
 // Manus Debug Collector - Vite Plugin
@@ -105,15 +105,15 @@ function vitePluginManusDebugCollector(): Plugin {
         }
 
         const handlePayload = (payload: any) => {
-          // Write logs directly to files
-          if (payload.consoleLogs?.length > 0) {
-            writeToLogFile("browserConsole", payload.consoleLogs);
+          const safe = redactSensitive(payload);
+          if (safe.consoleLogs?.length > 0) {
+            writeToLogFile("browserConsole", safe.consoleLogs);
           }
-          if (payload.networkRequests?.length > 0) {
-            writeToLogFile("networkRequests", payload.networkRequests);
+          if (safe.networkRequests?.length > 0) {
+            writeToLogFile("networkRequests", safe.networkRequests);
           }
-          if (payload.sessionEvents?.length > 0) {
-            writeToLogFile("sessionReplay", payload.sessionEvents);
+          if (safe.sessionEvents?.length > 0) {
+            writeToLogFile("sessionReplay", safe.sessionEvents);
           }
 
           res.writeHead(200, { "Content-Type": "application/json" });

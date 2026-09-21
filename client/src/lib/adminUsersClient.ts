@@ -197,6 +197,7 @@ export type AdminActivityEvent = {
     fileSizeBytes?: number;
     mimeType?: string;
     sessionId?: string;
+    documentId?: string;
     pdfPageSplit?: boolean;
   } | null;
 };
@@ -207,6 +208,10 @@ export type AdminDocumentSnapshot = {
   status: string | null;
   error: string | null;
   errorCode: string | null;
+  lastError: string | null;
+  lastErrorCode: string | null;
+  lastErrorAt: string | null;
+  errorResolvedAt: string | null;
   pageCount: number | null;
   createdAt: string | null;
   updatedAt: string | null;
@@ -233,6 +238,7 @@ export type AdminWorkSession = {
     errorCode: string | null;
     errorMessage: string | null;
     at: string | null;
+    status?: "open" | "resolved" | "archived";
   }>;
 };
 
@@ -248,11 +254,25 @@ export type AdminUsageSummary = {
   documentCount: number;
   completedCount: number;
   errorCount: number;
+  openErrorCount: number;
+  resolvedErrorCount: number;
   lastWorkSessionId: string | null;
   lastWorkSessionName: string | null;
   lastWorkSessionDocs: number;
   lastWorkSessionErrors: number;
   lastWorkSessionCompleted: number;
+};
+
+export type AdminErrorLogEntry = {
+  id: string;
+  at: string;
+  fileName: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  sessionId: string | null;
+  documentId: string | null;
+  status: "open" | "resolved" | "archived";
+  resolvedAt: string | null;
 };
 
 export type AdminUserUsageInsights = {
@@ -261,6 +281,7 @@ export type AdminUserUsageInsights = {
   workSessions: AdminWorkSession[];
   events: AdminActivityEvent[];
   documents: AdminDocumentSnapshot[];
+  errorLog?: AdminErrorLogEntry[];
 };
 
 export async function listAdminUserActivity(

@@ -3349,6 +3349,7 @@ export const DocumentProcessor: React.FC<{
             mimeType: trackedMime,
             pdfPageSplit: trackedPageSplit,
             sessionId: activitySessionId,
+            documentId: firestoreId || doc.persistedDocumentId || doc.id,
           });
         }
       }
@@ -3366,6 +3367,7 @@ export const DocumentProcessor: React.FC<{
           mimeType: trackedMime,
           pdfPageSplit: trackedPageSplit,
           sessionId: activitySessionId,
+          documentId: firestoreId || doc.persistedDocumentId || doc.id,
         });
       }
       setLocalDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, ...failPatch } : d));

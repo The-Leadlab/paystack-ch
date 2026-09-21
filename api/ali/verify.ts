@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHash, timingSafeEqual } from "crypto";
 import { aliLabSessionCookieValue, aliLabSessionSetCookieHeader } from "../../lib/aliLabGateCookie.js";
+import { clientIpFromHeaders, passwordGateLimiter } from "../../lib/loginRateLimit.js";
 
 function parseBody(req: VercelRequest): { password?: string } {
   if (typeof req.body === "string") {
@@ -46,12 +47,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       sendJson(res, 503, { error: "ALI_LAB_PASSWORD is not set on the server" });
       return;
     }
+    const ip = clientIpFromHeaders(req.headers as Record<string, string | string[] | undefined>);
+    const gateKey = `ali:${ip}`;
+    const blocked = passwordGateLimiter.check(gateKey);
+    if (!blocked.ok) {
+      res.setHeader("Retry-After", String(blocked.retryAfterSec));
+      sendJson(res, 429, { error: blocked.error });
+      return;
+    }
     const { password } = parseBody(req);
     const given = String(password ?? "");
     if (!passwordMatches(given, expected)) {
+      const after = passwordGateLimiter.recordFailure(gateKey);
+      if (!after.ok) {
+        res.setHeader("Retry-After", String(after.retryAfterSec));
+        sendJson(res, 429, { error: after.error });
+        return;
+      }
       sendJson(res, 401, { error: "Invalid password" });
       return;
     }
+    passwordGateLimiter.recordSuccess(gateKey);
     const token = aliLabSessionCookieValue(expected);
     res.setHeader("Set-Cookie", aliLabSessionSetCookieHeader(token, 60 * 60 * 24 * 30));
     sendJson(res, 200, { ok: true });
