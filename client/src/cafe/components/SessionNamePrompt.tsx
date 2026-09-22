@@ -11,10 +11,42 @@ import {
 } from "@/components/ui/dialog";
 import { useLanguage } from "../context/LanguageContext";
 import { useSession } from "../context/SessionContext";
-import { defaultSessionName } from "../lib/formatLocalDateTime";
+import { defaultSessionName, isAutoTimestampSessionName } from "../lib/formatLocalDateTime";
 
 const namedKey = (sessionId: string) => `paystack_session_named_${sessionId}`;
 
+function wasNamedOrSkipped(sessionId: string): boolean {
+  try {
+    if (localStorage.getItem(namedKey(sessionId)) === "1") return true;
+  } catch {
+    /* ignore */
+  }
+  try {
+    if (sessionStorage.getItem(namedKey(sessionId)) === "1") return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
+function markNamedOrSkipped(sessionId: string) {
+  try {
+    localStorage.setItem(namedKey(sessionId), "1");
+  } catch {
+    /* ignore */
+  }
+  try {
+    sessionStorage.setItem(namedKey(sessionId), "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Prompt only for brand-new auto-timestamp sessions.
+ * Renamed sessions (e.g. "08.2020") and previously skipped IDs never re-prompt —
+ * including after a second login / new tab (localStorage survives where sessionStorage does not).
+ */
 export function SessionNamePrompt() {
   const { t } = useLanguage();
   const { currentSession, renameSession, loading } = useSession();
@@ -22,10 +54,18 @@ export function SessionNamePrompt() {
   const [name, setName] = useState("");
 
   useEffect(() => {
-    if (loading || !currentSession?.id) return;
-    try {
-      if (sessionStorage.getItem(namedKey(currentSession.id)) === "1") return;
-    } catch {
+    if (loading || !currentSession?.id) {
+      setOpen(false);
+      return;
+    }
+    if (wasNamedOrSkipped(currentSession.id)) {
+      setOpen(false);
+      return;
+    }
+    // Custom / already-renamed sessions should never interrupt navigation.
+    if (!isAutoTimestampSessionName(currentSession.name || "")) {
+      markNamedOrSkipped(currentSession.id);
+      setOpen(false);
       return;
     }
     setName(currentSession.name || defaultSessionName());
@@ -34,11 +74,7 @@ export function SessionNamePrompt() {
 
   const finish = (save: boolean) => {
     if (!currentSession?.id) return;
-    try {
-      sessionStorage.setItem(namedKey(currentSession.id), "1");
-    } catch {
-      /* ignore */
-    }
+    markNamedOrSkipped(currentSession.id);
     if (save && name.trim()) {
       void renameSession(currentSession.id, name.trim());
     }

@@ -162,7 +162,8 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
           restaurant_id: uid,
           userId: uid,
           uid,
-          session_id: sessionId,
+          // Prefer caller-supplied session (upload may finish after the user switched sessions).
+          session_id: (typeof document.session_id === 'string' && document.session_id) || sessionId,
           created_at: new Date().toISOString(),
         };
 

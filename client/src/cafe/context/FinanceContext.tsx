@@ -45,11 +45,21 @@ export type LedgerExpenseDraft = {
   accountCode?: string;
 };
 
+/** Prefer camelCase Firestore field; accept legacy snake_case so KPIs don't drop to 0. */
+function resolveFinanceSessionId(data: Record<string, unknown> | null | undefined): string {
+  if (!data) return '';
+  const camel = data.sessionId;
+  const snake = data.session_id;
+  if (typeof camel === 'string' && camel) return camel;
+  if (typeof snake === 'string' && snake) return snake;
+  return '';
+}
+
 function docToIncome(id: string, data: any): Income {
   return {
     id,
     restaurant_id: data.restaurantId,
-    session_id: data.sessionId || '',
+    session_id: resolveFinanceSessionId(data),
     date: data.date,
     type: data.type,
     amount: data.amount,
@@ -65,7 +75,7 @@ function docToExpense(id: string, data: any): Expense {
   return {
     id,
     restaurant_id: data.restaurantId,
-    session_id: data.sessionId || '',
+    session_id: resolveFinanceSessionId(data),
     date: data.date,
     category: data.category,
     amount: data.amount,
