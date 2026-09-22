@@ -533,6 +533,9 @@ export function RestaurantDashboard() {
       throw new Error('No session selected');
     }
 
+    // Capture at entry — live currentSession may change while AI finishes.
+    const sessionAtStart = currentSession.id;
+
     // Capture before the update below — tells us whether this is a genuinely new completion
     // (count it toward the monthly plan cap) or a re-processing of an already-completed
     // document (don't double-count it).
@@ -580,6 +583,7 @@ export function RestaurantDashboard() {
           fileName,
           status: 'processing',
           data,
+          session_id: sessionAtStart,
           ...(fileHash ? { fileHash } : {}),
         });
         documentId = newDoc.id;
@@ -620,6 +624,10 @@ export function RestaurantDashboard() {
       })();
     }
 
+    // Stamp ledger with the document's session — not live currentSession (user may switch mid-AI).
+    const docRow = documents.find((d) => d.id === documentId);
+    const ledgerSessionId = docRow?.session_id || sessionAtStart;
+
     // Always replace linked ledger rows so documents stay in sync with income/expenses / reports
     try {
       await deleteFinancesByDocumentId(documentId);
@@ -632,7 +640,7 @@ export function RestaurantDashboard() {
       writers,
       data,
       fileName,
-      currentSession.id,
+      ledgerSessionId,
       documentId
     );
 
@@ -654,7 +662,7 @@ export function RestaurantDashboard() {
           (emp) => emp.name.toLowerCase() === employeeName.toLowerCase()
         );
         if (!existingEmployee && netForEmployee > 0) {
-          await addEmployee(employeeName, 'Employee', netForEmployee, currentSession?.id);
+          await addEmployee(employeeName, 'Employee', netForEmployee, ledgerSessionId);
         }
       } catch (empError) {
         console.error('âš ï¸ Error managing employee:', empError);
@@ -684,13 +692,14 @@ export function RestaurantDashboard() {
       const removed = await deleteFinancesByDocumentId(documentId);
       console.log(`âœ… Deleted ${removed.income} income and ${removed.expenses} expense entries`);
 
-      const fileName =
-        documents.find((d) => d.id === documentId)?.fileName || 'Document';
+      const docRow = documents.find((d) => d.id === documentId);
+      const fileName = docRow?.fileName || 'Document';
+      const ledgerSessionId = docRow?.session_id || currentSession.id;
       const posted = await postLedgerFromFinancialData(
         { addIncome, addExpense, addLedgerEntriesBatch },
         newData,
         fileName,
-        currentSession.id,
+        ledgerSessionId,
         documentId
       );
       
@@ -729,11 +738,12 @@ export function RestaurantDashboard() {
       try {
         const hydrated = await hydrateProcessedDocumentLineItems(doc);
         await deleteFinancesByDocumentId(doc.id);
+        const ledgerSessionId = doc.session_id || currentSession.id;
         await postLedgerFromFinancialData(
           { addIncome, addExpense, addLedgerEntriesBatch },
           hydrated.data!,
           hydrated.fileName,
-          currentSession.id,
+          ledgerSessionId,
           doc.id
         );
         ok += 1;
@@ -1899,11 +1909,61 @@ function formatLiveClock(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
+/**
+ * Live clock aligned to the second boundary, optionally corrected against the
+ * HTTP Date header so a skewed client clock stays within ~1s of wall time.
+ */
 function useLiveClock(): string {
   const [clock, setClock] = useState(() => formatLiveClock(new Date()));
   useEffect(() => {
-    const id = setInterval(() => setClock(formatLiveClock(new Date())), 1000);
-    return () => clearInterval(id);
+    let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let offsetMs = 0;
+
+    const nowCorrected = () => new Date(Date.now() + offsetMs);
+
+    const tick = () => {
+      if (!cancelled) setClock(formatLiveClock(nowCorrected()));
+    };
+
+    const startAligned = () => {
+      tick();
+      const msToNextSecond = 1000 - (nowCorrected().getTime() % 1000);
+      timeoutId = setTimeout(() => {
+        tick();
+        intervalId = setInterval(tick, 1000);
+      }, msToNextSecond);
+    };
+
+    void (async () => {
+      try {
+        const t0 = Date.now();
+        const res = await fetch(window.location.origin + '/', {
+          method: 'HEAD',
+          cache: 'no-store',
+        });
+        const t1 = Date.now();
+        const dateHeader = res.headers.get('date');
+        if (dateHeader) {
+          const serverMs = Date.parse(dateHeader);
+          if (!Number.isNaN(serverMs)) {
+            // Date is second-resolution; mid-RTT estimate is good enough for ~1s accuracy.
+            const rttMs = Math.max(0, t1 - t0);
+            offsetMs = serverMs + rttMs / 2 - t1;
+          }
+        }
+      } catch {
+        /* keep local clock */
+      }
+      if (!cancelled) startAligned();
+    })();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
   return clock;
 }
