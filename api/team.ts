@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { runTeamAction } from "../../lib/workspaceInvites.js";
-import { stripeCorsApplyHeaders, stripeCorsPreflight } from "../lib/stripeCors.js";
+import { runTeamAction } from "../lib/workspaceInvites.js";
+import { stripeCorsApplyHeaders, stripeCorsPreflight } from "./lib/stripeCors.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (stripeCorsPreflight(req, res)) return;

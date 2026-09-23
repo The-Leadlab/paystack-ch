@@ -662,7 +662,7 @@ export function RestaurantDashboard() {
           (emp) => emp.name.toLowerCase() === employeeName.toLowerCase()
         );
         if (!existingEmployee && netForEmployee > 0) {
-          await addEmployee(employeeName, 'Employee', netForEmployee, ledgerSessionId);
+          await addEmployee(employeeName, 'Employee', netForEmployee);
         }
       } catch (empError) {
         console.error('âš ï¸ Error managing employee:', empError);
@@ -790,6 +790,7 @@ export function RestaurantDashboard() {
         continue;
       }
       await addDocument({
+        id: `drive_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
         fileName: file.fileName,
         status: 'pending',
         fileUrl: file.fileUrl,
@@ -1856,7 +1857,7 @@ function IncomeExpenseSection({
                       </p>
                       <SwissAccountCodeBadge konto={item.account_code} lang={language} />
                       {(item.document_id || item.description) && (
-                        <FileText className="w-3 h-3 text-cdlp-gold flex-shrink-0" title={t('linkedToDocument')} />
+                        <FileText className="w-3 h-3 text-cdlp-gold flex-shrink-0" aria-label={t('linkedToDocument')} />
                       )}
                     </div>
                     <p className="text-[10px] md:text-xs text-cdlp-muted">{item.date}</p>
@@ -2841,7 +2842,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
   const posReportsLabel = t('docPosReports');
-  const { documents, updateDocument } = useDocuments();
+  const { documents } = useDocuments();
   const [filter, setFilter] = useState<'all' | 'suppliers' | 'employees' | 'pos'>('all');
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<ProcessedDocument | null>(initialSelectedDocument || null);
@@ -2897,16 +2898,18 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
     return { suppliers, employees, posReports, other };
   }, [documents]);
 
-  const filteredEntities = useMemo(() => {
+  const filteredEntities = useMemo((): Array<[string, ProcessedDocument[]]> => {
     if (filter === 'suppliers') return Object.entries(groupedDocs.suppliers);
     if (filter === 'employees') return Object.entries(groupedDocs.employees);
     if (filter === 'pos') return [[posReportsLabel, groupedDocs.posReports]];
-    
+
     // All documents
     return [
       ...Object.entries(groupedDocs.suppliers),
       ...Object.entries(groupedDocs.employees),
-      ...(groupedDocs.posReports.length > 0 ? [[posReportsLabel, groupedDocs.posReports]] : [])
+      ...(groupedDocs.posReports.length > 0
+        ? ([[posReportsLabel, groupedDocs.posReports]] as Array<[string, ProcessedDocument[]]>)
+        : []),
     ];
   }, [filter, groupedDocs, posReportsLabel]);
 

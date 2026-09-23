@@ -9,7 +9,7 @@ function afterLoadThenIdle(fn: () => void, idleTimeoutMs = 10_000): void {
     if ("requestIdleCallback" in window) {
       window.requestIdleCallback(fn, { timeout: idleTimeoutMs });
     } else {
-      window.setTimeout(fn, 5000);
+      globalThis.setTimeout(fn, 5000);
     }
   };
   if (document.readyState === "complete") {

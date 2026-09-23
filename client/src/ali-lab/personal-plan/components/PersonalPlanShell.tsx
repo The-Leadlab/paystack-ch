@@ -10,7 +10,7 @@ import { PersonalTransactionModal } from "./PersonalTransactionModal";
 import { PersonalInviteModal } from "./PersonalInviteModal";
 import { PersonalOnboardingWizard } from "./PersonalOnboardingWizard";
 import { AliLabAuthBanner } from "../../components/AliLabAuthBanner";
-import { personalAppHomePath, type PersonalPlanSurface } from "../personalPlanNav";
+import { type PersonalPlanSurface } from "../personalPlanNav";
 import {
   PERSONAL_SIDEBAR_COLLAPSED_KEY,
   usePersistedSidebarCollapsed,
@@ -44,7 +44,6 @@ function PersonalPlanShellInner({
   surface?: PersonalPlanSurface;
   children: ReactNode;
 }) {
-  const personalHome = personalAppHomePath();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const forceGuides = shouldForceProductGuides(user?.email);
@@ -112,7 +111,7 @@ function PersonalPlanShellInner({
         {surface !== "app" ? (
           <AliLabAuthBanner
             variant="personal"
-            signInRedirect={surface === "app" ? personalHome : "/ali/overview"}
+            signInRedirect="/ali/overview"
           />
         ) : null}
         <PersonalPlanHeader title={title} />

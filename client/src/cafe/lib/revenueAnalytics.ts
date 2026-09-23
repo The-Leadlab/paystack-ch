@@ -339,7 +339,7 @@ export function buildReconciliation(
       });
     }
     const dayIncome = incomeByDay.get(day) || 0;
-    const card = list.reduce((s, r) => s + r.card, 0);
+    const card = list.reduce((s: number, r: PosReadingRow) => s + r.card, 0);
     if (dayIncome < 1 && card > 1) {
       items.push({
         id: `unmatched-${day}`,

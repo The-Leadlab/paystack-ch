@@ -7,7 +7,7 @@ function sendJson(res: VercelResponse, status: number, body: unknown): void {
 }
 
 function cookieHeader(req: VercelRequest): string | null {
-  const raw = req.headers.cookie;
+  const raw = req.headers.cookie as string | string[] | undefined;
   if (typeof raw === "string") return raw;
   if (Array.isArray(raw)) return raw.join("; ");
   return null;

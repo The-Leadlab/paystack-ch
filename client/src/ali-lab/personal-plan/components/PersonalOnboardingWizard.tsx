@@ -62,7 +62,7 @@ export function PersonalOnboardingWizard({
         setDriveConnected(true);
         return;
       }
-      await connectGoogleDrive(personalAppHomePath());
+      await connectGoogleDrive({ returnPath: personalAppHomePath() });
     } catch {
       /* user can skip */
     } finally {

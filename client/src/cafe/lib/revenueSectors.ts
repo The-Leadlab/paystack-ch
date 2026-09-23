@@ -202,7 +202,7 @@ export const SECTOR_CATALOG: SectorMeta[] = [
   },
 ];
 
-export const ALL_SECTORS: SectorId[] = SECTOR_CATALOG.map((s) => s.id);
+export const ALL_SECTORS: SectorId[] = SECTOR_CATALOG.map((s) => s.id as SectorId);
 
 /** First-run default — user can add more from the full catalog. */
 export const DEFAULT_SECTORS: SectorId[] = ['restaurants'];

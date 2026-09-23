@@ -422,7 +422,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const deleteFinancesByDocumentId = useCallback(
     async (documentId: string): Promise<{ income: number; expenses: number }> => {
       const uid = dataOwnerUid;
-      if (!db || !uid || !canWrite || !documentId) {
+      const firestore = db;
+      if (!firestore || !uid || !canWrite || !documentId) {
         return { income: 0, expenses: 0 };
       }
 
@@ -440,14 +441,14 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         const [incomeSnap, expenseSnap] = await Promise.all([
           getDocs(
             query(
-              collection(db, INCOME_COLLECTION),
+              collection(firestore, INCOME_COLLECTION),
               where('restaurantId', '==', uid),
               where('documentId', '==', documentId)
             )
           ),
           getDocs(
             query(
-              collection(db, EXPENSE_COLLECTION),
+              collection(firestore, EXPENSE_COLLECTION),
               where('restaurantId', '==', uid),
               where('documentId', '==', documentId)
             )
@@ -458,8 +459,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         expenseSnap.forEach((d) => expenseIds.add(d.id));
 
         await Promise.all([
-          ...[...incomeIds].map((id) => deleteDoc(doc(db, INCOME_COLLECTION, id))),
-          ...[...expenseIds].map((id) => deleteDoc(doc(db, EXPENSE_COLLECTION, id))),
+          ...Array.from(incomeIds).map((id) => deleteDoc(doc(firestore, INCOME_COLLECTION, id))),
+          ...Array.from(expenseIds).map((id) => deleteDoc(doc(firestore, EXPENSE_COLLECTION, id))),
         ]);
 
         setIncome((prev) => prev.filter((i) => i.document_id !== documentId));

@@ -20,11 +20,12 @@ export default function handler(req: VercelRequest, res: VercelResponse): void {
     sendJson(res, 503, { error: "ALI_LAB_PASSWORD is not set on the server" });
     return;
   }
+  const rawCookie = req.headers.cookie as string | string[] | undefined;
   const cookieHeader =
-    typeof req.headers.cookie === "string"
-      ? req.headers.cookie
-      : Array.isArray(req.headers.cookie)
-        ? req.headers.cookie.join("; ")
+    typeof rawCookie === "string"
+      ? rawCookie
+      : Array.isArray(rawCookie)
+        ? rawCookie.join("; ")
         : null;
   const ok = aliLabSessionIsValid(cookieHeader, password);
   sendJson(res, ok ? 200 : 401, { ok });

@@ -428,7 +428,7 @@ function buildWorkSessionRollups(
   // Orphan docs without a known session row
   for (const [sid, docs] of bySession) {
     if (knownIds.has(sid)) continue;
-    const completedCount = docs.filter((d) => d.status === "completed" || d.status === "needs_review").length;
+    const completedCount = docs.filter((d: AdminDocumentSnapshot) => d.status === "completed" || d.status === "needs_review").length;
     const logged = logBySession.get(sid) ?? [];
     rows.push({
       id: sid,
@@ -439,8 +439,8 @@ function buildWorkSessionRollups(
       documentCount: docs.length,
       completedCount,
       errorCount: logged.length,
-      pendingCount: docs.filter((d) => d.status === "pending").length,
-      processingCount: docs.filter((d) => d.status === "processing").length,
+      pendingCount: docs.filter((d: AdminDocumentSnapshot) => d.status === "pending").length,
+      processingCount: docs.filter((d: AdminDocumentSnapshot) => d.status === "processing").length,
       totalPages: null,
       avgDurationMs: null,
       errors: errorsForSession(logged),

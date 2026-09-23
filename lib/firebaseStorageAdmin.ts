@@ -32,8 +32,13 @@ function loadServiceAccountProjectId(): string | null {
     const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64?.trim();
     const jsonText = inline || (b64 ? Buffer.from(b64.replace(/\s/g, ""), "base64").toString("utf8") : "");
     if (!jsonText) return null;
-    const cred = parseServiceAccountJson(jsonText);
-    return typeof cred.project_id === "string" ? cred.project_id : null;
+    const cred = parseServiceAccountJson(jsonText) as {
+      project_id?: string;
+      projectId?: string;
+    };
+    if (typeof cred.project_id === "string") return cred.project_id;
+    if (typeof cred.projectId === "string") return cred.projectId;
+    return null;
   } catch {
     return null;
   }
