@@ -134,7 +134,7 @@ export async function logUserActivity(
   }
 
   try {
-    await updateDoc(userRef, patch);
+    await updateDoc(userRef, patch as never);
   } catch {
     try {
       await setDoc(userRef, { analytics: { lastActiveAt: serverTimestamp() } }, { merge: true });

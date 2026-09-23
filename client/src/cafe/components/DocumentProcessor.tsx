@@ -3952,7 +3952,9 @@ export const DocumentProcessor: React.FC<{
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const url = URL.createObjectURL(doc.fileRaw);
+                                  const raw = doc.fileRaw;
+                                  if (!raw) return;
+                                  const url = URL.createObjectURL(raw);
                                   window.open(url, '_blank');
                                 }}
                                 className="ba-doc-action-btn"

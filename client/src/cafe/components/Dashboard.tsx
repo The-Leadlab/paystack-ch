@@ -14,6 +14,12 @@ export function Dashboard() {
   const [processedDocuments, setProcessedDocuments] = useState<ProcessedDocument[]>([]);
   const [activeTab, setActiveTab] = useState<'audit' | 'insights'>('audit');
 
+  const updateDocument = async (documentId: string, updates: Partial<ProcessedDocument>) => {
+    setProcessedDocuments((prev) =>
+      prev.map((d) => (d.id === documentId ? { ...d, ...updates } : d))
+    );
+  };
+
   const handleSwitchClient = () => {
     setCurrentClient(null);
   };
@@ -95,7 +101,16 @@ export function Dashboard() {
 
         <div className="w-full">
           {activeTab === 'audit' && (
-            <DocumentProcessor documents={processedDocuments} setDocuments={setProcessedDocuments} />
+            <DocumentProcessor
+              documents={processedDocuments}
+              updateDocument={updateDocument}
+              onDeleteDocument={async (documentId) => {
+                setProcessedDocuments((prev) => prev.filter((d) => d.id !== documentId));
+              }}
+              onDataExtracted={() => {
+                /* legacy audit dashboard — extraction handled in /app */
+              }}
+            />
           )}
           {activeTab === 'insights' && <FinancialInsights documents={processedDocuments} />}
         </div>

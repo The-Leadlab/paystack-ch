@@ -38,12 +38,20 @@ export function normalizeServiceAccountPrivateKey(privateKey: string): string {
   return key;
 }
 
+/** Google JSON keys are snake_case; firebase-admin typings prefer camelCase. */
+type GoogleServiceAccountFields = {
+  private_key?: string;
+  project_id?: string;
+  client_email?: string;
+};
+
 export function normalizeServiceAccount(cred: ServiceAccount): ServiceAccount {
-  if (typeof cred.private_key !== "string") return cred;
+  const raw = cred as ServiceAccount & GoogleServiceAccountFields;
+  if (typeof raw.private_key !== "string") return cred;
   return {
     ...cred,
-    private_key: normalizeServiceAccountPrivateKey(cred.private_key),
-  };
+    private_key: normalizeServiceAccountPrivateKey(raw.private_key),
+  } as ServiceAccount;
 }
 
 function stripBom(value: string): string {

@@ -47,7 +47,7 @@ export function BusinessOnboardingWizard({
         setDriveConnected(true);
         return;
       }
-      await connectGoogleDrive("/app");
+      await connectGoogleDrive({ returnPath: "/app" });
     } catch {
       /* skip ok */
     } finally {

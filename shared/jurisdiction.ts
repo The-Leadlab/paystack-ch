@@ -53,5 +53,7 @@ export function resolveTaxRegion(opts: {
   if (typeof opts.taxRegion === "string" && opts.taxRegion.trim()) {
     return parseTaxRegion(opts.taxRegion);
   }
-  return taxRegionFromIncorporation(opts.incorporationCountry);
+  return taxRegionFromIncorporation(
+    typeof opts.incorporationCountry === "string" ? opts.incorporationCountry : undefined
+  );
 }

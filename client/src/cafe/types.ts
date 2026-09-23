@@ -87,26 +87,6 @@ export interface POSReading {
   updated_at: string;
 }
 
-export interface POSReading {
-  id: string;
-  restaurant_id: string;
-  session_id: string;
-  date: string;
-  // Revenue breakdown
-  gross_revenue: number;
-  vat_amount: number;
-  net_revenue: number;
-  tips: number;
-  // Payment methods
-  cash: number;
-  card: number;
-  other_payment: number;
-  // Additional info
-  notes?: string;
-  photo_url?: string;
-  created_at: string;
-}
-
 export enum DocumentType {
   BANK_STATEMENT = 'Bank Statement',
   PAY_SLIP = 'Pay Slip',
@@ -179,6 +159,8 @@ export interface SwissAccountClassification {
   confidence: number;
   requires_human_review: boolean;
   vat_account_code?: string;
+  suggested_income_code?: string;
+  suggested_expense_code?: string;
   candidate_codes?: string[];
   splits?: Array<{
     account_code: string;

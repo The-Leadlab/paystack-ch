@@ -1,7 +1,6 @@
 
 import React, { useState, useMemo, useRef } from 'react';
 import { ProcessedDocument, DocumentType, BankTransaction, FinancialData } from '../types';
-import { TAX_CATEGORIES } from './DocumentProcessor';
 import { 
   MessageSquare, Sparkles, Send, Loader2, 
   X, Eye, AlertCircle, Camera, 
@@ -14,6 +13,16 @@ import {
 import { fileToBase64 } from '../services/geminiService';
 import { generateGeminiContent } from '../lib/geminiClient';
 import { useLanguage } from '../context/LanguageContext';
+
+/** Lightweight category color hints for the insights bars (TAX_CATEGORIES was removed from DocumentProcessor). */
+const TAX_CATEGORIES: Array<{ id: string; label: string; color: string }> = [
+  { id: 'SUPPLIERS', label: 'Suppliers', color: 'text-emerald-500' },
+  { id: 'BILLS', label: 'Bills', color: 'text-sky-500' },
+  { id: 'PAYROLL', label: 'Payroll', color: 'text-violet-500' },
+  { id: 'PAYROLL_TAXES', label: 'Payroll taxes', color: 'text-fuchsia-500' },
+  { id: 'OTHER', label: 'Other', color: 'text-slate-500' },
+  { id: 'SALES', label: 'Sales', color: 'text-amber-500' },
+];
 
 interface FinancialInsightsProps {
   documents: ProcessedDocument[];
@@ -311,7 +320,7 @@ export const FinancialInsights: React.FC<FinancialInsightsProps> = ({ documents 
              </div>
              <div className="space-y-6">
                 {sortedCategories.map(([catName, data]) => {
-    const catConfig = TAX_CATEGORIES.find(c => c.id === catName || c.label === catName);
+    const catConfig = TAX_CATEGORIES.find((c: { id: string; label: string; color: string }) => c.id === catName || c.label === catName);
                   const isExpanded = expandedCat === catName;
                   return (
                     <div key={catName} className="space-y-3">
