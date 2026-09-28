@@ -26,6 +26,7 @@ import {
   shouldSplitPdfToPageImages,
 } from "../lib/pdfPagesToImages";
 import { inferLineItemType, matchLineItemTypeFromAi } from "./categoryDetectionService";
+import { getActiveFiscalLocale, reportingCurrencyForLocale } from "../lib/fiscalLocale";
 import {
   normalizeIsoDate,
   resolveDocumentVatAmount,
@@ -1371,7 +1372,7 @@ function mergePdfPageAnalyses(pages: FinancialData[], sourceFileName: string): F
 
 export const analyzeFinancialDocument = async (
   file: File,
-  targetCurrency: string = 'CHF',
+  targetCurrency: string = reportingCurrencyForLocale(),
   userHint?: string,
   existingStorage?: { fileUrl?: string; storagePath?: string },
   signal?: AbortSignal,
@@ -1703,15 +1704,27 @@ export const analyzeFinancialDocument = async (
     };
 
     const hintSection = userHint ? `USER HINT: "${userHint}".` : "";
+    const isUkFiscal = getActiveFiscalLocale() === "uk";
+    const fiscalOverlay = isUkFiscal
+      ? `
+FISCAL LOCALE: UNITED KINGDOM (Admin UK UAT)
+- Prefer GBP (£) as originalCurrency when amounts are in pounds; keep other ISO codes only when clearly printed.
+- UK VAT rates only: 0% (zero-rated), 5% (reduced), 20% (standard). Populate swissVatBreakdown with one object per printed rate column (reuse the field for UK rate lines).
+- Tax labels: VAT / Value Added Tax (not Swiss TVA/MwSt). Prefer explicit VAT total; else sum multi-rate columns; else derive gross−net.
+- DATE RULE: UK DD/MM/YYYY → YYYY-MM-DD. NEVER use today's date or upload date.
+- Keep pence exactly as printed. NUMBER SAFETY: UK 1,250.50 → 1250.50 (comma = thousands).
+- Payslips: use Gross pay / Net pay / Net to pay (or Payment) labels; still map into paySlip.grossPay / netPay / paymentToEmployee.
+`
+      : "";
 
-    const analysisPrompt = `You are a strict Swiss accounting document extraction engine. ${hintSection}
-
+    const analysisPrompt = `You are a strict ${isUkFiscal ? "UK (HMRC VAT)" : "Swiss"} accounting document extraction engine. ${hintSection}
+${fiscalOverlay}
 CRITICAL RULES:
 1. Identify document type accurately
 2. Determine if this is INCOME (revenue, sales, deposits) or EXPENSE (bills, invoices to pay, purchases)
 3. For INCOME documents: Set expenseCategory to "REVENUE" or "SALES"
 4. For EXPENSE documents: ALWAYS assign a precise category — NEVER use "OTHER" when you can classify. Prefer one of: FOOD_SUPPLIES, BEVERAGES, RESTAURANT_SUPPLIES, PACKAGING, CLEANING, MAINTENANCE, RENT, UTILITIES, INSURANCE, TELECOM, BANK_FEES, ACCOUNTING, MARKETING, DELIVERY, OFFICE_SUPPLIES, LICENSES, TAXES, PAYROLL, PAYROLL_TAXES, SUPPLIERS, BILLS. Use issuer name + line items to decide (e.g. Transgourmet/Aligro → FOOD_SUPPLIES; Swisscom → TELECOM; landlord → RENT).
-5. Extract key financial data (amounts, printed dates, issuer). DATE RULE: date MUST be the date printed on the invoice/receipt/ticket (Facture du / Datum / Date), converted to YYYY-MM-DD. Swiss DD.MM.YYYY → YYYY-MM-DD. NEVER use today's date, upload date, or processing date.
+5. Extract key financial data (amounts, printed dates, issuer). DATE RULE: date MUST be the date printed on the invoice/receipt/ticket (Facture du / Datum / Date / Invoice date), converted to YYYY-MM-DD. ${isUkFiscal ? "UK DD/MM/YYYY" : "Swiss DD.MM.YYYY"} → YYYY-MM-DD. NEVER use today's date, upload date, or processing date.
 6. For bank statements: extract ALL transactions into lineItems
 7. For payslips (bulletin de salaire / fiche de paie / Lohnabrechnung): read EVERY page and EVERY totals block (often at the bottom). Copy labeled totals exactly — see PAY SLIP RULES below.
 8. Extract VAT if shown (TVA, VAT, MwSt, Tax labels). Prefer explicit Total TVA; else sum multi-rate columns; else derive gross−net. Do not leave vatAmount=0 when TVA is visible.
@@ -1935,7 +1948,7 @@ Return JSON only.`;
 // Fixed analyzeBankStatement to properly handle the GenAI response and return BankStatementAnalysis
 export const analyzeBankStatement = async (
   file: File,
-  targetCurrency: string = 'CHF',
+  targetCurrency: string = reportingCurrencyForLocale(),
   existingStorage?: { fileUrl?: string; storagePath?: string },
   options?: { preferInline?: boolean }
 ): Promise<BankStatementAnalysis> => {

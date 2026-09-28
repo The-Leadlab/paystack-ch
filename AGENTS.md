@@ -55,6 +55,16 @@ Password-gated sandbox for competitor-gap features (budgeting, goals, bills, etc
 - **Local API:** run `pnpm dev:stripe-server` so Vite can proxy `POST /api/ali/verify`; otherwise use `VITE_ALI_LAB_PASSWORD` dev fallback after gate
 - **Production:** set `ALI_LAB_PASSWORD` in Vercel (same value for Edge middleware + `/api/ali/verify`). After login, the SPA checks `GET /api/ali/session` — do not rely on `sessionStorage` on www.paystack.ch
 
+### Admin UK UAT (`/admin-uk`)
+
+Password-gated sandbox that forces the restaurant dashboard onto the **UK fiscal system** (GBP, VAT 0%/5%/20%, UK Gemini extraction prompts for tickets/PDFs/photos). Production `/app` stays Swiss until you explicitly promote a dashboard toggle.
+
+- **URLs:** `/admin-uk-gate` (login), `/admin-uk` (UK UAT dashboard)
+- **Password:** `ADMIN_UK_PASSWORD` in `.env` (see `.env.example`; default `admin UK`)
+- **Local API:** run `pnpm dev:stripe-server` so Vite can proxy `/api/admin-uk/*`; otherwise use `VITE_ADMIN_UK_PASSWORD` / default `admin UK` after gate
+- **Production:** set `ADMIN_UK_PASSWORD` in Vercel (Edge middleware + `/api/admin-uk/verify`). Session via `GET /api/admin-uk/session` cookie — do not rely on `sessionStorage` alone on www.paystack.ch
+- **Do not** add a UK toggle on `/app` until UAT is confirmed in chat
+
 ### Personal Google Drive
 
 Personal statement uploads (when Drive is connected) go under **`Paystack Documents / Personal / YYYY-MM-DD /`**. Connect from `/personal/overview`. Spec: `docs/PERSONAL_E2E_DRIVE_SUPER_PROMPT.md`. Sample fixtures: `fixtures/personal/`. Seed (needs Admin JSON): `npx tsx scripts/seed-personal-ali-e2e.mjs`.

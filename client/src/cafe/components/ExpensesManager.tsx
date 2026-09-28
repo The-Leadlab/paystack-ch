@@ -28,6 +28,7 @@ import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
 import { useDocuments } from '../context/DocumentContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
+import { useUkUat } from '../context/UkUatContext';
 import { filterBusinessExpenses } from '../lib/personalBleedFilter';
 import { formatInsightText, localizeLedgerDescription } from '../lib/localizeLedgerCopy';
 import {
@@ -77,6 +78,7 @@ export function ExpensesManager({
   const { currentSession, isAllSessionsView, sessions } = useSession();
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
+  const { currencySuffix } = useUkUat();
 
   const [categoryFilter, setCategoryFilter] = useState<LedgerExpenseCategory | 'ALL'>('ALL');
   const [intervalId, setIntervalId] = useState<RevenueIntervalId>('all');
@@ -187,7 +189,7 @@ export function ExpensesManager({
 
   const fmt = (n: number) =>
     n.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const fmtChf = (n: number) => `${fmt(n)} CHF`;
+  const fmtChf = (n: number) => `${fmt(n)}${currencySuffix}`;
   const fmtDate = (iso: string) =>
     new Date(iso + 'T12:00:00').toLocaleDateString(chfLocale, {
       day: 'numeric',

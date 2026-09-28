@@ -57,6 +57,7 @@ import { useSession } from '../context/SessionContext';
 import { useDataWriteAccess } from '../hooks/useDataWriteAccess';
 import { logUserActivity } from '../lib/userActivity';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
+import { useUkUat } from '../context/UkUatContext';
 import { useExpenseCategoryMeta } from '../i18n/expenseCategoryI18n';
 import { formatIssuerForDisplay, invoicesDetectedIssuer, documentDisplayName, conjoinedInvoicesLabel } from '../i18n/documentDisplayI18n';
 import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
@@ -2501,6 +2502,7 @@ export const DocumentProcessor: React.FC<{
   const activitySessionId = currentSession?.id;
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
+  const { currency: ukReportingCurrency, ukUatActive } = useUkUat();
   const docStatusLabel = (status: string) => {
     const map: Record<string, string> = {
       pending: t('dpStatusPending'),
@@ -2518,7 +2520,13 @@ export const DocumentProcessor: React.FC<{
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [reportingCurrency] = useState('CHF');
+  const [reportingCurrency, setReportingCurrency] = useState(() =>
+    ukUatActive ? ukReportingCurrency : 'CHF',
+  );
+
+  useEffect(() => {
+    if (ukUatActive) setReportingCurrency(ukReportingCurrency);
+  }, [ukUatActive, ukReportingCurrency]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [localDocs, setLocalDocs] = useState<ProcessedDocument[]>([]);
   /** Full lineItems restored from Storage when Firestore only keeps a preview. */
@@ -3687,7 +3695,7 @@ export const DocumentProcessor: React.FC<{
               <tbody>
                 {allDocs.map((doc) => {
                   const fmtDocChf = (n: number) =>
-                    `${n.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF`;
+                    `${n.toLocaleString(ukUatActive ? 'en-GB' : 'de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${reportingCurrency}`;
                   const isExpanded = expandedRows.has(doc.id);
                   const vat = Number(doc.data?.vatAmount || 0);
                   const swissLines = doc.data?.swissVatBreakdown;

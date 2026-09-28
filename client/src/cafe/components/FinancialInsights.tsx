@@ -13,6 +13,7 @@ import {
 import { fileToBase64 } from '../services/geminiService';
 import { generateGeminiContent } from '../lib/geminiClient';
 import { useLanguage } from '../context/LanguageContext';
+import { useUkUat } from '../context/UkUatContext';
 
 /** Lightweight category color hints for the insights bars (TAX_CATEGORIES was removed from DocumentProcessor). */
 const TAX_CATEGORIES: Array<{ id: string; label: string; color: string }> = [
@@ -48,6 +49,7 @@ const renderMessageWithLinks = (text: string) => {
 
 const EvidenceModal: React.FC<{ doc: ProcessedDocument; onClose: () => void }> = ({ doc, onClose }) => {
   const { t } = useLanguage();
+  const { currencySuffix } = useUkUat();
   const [docUrl, setDocUrl] = useState<string | null>(null);
 
   React.useEffect(() => {
@@ -96,7 +98,7 @@ const EvidenceModal: React.FC<{ doc: ProcessedDocument; onClose: () => void }> =
                    <div className="flex justify-between items-center">
                       <span className="text-[11px] font-bold text-ypsom-slate uppercase tracking-tight">{t('fiGrossValue')}</span>
                       <span className="text-[13px] font-mono font-black text-ypsom-deep border-b-2 border-ypsom-alice">
-                        {doc.data?.amountInCHF.toLocaleString(undefined, { minimumFractionDigits: 2 })} CHF
+                        {doc.data?.amountInCHF.toLocaleString(undefined, { minimumFractionDigits: 2 })}{currencySuffix}
                       </span>
                    </div>
                 </div>

@@ -1,8 +1,10 @@
 import { SWISS_VAT_RATES } from '@shared/swissVatRates';
+import { getTaxRegionConfig } from '@shared/taxRegions';
+import { getActiveFiscalLocale } from './fiscalLocale';
 
 const RATE_EPS = 0.15;
 
-export type VatReviewReason = 'missing_vat' | 'non_swiss_rate' | 'zero_rate_unconfirmed';
+export type VatReviewReason = 'missing_vat' | 'non_swiss_rate' | 'non_region_rate' | 'zero_rate_unconfirmed';
 
 export type VatReviewResult = {
   needsAction: boolean;
@@ -32,9 +34,19 @@ export function isSwissVatRate(rate: number): boolean {
   return SWISS_VAT_RATES.some((allowed) => Math.abs(allowed - rate) <= RATE_EPS);
 }
 
+export function isAllowedVatRateForActiveLocale(rate: number): boolean {
+  const locale = getActiveFiscalLocale();
+  if (locale === 'uk') {
+    const ukRates = getTaxRegionConfig('uk').rates;
+    return ukRates.some((allowed) => Math.abs(allowed - rate) <= RATE_EPS);
+  }
+  return isSwissVatRate(rate);
+}
+
 /**
  * Documents need manual VAT confirmation when amount is missing/zero without confirmation,
- * or when any extracted rate is outside Swiss presets (0 / 2.6 / 8.1).
+ * or when any extracted rate is outside the active fiscal presets
+ * (CH: 0 / 2.6 / 8.1 · UK UAT: 0 / 5 / 20).
  */
 export function evaluateVatReview(
   data:
@@ -54,9 +66,12 @@ export function evaluateVatReview(
   const reasons: VatReviewReason[] = [];
   const rates = collectRates(data);
   const vatAmount = Number(data.vatAmount || 0);
+  const locale = getActiveFiscalLocale();
 
-  const nonSwiss = rates.filter((r) => r > 0 && !isSwissVatRate(r));
-  if (nonSwiss.length > 0) reasons.push('non_swiss_rate');
+  const nonRegion = rates.filter((r) => r > 0 && !isAllowedVatRateForActiveLocale(r));
+  if (nonRegion.length > 0) {
+    reasons.push(locale === 'uk' ? 'non_region_rate' : 'non_swiss_rate');
+  }
 
   const onlyZero = rates.length > 0 && rates.every((r) => Math.abs(r) <= RATE_EPS);
   if (vatAmount <= 0 || onlyZero || rates.length === 0) {

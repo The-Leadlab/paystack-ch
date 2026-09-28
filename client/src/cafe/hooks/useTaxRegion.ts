@@ -6,14 +6,22 @@ import {
 } from "@shared/taxRegions";
 import { resolveTaxRegion } from "@shared/jurisdiction";
 import { useAuth } from "../context/AuthContext";
+import { useUkUat } from "../context/UkUatContext";
 import { db } from "../lib/firebase";
 
 export function useTaxRegion(): { taxRegion: TaxRegion; loading: boolean } {
   const { user } = useAuth();
+  const { ukUatActive, taxRegion: ukTaxRegion } = useUkUat();
   const [taxRegion, setTaxRegion] = useState<TaxRegion>("ch");
-  const [loading, setLoading] = useState(Boolean(user?.uid));
+  const [loading, setLoading] = useState(Boolean(user?.uid) && !ukUatActive);
 
   useEffect(() => {
+    if (ukUatActive) {
+      setTaxRegion(ukTaxRegion);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
 
     async function loadTaxRegion() {
@@ -47,9 +55,9 @@ export function useTaxRegion(): { taxRegion: TaxRegion; loading: boolean } {
     return () => {
       cancelled = true;
     };
-  }, [user?.uid]);
+  }, [user?.uid, ukUatActive, ukTaxRegion]);
 
-  return { taxRegion, loading };
+  return { taxRegion: ukUatActive ? ukTaxRegion : taxRegion, loading };
 }
 
 export function useTaxRegionConfig() {

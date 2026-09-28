@@ -41,6 +41,7 @@ import { usePOS } from '../context/POSContext';
 import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
+import { useUkUat } from '../context/UkUatContext';
 import {
   addCashDeposit,
   loadCashDeposits,
@@ -49,6 +50,7 @@ import {
   type CashDeposit,
 } from '../lib/cashDeposits';
 import { filterBusinessExpenses } from '../lib/personalBleedFilter';
+import { reportingCurrencyForLocale } from '../lib/fiscalLocale';
 import {
   addDaysIso,
   buildCashPosition,
@@ -160,6 +162,7 @@ export function POSManager({
   const { currentSession, isAllSessionsView, sessions } = useSession();
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
+  const { currencySuffix } = useUkUat();
   const [editingReading, setEditingReading] = useState<POSReading | null>(null);
   const [activeSectors, setActiveSectors] = useState<string[]>(() => loadStoredSectors());
   const [showSectorPicker, setShowSectorPicker] = useState(false);
@@ -391,7 +394,7 @@ export function POSManager({
 
   const fmt = (n: number) =>
     n.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const fmtChf = (n: number) => `${fmt(n)} CHF`;
+  const fmtChf = (n: number) => `${fmt(n)}${currencySuffix}`;
   const fmtDate = (iso: string) =>
     new Date(iso + 'T12:00:00').toLocaleDateString(chfLocale, {
       day: 'numeric',
@@ -1742,7 +1745,7 @@ function POSModal({
         setMode('csv');
         return;
       }
-      const result = await analyzeFinancialDocument(file, 'CHF', Z_READING_AI_HINT);
+      const result = await analyzeFinancialDocument(file, reportingCurrencyForLocale(), Z_READING_AI_HINT);
       applyDraft(parseZReadingFromFinancialData(result, date));
     } catch (error) {
       alert(

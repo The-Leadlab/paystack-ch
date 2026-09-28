@@ -294,6 +294,7 @@ export default defineConfig({
     host: true,
     proxy: {
       "/api/ali": { target: "http://127.0.0.1:8787", changeOrigin: true },
+      "/api/admin-uk": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/api/admin": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/api/team": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/api/oauth": { target: "http://127.0.0.1:8787", changeOrigin: true },

@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
+import { useUkUat } from '../context/UkUatContext';
 
 type Tone = 'green' | 'red' | 'gold' | 'neutral' | 'blue' | 'purple';
 
@@ -18,7 +19,7 @@ export function BusinessKpiCard({
   icon: Icon,
   tone,
   progressPct,
-  suffix = ' CHF',
+  suffix,
 }: {
   label: string;
   value: string;
@@ -28,8 +29,10 @@ export function BusinessKpiCard({
   progressPct: number;
   suffix?: string;
 }) {
+  const { currencySuffix } = useUkUat();
   const colors = toneColors[tone];
   const pct = Math.min(100, Math.max(0, progressPct));
+  const moneySuffix = suffix ?? currencySuffix;
 
   return (
     <div className="ba-kpi-card">
@@ -39,7 +42,7 @@ export function BusinessKpiCard({
       </div>
       <p className="ba-kpi-value">
         {value}
-        {suffix}
+        {moneySuffix}
       </p>
       {hint ? <p className="ba-kpi-hint">{hint}</p> : null}
       <div className="ba-kpi-track">
