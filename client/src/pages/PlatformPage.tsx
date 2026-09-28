@@ -15,6 +15,7 @@ import { WorkspaceProvider, useWorkspace } from "@/cafe/context/WorkspaceContext
 import { SubscriptionGate } from "@/cafe/components/SubscriptionGate";
 import { SessionAccessShell } from "@/cafe/components/SessionAccessShell";
 import { firebaseReady } from "@/cafe/lib/firebase";
+import { UkUatProvider } from "@/cafe/context/UkUatContext";
 import {
   isPersonalFinancesAccessUser,
   isSubscriptionOrVerificationBypassUser,
@@ -196,7 +197,14 @@ function ProductLineShell() {
     );
   }
 
-  return (
+  return <BusinessDashboardShell />;
+}
+
+/** Production `/app` gets profile taxRegion → CHF/GBP. Admin UK already wraps with UkUatProvider active. */
+function BusinessDashboardShell() {
+  const { ukUatActive } = useUkUat();
+
+  const tree = (
     <SessionProvider>
       <SessionAccessShell>
         <EmployeeProvider>
@@ -213,5 +221,8 @@ function ProductLineShell() {
       </SessionAccessShell>
     </SessionProvider>
   );
+
+  if (ukUatActive) return tree;
+  return <UkUatProvider active={false}>{tree}</UkUatProvider>;
 }
 

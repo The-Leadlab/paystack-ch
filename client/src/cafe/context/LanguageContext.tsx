@@ -175,8 +175,9 @@ const translations = {
     planPersonalFeature5: 'Separate personal workspace',
     planPersonalFeature6: '7-day free trial — cancel anytime',
     planStarterFeature1: 'Document Processing (35/mo)',
-    planStarterFeature2: 'Income & Expense Tracking',
-    planStarterFeature3: 'Dashboard CHF totals; Reports tab with filters, monthly breakdown & CSV export',
+    planStarterFeature2:
+      'Income & expense tracking — dashboard totals plus Revenue and Expenses tabs',
+    planStarterFeature3: 'Dashboard totals; Reports tab with filters, monthly breakdown & CSV export',
     planStarterFeature4: '1 User',
     planStarterFeature5: 'Email Support',
     planStarterFeature6: 'Up to 2 saved sessions (your accounting periods)',
@@ -1410,8 +1411,9 @@ const translations = {
     planPersonalFeature5: 'Espace personnel separe',
     planPersonalFeature6: 'Essai 7 jours — resiliation a tout moment',
     planStarterFeature1: 'Traitement de documents (35/mois)',
-    planStarterFeature2: 'Suivi revenus et depenses',
-    planStarterFeature3: 'Totaux CHF sur le tableau de bord ; Rapports avec filtres, synthese mensuelle & export CSV',
+    planStarterFeature2:
+      'Suivi revenus et dépenses — totaux du tableau de bord plus onglets Revenus et Dépenses',
+    planStarterFeature3: 'Totaux sur le tableau de bord ; Rapports avec filtres, synthèse mensuelle & export CSV',
     planStarterFeature4: '1 utilisateur',
     planStarterFeature5: 'Support email',
     planStarterFeature6: 'Jusqu\'a 2 sessions enregistrees (periodes comptables)',

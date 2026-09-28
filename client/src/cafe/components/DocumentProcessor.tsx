@@ -58,6 +58,10 @@ import { useDataWriteAccess } from '../hooks/useDataWriteAccess';
 import { logUserActivity } from '../lib/userActivity';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useUkUat } from '../context/UkUatContext';
+import {
+  buildOwnBusinessAiHint,
+  resolveOwnBusinessNames,
+} from '../lib/ownBusinessIdentity';
 import { useExpenseCategoryMeta } from '../i18n/expenseCategoryI18n';
 import { defaultVatBreakdownLines, getActiveFiscalLocale } from '../lib/fiscalLocale';
 import { formatIssuerForDisplay, invoicesDetectedIssuer, documentDisplayName, conjoinedInvoicesLabel } from '../i18n/documentDisplayI18n';
@@ -3302,7 +3306,7 @@ export const DocumentProcessor: React.FC<{
         analyzeFinancialDocument(
           inputFile,
           reportingCurrency,
-          undefined,
+          buildOwnBusinessAiHint(resolveOwnBusinessNames(user?.uid, user?.displayName)) || undefined,
           pdfPageSplit ? undefined : storageForAi,
           abortController.signal,
           {
@@ -3671,6 +3675,11 @@ export const DocumentProcessor: React.FC<{
           <span className="text-xs font-bold uppercase tracking-wider">
             {documentLimitReached ? t('dpDocumentLimitReached') : t('dpDropFiles')}
           </span>
+          {!documentLimitReached ? (
+            <span className="text-[10px] text-cdlp-muted max-w-md text-center leading-relaxed px-2">
+              {t('dpUploadLimitsHint')}
+            </span>
+          ) : null}
           {monthlyRemaining != null ? (
             <span className="text-[10px] text-cdlp-muted">
               {t('dpSlotsLeft').replace('{left}', String(monthlyRemaining)).replace('{cap}', String(documentCap))}

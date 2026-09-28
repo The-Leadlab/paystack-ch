@@ -431,9 +431,16 @@ function isPaySlipFinancialData(data: FinancialData, file?: File): boolean {
   return false;
 }
 
+/** Distinct employee name from a payslip block (top-level or subDocument). */
+function paySlipEmployeeKey(block: FinancialData | undefined | null): string {
+  const name = sanitizeLooseText(block?.paySlip?.employee?.name || "", 120);
+  return name.toLowerCase();
+}
+
 /**
- * Gemini sometimes emits 2+ subDocuments for a single payslip (duplicate "invoices"). Collapse to one payroll line
- * and clear subDocuments so rollups match the printed salary once.
+ * Gemini sometimes emits 2+ subDocuments for a single payslip (duplicate "invoices").
+ * Collapse ONLY when they are the same employee (or unlabeled duplicates).
+ * Keep separate subDocuments when the PDF contains multiple employees' payslips.
  */
 function repairPaySlipMultiInvoiceBlocks(data: FinancialData, file?: File): FinancialData {
   if (!isPaySlipFinancialData(data, file)) return data;
@@ -446,6 +453,56 @@ function repairPaySlipMultiInvoiceBlocks(data: FinancialData, file?: File): Fina
       return { ...data, issuer: sanitizeLooseText(ps.employer.name, 120) };
     }
     return data;
+  }
+
+  // Multi-employee binder: keep one subDocument per distinct employee payslip.
+  const employeeKeys = subs
+    .map((s) => paySlipEmployeeKey(s))
+    .filter((k) => k.length > 0);
+  const uniqueEmployees = new Set(employeeKeys);
+  if (uniqueEmployees.size >= 2) {
+    const cleaned = subs.map((sub) => {
+      const emp = sanitizeLooseText(sub.paySlip?.employee?.name || "Employee", 120);
+      const employer =
+        sanitizeLooseText(sub.paySlip?.employer?.name || "", 120) ||
+        sanitizeLooseText(ps?.employer?.name || data.issuer, 120);
+      return applyPayrollPaymentFields({
+        ...sub,
+        documentType: DocumentType.PAY_SLIP,
+        issuer: employer || sub.issuer,
+        expenseCategory: "PAYROLL",
+        vatAmount: 0,
+        paySlip: {
+          ...(sub.paySlip ?? { employee: { name: emp }, employer: { name: employer } }),
+          employee: { ...(sub.paySlip?.employee ?? { name: emp }), name: emp },
+          employer: {
+            ...(sub.paySlip?.employer ?? { name: employer }),
+            name: employer,
+          },
+        },
+      });
+    });
+    const grossSum = cleaned.reduce(
+      (s, x) => s + toFiniteNumber(x.paySlip?.grossPay ?? x.totalAmount, 0),
+      0
+    );
+    return {
+      ...data,
+      documentType: DocumentType.PAY_SLIP,
+      expenseCategory: "PAYROLL",
+      vatAmount: 0,
+      subDocuments: cleaned,
+      totalAmount: Math.round(grossSum * 100) / 100,
+      issuer:
+        sanitizeLooseText(ps?.employer?.name || cleaned[0]?.issuer || data.issuer, 120) ||
+        data.issuer,
+      aiInterpretation: sanitizeLooseText(
+        `${cleaned.length} employee payslips detected in one file. ${data.aiInterpretation || ""}`,
+        380
+      ),
+      // Keep first employee on top-level for UI preview; ledger posts each sub.
+      paySlip: cleaned[0]?.paySlip ?? ps,
+    };
   }
 
   const gross = toFiniteNumber(ps?.grossPay, 0);
@@ -1438,13 +1495,25 @@ export const analyzeFinancialDocument = async (
         });
         let merged = mergePdfPageAnalyses(pageResults, file.name);
         merged = sanitizeFinancialDataForUi(applySwissVatWarnings(merged));
-        if (merged.totalAmount !== undefined && (!merged.amountInCHF || merged.amountInCHF === 0)) {
-          const rate = await getLiveExchangeRate(merged.originalCurrency || "CHF", targetCurrency);
-          merged = {
-            ...merged,
-            amountInCHF: merged.totalAmount * rate,
-            conversionRateUsed: rate,
-          };
+        if (merged.totalAmount !== undefined) {
+          const fromCur = String(merged.originalCurrency || targetCurrency || "CHF")
+            .trim()
+            .toUpperCase();
+          const toCur = String(targetCurrency || "CHF").trim().toUpperCase();
+          if (fromCur && toCur && fromCur !== toCur && fromCur !== "---") {
+            const rate = await getLiveExchangeRate(fromCur, toCur);
+            merged = {
+              ...merged,
+              amountInCHF: Math.round(merged.totalAmount * rate * 100) / 100,
+              conversionRateUsed: rate,
+            };
+          } else if (!merged.amountInCHF || merged.amountInCHF === 0) {
+            merged = {
+              ...merged,
+              amountInCHF: merged.totalAmount,
+              conversionRateUsed: 1,
+            };
+          }
         }
         return merged;
       }
@@ -1766,7 +1835,9 @@ CRITICAL RULES:
 33. SWISS TOTALS ROW: If printed, set swissVatReceiptTotals.merchandiseSubtotal (Total marchandise HT), vatTotal (Total TVA), deposit (Dépôt), totalInclVat (Total CHF TTC). If unclear, derive totalInclVat = merchandiseSubtotal + vatTotal + deposit.
 34. After filling swissVatBreakdown, set top-level vatAmount to the sum of column TVA amounts and netAmount to merchandise HT when available.
 35. For each subDocuments entry that is a receipt/invoice with a printed multi-rate TVA grid, also populate that sub-entry's swissVatBreakdown and swissVatReceiptTotals when visible.
-36. PAY SLIPS ONLY: documentType MUST be "Pay Slip". Set subDocuments to an empty array []. Never emit multiple subDocuments for one payslip — it is ONE document, not multiple invoices.
+36. PAY SLIPS: documentType MUST be "Pay Slip".
+   - ONE employee in the file → set subDocuments to [] and fill top-level paySlip. Never invent multiple subDocuments for a single bulletin.
+   - MULTIPLE employees in the SAME PDF (common: 5 payslips emailed as one file) → emit ONE subDocument PER employee. Each subDocument must have documentType "Pay Slip", its own paySlip.employee.name, grossPay/netPay/paymentToEmployee, and period. Top-level paySlip may mirror the first employee. Do NOT stop after the first payslip.
 37. PAY SLIP LABELS — READ THE SECOND WORD. "Salaire général", "Salaire brut", "Salaire net" are THREE DIFFERENT ROWS with THREE DIFFERENT AMOUNTS. Copy each from its OWN labeled row. Never substitute a nearby "salaire …" amount.
    - "Salaire général" / "Salaire de base" / "Salaire mensuel" / Grundlohn = BASE SALARY COMPONENT only → paySlip.components INCOME. NEVER put this in grossPay, totalAmount, netPay, or paymentToEmployee.
    - "Salaire brut" / "Total brut" / Bruttolohn / Retribuzione lorda = GROSS TOTAL of all earnings → paySlip.grossPay AND top-level totalAmount. This is usually in a totals/footer block and is typically larger than salaire général (général + heures supp + 13e + indemnités).
@@ -1794,8 +1865,9 @@ CRITICAL RULES:
 46. CATEGORY HINT: Beverage wholesalers (Feldschlösschen, Heineken, Coca-Cola, Valaisanne, etc.) → expenseCategory BEVERAGES; food wholesalers → FOOD_SUPPLIES.
 
 INCOME vs EXPENSE Detection:
-- INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings
-- EXPENSE: Supplier invoices, bills to pay, purchases, rent, utilities, salaries
+- INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings, and invoices ISSUED BY the account holder's own business (issuer/letterhead matches OWN BUSINESS IDENTITY in the user hint — usually top or left of the page). For those, set expenseCategory to "REVENUE" / "SALES".
+- EXPENSE: Supplier invoices, bills to pay, purchases, rent, utilities, salaries — including invoices where the account holder is only the recipient / bill-to party (often right side), even if their name appears on the document.
+- When OWN BUSINESS IDENTITY is provided: matching issuer → INCOME; matching recipient only → EXPENSE. Do not classify own-business customer invoices as supplier bills.
 
 MULTI-PAGE / MULTI-INVOICE REQUIREMENT:
 - Process the full file from first page to last page.
@@ -1946,10 +2018,19 @@ Return JSON only.`;
     normalized = sanitizeFinancialDataForUi(syncGrandTotalsFromSubDocuments(normalized));
     normalized = sanitizeFinancialDataForUi(applySwissVatWarnings(normalized));
 
-    if (normalized.totalAmount !== undefined && (!normalized.amountInCHF || normalized.amountInCHF === 0)) {
-      const rate = await getLiveExchangeRate(normalized.originalCurrency || 'CHF', targetCurrency);
-      normalized.amountInCHF = normalized.totalAmount * rate;
-      normalized.conversionRateUsed = rate;
+    if (normalized.totalAmount !== undefined) {
+      const fromCur = String(normalized.originalCurrency || targetCurrency || "CHF")
+        .trim()
+        .toUpperCase();
+      const toCur = String(targetCurrency || "CHF").trim().toUpperCase();
+      if (fromCur && toCur && fromCur !== toCur && fromCur !== "---") {
+        const rate = await getLiveExchangeRate(fromCur, toCur);
+        normalized.amountInCHF = Math.round(normalized.totalAmount * rate * 100) / 100;
+        normalized.conversionRateUsed = rate;
+      } else if (!normalized.amountInCHF || normalized.amountInCHF === 0) {
+        normalized.amountInCHF = normalized.totalAmount;
+        normalized.conversionRateUsed = 1;
+      }
     }
 
     return normalized;

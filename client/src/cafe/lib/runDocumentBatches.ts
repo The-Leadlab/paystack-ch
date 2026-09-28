@@ -32,12 +32,12 @@ export async function runInDocumentBatches<T>(
 }
 
 /**
- * Default 4 — serial (1) made ~40 invoices take over an hour.
+ * Default 6 — serial (1) made ~40 invoices take over an hour.
  * Huge PDFs still share the same Gemini proxy; cap at 6.
  * Override with VITE_DOCUMENT_PROCESSING_CONCURRENCY=1..6 if needed.
  */
 export function resolveDocumentBatchSize(): number {
-  const raw = (import.meta.env.VITE_DOCUMENT_PROCESSING_CONCURRENCY || "4").trim();
+  const raw = (import.meta.env.VITE_DOCUMENT_PROCESSING_CONCURRENCY || "6").trim();
   const n = parseInt(raw, 10);
-  return Math.min(6, Math.max(1, Number.isFinite(n) ? n : 4));
+  return Math.min(6, Math.max(1, Number.isFinite(n) ? n : 6));
 }

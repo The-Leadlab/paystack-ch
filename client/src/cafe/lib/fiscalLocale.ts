@@ -1,6 +1,6 @@
 /**
  * Active fiscal locale for document AI + VAT review.
- * Set by UkUatProvider when the password-gated /admin-uk sandbox is open.
+ * Set by UkUatProvider: forced UK on /admin-uk, or from the user's taxRegion on /app.
  */
 import { getTaxRegionConfig } from "@shared/taxRegions";
 

@@ -669,7 +669,9 @@ export const dashboardEn: Record<string, string> = {
     'This PDF has {pages} pages. Maximum is {max}. Split it into smaller files, then upload again.',
   dpPdfPageLimitBanner:
     '{count} PDF(s) exceed {max} pages and were not processed: {names}',
-  dpParallelHint: '{n} documents at a time',
+  dpParallelHint: 'processes {n} in parallel — all selected files will finish',
+  dpUploadLimitsHint:
+    'Max 7 pages per PDF. Multi-employee payslips in one file are each counted toward your monthly document limit. Upload as many files as you need — they queue automatically.',
   dpBatchProgress: '{active} active · {queued} queued · {done}/{total} done',
   sessionKicked: 'Signed out — this account was opened on another device.',
   sessionKickedHint: 'Only one active session is allowed per login. Sign in again to continue here.',
@@ -1665,7 +1667,9 @@ export const dashboardFr: Record<string, string> = {
     'Ce PDF a {pages} pages. Le maximum est {max}. Découpez-le en fichiers plus petits, puis téléversez à nouveau.',
   dpPdfPageLimitBanner:
     '{count} PDF dépasse(nt) {max} pages et n’ont pas été traités : {names}',
-  dpParallelHint: '{n} documents à la fois',
+  dpParallelHint: 'traite {n} en parallèle — tous les fichiers sélectionnés seront terminés',
+  dpUploadLimitsHint:
+    'Maximum 7 pages par PDF. Plusieurs fiches de paie dans un seul fichier comptent chacune dans votre plafond mensuel. Déposez autant de fichiers que nécessaire — ils passent en file automatiquement.',
   dpBatchProgress: '{active} actifs · {queued} en file · {done}/{total} terminés',
   sessionKicked: 'Déconnecté — ce compte a été ouvert sur un autre appareil.',
   sessionKickedHint: 'Une seule session active est permise par identifiant. Reconnectez-vous pour continuer ici.',

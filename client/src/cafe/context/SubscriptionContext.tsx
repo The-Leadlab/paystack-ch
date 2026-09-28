@@ -56,7 +56,7 @@ type SubscriptionContextValue = {
   /** Personal statement uploads this calendar month. */
   personalDocumentsUsedThisMonth: number;
   /** Records one completed document against the current calendar month's durable usage count. */
-  incrementDocumentUsage: () => Promise<void>;
+  incrementDocumentUsage: (count?: number) => Promise<void>;
   /** Records one personal statement/finance document upload for the month. */
   incrementPersonalDocumentUsage: () => Promise<void>;
   /** Ops sandbox: simulate starter / business / unlimited without Stripe. */
@@ -189,12 +189,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     return () => unsub();
   }, [user, workspace?.loading, workspace?.isOwner, workspace?.dataOwnerUid]);
 
-  const incrementDocumentUsage = useCallback(async () => {
+  const incrementDocumentUsage = useCallback(async (count = 1) => {
     if (!user || !db) return;
     // Only the owner can write usage on users/{uid}; members skip (caps still read from owner).
     if (workspace && !workspace.isOwner) return;
+    const n = Math.max(1, Math.floor(Number(count) || 1));
     const ref = doc(db, 'users', user.uid);
-    await setDoc(ref, { usage: { [currentMonthKey()]: increment(1) } }, { merge: true });
+    await setDoc(ref, { usage: { [currentMonthKey()]: increment(n) } }, { merge: true });
   }, [user, workspace]);
 
   const incrementPersonalDocumentUsage = useCallback(async () => {

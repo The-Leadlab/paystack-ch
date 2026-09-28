@@ -137,7 +137,7 @@ function resizeLogoAsJpeg(file: File): Promise<string> {
 export function InvoiceMakerPanel() {
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
-  const { ukUatActive } = useUkUat();
+  const { ukUatActive, currency: reportingCurrency, fiscalLocale } = useUkUat();
   const { user } = useAuth();
   const { documents } = useDocuments();
   const { taxConfig, loading: taxRegionLoading } = useTaxRegionConfig();
@@ -161,9 +161,9 @@ export function InvoiceMakerPanel() {
 
   useEffect(() => {
     if (taxRegionLoading) return;
-    const currency = reportingCurrencyForLocale();
-    const currencySymbol = currencySymbolForLocale();
-    const companyAddress = ukUatActive ? 'United Kingdom' : 'Switzerland';
+    const currency = reportingCurrency;
+    const currencySymbol = currencySymbolForLocale(fiscalLocale);
+    const companyAddress = fiscalLocale === 'uk' ? 'United Kingdom' : 'Switzerland';
     setInvoiceData((current) => {
       if (current.items.length > 0) {
         return {
@@ -184,7 +184,7 @@ export function InvoiceMakerPanel() {
         companyAddress,
       };
     });
-  }, [taxConfig.defaultRate, taxRegionLoading, ukUatActive]);
+  }, [taxConfig.defaultRate, taxRegionLoading, ukUatActive, reportingCurrency, fiscalLocale]);
 
   const supplierOptions = useMemo(() => {
     const names = new Set<string>();

@@ -11,6 +11,7 @@ import {
   resolveDocumentVatAmount,
   splitIssuerAndReference,
 } from './swissDocumentNormalize';
+import { issuerLooksLikeOwnBusiness } from './ownBusinessIdentity';
 import type { LedgerExpenseDraft, LedgerIncomeDraft } from '../context/FinanceContext';
 
 type LedgerWriters = {
@@ -42,6 +43,11 @@ type LedgerWriters = {
   ) => Promise<{ income: Income[]; expenses: Expense[] }>;
 };
 
+export type PostLedgerOptions = {
+  /** Invoice Maker / profile names — issuer match → income (customer invoice). */
+  ownBusinessNames?: string[];
+};
+
 function resolveAccountCode(
   data: FinancialData,
   opts: { kind: 'income' | 'expense'; category?: string; description?: string }
@@ -60,15 +66,21 @@ function resolveAccountCode(
   });
 }
 
-function isRevenueDoc(data: FinancialData): boolean {
+function isRevenueDoc(data: FinancialData, ownBusinessNames?: string[]): boolean {
   const cat = String(data.expenseCategory || '').toUpperCase();
   const docType = data.documentType;
-  return (
+  if (
     cat.includes('REVENUE') ||
     cat.includes('SALES') ||
     docType === 'Ticket/Receipt' ||
     docType === 'Z2 Multi-Ticket Sheet'
-  );
+  ) {
+    return true;
+  }
+  if (docType === 'Pay Slip' || docType === 'Bank Statement' || docType === 'Bank Deposit') {
+    return false;
+  }
+  return issuerLooksLikeOwnBusiness(data.issuer, ownBusinessNames || []);
 }
 
 function incomeTypeFromCategory(category?: string): 'SALES' | 'RESERVATION' {
@@ -84,7 +96,8 @@ async function postSingleAmount(
   data: FinancialData,
   fileName: string,
   sessionId: string,
-  documentId: string
+  documentId: string,
+  ownBusinessNames?: string[]
 ): Promise<'income' | 'expense' | null> {
   const lineDates = (data.lineItems || []).map((l) => l.date);
   const date = resolveDocumentDate(
@@ -103,7 +116,7 @@ async function postSingleAmount(
     fileName;
   const vatAmount = resolveDocumentVatAmount(data);
 
-  if (isRevenueDoc(data)) {
+  if (isRevenueDoc(data, ownBusinessNames)) {
     const code = resolveAccountCode(data, { kind: 'income', description });
     await writers.addIncome(
       date,
@@ -169,9 +182,11 @@ export async function postLedgerFromFinancialData(
   data: FinancialData,
   fileName: string,
   sessionId: string,
-  documentId: string
+  documentId: string,
+  options?: PostLedgerOptions
 ): Promise<{ incomePosted: number; expensePosted: number }> {
   const docType = data.documentType;
+  const ownBusinessNames = options?.ownBusinessNames;
   let incomePosted = 0;
   let expensePosted = 0;
 
@@ -254,28 +269,57 @@ export async function postLedgerFromFinancialData(
   }
 
   if (docType === 'Pay Slip') {
-    const employeeName = data.paySlip?.employee?.name || 'Unknown Employee';
-    const settlement = resolvePayrollSettlementMode(data);
-    const payrollLines = buildPayrollExpenseLines(data, employeeName, settlement);
     const date = resolveDocumentDate(data.date, data.paySlip?.periodEnd);
-    for (const line of payrollLines) {
-      const code = suggestSwissAccountCode({
-        kind: 'expense',
-        category: line.category,
-        description: line.description,
-      });
-      await writers.addExpense(
-        date,
-        line.category,
-        line.amount,
-        line.description,
-        sessionId,
-        undefined,
-        documentId,
-        undefined,
-        code
-      );
-      expensePosted += 1;
+    const paySlipBlocks: FinancialData[] = [];
+    const subs = Array.isArray(data.subDocuments) ? data.subDocuments.filter(Boolean) : [];
+    const distinctEmployees = new Set(
+      subs
+        .map((s) => String(s.paySlip?.employee?.name || '').trim().toLowerCase())
+        .filter(Boolean)
+    );
+
+    if (subs.length >= 2 && distinctEmployees.size >= 2) {
+      for (const sub of subs) {
+        paySlipBlocks.push({
+          ...data,
+          ...sub,
+          documentType: 'Pay Slip',
+          date: resolveDocumentDate(sub.date, sub.paySlip?.periodEnd, data.date),
+          paySlip: sub.paySlip ?? data.paySlip,
+          payrollSettlementMode: sub.payrollSettlementMode ?? data.payrollSettlementMode,
+          expenseCategory: 'PAYROLL',
+          vatAmount: 0,
+          subDocuments: [],
+        });
+      }
+    } else {
+      paySlipBlocks.push(data);
+    }
+
+    for (const block of paySlipBlocks) {
+      const employeeName = block.paySlip?.employee?.name || 'Unknown Employee';
+      const settlement = resolvePayrollSettlementMode(block);
+      const payrollLines = buildPayrollExpenseLines(block, employeeName, settlement);
+      const lineDate = resolveDocumentDate(block.date, block.paySlip?.periodEnd, date);
+      for (const line of payrollLines) {
+        const code = suggestSwissAccountCode({
+          kind: 'expense',
+          category: line.category,
+          description: line.description,
+        });
+        await writers.addExpense(
+          lineDate,
+          line.category,
+          line.amount,
+          line.description,
+          sessionId,
+          undefined,
+          documentId,
+          undefined,
+          code
+        );
+        expensePosted += 1;
+      }
     }
     return { incomePosted, expensePosted };
   }
@@ -303,14 +347,28 @@ export async function postLedgerFromFinancialData(
         expenseCategory: sub.expenseCategory || data.expenseCategory,
         swissAccountClassification: sub.swissAccountClassification || undefined,
       };
-      const kind = await postSingleAmount(writers, merged, fileName, sessionId, documentId);
+      const kind = await postSingleAmount(
+        writers,
+        merged,
+        fileName,
+        sessionId,
+        documentId,
+        ownBusinessNames
+      );
       if (kind === 'income') incomePosted += 1;
       if (kind === 'expense') expensePosted += 1;
     }
     return { incomePosted, expensePosted };
   }
 
-  const kind = await postSingleAmount(writers, data, fileName, sessionId, documentId);
+  const kind = await postSingleAmount(
+    writers,
+    data,
+    fileName,
+    sessionId,
+    documentId,
+    ownBusinessNames
+  );
   if (kind === 'income') incomePosted += 1;
   if (kind === 'expense') expensePosted += 1;
 

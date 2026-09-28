@@ -7,7 +7,12 @@ import { reportingCurrencyForLocale } from '../lib/fiscalLocale';
 import { formatDocumentProcessError } from '../lib/documentProcessError';
 import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
 import { useSubscription } from '../context/SubscriptionContext';
+import { useAuth } from '../context/AuthContext';
 import { BUSINESS_DOCUMENT_ACCEPT, isBusinessDocumentFile } from '../lib/businessDocumentFile';
+import {
+  buildOwnBusinessAiHint,
+  resolveOwnBusinessNames,
+} from '../lib/ownBusinessIdentity';
 import type { FinancialData } from '../types';
 
 type ProcessingFile = {
@@ -26,6 +31,7 @@ type QuickDocumentUploadProps = {
 
 export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocumentUploadProps) {
   const { billing } = useSubscription();
+  const { user } = useAuth();
   const [files, setFiles] = useState<ProcessingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -214,7 +220,7 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
         analyzeFinancialDocument(
           fileItem.file,
           reportingCurrencyForLocale(),
-          undefined,
+          buildOwnBusinessAiHint(resolveOwnBusinessNames(user?.uid, user?.displayName)) || undefined,
           undefined,
           abortController.signal,
           { forceDeepPdfReads, forcePdfPageSplit: pdfPageSplit, pdfPageCount }

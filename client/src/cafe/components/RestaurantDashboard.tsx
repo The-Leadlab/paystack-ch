@@ -51,6 +51,7 @@ import type { ReportScheduleCadenceDays } from '@shared/reportSchedule';
 import { RevenueLedgerTable } from './RevenueLedgerTable';
 import { mapAiExpenseCategoryToLedger } from '../lib/mapExpenseCategory';
 import { postLedgerFromFinancialData } from '../lib/postLedgerFromFinancialData';
+import { resolveOwnBusinessNames } from '../lib/ownBusinessIdentity';
 import { hydrateProcessedDocumentLineItems } from '../lib/financialDataFirestorePayload';
 import { canonicalizeSupplierName } from '../lib/swissDocumentNormalize';
 import { evaluateVatReview } from '../lib/vatReview';
@@ -155,7 +156,7 @@ export function RestaurantDashboard() {
     if (tab && (allowed as string[]).includes(tab)) return tab as Tab;
     return 'dashboard';
   });
-  const showRevenueTab = !enforcementEnabled || entitlements.allCoreModules;
+  const showRevenueTab = !enforcementEnabled || entitlements.basicReportsAndExports;
   const showAllSessionsView = !enforcementEnabled || entitlements.allCoreModules;
   const canAddSession =
     !enforcementEnabled || entitlements.maxSessions == null || sessions.length < entitlements.maxSessions;
@@ -601,7 +602,17 @@ export function RestaurantDashboard() {
 
     if (!wasAlreadyCompleted) {
       try {
-        await incrementDocumentUsage();
+        const multiPayslips =
+          data.documentType === 'Pay Slip' &&
+          Array.isArray(data.subDocuments) &&
+          data.subDocuments.length >= 2
+            ? new Set(
+                data.subDocuments
+                  .map((s) => String(s.paySlip?.employee?.name || '').trim().toLowerCase())
+                  .filter(Boolean)
+              ).size
+            : 0;
+        await incrementDocumentUsage(multiPayslips >= 2 ? multiPayslips : 1);
       } catch (usageError) {
         console.error('Failed to record monthly document usage:', usageError);
       }
@@ -645,7 +656,8 @@ export function RestaurantDashboard() {
       data,
       fileName,
       ledgerSessionId,
-      documentId
+      documentId,
+      { ownBusinessNames: resolveOwnBusinessNames(user?.uid, user?.displayName) }
     );
 
     try {
@@ -656,20 +668,43 @@ export function RestaurantDashboard() {
 
     // Payslip employee upsert (side effect kept outside ledger helper)
     if (data.documentType === 'Pay Slip') {
-      const employeeName = data.paySlip?.employee?.name || 'Unknown Employee';
-      const settlement = resolvePayrollSettlementMode(data);
-      const payrollLines = buildPayrollExpenseLines(data, employeeName, settlement);
-      const netForEmployee =
-        payrollLines.find((l) => l.category === 'PAYROLL')?.amount ?? payrollLines[0]?.amount ?? 0;
-      try {
-        const existingEmployee = employees.find(
-          (emp) => emp.name.toLowerCase() === employeeName.toLowerCase()
-        );
-        if (!existingEmployee && netForEmployee > 0) {
-          await addEmployee(employeeName, 'Employee', netForEmployee);
+      const blocks: FinancialData[] = [];
+      const subs = Array.isArray(data.subDocuments) ? data.subDocuments : [];
+      const distinct = new Set(
+        subs
+          .map((s) => String(s.paySlip?.employee?.name || '').trim().toLowerCase())
+          .filter(Boolean)
+      );
+      if (subs.length >= 2 && distinct.size >= 2) {
+        for (const sub of subs) {
+          blocks.push({
+            ...data,
+            ...sub,
+            documentType: 'Pay Slip',
+            paySlip: sub.paySlip ?? data.paySlip,
+            payrollSettlementMode: sub.payrollSettlementMode ?? data.payrollSettlementMode,
+          });
         }
-      } catch (empError) {
-        console.error('âš ï¸ Error managing employee:', empError);
+      } else {
+        blocks.push(data);
+      }
+
+      for (const block of blocks) {
+        const employeeName = block.paySlip?.employee?.name || 'Unknown Employee';
+        const settlement = resolvePayrollSettlementMode(block);
+        const payrollLines = buildPayrollExpenseLines(block, employeeName, settlement);
+        const netForEmployee =
+          payrollLines.find((l) => l.category === 'PAYROLL')?.amount ?? payrollLines[0]?.amount ?? 0;
+        try {
+          const existingEmployee = employees.find(
+            (emp) => emp.name.toLowerCase() === employeeName.toLowerCase()
+          );
+          if (!existingEmployee && netForEmployee > 0) {
+            await addEmployee(employeeName, 'Employee', netForEmployee);
+          }
+        } catch (empError) {
+          console.error('⚠️ Error managing employee:', empError);
+        }
       }
     }
 
@@ -704,7 +739,8 @@ export function RestaurantDashboard() {
         newData,
         fileName,
         ledgerSessionId,
-        documentId
+        documentId,
+        { ownBusinessNames: resolveOwnBusinessNames(user?.uid, user?.displayName) }
       );
       
       console.log('âœ… Document update complete', posted);
@@ -748,7 +784,8 @@ export function RestaurantDashboard() {
           hydrated.data!,
           hydrated.fileName,
           ledgerSessionId,
-          doc.id
+          doc.id,
+          { ownBusinessNames: resolveOwnBusinessNames(user?.uid, user?.displayName) }
         );
         ok += 1;
       } catch (e) {
@@ -2347,26 +2384,34 @@ function ReportsPlaceholder() {
     );
   }
 
-  // Group by month
+  // Group by month — balance matches dashboard KPI (income − all expense categories)
   const monthlyData = React.useMemo(() => {
-    const months: Record<string, { income: number; expenses: number; balance: number }> = {};
+    const months: Record<
+      string,
+      { income: number; expenses: number; payroll: number; balance: number }
+    > = {};
     
     dateFilteredIncome.forEach(item => {
       const month = parseMonthKey(item.date);
       if (!month) return;
-      if (!months[month]) months[month] = { income: 0, expenses: 0, balance: 0 };
+      if (!months[month]) months[month] = { income: 0, expenses: 0, payroll: 0, balance: 0 };
       months[month].income += item.amount;
     });
     
     dateFilteredExpenses.forEach(item => {
       const month = parseMonthKey(item.date);
       if (!month) return;
-      if (!months[month]) months[month] = { income: 0, expenses: 0, balance: 0 };
-      months[month].expenses += item.amount;
+      if (!months[month]) months[month] = { income: 0, expenses: 0, payroll: 0, balance: 0 };
+      if (isNetPayrollCategory(item.category)) {
+        months[month].payroll += item.amount;
+      } else {
+        months[month].expenses += item.amount;
+      }
     });
     
     Object.keys(months).forEach(month => {
-      months[month].balance = months[month].income - months[month].expenses;
+      const row = months[month];
+      row.balance = row.income - row.expenses - row.payroll;
     });
     
     return Object.entries(months).sort((a, b) => b[0].localeCompare(a[0]));
@@ -2788,6 +2833,7 @@ function ReportsPlaceholder() {
           <div className="space-y-3">
             {monthlyData.map(([month, data]) => {
               const monthName = formatMonthYearLabel(month, chfLocale, t('repInvalidMonth'));
+              const outflow = data.expenses + data.payroll;
               return (
                 <div key={month} className="ba-stat-row">
                   <div className="flex justify-between items-center mb-3">
@@ -2803,7 +2849,7 @@ function ReportsPlaceholder() {
                     </div>
                     <div>
                       <p className="text-cdlp-muted uppercase mb-1">{t('repExpenses')}</p>
-                      <p className="font-bold text-red-500">{data.expenses.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="font-bold text-red-500">{outflow.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                     <div>
                       <p className="text-cdlp-muted uppercase mb-1">{t('repBalance')}</p>
