@@ -8,6 +8,8 @@ import { useSession } from '../context/SessionContext';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useChfLocale, useFormatChf, useLanguage } from '../context/LanguageContext';
+import { useUkUat } from '../context/UkUatContext';
+import { moneyLocaleForFiscal } from '../lib/fiscalLocale';
 import { formatIssuerForDisplay, formatMonthYearLabel, parseMonthKey, parseInvoicesDetectedCount, documentDisplayName, conjoinedInvoicesLabel, supplierGroupKeysForDocument, normalizeEntityKey } from '../i18n/documentDisplayI18n';
 import { useDocuments } from '../context/DocumentContext';
 import { usePOS } from '../context/POSContext';
@@ -140,6 +142,8 @@ export function RestaurantDashboard() {
   const { theme } = useTheme();
   const brandMobileSrc = brandLockupSrc(theme);
   const chfLocale = useChfLocale();
+  const { currencySuffix, ukUatActive, fiscalLocale } = useUkUat();
+  const moneyLocale = moneyLocaleForFiscal(fiscalLocale);
   const errMsg = (error: unknown) => (error instanceof Error ? error.message : t('errorUnknown'));
 
   const [activeTab, setActiveTab] = useState<Tab>(() => {
@@ -1528,7 +1532,7 @@ export function RestaurantDashboard() {
                           <div className="flex justify-between items-center">
                             <span className="text-xs text-cdlp-muted">{t('dashNetSalary')}</span>
                             <span className="text-sm font-bold text-emerald-400">
-                              {emp.net_salary.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                              {emp.net_salary.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{currencySuffix}
                             </span>
                           </div>
                         )}
@@ -1536,7 +1540,7 @@ export function RestaurantDashboard() {
                           <div className="flex justify-between items-center">
                             <span className="text-xs text-cdlp-muted">{t('dashSocialCharges')}</span>
                             <span className="text-sm font-bold text-blue-400">
-                              {emp.social_contributions.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                              {emp.social_contributions.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{currencySuffix}
                             </span>
                           </div>
                         )}
@@ -1544,7 +1548,7 @@ export function RestaurantDashboard() {
                           <div className="flex justify-between items-center">
                             <span className="text-xs text-cdlp-muted">{t('dashStateRest')}</span>
                             <span className="text-sm font-bold text-purple-400">
-                              {emp.state_rest.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                              {emp.state_rest.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{currencySuffix}
                             </span>
                           </div>
                         )}
@@ -1552,7 +1556,7 @@ export function RestaurantDashboard() {
                           <div className="flex justify-between items-center pt-2 border-t border-cdlp-border">
                             <span className="text-xs font-bold text-cdlp-gold uppercase">{t('dashTotalCost')}</span>
                             <span className="text-sm font-black text-cdlp-gold">
-                              {emp.monthly_salary.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                              {emp.monthly_salary.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{currencySuffix}
                             </span>
                           </div>
                         )}
@@ -1568,7 +1572,7 @@ export function RestaurantDashboard() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-bold text-cdlp-gold uppercase">{t('dashTotalPayroll')}</span>
                     <span className="text-lg font-black text-cdlp-gold">
-                      {employees.reduce((sum, emp) => sum + (emp.monthly_salary || 0), 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                      {employees.reduce((sum, emp) => sum + (emp.monthly_salary || 0), 0).toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{currencySuffix}
                     </span>
                   </div>
                   <p className="text-xs text-cdlp-muted mt-2">{t('dashEmployeeCount').replace('{n}', String(employees.length))}</p>
@@ -1971,6 +1975,8 @@ function useLiveClock(): string {
 
 function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, onResyncLedger, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument, openVerificationDocId, onOpenVerificationHandled }: any) {
   const liveClock = useLiveClock();
+  const { fiscalLocale } = useUkUat();
+  const moneyLocale = moneyLocaleForFiscal(fiscalLocale);
   const vatFlowBase = Math.max(vatReceived, vatPaid, Math.abs(vatBalance), 1);
 
   const handleItemClick = (item: any) => {
@@ -2014,7 +2020,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
       {(() => {
         const flowBase = Math.max(totalIncome, totalExpenses + totalPayroll, Math.abs(balance), 1);
         const fmtKpi = (n: number) =>
-          n.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          n.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         return (
           <>
             <div className="ba-kpi-grid-4" data-tour="biz-dashboard-kpi">
@@ -2257,6 +2263,8 @@ function ReportsPlaceholder() {
   const { enforcementEnabled, entitlements } = useSubscription();
   const { t, language } = useLanguage();
   const chfLocale = useChfLocale();
+  const { currencySuffix, ukUatActive, fiscalLocale } = useUkUat();
+  const moneyLocale = moneyLocaleForFiscal(fiscalLocale);
   const advancedReports = !enforcementEnabled || entitlements.advancedAnalyticsAndReports;
 
   const categoryLabel = (cat: string) => {
@@ -2617,8 +2625,12 @@ function ReportsPlaceholder() {
             </div>
             {advancedReports ? (
               <div>
-                <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-1">{t('repSwissVatStatement')}</h4>
-                <p className="text-[11px] text-cdlp-muted">{t('repSwissVatDesc')}</p>
+                <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-1">
+                  {ukUatActive ? t('repUkVatStatement') : t('repSwissVatStatement')}
+                </h4>
+                <p className="text-[11px] text-cdlp-muted">
+                  {ukUatActive ? t('repUkVatDesc') : t('repSwissVatDesc')}
+                </p>
               </div>
             ) : null}
           </div>
@@ -2781,7 +2793,7 @@ function ReportsPlaceholder() {
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-sm font-bold text-cdlp-gold uppercase">{monthName}</h3>
                     <span className={`text-lg font-black ${data.balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                      {data.balance.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF
+                      {data.balance.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{currencySuffix}
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-4 text-xs">
@@ -2823,7 +2835,7 @@ function ReportsPlaceholder() {
             {supplierData.map(([supplier, amount]) => (
               <div key={supplier} className="ba-stat-row flex justify-between items-center !py-3">
                 <span className="text-sm font-bold ba-field-value truncate flex-1">{supplier}</span>
-                <span className="text-sm font-black text-cdlp-gold ml-4">{amount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
+                <span className="text-sm font-black text-cdlp-gold ml-4">{amount.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{currencySuffix}</span>
               </div>
             ))}
           </div>
@@ -2841,6 +2853,8 @@ function ReportsPlaceholder() {
 function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelection }: { selectedDocument?: ProcessedDocument | null; onClearSelection?: () => void }) {
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
+  const { currencySuffix, fiscalLocale } = useUkUat();
+  const moneyLocale = moneyLocaleForFiscal(fiscalLocale);
   const posReportsLabel = t('docPosReports');
   const { documents } = useDocuments();
   const [filter, setFilter] = useState<'all' | 'suppliers' | 'employees' | 'pos'>('all');
@@ -3172,11 +3186,11 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                       </div>
                       <div>
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docGrossPay')}</label>
-                        <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data.paySlip.grossPay || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</p>
+                        <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data.paySlip.grossPay || 0).toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{currencySuffix}</p>
                       </div>
                       <div>
                         <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docNetPay')}</label>
-                        <p className="text-sm font-bold text-cdlp-gold">{(selectedDocument.data.paySlip.netPay || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</p>
+                        <p className="text-sm font-bold text-cdlp-gold">{(selectedDocument.data.paySlip.netPay || 0).toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{currencySuffix}</p>
                       </div>
                     </div>
                     {selectedDocument.data.paySlip.components && selectedDocument.data.paySlip.components.length > 0 && (
@@ -3283,7 +3297,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                 <h3 className="text-sm font-bold text-cdlp-gold uppercase">{monthName}</h3>
                 <div className="text-right">
                   <p className="text-xs text-cdlp-muted uppercase">{t('docTotalChf')}</p>
-                  <p className="text-lg font-black ba-field-value">{totalAmount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</p>
+                  <p className="text-lg font-black ba-field-value">{totalAmount.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{currencySuffix}</p>
                 </div>
               </div>
               <div className="divide-y divide-cdlp-border">
@@ -3411,7 +3425,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-cdlp-muted uppercase">{t('docTotalAmount')}</span>
-                    <span className="text-lg font-black text-cdlp-gold">{totalAmount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CHF</span>
+                    <span className="text-lg font-black text-cdlp-gold">{totalAmount.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{currencySuffix}</span>
                   </div>
                 </div>
               </button>

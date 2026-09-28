@@ -59,6 +59,7 @@ import { logUserActivity } from '../lib/userActivity';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useUkUat } from '../context/UkUatContext';
 import { useExpenseCategoryMeta } from '../i18n/expenseCategoryI18n';
+import { defaultVatBreakdownLines, getActiveFiscalLocale } from '../lib/fiscalLocale';
 import { formatIssuerForDisplay, invoicesDetectedIssuer, documentDisplayName, conjoinedInvoicesLabel } from '../i18n/documentDisplayI18n';
 import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
 import { isLocalDocMirroredInFirestore } from '../lib/dedupeProcessedDocuments';
@@ -652,6 +653,10 @@ const DEFAULT_SWISS_VAT_LINES: SwissVatRateLine[] = [
   { ratePercent: 8.1, baseExclusive: 0, vatAmount: 0 },
 ];
 
+function defaultVatEditorLines(): SwissVatRateLine[] {
+  return defaultVatBreakdownLines().map((l) => ({ ...l }));
+}
+
 function roundDocAmount(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
@@ -662,7 +667,7 @@ function seedSwissTableFromDocument(data: FinancialData): FinancialData {
   const net = Number(data.netAmount || 0) || Math.max(roundDocAmount(gross - vat), 0);
   return syncSwissVatDerivedFields({
     ...data,
-    swissVatBreakdown: [...DEFAULT_SWISS_VAT_LINES],
+    swissVatBreakdown: defaultVatEditorLines(),
     swissVatReceiptTotals: {
       merchandiseSubtotal: net,
       vatTotal: vat,
@@ -678,6 +683,7 @@ const SwissVatBreakdownEditor: React.FC<{
   onApply: (next: FinancialData) => void;
 }> = ({ data, onApply }) => {
   const { t } = useLanguage();
+  const isUk = getActiveFiscalLocale() === 'uk';
   const lines = data.swissVatBreakdown ?? [];
   const totals = data.swissVatReceiptTotals ?? {};
   const preview = data.swissVatFormPreview;
@@ -706,10 +712,10 @@ const SwissVatBreakdownEditor: React.FC<{
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h5 className="text-[10px] font-black uppercase tracking-widest text-cdlp-gold flex items-center gap-2">
-            <ScaleIcon className="w-3.5 h-3.5" /> {t('dpSwissVatTitle')}
+            <ScaleIcon className="w-3.5 h-3.5" /> {isUk ? t('dpUkVatTitle') : t('dpSwissVatTitle')}
           </h5>
           <p className="text-[9px] text-cdlp-muted mt-1 max-w-xl">
-            {t('dpSwissVatHint')}
+            {isUk ? t('dpUkVatHint') : t('dpSwissVatHint')}
           </p>
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
@@ -719,7 +725,7 @@ const SwissVatBreakdownEditor: React.FC<{
               onClick={() => onApply(seedSwissTableFromDocument(data))}
               className="h-9 px-3 rounded-sm border border-cdlp-gold/50 bg-cdlp-gold/15 text-cdlp-gold text-[9px] font-black uppercase tracking-wider hover:bg-cdlp-gold/25"
             >
-              {t('dpAddSwissVatTable')}
+              {isUk ? t('dpAddUkVatTable') : t('dpAddSwissVatTable')}
             </button>
           ) : (
             <>
@@ -729,7 +735,11 @@ const SwissVatBreakdownEditor: React.FC<{
                   pushSynced({
                     swissVatBreakdown: [
                       ...lines,
-                      { ratePercent: 3.7, baseExclusive: 0, vatAmount: 0 },
+                      {
+                        ratePercent: isUk ? 20 : 8.1,
+                        baseExclusive: 0,
+                        vatAmount: 0,
+                      },
                     ],
                   })
                 }
@@ -921,7 +931,7 @@ const SwissVatBreakdownEditor: React.FC<{
             </div>
           </div>
 
-          {preview && (
+          {preview && !isUk && (
             <div className="overflow-x-auto">
               <table className="swiss-vat-table min-w-[520px] w-full text-[9px] border rounded-sm overflow-hidden">
                 <thead className="uppercase font-black">
@@ -951,6 +961,41 @@ const SwissVatBreakdownEditor: React.FC<{
                     <td className="px-2 py-1.5 font-mono">500</td>
                     <td className="px-2 py-1.5">{t('dpNetVat220400')}</td>
                     <td className="px-2 py-1.5 text-right font-mono">{(preview.code500 ?? 0).toFixed(2)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+          {preview && isUk && (
+            <div className="overflow-x-auto">
+              <table className="swiss-vat-table min-w-[520px] w-full text-[9px] border rounded-sm overflow-hidden">
+                <thead className="uppercase font-black">
+                  <tr>
+                    <th className="px-2 py-2 text-left border-b border-inherit">{t('dpUkVatBox')}</th>
+                    <th className="px-2 py-2 text-left border-b border-inherit">{t('dashDescription')}</th>
+                    <th className="px-2 py-2 text-right border-b border-inherit">GBP</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#e8423f]">
+                  <tr>
+                    <td className="px-2 py-1.5 font-mono font-bold">Box 1</td>
+                    <td className="px-2 py-1.5">{t('dpUkVatBox1')}</td>
+                    <td className="px-2 py-1.5 text-right font-mono font-bold">{(preview.code220 ?? 0).toFixed(2)}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1.5 font-mono font-bold">Box 4</td>
+                    <td className="px-2 py-1.5">{t('dpUkVatBox4')}</td>
+                    <td className="px-2 py-1.5 text-right font-mono font-bold">{(preview.code400 ?? 0).toFixed(2)}</td>
+                  </tr>
+                  <tr className="swiss-vat-table-row-total font-black">
+                    <td className="px-2 py-1.5 font-mono">Box 5</td>
+                    <td className="px-2 py-1.5">{t('dpUkVatBox5')}</td>
+                    <td className="px-2 py-1.5 text-right font-mono">{(preview.code500 ?? 0).toFixed(2)}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1.5 font-mono font-bold">Box 6</td>
+                    <td className="px-2 py-1.5">{t('dpUkVatBox6')}</td>
+                    <td className="px-2 py-1.5 text-right font-mono font-bold">{(preview.code200 ?? 0).toFixed(2)}</td>
                   </tr>
                 </tbody>
               </table>

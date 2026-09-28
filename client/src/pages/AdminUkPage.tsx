@@ -66,8 +66,9 @@ export default function AdminUkPage() {
             <div className="flex items-center gap-2 text-sm font-medium">
               <Flag className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
               <span>
-                <strong>Admin UK UAT</strong> — GBP · UK VAT 0% / 5% / 20% · UK Gemini document prompts.
-                Not visible on production <code className="text-xs">/app</code> until you promote it.
+                <strong>Admin UK UAT</strong> — GBP · UK VAT 0% / 5% / 20% · UK Gemini · isolated Firestore{" "}
+                <code className="text-xs">admin-uk-uat</code>. Not on production{" "}
+                <code className="text-xs">/app</code> until you promote it.
               </span>
             </div>
             <Button

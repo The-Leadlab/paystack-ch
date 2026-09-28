@@ -3,6 +3,7 @@ import { Upload, FileText, Loader, CheckCircle, XCircle, Play, StopCircle, Trash
 import { resolveDocumentProcessingTimeoutMs } from '../lib/documentProcessingTimeout';
 import { analyzeFinancialDocument } from '../services/geminiService';
 import { enrichFinancialDataWithSwissAccount } from '../services/swissAccountClassifierService';
+import { reportingCurrencyForLocale } from '../lib/fiscalLocale';
 import { formatDocumentProcessError } from '../lib/documentProcessError';
 import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
 import { useSubscription } from '../context/SubscriptionContext';
@@ -212,7 +213,7 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
       let data = (await Promise.race([
         analyzeFinancialDocument(
           fileItem.file,
-          'CHF',
+          reportingCurrencyForLocale(),
           undefined,
           undefined,
           abortController.signal,

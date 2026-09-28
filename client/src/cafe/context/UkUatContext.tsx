@@ -12,6 +12,12 @@ import {
   setActiveFiscalLocale,
   type FiscalLocale,
 } from "../lib/fiscalLocale";
+import {
+  FIRESTORE_ADMIN_UK_DATABASE_ID,
+  FIRESTORE_DEFAULT_DATABASE_ID,
+  getActiveFirestoreDatabaseId,
+  setActiveFirestoreDatabase,
+} from "../lib/firebase";
 
 type UkUatContextValue = {
   /** True when the Admin UK UAT sandbox is active. */
@@ -20,6 +26,8 @@ type UkUatContextValue = {
   taxRegion: TaxRegion;
   currency: "CHF" | "GBP";
   currencySuffix: string;
+  /** Named Firestore database id (isolated from Swiss production). */
+  firestoreDatabaseId: string;
 };
 
 const UkUatContext = createContext<UkUatContextValue>({
@@ -28,11 +36,12 @@ const UkUatContext = createContext<UkUatContextValue>({
   taxRegion: "ch",
   currency: "CHF",
   currencySuffix: " CHF",
+  firestoreDatabaseId: FIRESTORE_DEFAULT_DATABASE_ID,
 });
 
 /**
- * Wrap the Admin UK dashboard so tax region, currency, and Gemini prompts
- * switch to UK (GBP, VAT 0/5/20%) for UAT — without changing production /app.
+ * Wrap the Admin UK dashboard so tax region, currency, Gemini prompts, and
+ * Firestore (`admin-uk-uat`) switch to UK for UAT — without changing production /app.
  */
 export function UkUatProvider({
   active,
@@ -41,14 +50,17 @@ export function UkUatProvider({
   active: boolean;
   children: ReactNode;
 }) {
-  // Sync module locale immediately so Gemini / vatReview see UK on first paint
-  // (useEffect alone would leave a CH window before the effect runs).
+  // Sync module locale + Firestore DB immediately so providers under this tree
+  // never open listeners on the Swiss (default) database.
   setActiveFiscalLocale(active ? "uk" : "ch");
+  setActiveFirestoreDatabase(active ? FIRESTORE_ADMIN_UK_DATABASE_ID : FIRESTORE_DEFAULT_DATABASE_ID);
 
   useEffect(() => {
     setActiveFiscalLocale(active ? "uk" : "ch");
+    setActiveFirestoreDatabase(active ? FIRESTORE_ADMIN_UK_DATABASE_ID : FIRESTORE_DEFAULT_DATABASE_ID);
     return () => {
       setActiveFiscalLocale("ch");
+      setActiveFirestoreDatabase(FIRESTORE_DEFAULT_DATABASE_ID);
     };
   }, [active]);
 
@@ -62,6 +74,9 @@ export function UkUatProvider({
       taxRegion,
       currency,
       currencySuffix: ` ${currency}`,
+      firestoreDatabaseId: active
+        ? FIRESTORE_ADMIN_UK_DATABASE_ID
+        : getActiveFirestoreDatabaseId(),
     };
   }, [active]);
 

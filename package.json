@@ -21,6 +21,7 @@
     "assets:harden-logos": "node scripts/harden-brand-lockups.mjs",
     "assets:patch-landing-logos": "node scripts/patch-landing-logos.mjs",
     "assets:outreach-upload-demo": "node scripts/generate-outreach-upload-demo.mjs",
+    "firestore:create-admin-uk": "node scripts/create-admin-uk-firestore.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {

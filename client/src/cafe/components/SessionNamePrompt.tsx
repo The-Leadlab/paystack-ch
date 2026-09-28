@@ -11,9 +11,12 @@ import {
 } from "@/components/ui/dialog";
 import { useLanguage } from "../context/LanguageContext";
 import { useSession } from "../context/SessionContext";
-import { defaultSessionName, isAutoTimestampSessionName } from "../lib/formatLocalDateTime";
+import { isAutoTimestampSessionName } from "../lib/formatLocalDateTime";
 
 const namedKey = (sessionId: string) => `paystack_session_named_${sessionId}`;
+
+/** Only interrupt for sessions created in the last few minutes (true “New Session”). */
+const NEW_SESSION_PROMPT_MS = 3 * 60 * 1000;
 
 function wasNamedOrSkipped(sessionId: string): boolean {
   try {
@@ -42,10 +45,16 @@ function markNamedOrSkipped(sessionId: string) {
   }
 }
 
+function isFreshlyCreated(createdAt: string | undefined): boolean {
+  if (!createdAt) return false;
+  const ts = Date.parse(createdAt);
+  if (!Number.isFinite(ts)) return false;
+  return Date.now() - ts <= NEW_SESSION_PROMPT_MS;
+}
+
 /**
- * Prompt only for brand-new auto-timestamp sessions.
- * Renamed sessions (e.g. "08.2020") and previously skipped IDs never re-prompt —
- * including after a second login / new tab (localStorage survives where sessionStorage does not).
+ * Prompt only right after "+ New Session" (fresh auto-timestamp name).
+ * Existing / older timestamp sessions never re-prompt — including after login or /admin-uk.
  */
 export function SessionNamePrompt() {
   const { t } = useLanguage();
@@ -62,15 +71,27 @@ export function SessionNamePrompt() {
       setOpen(false);
       return;
     }
-    // Custom / already-renamed sessions should never interrupt navigation.
-    if (!isAutoTimestampSessionName(currentSession.name || "")) {
+
+    const autoName = isAutoTimestampSessionName(currentSession.name || "");
+
+    // Custom / already-renamed sessions: never interrupt.
+    if (!autoName) {
       markNamedOrSkipped(currentSession.id);
       setOpen(false);
       return;
     }
-    setName(currentSession.name || defaultSessionName());
+
+    // Old auto-timestamp sessions (e.g. resumed from sidebar / last login): silence forever.
+    if (!isFreshlyCreated(currentSession.created_at)) {
+      markNamedOrSkipped(currentSession.id);
+      setOpen(false);
+      return;
+    }
+
+    // Fresh new session only — leave the field empty so the placeholder guides naming.
+    setName("");
     setOpen(true);
-  }, [currentSession?.id, currentSession?.name, loading]);
+  }, [currentSession?.id, currentSession?.name, currentSession?.created_at, loading]);
 
   const finish = (save: boolean) => {
     if (!currentSession?.id) return;
@@ -94,7 +115,7 @@ export function SessionNamePrompt() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={t("sessionNamePromptPlaceholder")}
-          className="font-editorial"
+          className="font-editorial bg-background text-foreground placeholder:text-muted-foreground"
           autoFocus
         />
         <DialogFooter className="flex-col sm:flex-row gap-2">

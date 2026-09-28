@@ -24,6 +24,18 @@ const firebaseConfig = {
 /** Use when surfacing Firestore permission errors — must match Firebase Console project for deployed rules. */
 export const firebaseProjectId = firebaseConfig.projectId as string | undefined;
 
+/** Production / Swiss dashboard uses the default Firestore database. */
+export const FIRESTORE_DEFAULT_DATABASE_ID = '(default)';
+
+/**
+ * Named Firestore database for Admin UK UAT (`/admin-uk`).
+ * Create with: `node scripts/create-admin-uk-firestore.mjs`
+ * Override via VITE_FIRESTORE_ADMIN_UK_DATABASE_ID.
+ */
+export const FIRESTORE_ADMIN_UK_DATABASE_ID =
+  (import.meta.env.VITE_FIRESTORE_ADMIN_UK_DATABASE_ID as string | undefined)?.trim() ||
+  'admin-uk-uat';
+
 export const firebaseReady = Boolean(
   firebaseConfig.apiKey &&
     firebaseConfig.authDomain &&
@@ -39,9 +51,45 @@ if (!firebaseReady) {
 
 let app: FirebaseApp | undefined;
 export let auth: Auth | null = null;
+/** Live-bound Firestore instance — reassigned when Admin UK UAT switches database. */
 export let db: Firestore | null = null;
 export let storage: FirebaseStorage | null = null;
 export let analytics: Analytics | null = null;
+
+const firestoreById = new Map<string, Firestore>();
+let activeFirestoreDatabaseId = FIRESTORE_DEFAULT_DATABASE_ID;
+
+export function getActiveFirestoreDatabaseId(): string {
+  return activeFirestoreDatabaseId;
+}
+
+function firestoreForId(databaseId: string): Firestore | null {
+  if (!app) return null;
+  const id = databaseId || FIRESTORE_DEFAULT_DATABASE_ID;
+  let instance = firestoreById.get(id);
+  if (!instance) {
+    instance = id === FIRESTORE_DEFAULT_DATABASE_ID ? getFirestore(app) : getFirestore(app, id);
+    firestoreById.set(id, instance);
+  }
+  return instance;
+}
+
+/**
+ * Point the shared `db` export at a named Firestore database.
+ * Call synchronously before dashboard providers mount (see UkUatProvider).
+ */
+export function setActiveFirestoreDatabase(databaseId: string): void {
+  if (!app) return;
+  const nextId = databaseId || FIRESTORE_DEFAULT_DATABASE_ID;
+  if (nextId === activeFirestoreDatabaseId && db) return;
+  const next = firestoreForId(nextId);
+  if (!next) return;
+  activeFirestoreDatabaseId = nextId;
+  db = next;
+  if (typeof console !== 'undefined' && nextId !== FIRESTORE_DEFAULT_DATABASE_ID) {
+    console.info(`[firebase] Firestore database → ${nextId}`);
+  }
+}
 
 /**
  * Firebase Auth popup/redirect iframe sometimes delivers a stale event with no pending
@@ -117,7 +165,7 @@ if (firebaseReady) {
     auth = getAuth(app);
   }
 
-  db = getFirestore(app);
+  setActiveFirestoreDatabase(FIRESTORE_DEFAULT_DATABASE_ID);
   storage = getStorage(app);
   scheduleFirebaseAnalytics(app);
 

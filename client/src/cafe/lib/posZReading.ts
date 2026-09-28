@@ -1,8 +1,23 @@
 import type { FinancialData } from "../types";
+import { getActiveFiscalLocale } from "./fiscalLocale";
 
-export const Z_READING_AI_HINT = `This is a Swiss restaurant POS end-of-day Z-reading (Z-Bon / clôture caisse).
+const Z_READING_AI_HINT_CH = `This is a Swiss restaurant POS end-of-day Z-reading (Z-Bon / clôture caisse).
 Extract: gross sales (TTC), net sales (HT), total VAT, cash (espèces), card (carte/carte de crédit), TWINT/other payments, tips, discounts, refunds, and business date.
 Use swissVatReceiptTotals when printed. Payment method lines belong in lineItems with clear descriptions (Cash, Card, TWINT, etc.).`;
+
+const Z_READING_AI_HINT_UK = `This is a UK restaurant POS end-of-day Z-reading / cash-up report.
+Extract: gross sales (inc VAT), net sales (ex VAT), total VAT, cash, card, other payments (e.g. Amex, contactless), tips, discounts, refunds, and business date.
+Prefer GBP. UK VAT rates are 0% / 5% / 20% — never invent Swiss 2.6% or 8.1%.
+Populate swissVatBreakdown / swissVatReceiptTotals when a VAT summary is printed (reuse those fields for UK rate lines).
+Payment method lines belong in lineItems with clear descriptions (Cash, Card, etc.).`;
+
+/** Locale-aware Z-reading hint for Gemini (Admin UK UAT vs Swiss production). */
+export function getZReadingAiHint(): string {
+  return getActiveFiscalLocale() === "uk" ? Z_READING_AI_HINT_UK : Z_READING_AI_HINT_CH;
+}
+
+/** @deprecated Prefer getZReadingAiHint() */
+export const Z_READING_AI_HINT = Z_READING_AI_HINT_CH;
 
 export type ZReadingDraft = {
   date: string;

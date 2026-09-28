@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
+import { useUkUat } from '../context/UkUatContext';
 import { useDocuments } from '../context/DocumentContext';
 import { loadSavedInvoices, upsertInvoice } from '../lib/invoiceStorage';
 import { applyInvoiceTotals, normalizeInvoice } from '../lib/invoiceTotals';
@@ -22,6 +23,11 @@ import { downloadInvoicePdf } from '../lib/invoicePdf';
 import type { InvoiceData, InvoiceItem, InvoiceStatus } from '../types/invoice';
 import { INVOICE_CURRENCY_SYMBOLS } from '../types/invoice';
 import { DEFAULT_SWISS_VAT_RATE } from '@shared/swissVatRates';
+import {
+  currencySymbolForLocale,
+  getActiveFiscalLocale,
+  reportingCurrencyForLocale,
+} from '../lib/fiscalLocale';
 import { BRAND_LOGO_SRC } from '@/const/branding';
 import { useTaxRegionConfig } from '../hooks/useTaxRegion';
 
@@ -36,16 +42,20 @@ function generateInvoiceNumber(): string {
   return `INV-${y}${m}${d}-${rand}`;
 }
 
-function createInitialInvoice(t: (k: string) => string, taxRate = DEFAULT_SWISS_VAT_RATE): InvoiceData {
+function createInitialInvoice(
+  t: (k: string) => string,
+  opts?: { taxRate?: number; currency?: 'CHF' | 'GBP'; currencySymbol?: string; companyAddress?: string }
+): InvoiceData {
   const today = new Date().toISOString().split('T')[0];
   const due = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const currency = opts?.currency ?? 'CHF';
   return {
     invoiceNumber: generateInvoiceNumber(),
     date: today,
     dueDate: due,
     status: 'draft',
     companyName: 'Paystack.ch',
-    companyAddress: 'Switzerland',
+    companyAddress: opts?.companyAddress ?? 'Switzerland',
     companyPhone: '',
     companyEmail: '',
     companyWebsite: 'www.paystack.ch',
@@ -56,12 +66,12 @@ function createInitialInvoice(t: (k: string) => string, taxRate = DEFAULT_SWISS_
     clientEmail: '',
     items: [],
     subtotal: 0,
-    taxRate,
+    taxRate: opts?.taxRate ?? DEFAULT_SWISS_VAT_RATE,
     taxAmount: 0,
     discountAmount: 0,
     total: 0,
-    currency: 'CHF',
-    currencySymbol: 'CHF',
+    currency,
+    currencySymbol: opts?.currencySymbol ?? currency,
     notes: '',
     terms: t('invDefaultTerms'),
     paymentTerms: 'Net 30',
@@ -127,10 +137,18 @@ function resizeLogoAsJpeg(file: File): Promise<string> {
 export function InvoiceMakerPanel() {
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
+  const { ukUatActive } = useUkUat();
   const { user } = useAuth();
   const { documents } = useDocuments();
   const { taxConfig, loading: taxRegionLoading } = useTaxRegionConfig();
-  const [invoiceData, setInvoiceData] = useState<InvoiceData>(() => createInitialInvoice(t));
+  const [invoiceData, setInvoiceData] = useState<InvoiceData>(() =>
+    createInitialInvoice(t, {
+      taxRate: taxConfig.defaultRate,
+      currency: reportingCurrencyForLocale(),
+      currencySymbol: currencySymbolForLocale(),
+      companyAddress: getActiveFiscalLocale() === 'uk' ? 'United Kingdom' : 'Switzerland',
+    })
+  );
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [savedInvoices, setSavedInvoices] = useState<InvoiceData[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState('');
@@ -143,10 +161,30 @@ export function InvoiceMakerPanel() {
 
   useEffect(() => {
     if (taxRegionLoading) return;
-    setInvoiceData((current) =>
-      current.items.length === 0 ? { ...current, taxRate: taxConfig.defaultRate } : current
-    );
-  }, [taxConfig.defaultRate, taxRegionLoading]);
+    const currency = reportingCurrencyForLocale();
+    const currencySymbol = currencySymbolForLocale();
+    const companyAddress = ukUatActive ? 'United Kingdom' : 'Switzerland';
+    setInvoiceData((current) => {
+      if (current.items.length > 0) {
+        return {
+          ...current,
+          taxRate: taxConfig.defaultRate,
+          currency,
+          currencySymbol,
+          companyAddress: current.companyAddress === 'Switzerland' || current.companyAddress === 'United Kingdom'
+            ? companyAddress
+            : current.companyAddress,
+        };
+      }
+      return {
+        ...current,
+        taxRate: taxConfig.defaultRate,
+        currency,
+        currencySymbol,
+        companyAddress,
+      };
+    });
+  }, [taxConfig.defaultRate, taxRegionLoading, ukUatActive]);
 
   const supplierOptions = useMemo(() => {
     const names = new Set<string>();
@@ -486,7 +524,16 @@ export function InvoiceMakerPanel() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => setInvoiceData(createInitialInvoice(t))}
+            onClick={() =>
+              setInvoiceData(
+                createInitialInvoice(t, {
+                  taxRate: taxConfig.defaultRate,
+                  currency: reportingCurrencyForLocale(),
+                  currencySymbol: currencySymbolForLocale(),
+                  companyAddress: ukUatActive ? 'United Kingdom' : 'Switzerland',
+                })
+              )
+            }
             className="ba-filter-chip flex items-center gap-2"
           >
             <Plus className="w-4 h-4" /> {t('invNew')}

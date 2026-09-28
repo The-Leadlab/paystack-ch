@@ -1716,9 +1716,20 @@ FISCAL LOCALE: UNITED KINGDOM (Admin UK UAT)
 - Payslips: use Gross pay / Net pay / Net to pay (or Payment) labels; still map into paySlip.grossPay / netPay / paymentToEmployee.
 `
       : "";
+    const ukCriticalOverride = isUkFiscal
+      ? `
+
+CRITICAL UK OVERRIDE (takes precedence over any Swiss TVA / 2.6% / 8.1% / CHF rules below):
+- Use ONLY UK VAT rates 0%, 5%, 20%. NEVER invent or prefer Swiss rates 2.6% or 8.1%.
+- Prefer GBP (£). Do not force CHF.
+- Tax label is VAT / Value Added Tax. Output VAT = sales; input VAT = purchases (HMRC VAT Return boxes 1 / 4 / 5).
+- Multi-rate tables: populate swissVatBreakdown with printed UK rate columns only.
+- Hospitality: dine-in / hot takeaway / alcohol typically 20%; cold takeaway food may be zero-rated when printed as such — copy the document, do not invent.
+`
+      : "";
 
     const analysisPrompt = `You are a strict ${isUkFiscal ? "UK (HMRC VAT)" : "Swiss"} accounting document extraction engine. ${hintSection}
-${fiscalOverlay}
+${fiscalOverlay}${ukCriticalOverride}
 CRITICAL RULES:
 1. Identify document type accurately
 2. Determine if this is INCOME (revenue, sales, deposits) or EXPENSE (bills, invoices to pay, purchases)

@@ -61,6 +61,7 @@ Password-gated sandbox that forces the restaurant dashboard onto the **UK fiscal
 
 - **URLs:** `/admin-uk-gate` (login), `/admin-uk` (UK UAT dashboard)
 - **Password:** `ADMIN_UK_PASSWORD` in `.env` (see `.env.example`; default `admin UK`)
+- **Firestore:** isolated named database `admin-uk-uat` (not `(default)` Swiss data). Create: `node scripts/create-admin-uk-firestore.mjs`. Override id with `VITE_FIRESTORE_ADMIN_UK_DATABASE_ID`. Deploy rules to both DBs via `firebase.json` firestore array.
 - **Local API:** run `pnpm dev:stripe-server` so Vite can proxy `/api/admin-uk/*`; otherwise use `VITE_ADMIN_UK_PASSWORD` / default `admin UK` after gate
 - **Production:** set `ADMIN_UK_PASSWORD` in Vercel (Edge middleware + `/api/admin-uk/verify`). Session via `GET /api/admin-uk/session` cookie — do not rely on `sessionStorage` alone on www.paystack.ch
 - **Do not** add a UK toggle on `/app` until UAT is confirmed in chat

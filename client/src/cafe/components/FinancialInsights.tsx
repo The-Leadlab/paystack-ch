@@ -139,6 +139,7 @@ const EvidenceModal: React.FC<{ doc: ProcessedDocument; onClose: () => void }> =
 
 export const FinancialInsights: React.FC<FinancialInsightsProps> = ({ documents }) => {
   const { t, language } = useLanguage();
+  const { currencySuffix } = useUkUat();
   const [query, setQuery] = useState('');
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string; image?: string }[]>([]);
   const [isAsking, setIsAsking] = useState(false);
@@ -285,7 +286,7 @@ export const FinancialInsights: React.FC<FinancialInsightsProps> = ({ documents 
                 <span className="text-[10px] font-black uppercase text-ypsom-slate tracking-widest">{t('fiIncomeLabel')}</span>
              </div>
              <p className="text-xl font-black text-ypsom-deep font-mono leading-none">
-               {stats.income.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span className="text-xs opacity-40">CHF</span>
+               {stats.income.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span className="text-xs opacity-40">{currencySuffix.trim() || 'CHF'}</span>
              </p>
           </div>
           <div className="bg-white p-6 rounded-sm border border-ypsom-alice shadow-sm flex flex-col justify-between">
@@ -294,7 +295,7 @@ export const FinancialInsights: React.FC<FinancialInsightsProps> = ({ documents 
                 <span className="text-[10px] font-black uppercase text-ypsom-slate tracking-widest">{t('fiExpenseLabel')}</span>
              </div>
              <p className="text-xl font-black text-ypsom-deep font-mono leading-none">
-               {stats.expense.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span className="text-xs opacity-40">CHF</span>
+               {stats.expense.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span className="text-xs opacity-40">{currencySuffix.trim() || 'CHF'}</span>
              </p>
           </div>
           <div className="bg-white p-6 rounded-sm border border-ypsom-alice shadow-sm flex flex-col justify-between">

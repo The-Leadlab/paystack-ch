@@ -1,6 +1,4 @@
-import { DEFAULT_SWISS_VAT_RATE } from '@shared/swissVatRates';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
+import React, { useEffect, useMemo, useRef, useState } from 'react';import {
   Edit2,
   Trash2,
   Upload,
@@ -50,7 +48,7 @@ import {
   type CashDeposit,
 } from '../lib/cashDeposits';
 import { filterBusinessExpenses } from '../lib/personalBleedFilter';
-import { reportingCurrencyForLocale } from '../lib/fiscalLocale';
+import { defaultVatRatePercent, reportingCurrencyForLocale } from '../lib/fiscalLocale';
 import {
   addDaysIso,
   buildCashPosition,
@@ -115,7 +113,7 @@ import {
 import { useDocuments } from '../context/DocumentContext';
 import type { POSReading, ProcessedDocument } from '../types';
 import { analyzeFinancialDocument } from '../services/geminiService';
-import { Z_READING_AI_HINT, parseZReadingFromFinancialData } from '../lib/posZReading';
+import { getZReadingAiHint, parseZReadingFromFinancialData } from '../lib/posZReading';
 import '../businessApp.css';
 
 type DatePeriod = 'day' | '7d' | '14d' | 'month' | 'custom';
@@ -1709,7 +1707,7 @@ function POSModal({
       (i) => i.session_id === currentSession?.id && i.date >= start && i.date <= end
     );
     const totalIncome = rangedIncome.reduce((sum, i) => sum + i.amount, 0);
-    const vatRate = DEFAULT_SWISS_VAT_RATE / 100;
+    const vatRate = defaultVatRatePercent() / 100;
     const gross = totalIncome;
     const vat = gross * (vatRate / (1 + vatRate));
     const net = gross - vat;
@@ -1745,7 +1743,7 @@ function POSModal({
         setMode('csv');
         return;
       }
-      const result = await analyzeFinancialDocument(file, reportingCurrencyForLocale(), Z_READING_AI_HINT);
+      const result = await analyzeFinancialDocument(file, reportingCurrencyForLocale(), getZReadingAiHint());
       applyDraft(parseZReadingFromFinancialData(result, date));
     } catch (error) {
       alert(
@@ -1766,7 +1764,7 @@ function POSModal({
       matrix: csvMatrix,
       mapping: csvMapping,
       headerDate: date,
-      currency: 'CHF',
+      currency: reportingCurrencyForLocale(),
     });
     setCsvPreview(preview);
     setCsvStep('preview');

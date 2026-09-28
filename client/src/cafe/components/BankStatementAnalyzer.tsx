@@ -5,6 +5,8 @@ import { analyzeBankStatement } from '../services/geminiService';
 import { ProcessedBankStatement, BankStatementAnalysis, FinancialData } from '../types';
 import * as XLSX from 'xlsx';
 import { useLanguage } from '../context/LanguageContext';
+import { useUkUat } from '../context/UkUatContext';
+import { reportingCurrencyForLocale } from '../lib/fiscalLocale';
 
 interface Notification {
   id: string;
@@ -22,15 +24,20 @@ interface BankStatementAnalyzerProps {
 
 export const BankStatementAnalyzer: React.FC<BankStatementAnalyzerProps> = ({ supportingInvoices }) => {
   const { t } = useLanguage();
+  const { ukUatActive, currency } = useUkUat();
   const [statements, setStatements] = useState<ProcessedBankStatement[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
-  const [reportingCurrency, setReportingCurrency] = useState('CHF');
+  const [reportingCurrency, setReportingCurrency] = useState(() => reportingCurrencyForLocale());
   const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const dragCounter = useRef(0);
   const stopProcessingRef = useRef(false);
+
+  React.useEffect(() => {
+    if (ukUatActive) setReportingCurrency(currency);
+  }, [ukUatActive, currency]);
 
   // INCREASED FOR ACCELERATION
   const CONCURRENCY_LIMIT = 6; 
