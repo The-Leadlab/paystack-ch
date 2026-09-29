@@ -1,4 +1,5 @@
 import type { Expense, FinancialData, Income } from '../types';
+import { DocumentType } from '../types';
 import { mapAiExpenseCategoryToLedger } from './mapExpenseCategory';
 import {
   buildPayrollExpenseLines,
@@ -283,7 +284,7 @@ export async function postLedgerFromFinancialData(
         paySlipBlocks.push({
           ...data,
           ...sub,
-          documentType: 'Pay Slip',
+          documentType: DocumentType.PAY_SLIP,
           date: resolveDocumentDate(sub.date, sub.paySlip?.periodEnd, data.date),
           paySlip: sub.paySlip ?? data.paySlip,
           payrollSettlementMode: sub.payrollSettlementMode ?? data.payrollSettlementMode,

@@ -15,7 +15,7 @@ import { WorkspaceProvider, useWorkspace } from "@/cafe/context/WorkspaceContext
 import { SubscriptionGate } from "@/cafe/components/SubscriptionGate";
 import { SessionAccessShell } from "@/cafe/components/SessionAccessShell";
 import { firebaseReady } from "@/cafe/lib/firebase";
-import { UkUatProvider } from "@/cafe/context/UkUatContext";
+import { UkUatProvider, useUkUat } from "@/cafe/context/UkUatContext";
 import {
   isPersonalFinancesAccessUser,
   isSubscriptionOrVerificationBypassUser,

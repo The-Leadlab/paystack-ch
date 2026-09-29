@@ -34,6 +34,7 @@ import { POSManager } from './POSManager';
 import { ExpensesManager } from './ExpensesManager';
 import { InvoiceMakerPanel } from './InvoiceMakerPanel';
 import type { ProcessedDocument, POSReading } from '../types';
+import { DocumentType } from '../types';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
 import { brandLockupSrc, brandMarkSrc, BRAND_LOGO_SIZE, BRAND_LOCKUP_HEIGHT } from '@/const/branding';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -680,7 +681,7 @@ export function RestaurantDashboard() {
           blocks.push({
             ...data,
             ...sub,
-            documentType: 'Pay Slip',
+            documentType: DocumentType.PAY_SLIP,
             paySlip: sub.paySlip ?? data.paySlip,
             payrollSettlementMode: sub.payrollSettlementMode ?? data.payrollSettlementMode,
           });
