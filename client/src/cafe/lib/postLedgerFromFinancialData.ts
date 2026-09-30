@@ -14,6 +14,10 @@ import {
 } from './swissDocumentNormalize';
 import { issuerLooksLikeOwnBusiness } from './ownBusinessIdentity';
 import type { LedgerExpenseDraft, LedgerIncomeDraft } from '../context/FinanceContext';
+import {
+  resolveDocumentAmountInCHF,
+  resolveSubInvoiceAmounts,
+} from './subInvoiceAmounts';
 
 type LedgerWriters = {
   addIncome: (
@@ -92,6 +96,10 @@ function incomeTypeFromCategory(category?: string): 'SALES' | 'RESERVATION' {
     : 'SALES';
 }
 
+function resolvePostedAmount(data: FinancialData): number {
+  return resolveDocumentAmountInCHF(data);
+}
+
 async function postSingleAmount(
   writers: LedgerWriters,
   data: FinancialData,
@@ -106,7 +114,7 @@ async function postSingleAmount(
     (data as { paySlip?: { periodEnd?: string } }).paySlip?.periodEnd,
     ...lineDates
   );
-  const amount = data.amountInCHF || data.totalAmount || 0;
+  const amount = resolvePostedAmount(data);
   if (amount <= 0) return null;
 
   const cleanedIssuer = splitIssuerAndReference(data.issuer).issuer || data.issuer;
@@ -328,25 +336,31 @@ export async function postLedgerFromFinancialData(
   const subs = Array.isArray(data.subDocuments) ? data.subDocuments.filter(Boolean) : [];
   if (subs.length > 0) {
     for (const sub of subs) {
+      const amounts = resolveSubInvoiceAmounts(sub, data);
       const merged: FinancialData = {
         ...data,
         ...sub,
-        // Prefer sub-invoice fields; do not inherit parent aggregated VAT for each row
+        // Prefer sub-invoice fields; do not inherit parent aggregated VAT / totals
         swissVatBreakdown: sub.swissVatBreakdown,
         swissVatReceiptTotals: sub.swissVatReceiptTotals,
         date: resolveDocumentDate(sub.date, data.date),
+        totalAmount: amounts.totalAmount,
+        amountInCHF: amounts.amountInCHF,
+        conversionRateUsed: amounts.conversionRateUsed,
         vatAmount: resolveDocumentVatAmount({
           vatAmount: sub.vatAmount,
           vatRate: sub.vatRate,
           netAmount: sub.netAmount,
-          totalAmount: sub.totalAmount,
-          amountInCHF: sub.amountInCHF ?? sub.totalAmount,
+          totalAmount: amounts.totalAmount,
+          amountInCHF: amounts.amountInCHF,
           swissVatBreakdown: sub.swissVatBreakdown,
           swissVatReceiptTotals: sub.swissVatReceiptTotals,
         }),
         documentType: sub.documentType || data.documentType,
         expenseCategory: sub.expenseCategory || data.expenseCategory,
         swissAccountClassification: sub.swissAccountClassification || undefined,
+        // Prevent nested re-entry into the multi-invoice branch
+        subDocuments: [],
       };
       const kind = await postSingleAmount(
         writers,

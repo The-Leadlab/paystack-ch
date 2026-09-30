@@ -14,6 +14,10 @@ import { fileToBase64 } from '../services/geminiService';
 import { generateGeminiContent } from '../lib/geminiClient';
 import { useLanguage } from '../context/LanguageContext';
 import { useUkUat } from '../context/UkUatContext';
+import {
+  resolveDocumentAmountInCHF,
+  resolveSubInvoiceAmountInCHF,
+} from '../lib/subInvoiceAmounts';
 
 /** Lightweight category color hints for the insights bars (TAX_CATEGORIES was removed from DocumentProcessor). */
 const TAX_CATEGORIES: Array<{ id: string; label: string; color: string }> = [
@@ -98,7 +102,7 @@ const EvidenceModal: React.FC<{ doc: ProcessedDocument; onClose: () => void }> =
                    <div className="flex justify-between items-center">
                       <span className="text-[11px] font-bold text-ypsom-slate uppercase tracking-tight">{t('fiGrossValue')}</span>
                       <span className="text-[13px] font-mono font-black text-ypsom-deep border-b-2 border-ypsom-alice">
-                        {doc.data?.amountInCHF.toLocaleString(undefined, { minimumFractionDigits: 2 })}{currencySuffix}
+                        {resolveDocumentAmountInCHF(doc.data).toLocaleString(undefined, { minimumFractionDigits: 2 })}{currencySuffix}
                       </span>
                    </div>
                 </div>
@@ -168,7 +172,7 @@ export const FinancialInsights: React.FC<FinancialInsightsProps> = ({ documents 
           flattenedItems.push({
             id: `${d.id}_sub_${idx}`,
             issuer: sub.issuer || t('fiUnknownEntity'),
-            amount: sub.amountInCHF || sub.totalAmount || 0,
+            amount: resolveSubInvoiceAmountInCHF(sub, d.data!),
             category: sub.expenseCategory || d.data?.expenseCategory || t('fiCategoryBank'),
             parentDoc: d,
             type: sub.documentType || 'VOUCHER',
@@ -179,7 +183,7 @@ export const FinancialInsights: React.FC<FinancialInsightsProps> = ({ documents 
         flattenedItems.push({
           id: d.id,
           issuer: d.data.issuer || t('fiUnknownEntity'),
-          amount: d.data.amountInCHF || d.data.totalAmount || 0,
+          amount: resolveDocumentAmountInCHF(d.data),
           category: d.data.expenseCategory || t('fiCategoryBank'),
           parentDoc: d,
           type: d.data.documentType,

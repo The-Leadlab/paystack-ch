@@ -68,6 +68,7 @@ import { formatIssuerForDisplay, invoicesDetectedIssuer, documentDisplayName, co
 import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
 import { isLocalDocMirroredInFirestore } from '../lib/dedupeProcessedDocuments';
 import { evaluateVatReview } from '../lib/vatReview';
+import { resolveSubInvoiceAmountInCHF } from '../lib/subInvoiceAmounts';
 import {
   recallDocumentFile,
   rememberDocumentFile,
@@ -1352,7 +1353,7 @@ const VerificationHub: React.FC<{
   const lineExpenseSum =
     editedData.lineItems?.filter((i) => i.type === 'EXPENSE').reduce((s, i) => s + (Number(i.amount) || 0), 0) ?? 0;
   const subExpenseSum = subDocuments.reduce(
-    (s, sd) => s + Number((sd as FinancialData).totalAmount || 0),
+    (s, sd) => s + resolveSubInvoiceAmountInCHF(sd as FinancialData, editedData),
     0
   );
   const hasLineItems = (editedData.lineItems?.length ?? 0) > 0;

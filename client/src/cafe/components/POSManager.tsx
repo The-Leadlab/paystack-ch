@@ -48,6 +48,7 @@ import {
   type CashDeposit,
 } from '../lib/cashDeposits';
 import { filterBusinessExpenses } from '../lib/personalBleedFilter';
+import { resolveDocumentAmountInCHF } from '../lib/subInvoiceAmounts';
 import { defaultVatRatePercent, reportingCurrencyForLocale } from '../lib/fiscalLocale';
 import {
   addDaysIso,
@@ -455,7 +456,7 @@ export function POSManager({
       const blob = [doc.fileName, doc.data?.issuer, doc.data?.documentType, ...(doc.data?.lineItems?.map((l) => l.description) || [])]
         .filter(Boolean)
         .join(' ');
-      const amount = doc.data?.amountInCHF || doc.data?.totalAmount || 0;
+      const amount = resolveDocumentAmountInCHF(doc.data);
       const docType = doc.data?.documentType || '';
       const isPosLike =
         docType === 'Ticket/Receipt' ||
@@ -969,6 +970,7 @@ export function POSManager({
           icon={CalendarDays}
           tone="green"
           progressPct={Math.min(100, Math.abs(growthPct))}
+          suffix=""
         />
         <BusinessKpiCard
           label={t('rhKpiDailyAvg')}
@@ -984,6 +986,7 @@ export function POSManager({
           icon={TrendingUp}
           tone="gold"
           progressPct={periodIncomeRows.length ? 70 : 0}
+          suffix=""
         />
       </div>
 

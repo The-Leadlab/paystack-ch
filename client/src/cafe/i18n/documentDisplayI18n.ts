@@ -1,4 +1,8 @@
 import { canonicalizeSupplierName } from "../lib/swissDocumentNormalize";
+import {
+  resolveDocumentAmountInCHF,
+  resolveSubInvoiceAmountInCHF,
+} from "../lib/subInvoiceAmounts";
 
 const INVOICES_DETECTED_RE = /^(\d+)\s+invoices detected$/i;
 const MONTH_KEY_RE = /^\d{4}-\d{2}$/;
@@ -94,8 +98,7 @@ export function matchingSubDocumentsForSupplier(
  */
 export function documentAmountForSupplierGroup(doc: DocLike, supplierKey: string): number {
   const subs = Array.isArray(doc.data?.subDocuments) ? doc.data!.subDocuments! : [];
-  const full =
-    Number(doc.data?.amountInCHF || 0) || Number(doc.data?.totalAmount || 0) || 0;
+  const full = resolveDocumentAmountInCHF(doc.data);
 
   if (subs.length === 0) return full;
 
@@ -105,7 +108,7 @@ export function documentAmountForSupplierGroup(doc: DocLike, supplierKey: string
   const matching = matchingSubDocumentsForSupplier(doc, supplierKey);
   if (matching.length === 0) return full;
   return matching.reduce(
-    (sum, s) => sum + (Number(s.amountInCHF || 0) || Number(s.totalAmount || 0) || 0),
+    (sum, s) => sum + resolveSubInvoiceAmountInCHF(s, doc.data || {}),
     0
   );
 }

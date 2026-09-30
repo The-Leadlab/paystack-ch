@@ -545,6 +545,7 @@ export function ExpensesManager({
           icon={CalendarDays}
           tone={growthPct > 5 ? 'red' : 'green'}
           progressPct={Math.min(100, Math.abs(growthPct))}
+          suffix=""
         />
         <BusinessKpiCard
           label={t('ehKpiDailyAvg')}
@@ -560,6 +561,7 @@ export function ExpensesManager({
           icon={TrendingDown}
           tone="gold"
           progressPct={periodExpenseRows.length ? 70 : 0}
+          suffix=""
         />
       </div>
 

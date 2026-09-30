@@ -34,6 +34,7 @@ import {
 } from "../lib/swissDocumentNormalize";
 import { isCsvDocumentFile } from "../lib/businessDocumentFile";
 import { parseBusinessCsvFile } from "../lib/businessCsvImport";
+import { resolveSubInvoiceAmounts } from "../lib/subInvoiceAmounts";
 
 const Type = {
   ARRAY: "ARRAY",
@@ -871,9 +872,13 @@ function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
         ...(nestedItems.length ? { lineItems: nestedItems } : {}),
       } as FinancialData;
       const withSwiss = { ...baseSub, ...sanitizeSwissVatFields(baseSub, subCat) };
+      const amounts = resolveSubInvoiceAmounts(withSwiss, data);
       return {
         ...withSwiss,
-        vatAmount: resolveDocumentVatAmount(withSwiss),
+        totalAmount: amounts.totalAmount,
+        amountInCHF: amounts.amountInCHF,
+        conversionRateUsed: amounts.conversionRateUsed,
+        vatAmount: resolveDocumentVatAmount({ ...withSwiss, ...amounts }),
         date: normalizeIsoDate(withSwiss.date) || withSwiss.date,
         ...(nestedItems.length ? { lineItems: nestedItems } : {}),
       };
