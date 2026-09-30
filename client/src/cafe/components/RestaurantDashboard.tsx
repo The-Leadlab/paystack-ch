@@ -10,7 +10,7 @@ import { useSubscription } from '../context/SubscriptionContext';
 import { useChfLocale, useFormatChf, useLanguage } from '../context/LanguageContext';
 import { useUkUat } from '../context/UkUatContext';
 import { moneyLocaleForFiscal } from '../lib/fiscalLocale';
-import { formatIssuerForDisplay, formatMonthYearLabel, parseMonthKey, parseInvoicesDetectedCount, documentDisplayName, conjoinedInvoicesLabel, supplierGroupKeysForDocument, normalizeEntityKey } from '../i18n/documentDisplayI18n';
+import { formatIssuerForDisplay, formatMonthYearLabel, parseMonthKey, documentDisplayName, conjoinedInvoicesLabel, supplierGroupKeysForDocument, normalizeEntityKey, documentAmountForSupplierGroup, conjoinedCountForSupplierGroup } from '../i18n/documentDisplayI18n';
 import { useDocuments } from '../context/DocumentContext';
 import { usePOS } from '../context/POSContext';
 import { DocumentProcessor } from './DocumentProcessor';
@@ -3304,9 +3304,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
           <div className="min-w-0">
             <h2 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase truncate">
               {(() => {
-                const count =
-                  parseInvoicesDetectedCount(selectedEntity) ??
-                  (entityDocs || []).reduce((max, d) => Math.max(max, d.data?.subDocuments?.length || 0), 0);
+                const count = conjoinedCountForSupplierGroup(entityDocs || [], selectedEntity);
                 if (count > 1) {
                   return documentDisplayName(entityDocs?.[0]?.fileName, t('dpMultiInvoiceDocument'));
                 }
@@ -3314,9 +3312,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
               })()}
             </h2>
             {(() => {
-              const count =
-                parseInvoicesDetectedCount(selectedEntity) ??
-                (entityDocs || []).reduce((max, d) => Math.max(max, d.data?.subDocuments?.length || 0), 0);
+              const count = conjoinedCountForSupplierGroup(entityDocs || [], selectedEntity);
               return count > 1 ? (
                 <p className="text-xs text-cdlp-muted">{conjoinedInvoicesLabel(count, t)}</p>
               ) : null;
@@ -3332,7 +3328,10 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
           </div>
         ) : (
           monthlyGroups.map(([month, docs]) => {
-          const totalAmount = docs.reduce((sum, d) => sum + (d.data?.totalAmount || 0), 0);
+          const totalAmount = docs.reduce(
+            (sum, d) => sum + documentAmountForSupplierGroup(d, selectedEntity),
+            0
+          );
           const monthName =
             month === 'undated'
               ? t('docUndated')
@@ -3364,7 +3363,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                       </button>
                       <div className="text-right ml-4 flex items-center gap-3">
                         <div>
-                          <p className="font-black ba-field-value text-base">{(doc.data?.totalAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          <p className="font-black ba-field-value text-base">{documentAmountForSupplierGroup(doc, selectedEntity).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                           <p className="text-xs text-cdlp-muted">{doc.data?.originalCurrency || 'CHF'}</p>
                         </div>
                         <button
@@ -3435,12 +3434,13 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredEntities.map(([entityName, docs]) => {
-            const totalAmount = docs.reduce((sum, d) => sum + (d.data?.totalAmount || 0), 0);
+            const totalAmount = docs.reduce(
+              (sum, d) => sum + documentAmountForSupplierGroup(d, entityName),
+              0
+            );
             const docCount = docs.length;
             const isEmployee = filter === 'employees' || groupedDocs.employees[entityName];
-            const conjoinedCount =
-              parseInvoicesDetectedCount(entityName) ??
-              docs.reduce((max, d) => Math.max(max, d.data?.subDocuments?.length || 0), 0);
+            const conjoinedCount = conjoinedCountForSupplierGroup(docs, entityName);
             const primaryTitle =
               conjoinedCount > 1
                 ? documentDisplayName(docs[0]?.fileName, t('dpMultiInvoiceDocument'))

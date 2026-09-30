@@ -1187,6 +1187,7 @@ function mergeProductLineItemsIntoData(
   const subs = Array.isArray(data.subDocuments) ? data.subDocuments : [];
 
   // Same-supplier multi-Commande mis-split: collapse to one invoice + all products.
+  // Keep exact issuer match (not canonicalize) so 7 real invoices from one supplier stay 7 ledger rows.
   const issuers = new Set(
     subs.map((s) => String((s as FinancialData).issuer || '').trim().toLowerCase()).filter(Boolean)
   );

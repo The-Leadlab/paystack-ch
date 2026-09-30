@@ -130,6 +130,11 @@ export function canonicalizeSupplierName(raw: string | undefined | null, unknown
   // Drop invoice / ref suffixes AI often appends
   s = s.replace(/\s*\|\s*.*$/, "");
   s = s.replace(/\s*[-–—]\s*(ref\.?|n[°o]?|nr\.?|facture|invoice|beleg)\s*[:#]?\s*[\w./-]+$/i, "");
+  // "Supplier - Factures fournisseurs" / category-style tails from binder titles
+  s = s.replace(/\s*[-–—]\s*factures?\s+(fournisseurs?|achats?|suppliers?)\b.*$/i, "");
+  // Trailing bare invoice / commande numbers: "Supplier - 12345" or "Supplier #88421"
+  s = s.replace(/\s*[-–—]\s*#?\d[\w./-]*$/i, "");
+  s = s.replace(/\s+#\d[\w./-]*$/i, "");
   s = s.replace(/\s+/g, " ").trim();
 
   // Uppercase for stable matching, then title-ish display later if needed
