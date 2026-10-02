@@ -93,7 +93,6 @@ import {
   addCustomSector,
   ALL_SECTORS,
   assignSectorTag,
-  filterExpensesForSectors,
   getSectorMeta,
   loadCustomSectors,
   loadStoredSectors,
@@ -242,65 +241,23 @@ export function POSManager({
   const baseExpenseRows = demoHold?.expenses ?? expenseRows;
   const basePosReadings = demoHold?.pos ?? posReadings;
 
-  const sectorIncomeRows = useMemo(() => {
-    void recipeTick;
-    if (!activeSectors.length) return [];
-    return baseIncomeRows.filter((r) => rowMatchesAnySector(r.description || '', activeSectors));
-  }, [baseIncomeRows, activeSectors, recipeTick]);
-
-  const allIncomeTotal = useMemo(
-    () => baseIncomeRows.reduce((s, r) => s + r.amount, 0),
-    [baseIncomeRows]
-  );
-  const sectorIncomeTotal = useMemo(
-    () => sectorIncomeRows.reduce((s, r) => s + r.amount, 0),
-    [sectorIncomeRows]
-  );
-
-  const sectorExpenseRows = useMemo(() => {
-    void recipeTick;
-    return filterExpensesForSectors(
-      baseExpenseRows,
-      allIncomeTotal,
-      sectorIncomeTotal,
-      activeSectors
-    );
-  }, [baseExpenseRows, allIncomeTotal, sectorIncomeTotal, activeSectors, recipeTick]);
-
-  /** Scale POS totals by sector share so payment mix tracks sector selection. */
-  const sectorPosReadings = useMemo(() => {
-    const share = allIncomeTotal > 0 ? sectorIncomeTotal / allIncomeTotal : 0;
-    if (share <= 0) return [];
-    if (share >= 0.999) return basePosReadings;
-    return basePosReadings.map((r) => ({
-      ...r,
-      gross_sales: Math.round(r.gross_sales * share * 100) / 100,
-      net_sales: Math.round(r.net_sales * share * 100) / 100,
-      vat_amount: Math.round(r.vat_amount * share * 100) / 100,
-      cash: Math.round(r.cash * share * 100) / 100,
-      card: Math.round(r.card * share * 100) / 100,
-      other_payment: Math.round(r.other_payment * share * 100) / 100,
-      tips: Math.round(r.tips * share * 100) / 100,
-      discounts: Math.round(r.discounts * share * 100) / 100,
-      refunds: Math.round(r.refunds * share * 100) / 100,
-    }));
-  }, [basePosReadings, allIncomeTotal, sectorIncomeTotal]);
-
   const visibleModules = activeSectors.slice(0, moduleVisible);
   const moduleRemaining = Math.max(0, activeSectors.length - moduleVisible);
   const visibleActivity = activity.slice(0, activityVisible);
   const activityRemaining = Math.max(0, activity.length - activityVisible);
 
   const today = toIsoDate(new Date());
+  // Period KPIs use the full session ledger (same pool as Dashboard Income).
+  // Sector pills only scope industry modules — not the hero / period total.
   const range = useMemo(
     () =>
       resolveRevenueInterval(
         intervalId,
         today,
-        sectorIncomeRows,
+        baseIncomeRows,
         intervalId === 'custom' ? { start: customStart || today, end: customEnd || today } : null
       ),
-    [intervalId, today, sectorIncomeRows, customStart, customEnd]
+    [intervalId, today, baseIncomeRows, customStart, customEnd]
   );
   const { start: rangeStart, end: rangeEnd } = range;
 
@@ -313,13 +270,13 @@ export function POSManager({
   const prior = useMemo(() => priorPeriodBounds(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
 
   const periodIncomeRows = useMemo(
-    () => sectorIncomeRows.filter((r) => r.date >= rangeStart && r.date <= rangeEnd),
-    [sectorIncomeRows, rangeStart, rangeEnd]
+    () => baseIncomeRows.filter((r) => r.date >= rangeStart && r.date <= rangeEnd),
+    [baseIncomeRows, rangeStart, rangeEnd]
   );
 
-  const revPeriod = sumInRange(sectorIncomeRows, rangeStart, rangeEnd);
-  const revPrior = sumInRange(sectorIncomeRows, prior.start, prior.end);
-  const revToday = sumInRange(sectorIncomeRows, today, today);
+  const revPeriod = sumInRange(baseIncomeRows, rangeStart, rangeEnd);
+  const revPrior = sumInRange(baseIncomeRows, prior.start, prior.end);
+  const revToday = sumInRange(baseIncomeRows, today, today);
   const growthPct =
     revPrior > 0 ? ((revPeriod - revPrior) / revPrior) * 100 : revPeriod > 0 ? 100 : 0;
 
@@ -327,27 +284,27 @@ export function POSManager({
   for (let iso = rangeStart; iso <= rangeEnd; iso = addDaysIso(iso, 1)) periodDays += 1;
   const dailyAvg = periodDays > 0 ? revPeriod / periodDays : 0;
 
-  const budgetMonth = monthlyBudgetTarget(sectorIncomeRows, today);
+  const budgetMonth = monthlyBudgetTarget(baseIncomeRows, today);
   const budgetPct = budgetMonth > 0 ? Math.min(100, (revPeriod / budgetMonth) * 100) : 0;
 
   const depositedYtd = sumDepositsInRange(`${today.slice(0, 4)}-01-01`, today);
-  const cash = buildCashPosition(periodIncomeRows, sectorPosReadings, today, depositedYtd);
-  const profit = buildProfitability(sectorIncomeRows, sectorExpenseRows, rangeStart, rangeEnd);
-  const paymentMix = buildPaymentMix(sectorPosReadings, sectorIncomeRows, rangeStart, rangeEnd);
+  const cash = buildCashPosition(periodIncomeRows, basePosReadings, today, depositedYtd);
+  const profit = buildProfitability(baseIncomeRows, baseExpenseRows, rangeStart, rangeEnd);
+  const paymentMix = buildPaymentMix(basePosReadings, baseIncomeRows, rangeStart, rangeEnd);
   const reconciliation = buildReconciliation(
-    sectorIncomeRows,
-    sectorPosReadings,
+    baseIncomeRows,
+    basePosReadings,
     rangeStart,
     rangeEnd,
     today
   );
   const posDaysWithData = useMemo(() => {
-    const days = new Set(sectorPosReadings.map((r) => r.date));
+    const days = new Set(basePosReadings.map((r) => r.date));
     return days.size;
-  }, [sectorPosReadings]);
+  }, [basePosReadings]);
   const avgDailyCash =
     posDaysWithData > 0
-      ? sectorPosReadings.reduce((s, r) => s + r.cash, 0) / posDaysWithData
+      ? basePosReadings.reduce((s, r) => s + r.cash, 0) / posDaysWithData
       : 0;
   const tillAdvice = suggestTillFloat(avgDailyCash);
   const insights = buildInsights({
@@ -358,7 +315,7 @@ export function POSManager({
     budgetMonth,
     reconciliationOpen: reconciliation.openCount,
     reconciliationVariance: reconciliation.variance,
-    posCount: sectorPosReadings.length,
+    posCount: basePosReadings.length,
     posDaysWithData,
     incomeCount: periodIncomeRows.length,
     incomingInvoices: cash.incoming,
@@ -505,8 +462,8 @@ export function POSManager({
   };
 
   const trendData = useMemo(
-    () => trendForRange(sectorIncomeRows, rangeStart, rangeEnd, chfLocale),
-    [sectorIncomeRows, rangeStart, rangeEnd, chfLocale]
+    () => trendForRange(baseIncomeRows, rangeStart, rangeEnd, chfLocale),
+    [baseIncomeRows, rangeStart, rangeEnd, chfLocale]
   );
   const trendTickDates = useMemo(
     () => trendAxisTickDates(trendData.map((d) => d.date), 6),
@@ -537,7 +494,7 @@ export function POSManager({
     return items.length ? items : [{ name: t('posCash'), amount: 0, fill: CHART_GREEN }];
   }, [paymentMix.cash, paymentMix.card, paymentMix.other, t]);
 
-  const hasTransactions = sectorIncomeRows.length > 0 || sectorPosReadings.length > 0;
+  const hasTransactions = baseIncomeRows.length > 0 || basePosReadings.length > 0;
   const hasPayments = paymentMix.gross > 0;
 
   const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) => {
@@ -1413,7 +1370,7 @@ export function POSManager({
         <RevenueIndustryModule
           key={`${sectorId}-${recipeTick}`}
           sector={sectorId}
-          rows={sectorIncomeRows.filter((r) => r.date >= rangeStart && r.date <= rangeEnd)}
+          rows={baseIncomeRows.filter((r) => r.date >= rangeStart && r.date <= rangeEnd)}
           fmt={fmt}
           fmtChf={fmtChf}
           t={t}
@@ -1458,12 +1415,7 @@ export function POSManager({
       ) : null}
 
       <RevenueLedgerTable
-        income={filteredIncome.filter(
-          (i) =>
-            i.date >= rangeStart &&
-            i.date <= rangeEnd &&
-            rowMatchesAnySector(i.description || '', activeSectors)
-        )}
+        income={filteredIncome.filter((i) => i.date >= rangeStart && i.date <= rangeEnd)}
         expenses={[]}
         incomeOnly
       />

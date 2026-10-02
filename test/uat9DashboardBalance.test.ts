@@ -71,6 +71,12 @@ describe("rowMatchesAnySector Revenue↔Dashboard parity", () => {
     expect(rowMatchesAnySector("Customer invoice #88", ["restaurants"])).toBe(true);
   });
 
+  it("includes income that hits non-selected industry keywords under restaurants", () => {
+    // "service"/"consulting" match garage/fiduciary keywords but those sectors are off
+    expect(rowMatchesAnySector("Invoice service fee consulting", ["restaurants"])).toBe(true);
+    expect(rowMatchesAnySector("Marketplace order #42", ["restaurants"])).toBe(true);
+  });
+
   it("still matches restaurant keywords", () => {
     expect(rowMatchesAnySector("Cafe lunch takeaway", ["restaurants"])).toBe(true);
   });

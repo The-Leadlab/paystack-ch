@@ -8,7 +8,7 @@ Use this when fixing Paystack.ch `/app` dashboard income/expense vs documents.
 2. **Precise categories** — Never default to OTHER when issuer/description/document type can map to BILLS, SUPPLIERS, PAYROLL, or PAYROLL_TAXES. AI must assign a specific category; keyword detection is a fallback before OTHER.
 3. **Click → verification** — Clicking an income/expense row linked to a document opens the Documents tab verification center for that file.
 4. **Edit after AI** — Users can change category (and income type) on ledger rows after AI assignment; saves to Firestore.
-5. **UAT-9 balance / Revenue parity** — Dashboard resume uses `computeDashboardTotals` (`income − operating expenses − net payroll`). Multi-invoice PDFs must never post N× binder `amountInCHF` (see `subInvoiceAmounts.ts`). Inflated binders auto-repair on dashboard load. Revenue (restaurants sector) includes untagged income so period totals can match Dashboard income. Expenses period KPI excludes net PAYROLL so it ties to Dashboard Expenses.
+5. **UAT-9 balance / Revenue parity** — Dashboard resume uses `computeDashboardTotals` (`income − operating expenses − net payroll`). Multi-invoice PDFs must never post N× binder `amountInCHF` (see `subInvoiceAmounts.ts`). Inflated binders auto-repair on dashboard load. Revenue period KPIs / ledger sum the full session income (same pool as Dashboard); sector pills only scope industry modules. Restaurants remains a catch-all for activity tagging so non-selected industry keywords do not hide rows. Expenses period KPI excludes net PAYROLL so it ties to Dashboard Expenses.
 
 ## Out of scope
 

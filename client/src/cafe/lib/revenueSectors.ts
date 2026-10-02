@@ -284,10 +284,12 @@ export function rowMatchesAnySector(description: string, sectors: string[]): boo
   if (lower.includes('z-reading') && sectors.includes('restaurants')) return true;
   if (sectors.some((s) => matchSector(description, s))) return true;
 
-  // UAT-9: untagged / unmatched ledger income must still appear under the default
-  // restaurants sector so Revenue period totals tie back to the Dashboard resume.
-  if (sectors.includes('restaurants') && !matchesAnyIndustryKeyword(description)) {
-    return true;
+  // UAT-9: restaurants is the Dashboard catch-all. Include any row not claimed by
+  // another *active* sector. Do NOT drop rows just because a non-selected industry
+  // keyword appears (e.g. "service", "order", "tax") — that broke Revenue↔Dashboard.
+  if (sectors.includes('restaurants')) {
+    const otherActive = sectors.filter((s) => s !== 'restaurants');
+    if (!otherActive.some((s) => matchSector(description, s))) return true;
   }
   return false;
 }
