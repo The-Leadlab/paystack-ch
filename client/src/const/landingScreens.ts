@@ -74,7 +74,7 @@ export const LANDING_SCREENSHOTS: Record<
 
   personal: {
 
-    primary: "/landing/screenshot-personal-v7.jpg",
+    primary: "/landing/screenshot-personal-v8.jpg",
 
     fallback: "/landing/screenshot-dashboard-v7.jpg",
 

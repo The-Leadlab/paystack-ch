@@ -220,13 +220,21 @@ export function computePersonalMonthTotals(rows: PersonalBudgetTx[], month: stri
   const totalExpenses = monthRows.filter((r) => r.kind === "expense").reduce((s, r) => s + r.amount, 0);
   const savings = totalIncome - totalExpenses;
   const savingsRatePct = totalIncome > 0 ? Math.round((savings / totalIncome) * 100) : 0;
+
+  // Balance = cumulative surplus through the selected month (all prior months + this month).
+  // Savings stays the in-month surplus so Overview KPIs are not duplicate numbers.
+  const throughMonth = rows.filter((r) => (r.date || "").slice(0, 7) <= month);
+  const balIncome = throughMonth.filter((r) => r.kind === "income").reduce((s, r) => s + r.amount, 0);
+  const balExpenses = throughMonth.filter((r) => r.kind === "expense").reduce((s, r) => s + r.amount, 0);
+  const balance = balIncome - balExpenses;
+
   return {
     rows: monthRows,
     totals: {
       totalIncome,
       totalExpenses,
       savings,
-      balance: savings,
+      balance,
       savingsRatePct,
       incomeCount: monthRows.filter((r) => r.kind === "income").length,
       expenseCount: monthRows.filter((r) => r.kind === "expense").length,
