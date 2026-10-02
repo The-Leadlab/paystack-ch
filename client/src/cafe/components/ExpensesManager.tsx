@@ -31,6 +31,7 @@ import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useUkUat } from '../context/UkUatContext';
 import { filterBusinessExpenses } from '../lib/personalBleedFilter';
 import { formatInsightText, localizeLedgerDescription } from '../lib/localizeLedgerCopy';
+import { isNetPayrollCategory } from '../services/swissPayrollService';
 import {
   addDaysIso,
   buildCategoryMix,
@@ -138,6 +139,12 @@ export function ExpensesManager({
     [expenseRows, categoryFilter]
   );
 
+  /** Operating spend (excludes net PAYROLL) so period KPI ties to Dashboard Expenses (UAT-9). */
+  const operatingCategoryRows = useMemo(
+    () => categoryRows.filter((r) => !isNetPayrollCategory(String(r.category || ''))),
+    [categoryRows]
+  );
+
   const today = toIsoDate(new Date());
   const range = useMemo(
     () =>
@@ -160,13 +167,13 @@ export function ExpensesManager({
   const prior = useMemo(() => priorPeriodBounds(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
 
   const periodExpenseRows = useMemo(
-    () => categoryRows.filter((r) => r.date >= rangeStart && r.date <= rangeEnd),
-    [categoryRows, rangeStart, rangeEnd]
+    () => operatingCategoryRows.filter((r) => r.date >= rangeStart && r.date <= rangeEnd),
+    [operatingCategoryRows, rangeStart, rangeEnd]
   );
 
-  const spendPeriod = sumExpensesInRange(categoryRows, rangeStart, rangeEnd);
-  const spendPrior = sumExpensesInRange(categoryRows, prior.start, prior.end);
-  const spendToday = sumExpensesInRange(categoryRows, today, today);
+  const spendPeriod = sumExpensesInRange(operatingCategoryRows, rangeStart, rangeEnd);
+  const spendPrior = sumExpensesInRange(operatingCategoryRows, prior.start, prior.end);
+  const spendToday = sumExpensesInRange(operatingCategoryRows, today, today);
   const growthPct =
     spendPrior > 0 ? ((spendPeriod - spendPrior) / spendPrior) * 100 : spendPeriod > 0 ? 100 : 0;
 

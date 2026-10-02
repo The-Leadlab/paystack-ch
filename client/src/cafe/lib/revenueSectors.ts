@@ -282,7 +282,28 @@ export function rowMatchesAnySector(description: string, sectors: string[]): boo
   const lower = (description || '').toLowerCase();
   // Manual Z-readings sync to income without sector tags — count under restaurants.
   if (lower.includes('z-reading') && sectors.includes('restaurants')) return true;
-  return sectors.some((s) => matchSector(description, s));
+  if (sectors.some((s) => matchSector(description, s))) return true;
+
+  // UAT-9: untagged / unmatched ledger income must still appear under the default
+  // restaurants sector so Revenue period totals tie back to the Dashboard resume.
+  if (sectors.includes('restaurants') && !matchesAnyIndustryKeyword(description)) {
+    return true;
+  }
+  return false;
+}
+
+/** True when description hits any built-in industry keyword (excludes `general`). */
+export function matchesAnyIndustryKeyword(description: string): boolean {
+  const lower = (description || '').toLowerCase();
+  if (!lower.trim()) return false;
+  for (const s of SECTOR_CATALOG) {
+    if (s.id === 'general') continue;
+    if (s.keywords.some((k) => lower.includes(k))) return true;
+  }
+  for (const c of loadCustomSectors()) {
+    if (c.keywords.some((k) => lower.includes(k))) return true;
+  }
+  return false;
 }
 
 /** Best-effort sector for an income/document line (tag first, then keyword recipes). */

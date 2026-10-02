@@ -193,12 +193,17 @@ export const exportToCSV = (data: ReportData) => {
   csvContent += `${L.generated}: ${new Date().toLocaleString(chfLoc)}\n\n`;
 
   const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const balance = totalIncome - totalExpenses;
+  const operatingExpenses = expenses.filter((e) => e.category !== 'PAYROLL');
+  const totalExpenses = operatingExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalPayroll = expenses
+    .filter((e) => e.category === 'PAYROLL')
+    .reduce((sum, e) => sum + e.amount, 0);
+  const balance = totalIncome - totalExpenses - totalPayroll;
 
   csvContent += `${L.summary}\n`;
   csvContent += `${L.totalIncome},${totalIncome.toFixed(2)} CHF\n`;
   csvContent += `${L.totalExpenses},${totalExpenses.toFixed(2)} CHF\n`;
+  csvContent += `Payroll (net),${totalPayroll.toFixed(2)} CHF\n`;
   csvContent += `${L.balance},${balance.toFixed(2)} CHF\n\n`;
 
   csvContent += `${L.monthlyBreakdown}\n`;

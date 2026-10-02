@@ -57,6 +57,8 @@ import { hydrateProcessedDocumentLineItems } from '../lib/financialDataFirestore
 import { canonicalizeSupplierName } from '../lib/swissDocumentNormalize';
 import { evaluateVatReview } from '../lib/vatReview';
 import { filterBusinessExpenses } from '../lib/personalBleedFilter';
+import { computeDashboardTotals, isInflatedMultiInvoiceLedger } from '../lib/dashboardTotals';
+import { resolveDocumentAmountInCHF } from '../lib/subInvoiceAmounts';
 import {
   BUSINESS_SIDEBAR_COLLAPSED_KEY,
   usePersistedSidebarCollapsed,
@@ -301,38 +303,15 @@ export function RestaurantDashboard() {
   // Exclude legacy personal-ledger bleed (Groceries / Going out: …) from business KPIs & Expenses.
   const filteredExpenses = filterBusinessExpenses(filteredExpensesRaw);
 
-  console.log('=== DASHBOARD DATA DEBUG ===');
-  console.log('isAllSessionsView:', isAllSessionsView);
-  console.log('currentSession:', currentSession);
-  console.log('Total income items in context:', income.length);
-  console.log('Total expense items in context:', expenses.length);
-  console.log('Filtered income items:', filteredIncome.length);
-  console.log('Filtered expense items:', filteredExpenses.length);
-  if (income.length > 0) {
-    console.log('Sample income item:', income[0]);
-  }
-  if (expenses.length > 0) {
-    console.log('Sample expense item:', expenses[0]);
-  }
-
-  const totalIncome = filteredIncome.reduce((sum, i) => sum + i.amount, 0);
-  // Expenses include PAYROLL_TAXES (state) but not net salary (shown on Payroll card)
-  const totalExpenses = filteredExpenses
-    .filter((e) => !isNetPayrollCategory(e.category))
-    .reduce((sum, e) => sum + e.amount, 0);
-  // Payroll card = net payment to employee(s) only
-  const totalPayroll = filteredExpenses
-    .filter((e) => isNetPayrollCategory(e.category))
-    .reduce((sum, e) => sum + e.amount, 0);
-  // VAT calculations
-  const vatReceived = filteredIncome.reduce((sum, i) => sum + (i.vat_amount || 0), 0);
-  const vatPaid = filteredExpenses.reduce((sum, e) => sum + (e.vat_amount || 0), 0);
-  const vatBalance = vatReceived - vatPaid;
-  // Balance: Income - Expenses - Payroll
-  const balance = totalIncome - totalExpenses - totalPayroll;
-
-  console.log('Calculated totals:', { totalIncome, totalExpenses, totalPayroll, balance });
-  console.log('=== END DEBUG ===');
+  const {
+    totalIncome,
+    totalExpenses,
+    totalPayroll,
+    balance,
+    vatReceived,
+    vatPaid,
+    vatBalance,
+  } = computeDashboardTotals(filteredIncome, filteredExpenses);
 
   const handleMasterReset = async () => {
     if (!confirm(t('alertMasterResetConfirm'))) {
@@ -795,6 +774,74 @@ export function RestaurantDashboard() {
     }
     alert((t('alertResyncLedgerDone') || 'Synced {ok}/{total} documents to the ledger.').replace('{ok}', String(ok)).replace('{total}', String(completed.length)));
   };
+
+  /**
+   * UAT-9: silently rebuild ledger rows for multi-invoice PDFs that were posted with
+   * N× binder totals (each sub inherited parent amountInCHF).
+   */
+  const inflatedRepairDoneRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!currentSession || !user?.uid) return;
+    if (!documents.length || !expenses.length) return;
+
+    const ownBusinessNames = resolveOwnBusinessNames(user.uid, user.displayName);
+    const writers = { addIncome, addExpense, addLedgerEntriesBatch };
+
+    void (async () => {
+      for (const doc of documents) {
+        if (!(doc.status === 'completed' || doc.status === 'needs_review') || !doc.data) continue;
+        if (inflatedRepairDoneRef.current.has(doc.id)) continue;
+        const subs = Array.isArray(doc.data.subDocuments) ? doc.data.subDocuments : [];
+        if (subs.length < 2) continue;
+
+        const linked = expenses.filter(
+          (e) => e.document_id === doc.id || e.document_id === doc.persistedDocumentId
+        );
+        const binderTotal = resolveDocumentAmountInCHF(doc.data);
+        const linkedExpenseSum = linked.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+        if (
+          !isInflatedMultiInvoiceLedger({
+            binderTotal,
+            subCount: subs.length,
+            linkedExpenseSum,
+            linkedExpenseCount: linked.length,
+          })
+        ) {
+          continue;
+        }
+
+        inflatedRepairDoneRef.current.add(doc.id);
+        try {
+          console.warn(
+            `[UAT-9] Repairing inflated multi-invoice ledger for ${doc.fileName}: linked ${linkedExpenseSum} ≈ ${subs.length}×${binderTotal}`
+          );
+          const hydrated = await hydrateProcessedDocumentLineItems(doc);
+          await deleteFinancesByDocumentId(doc.id);
+          await postLedgerFromFinancialData(
+            writers,
+            hydrated.data!,
+            hydrated.fileName,
+            doc.session_id || currentSession.id,
+            doc.id,
+            { ownBusinessNames }
+          );
+        } catch (err) {
+          inflatedRepairDoneRef.current.delete(doc.id);
+          console.error('Auto-repair inflated ledger failed:', doc.fileName, err);
+        }
+      }
+    })();
+  }, [
+    documents,
+    expenses,
+    currentSession,
+    user?.uid,
+    user?.displayName,
+    addIncome,
+    addExpense,
+    addLedgerEntriesBatch,
+    deleteFinancesByDocumentId,
+  ]);
 
   const switchTab = (tab: Tab) => {
     setActiveTab(tab);
