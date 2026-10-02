@@ -78,7 +78,9 @@ describe("renderOutreachHtml", () => {
     expect(html).toContain("lucas@paystack.ch");
     expect(html).toContain("Source Serif 4");
     expect(html).toContain("Sora");
-    expect(html).toContain("fonts.googleapis.com");
+    expect(html).not.toContain("fonts.googleapis.com");
+    expect(html).toContain("Unsubscribe");
+    expect(html).toContain("Geneva, Switzerland");
     expect(html).toContain("#E8423F");
     expect(html).toContain("Hi Joshua");
     expect(html).toContain("Welcome to Leadlab");
@@ -97,7 +99,9 @@ describe("renderOutreachHtml", () => {
       body: "<!DOCTYPE html><html><body>Hi {{name}}</body></html>",
       recipient: rec,
     });
-    expect(html).toBe("<!DOCTYPE html><html><body>Hi Kara</body></html>");
+    expect(html).toContain("Hi Kara");
+    expect(html).toContain("Unsubscribe");
+    expect(html).toContain("Geneva, Switzerland");
   });
 });
 

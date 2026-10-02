@@ -48,13 +48,6 @@ export default function StartTrialPage() {
   }, [search]);
 
   useEffect(() => {
-    if (isPersonal) {
-      storeSelectedLoginMode("shared");
-      setConfirmed(true);
-    }
-  }, [isPersonal]);
-
-  useEffect(() => {
     if (!firebaseReady || cancelled || !confirmed || redirectStarted.current) return;
     redirectStarted.current = true;
     storeSelectedLoginMode(loginMode);
@@ -126,44 +119,57 @@ export default function StartTrialPage() {
     );
   }
 
-  if (!isPersonal && !confirmed) {
+  if (!confirmed) {
     return (
-      <AuthLayout heading={t("startTrialLoginModeTitle")}>
+      <AuthLayout heading={isPersonal ? t("startTrialTitle") : t("startTrialLoginModeTitle")}>
         <Card className="border-border shadow-sm max-w-lg mx-auto">
           <CardHeader className="space-y-2">
             <p className="font-editorial text-sm text-muted-foreground leading-relaxed">
-              {t("startTrialLoginModeHint")}
+              {isPersonal ? t("pricingRenewalTerms") : t("startTrialLoginModeHint")}
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
-            <button
-              type="button"
-              onClick={() => setLoginMode("exclusive")}
-              className={`w-full text-left rounded-xl border p-4 transition-colors ${
-                loginMode === "exclusive"
-                  ? "border-brand-red bg-brand-red/5"
-                  : "border-border hover:border-brand-red/40"
-              }`}
-            >
-              <p className="font-display font-semibold text-sm">{t("loginModeExclusiveTitle")}</p>
-              <p className="text-xs text-muted-foreground mt-1">{t("loginModeExclusiveHint")}</p>
-            </button>
-            <button
-              type="button"
-              onClick={() => setLoginMode("shared")}
-              className={`w-full text-left rounded-xl border p-4 transition-colors ${
-                loginMode === "shared"
-                  ? "border-brand-red bg-brand-red/5"
-                  : "border-border hover:border-brand-red/40"
-              }`}
-            >
-              <p className="font-display font-semibold text-sm">{t("loginModeSharedTitle")}</p>
-              <p className="text-xs text-muted-foreground mt-1">{t("loginModeSharedHint")}</p>
-            </button>
+            {isPersonal ? null : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setLoginMode("exclusive")}
+                  className={`w-full text-left rounded-xl border p-4 transition-colors ${
+                    loginMode === "exclusive"
+                      ? "border-brand-red bg-brand-red/5"
+                      : "border-border hover:border-brand-red/40"
+                  }`}
+                >
+                  <p className="font-display font-semibold text-sm">{t("loginModeExclusiveTitle")}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("loginModeExclusiveHint")}</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLoginMode("shared")}
+                  className={`w-full text-left rounded-xl border p-4 transition-colors ${
+                    loginMode === "shared"
+                      ? "border-brand-red bg-brand-red/5"
+                      : "border-border hover:border-brand-red/40"
+                  }`}
+                >
+                  <p className="font-display font-semibold text-sm">{t("loginModeSharedTitle")}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("loginModeSharedHint")}</p>
+                </button>
+              </>
+            )}
+            <p className="font-editorial text-xs leading-relaxed text-muted-foreground border border-border rounded-lg px-3 py-2">
+              {t("pricingRenewalTerms")}{" "}
+              <Link href="/terms" className="text-brand-red hover:underline">
+                {t("footerLegal2")}
+              </Link>
+            </p>
             <Button
               type="button"
               className="font-display bg-brand-red text-white hover:bg-brand-red/90 w-full mt-2"
-              onClick={() => setConfirmed(true)}
+              onClick={() => {
+                if (isPersonal) storeSelectedLoginMode("shared");
+                setConfirmed(true);
+              }}
             >
               {t("startTrialContinueCheckout")}
             </Button>

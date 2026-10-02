@@ -1,4 +1,4 @@
-import { PLATFORM_CONTACT_EMAIL } from "../shared/const.js";
+import { PLATFORM_CONTACT_EMAIL, PLATFORM_UNSUBSCRIBE_URL } from "../shared/const.js";
 import { sendResendEmail } from "./resendEmail.js";
 import {
   OUTREACH_MAX_RECIPIENTS,
@@ -65,6 +65,9 @@ export async function sendOutreachBatch(opts: {
         text: rendered.text,
         from,
         replyTo,
+        headers: {
+          "List-Unsubscribe": `<${PLATFORM_UNSUBSCRIBE_URL}>, <mailto:${PLATFORM_CONTACT_EMAIL}?subject=Unsubscribe>`,
+        },
       });
       results.push({ email, ok: true });
     } catch (e) {

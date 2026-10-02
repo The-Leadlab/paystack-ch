@@ -1,6 +1,6 @@
 /** Cold-outreach CSV merge + branded email HTML (admin / Resend). */
 
-import { FONT_BODY, FONT_DISPLAY, FONT_UI, PLATFORM_CONTACT_EMAIL, PLATFORM_FONTS_HREF } from "./const.js";
+import { FONT_BODY, FONT_DISPLAY, FONT_UI, PLATFORM_CONTACT_EMAIL, PLATFORM_POSTAL_ADDRESS, PLATFORM_UNSUBSCRIBE_URL } from "./const.js";
 
 export const OUTREACH_MAX_RECIPIENTS = 200;
 
@@ -417,7 +417,6 @@ export function wrapBrandedLetterHtml(opts: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light">
   <title>${enTitle}</title>
-  <link rel="stylesheet" href="${PLATFORM_FONTS_HREF}">
 </head>
 <body style="margin:0;padding:0;background-color:#FFF5F4;" bgcolor="#FFF5F4">
   ${
@@ -445,8 +444,9 @@ export function wrapBrandedLetterHtml(opts: {
                 ${signoff}
               </p>
               <p style="margin:12px 0 0;font-family:${FONT_UI};font-size:12px;line-height:18px;color:#6F6669;">
-                Geneva, Switzerland<br>
-                <a href="mailto:${PLATFORM_CONTACT_EMAIL}" style="color:#E8423F;text-decoration:none;">${PLATFORM_CONTACT_EMAIL}</a>
+                ${PLATFORM_POSTAL_ADDRESS}<br>
+                <a href="mailto:${PLATFORM_CONTACT_EMAIL}" style="color:#E8423F;text-decoration:none;">${PLATFORM_CONTACT_EMAIL}</a><br>
+                <a href="${PLATFORM_UNSUBSCRIBE_URL}" style="color:#E8423F;text-decoration:none;">Unsubscribe</a>
               </p>
             </td>
           </tr>
@@ -456,6 +456,13 @@ export function wrapBrandedLetterHtml(opts: {
   </table>
 </body>
 </html>`;
+}
+
+export function ensureMarketingFooter(html: string): string {
+  if (/unsubscribe/i.test(html) && /Geneva, Switzerland/i.test(html)) return html;
+  const footer = `<p style="margin:24px 0 0;font-family:${FONT_UI};font-size:12px;line-height:18px;color:#6F6669;">${PLATFORM_POSTAL_ADDRESS}<br><a href="mailto:${PLATFORM_CONTACT_EMAIL}">${PLATFORM_CONTACT_EMAIL}</a><br><a href="${PLATFORM_UNSUBSCRIBE_URL}">Unsubscribe</a></p>`;
+  if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, `${footer}</body>`);
+  return `${html}${footer}`;
 }
 
 export function renderOutreachHtml(opts: {
@@ -468,7 +475,8 @@ export function renderOutreachHtml(opts: {
   const merged = mergeOutreachTemplate(opts.body, opts.recipient, { sender: opts.sender });
   if (opts.mode === "html") {
     if (isFullHtmlDocument(merged)) {
-      return { html: merged, text: stripHtmlToText(merged) };
+      const html = ensureMarketingFooter(merged);
+      return { html, text: stripHtmlToText(html) };
     }
     const html = wrapBrandedLetterHtml({
       title: opts.title || "Paystack.ch",

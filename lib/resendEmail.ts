@@ -9,6 +9,7 @@ export async function sendResendEmail(opts: {
   text?: string;
   from?: string;
   replyTo?: string | string[];
+  headers?: Record<string, string>;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
@@ -41,6 +42,7 @@ export async function sendResendEmail(opts: {
       ...(opts.replyTo
         ? { reply_to: Array.isArray(opts.replyTo) ? opts.replyTo : [opts.replyTo] }
         : {}),
+      ...(opts.headers ? { headers: opts.headers } : {}),
     }),
   });
 

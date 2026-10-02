@@ -45,6 +45,7 @@ export default function SignUpPage() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -55,6 +56,18 @@ export default function SignUpPage() {
   const checkoutSid = useMemo(() => checkoutSuccessSessionId(search), [search]);
   const checkoutBillingPath = STRIPE_BILLING_PATH_LIVE;
   const signUpAllowed = canOpenPublicSignUp(Boolean(checkoutSid));
+
+  const adultCutoff = useMemo(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 18);
+    return d.toISOString().slice(0, 10);
+  }, []);
+
+  function ageGateError(): string | null {
+    if (!birthDate) return t("authAgeRequired");
+    if (birthDate > adultCutoff) return t("authAgeBlocked");
+    return null;
+  }
 
   useEffect(() => {
     const qs = search.startsWith("?") ? search.slice(1) : search;
@@ -180,6 +193,11 @@ export default function SignUpPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    const ageError = ageGateError();
+    if (ageError) {
+      setError(ageError);
+      return;
+    }
     setSubmitting(true);
     try {
       const { error: err } = await signUp(email, password, displayName, { allowFromCheckout: Boolean(checkoutSid) });
@@ -194,6 +212,11 @@ export default function SignUpPage() {
 
   const handleGoogle = async () => {
     setError(null);
+    const ageError = ageGateError();
+    if (ageError) {
+      setError(ageError);
+      return;
+    }
     setGoogleLoading(true);
     try {
       const { error: err } = await signInWithGoogle({ allowNewUserFromCheckout: Boolean(checkoutSid) });
@@ -214,12 +237,28 @@ export default function SignUpPage() {
               {t("checkoutSameEmailNote")}
             </p>
           ) : null}
+          <div className="space-y-2">
+            <Label htmlFor="signup-birth" className="font-display text-xs">
+              {t("authAgeLabel")}
+            </Label>
+            <Input
+              id="signup-birth"
+              type="date"
+              autoComplete="bday"
+              value={birthDate}
+              max={adultCutoff}
+              onChange={(e) => setBirthDate(e.target.value)}
+              required
+              className="font-editorial"
+            />
+            <p className="font-editorial text-[11px] leading-relaxed text-muted-foreground">{t("authAgeHint")}</p>
+          </div>
           <Button
             type="button"
             variant="outline"
             className="w-full font-display gap-2 border-border bg-background hover:bg-secondary/80"
             onClick={handleGoogle}
-            disabled={googleLoading || submitting}
+            disabled={googleLoading || submitting || !birthDate}
           >
             <GoogleGIcon className="size-[18px] shrink-0" />
             {googleLoading ? t("authWorking") : t("authContinueGoogle")}
@@ -291,7 +330,7 @@ export default function SignUpPage() {
             <Button
               type="submit"
               className="w-full font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2"
-              disabled={submitting || googleLoading}
+              disabled={submitting || googleLoading || !birthDate}
             >
               <UserPlus className="size-4" />
               {submitting ? t("authWorking") : t("authSubmitSignUp")}

@@ -303,6 +303,14 @@ export default function PricingSection() {
                     </Link>
                   )}
                 </Button>
+                {"external" in plan && plan.external ? null : (
+                  <p className="font-editorial text-[11px] leading-relaxed text-muted-foreground mt-3">
+                    {t("pricingRenewalTerms")}{" "}
+                    <a href="/terms" className="text-brand-red hover:underline">
+                      {t("footerLegal2")}
+                    </a>
+                  </p>
+                )}
               </div>
             </ScrollReveal>
           ))}

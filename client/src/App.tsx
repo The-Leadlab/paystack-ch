@@ -19,6 +19,7 @@ import AliGatePage from "./pages/AliGatePage";
 import AliLabPage from "./pages/AliLabPage";
 import AdminUkGatePage from "./pages/AdminUkGatePage";
 import AdminUkPage from "./pages/AdminUkPage";
+import LegalDocumentPage from "./pages/legal/LegalDocumentPage";
 import { DashboardLoadingShell } from "./cafe/components/DashboardLoadingShell";
 import { SeoHead } from "./components/SeoHead";
 
@@ -50,6 +51,12 @@ function Router() {
       <Route path={"/auth/action"} component={AuthActionPage} />
       <Route path={"/login"} component={SignInPage} />
       <Route path={"/signup"} component={SignUpPage} />
+      <Route path={"/privacy"} component={LegalDocumentPage} />
+      <Route path={"/terms"} component={LegalDocumentPage} />
+      <Route path={"/data-processing"} component={LegalDocumentPage} />
+      <Route path={"/legal"} component={LegalDocumentPage} />
+      <Route path={"/dmca"} component={LegalDocumentPage} />
+      <Route path={"/unsubscribe"} component={LegalDocumentPage} />
       <Route path={"/personal/:featureId"} component={CafeShellRoute} />
       <Route path={"/personal"} component={CafeShellRoute} />
       <Route path={"/app/personal/:featureId"} component={CafeShellRoute} />

@@ -13,10 +13,44 @@ export default function Footer() {
 
   const footerColumns = useMemo(
     () => [
-      { title: t("footerColProduct"), links: [t("footerProduct1"), t("footerProduct2"), t("footerProduct3"), t("footerProduct4"), t("footerProduct5")] },
-      { title: t("footerColCompany"), links: [t("footerCompany1"), t("footerCompany2"), t("footerCompany3"), t("footerCompany4")] },
-      { title: t("footerColResources"), links: [t("footerResources1"), t("footerResources2"), t("footerResources3"), t("footerResources4")] },
-      { title: t("footerColLegal"), links: [t("footerLegal1"), t("footerLegal2"), t("footerLegal3"), t("footerLegal4")] },
+      {
+        title: t("footerColProduct"),
+        links: [
+          { label: t("footerProduct1"), href: "/#features" },
+          { label: t("footerProduct2"), href: "/#how-it-works" },
+          { label: t("footerProduct3"), href: "/#pricing" },
+          { label: t("footerProduct4"), href: "/#modules" },
+          { label: t("footerProduct5"), href: "/#security" },
+        ],
+      },
+      {
+        title: t("footerColCompany"),
+        links: [
+          { label: t("footerCompany1"), href: "/#contact" },
+          { label: t("footerCompany2"), href: "/legal" },
+          { label: t("footerCompany3"), href: "mailto:lucas@paystack.ch" },
+          { label: t("footerCompany4"), href: "/#pricing" },
+        ],
+      },
+      {
+        title: t("footerColResources"),
+        links: [
+          { label: t("footerResources1"), href: "/#how-it-works" },
+          { label: t("footerResources2"), href: "/privacy" },
+          { label: t("footerResources3"), href: "/data-processing" },
+          { label: t("footerResources4"), href: "/sign-in?redirect=%2Fapp" },
+        ],
+      },
+      {
+        title: t("footerColLegal"),
+        links: [
+          { label: t("footerLegal1"), href: "/privacy" },
+          { label: t("footerLegal2"), href: "/terms" },
+          { label: t("footerLegal3"), href: "/data-processing" },
+          { label: t("footerLegal4"), href: "/legal" },
+          { label: t("footerLegal5"), href: "/dmca" },
+        ],
+      },
     ],
     [language, t]
   );
@@ -50,12 +84,12 @@ export default function Footer() {
                 <h4 className="font-display text-sm font-semibold text-foreground mb-4 tracking-wide">{col.title}</h4>
                 <ul className="space-y-2.5">
                   {col.links.map((link) => (
-                    <li key={link}>
+                    <li key={link.href + link.label}>
                       <a
-                        href="#"
+                        href={link.href}
                         className="font-display text-sm text-muted-foreground hover:text-brand-red transition-colors duration-300"
                       >
-                        {link}
+                        {link.label}
                       </a>
                     </li>
                   ))}
