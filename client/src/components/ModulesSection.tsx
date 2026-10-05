@@ -15,12 +15,6 @@ import {
   Users,
   Calendar,
   BarChart3,
-  Archive,
-  ShoppingCart,
-  Package,
-  UserCheck,
-  Building2,
-  Receipt,
   PiggyBank,
   Target,
   Bell,
@@ -39,6 +33,7 @@ export default function ModulesSection() {
   const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState("core");
 
+  // Core + Personal only — Enhanced roadmap/WIP modules stay off the marketing site for now.
   const modules = useMemo(
     () => [
       {
@@ -63,18 +58,6 @@ export default function ModulesSection() {
           { icon: Bell, name: t("landingModPer4Name"), status: "live" as const, description: t("landingModPer4Desc") },
           { icon: PiggyBank, name: t("landingModPer5Name"), status: "live" as const, description: t("landingModPer5Desc") },
           { icon: FileText, name: t("landingModPer6Name"), status: "live" as const, description: t("landingModPer6Desc") },
-        ],
-      },
-      {
-        id: "enhanced",
-        label: t("landingModulesTabEnhanced"),
-        items: [
-          { icon: Archive, name: t("landingModEnh1Name"), status: "live" as const, description: t("landingModEnh1Desc") },
-          { icon: ShoppingCart, name: t("landingModEnh2Name"), status: "partial" as const, description: t("landingModEnh2Desc") },
-          { icon: Package, name: t("landingModEnh3Name"), status: "coming" as const, description: t("landingModEnh3Desc") },
-          { icon: UserCheck, name: t("landingModEnh4Name"), status: "coming" as const, description: t("landingModEnh4Desc") },
-          { icon: Building2, name: t("landingModEnh5Name"), status: "coming" as const, description: t("landingModEnh5Desc") },
-          { icon: Receipt, name: t("landingModEnh6Name"), status: "coming" as const, description: t("landingModEnh6Desc") },
         ],
       },
     ],
