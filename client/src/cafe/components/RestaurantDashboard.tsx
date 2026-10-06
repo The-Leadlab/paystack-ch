@@ -38,7 +38,8 @@ import { DocumentType } from '../types';
 import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
 import { brandLockupSrc, brandMarkSrc, BRAND_LOGO_SIZE, BRAND_LOCKUP_HEIGHT } from '@/const/branding';
 import { useTheme } from '@/contexts/ThemeContext';
-import type { DocumentReference } from 'firebase/firestore';
+import { doc, onSnapshot, type DocumentReference } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import {
   buildPayrollExpenseLines,
   isNetPayrollCategory,
@@ -149,6 +150,35 @@ export function RestaurantDashboard() {
   const { currencySuffix, ukUatActive, fiscalLocale } = useUkUat();
   const moneyLocale = moneyLocaleForFiscal(fiscalLocale);
   const errMsg = (error: unknown) => (error instanceof Error ? error.message : t('errorUnknown'));
+  const [profileBusinessNames, setProfileBusinessNames] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!user?.uid || !db) {
+      setProfileBusinessNames([]);
+      return;
+    }
+    const unsub = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+      const raw = snap.data()?.businessNames;
+      if (Array.isArray(raw)) {
+        setProfileBusinessNames(raw.filter((n): n is string => typeof n === 'string'));
+      } else if (typeof raw === 'string') {
+        setProfileBusinessNames(
+          raw
+            .split(/[\n,;]+/)
+            .map((s) => s.trim())
+            .filter((s) => s.length >= 2)
+        );
+      } else {
+        setProfileBusinessNames([]);
+      }
+    });
+    return () => unsub();
+  }, [user?.uid]);
+
+  const ownBusinessNames = useMemo(
+    () => resolveOwnBusinessNames(user?.uid, user?.displayName, profileBusinessNames),
+    [user?.uid, user?.displayName, profileBusinessNames]
+  );
 
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -637,7 +667,7 @@ export function RestaurantDashboard() {
       fileName,
       ledgerSessionId,
       documentId,
-      { ownBusinessNames: resolveOwnBusinessNames(user?.uid, user?.displayName) }
+      { ownBusinessNames }
     );
 
     try {
@@ -720,7 +750,7 @@ export function RestaurantDashboard() {
         fileName,
         ledgerSessionId,
         documentId,
-        { ownBusinessNames: resolveOwnBusinessNames(user?.uid, user?.displayName) }
+        { ownBusinessNames }
       );
       
       console.log('âœ… Document update complete', posted);
@@ -765,7 +795,7 @@ export function RestaurantDashboard() {
           hydrated.fileName,
           ledgerSessionId,
           doc.id,
-          { ownBusinessNames: resolveOwnBusinessNames(user?.uid, user?.displayName) }
+          { ownBusinessNames }
         );
         ok += 1;
       } catch (e) {
@@ -784,7 +814,7 @@ export function RestaurantDashboard() {
     if (!currentSession || !user?.uid) return;
     if (!documents.length || !expenses.length) return;
 
-    const ownBusinessNames = resolveOwnBusinessNames(user.uid, user.displayName);
+    // ownBusinessNames from profile + displayName (see component state)
     const writers = { addIncome, addExpense, addLedgerEntriesBatch };
 
     void (async () => {
@@ -2350,7 +2380,15 @@ function ReportsPlaceholder() {
   const chfLocale = useChfLocale();
   const { currencySuffix, ukUatActive, fiscalLocale } = useUkUat();
   const moneyLocale = moneyLocaleForFiscal(fiscalLocale);
+  const isUkFiscal = fiscalLocale === 'uk';
   const advancedReports = !enforcementEnabled || entitlements.advancedAnalyticsAndReports;
+  const hmrcMtdUiEnabled = import.meta.env.VITE_HMRC_MTD_ENABLED === 'true';
+  const [ukVatYear, setUkVatYear] = React.useState(() => new Date().getUTCFullYear());
+  const [ukVatQuarter, setUkVatQuarter] = React.useState<0 | 1 | 2 | 3>(0);
+  const [ukVatStagger, setUkVatStagger] = React.useState<'mar' | 'apr' | 'may'>('mar');
+  const [ukTaxYear, setUkTaxYear] = React.useState<'2025-26' | '2026-27'>('2026-27');
+  const [hmrcBusy, setHmrcBusy] = React.useState(false);
+  const [hmrcMsg, setHmrcMsg] = React.useState<string | null>(null);
 
   const categoryLabel = (cat: string) => {
     const known = ['BILLS', 'SUPPLIERS', 'PAYROLL', 'PAYROLL_TAXES', 'OTHER'] as const;
@@ -2570,13 +2608,38 @@ function ReportsPlaceholder() {
   };
 
   const handleVatExport = async (format: 'csv' | 'pdf') => {
-    const { exportSwissVatCSV, exportSwissVatPDF } = await import('../services/reportExportService');
     const reportData = reportPayload();
-
+    if (isUkFiscal) {
+      const { exportUkVatCSV, exportUkVatPDF } = await import('../services/reportExportService');
+      const opts = { year: ukVatYear, quarterIndex: ukVatQuarter, stagger: ukVatStagger };
+      if (format === 'csv') exportUkVatCSV(reportData, opts);
+      else await exportUkVatPDF(reportData, opts);
+      return;
+    }
+    const { exportSwissVatCSV, exportSwissVatPDF } = await import('../services/reportExportService');
     if (format === 'csv') {
       exportSwissVatCSV(reportData, vatPeriodMode);
     } else {
       await exportSwissVatPDF(reportData, vatPeriodMode);
+    }
+  };
+
+  const handleUkIncomeTaxExport = async () => {
+    const { exportUkIncomeTaxCSV } = await import('../services/reportExportService');
+    exportUkIncomeTaxCSV(reportPayload(), ukTaxYear);
+  };
+
+  const handleHmrcConnect = async () => {
+    if (!hmrcMtdUiEnabled) return;
+    setHmrcBusy(true);
+    setHmrcMsg(null);
+    try {
+      const { connectHmrc } = await import('../lib/hmrcMtdClient');
+      await connectHmrc();
+    } catch (e) {
+      setHmrcMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setHmrcBusy(false);
     }
   };
 
@@ -2719,10 +2782,10 @@ function ReportsPlaceholder() {
             {advancedReports ? (
               <div>
                 <h4 className="text-xs font-bold text-cdlp-gold uppercase mb-1">
-                  {ukUatActive ? t('repUkVatStatement') : t('repSwissVatStatement')}
+                  {isUkFiscal ? t('repUkVatStatement') : t('repSwissVatStatement')}
                 </h4>
                 <p className="text-[11px] text-cdlp-muted">
-                  {ukUatActive ? t('repUkVatDesc') : t('repSwissVatDesc')}
+                  {isUkFiscal ? t('repUkVatDesc') : t('repSwissVatDesc')}
                 </p>
               </div>
             ) : null}
@@ -2747,16 +2810,49 @@ function ReportsPlaceholder() {
             </div>
             {advancedReports ? (
               <div className="flex flex-wrap gap-2 items-center">
-                <select
-                  value={vatPeriodMode}
-                  onChange={(e) => setVatPeriodMode(e.target.value as 'month' | 'semester' | 'year' | 'allYears')}
-                  className="ba-verify-field !w-auto uppercase"
-                >
-                  <option value="month">{t('repTvaByMonth')}</option>
-                  <option value="semester">{t('repTvaBy6Months')}</option>
-                  <option value="year">{t('repTvaByYear')}</option>
-                  <option value="allYears">{t('repTvaEveryYear')}</option>
-                </select>
+                {isUkFiscal ? (
+                  <>
+                    <select
+                      value={ukVatStagger}
+                      onChange={(e) => setUkVatStagger(e.target.value as 'mar' | 'apr' | 'may')}
+                      className="ba-verify-field !w-auto uppercase"
+                    >
+                      <option value="mar">Q ends Mar/Jun/Sep/Dec</option>
+                      <option value="apr">Q ends Apr/Jul/Oct/Jan</option>
+                      <option value="may">Q ends May/Aug/Nov/Feb</option>
+                    </select>
+                    <select
+                      value={ukVatYear}
+                      onChange={(e) => setUkVatYear(Number(e.target.value))}
+                      className="ba-verify-field !w-auto"
+                    >
+                      {[ukVatYear - 1, ukVatYear, ukVatYear + 1].map((y) => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={ukVatQuarter}
+                      onChange={(e) => setUkVatQuarter(Number(e.target.value) as 0 | 1 | 2 | 3)}
+                      className="ba-verify-field !w-auto uppercase"
+                    >
+                      <option value={0}>Q1</option>
+                      <option value={1}>Q2</option>
+                      <option value={2}>Q3</option>
+                      <option value={3}>Q4</option>
+                    </select>
+                  </>
+                ) : (
+                  <select
+                    value={vatPeriodMode}
+                    onChange={(e) => setVatPeriodMode(e.target.value as 'month' | 'semester' | 'year' | 'allYears')}
+                    className="ba-verify-field !w-auto uppercase"
+                  >
+                    <option value="month">{t('repTvaByMonth')}</option>
+                    <option value="semester">{t('repTvaBy6Months')}</option>
+                    <option value="year">{t('repTvaByYear')}</option>
+                    <option value="allYears">{t('repTvaEveryYear')}</option>
+                  </select>
+                )}
                 <button
                   type="button"
                   onClick={() => handleVatExport('csv')}
@@ -2775,6 +2871,36 @@ function ReportsPlaceholder() {
             ) : (
               <p className="text-[10px] text-cdlp-muted font-bold uppercase tracking-tight">{t('reportsAdvancedLocked')}</p>
             )}
+            {advancedReports && isUkFiscal ? (
+              <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-cdlp-border/40">
+                <select
+                  value={ukTaxYear}
+                  onChange={(e) => setUkTaxYear(e.target.value as '2025-26' | '2026-27')}
+                  className="ba-verify-field !w-auto"
+                >
+                  <option value="2025-26">2025-26</option>
+                  <option value="2026-27">2026-27</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => void handleUkIncomeTaxExport()}
+                  className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-gold text-cdlp-gold text-xs font-bold uppercase rounded hover:bg-cdlp-gold/10 transition-colors"
+                >
+                  <Download className="w-4 h-4" /> Income tax estimate CSV
+                </button>
+                {hmrcMtdUiEnabled ? (
+                  <button
+                    type="button"
+                    disabled={hmrcBusy}
+                    onClick={() => void handleHmrcConnect()}
+                    className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-gold text-cdlp-gold text-xs font-bold uppercase rounded hover:bg-cdlp-gold/10 transition-colors disabled:opacity-50"
+                  >
+                    Connect HMRC (sandbox)
+                  </button>
+                ) : null}
+                {hmrcMsg ? <p className="text-xs text-red-400 w-full">{hmrcMsg}</p> : null}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -3114,7 +3240,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docTotalAmount')}</label>
-                      <p className="text-lg font-black text-cdlp-gold">{(selectedDocument.data?.totalAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
+                      <p className="text-lg font-black text-cdlp-gold">{(selectedDocument.data?.totalAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || currencySuffix.trim() || 'CHF'}</p>
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docDocumentType')}</label>
@@ -3122,11 +3248,11 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docVatAmount')}</label>
-                      <p className="text-sm font-bold text-blue-400">{(selectedDocument.data?.vatAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
+                      <p className="text-sm font-bold text-blue-400">{(selectedDocument.data?.vatAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || currencySuffix.trim() || 'CHF'}</p>
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docNetAmount')}</label>
-                      <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data?.netAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || 'CHF'}</p>
+                      <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data?.netAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || currencySuffix.trim() || 'CHF'}</p>
                     </div>
                     <div className="col-span-2">
                       <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docCategory')}</label>
@@ -3188,7 +3314,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                           </div>
                           <div>
                             <p className="text-cdlp-muted uppercase">{t('docCurrency')}</p>
-                            <p className="font-bold text-foreground">{subDoc.originalCurrency || selectedDocument.data?.originalCurrency || 'CHF'}</p>
+                            <p className="font-bold text-foreground">{subDoc.originalCurrency || selectedDocument.data?.originalCurrency || currencySuffix.trim() || 'CHF'}</p>
                           </div>
                           <div>
                             <p className="text-cdlp-muted uppercase">{t('docGrossTotal')}</p>
@@ -3411,7 +3537,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                       <div className="text-right ml-4 flex items-center gap-3">
                         <div>
                           <p className="font-black ba-field-value text-base">{documentAmountForSupplierGroup(doc, selectedEntity).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                          <p className="text-xs text-cdlp-muted">{doc.data?.originalCurrency || 'CHF'}</p>
+                          <p className="text-xs text-cdlp-muted">{doc.data?.originalCurrency || currencySuffix.trim() || 'CHF'}</p>
                         </div>
                         <button
                           onClick={() => setSelectedDocument(doc)}

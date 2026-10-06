@@ -57,3 +57,17 @@ export function resolveTaxRegion(opts: {
     typeof opts.incorporationCountry === "string" ? opts.incorporationCountry : undefined
   );
 }
+
+/**
+ * Load incorporation country from a users/{uid} doc without the classic
+ * `??` / ternary precedence bug that treated any stored incorporation as UK.
+ */
+export function resolveIncorporationCountryFromUserDoc(data: {
+  incorporationCountry?: unknown;
+  taxRegion?: unknown;
+} | null | undefined): JurisdictionCountry {
+  if (data?.incorporationCountry != null && String(data.incorporationCountry).trim() !== "") {
+    return parseJurisdictionCountry(data.incorporationCountry);
+  }
+  return parseTaxRegion(data?.taxRegion) === "uk" ? "gb" : "ch";
+}

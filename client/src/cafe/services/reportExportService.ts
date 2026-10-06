@@ -1,5 +1,7 @@
 import * as XLSX from 'xlsx';
 import { buildFinancialReportHtml } from '@shared/financialReportHtml';
+import { buildUkVatReturn, type UkVatStagger, ukVatQuarterBounds } from '@shared/ukVatReturn';
+import { buildUkIncomeTaxEstimate, type UkTaxYearId } from '@shared/ukIncomeTaxEstimate';
 import { Income, Expense } from '../types';
 import {
   chfLocaleFor,
@@ -456,4 +458,113 @@ export const exportSwissVatPDF = async (data: ReportData, mode: SwissVatPeriodMo
   } else {
     alert(L.allowPopups);
   }
+};
+
+export type UkVatExportOpts = {
+  year: number;
+  quarterIndex: 0 | 1 | 2 | 3;
+  stagger: UkVatStagger;
+};
+
+export const exportUkVatCSV = (data: ReportData, opts: UkVatExportOpts) => {
+  const { start, end } = ukVatQuarterBounds(opts.year, opts.quarterIndex, opts.stagger);
+  const boxes = buildUkVatReturn(data.income, data.expenses, { start, end });
+  const lines = [
+    `UK VAT return (9-box) - ${data.sessionName || 'All sessions'}`,
+    `Period,${boxes.periodStart} to ${boxes.periodEnd}`,
+    `Disclaimer,Figures prepared from documents in Paystack. Review before filing.`,
+    ``,
+    `Box,Description,Amount`,
+    `1,VAT due on sales,${boxes.box1_vatDueSales.toFixed(2)}`,
+    `2,VAT due on acquisitions,${boxes.box2_vatDueAcquisitions.toFixed(2)}`,
+    `3,Total VAT due,${boxes.box3_totalVatDue.toFixed(2)}`,
+    `4,VAT reclaimed,${boxes.box4_vatReclaimedCurrPeriod.toFixed(2)}`,
+    `5,Net VAT (${boxes.box5_direction}),${boxes.box5_netVatDue.toFixed(2)}`,
+    `6,Total value of sales ex VAT,${boxes.box6_totalValueSalesExVAT}`,
+    `7,Total value of purchases ex VAT,${boxes.box7_totalValuePurchasesExVAT}`,
+    `8,Total value of supplies ex VAT,${boxes.box8_totalValueSuppliesExVAT}`,
+    `9,Total value of acquisitions ex VAT,${boxes.box9_totalValueAcquisitionsExVAT}`,
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `UK_VAT_return_${boxes.periodStart}_${boxes.periodEnd}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+export const exportUkVatPDF = async (data: ReportData, opts: UkVatExportOpts) => {
+  const { start, end } = ukVatQuarterBounds(opts.year, opts.quarterIndex, opts.stagger);
+  const boxes = buildUkVatReturn(data.income, data.expenses, { start, end });
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>UK VAT return</title>
+  <style>body{font-family:Arial,sans-serif;padding:32px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:8px}.num{text-align:right}.meta{color:#555;font-size:12px;margin-bottom:16px}</style>
+  </head><body>
+  <h1>UK VAT return (9-box)</h1>
+  <div class="meta">${boxes.periodStart} – ${boxes.periodEnd}<br/>Figures prepared from documents in Paystack. Review before filing.</div>
+  <table><thead><tr><th>Box</th><th>Description</th><th class="num">GBP</th></tr></thead><tbody>
+  <tr><td>1</td><td>VAT due on sales</td><td class="num">${boxes.box1_vatDueSales.toFixed(2)}</td></tr>
+  <tr><td>2</td><td>VAT due on acquisitions</td><td class="num">${boxes.box2_vatDueAcquisitions.toFixed(2)}</td></tr>
+  <tr><td>3</td><td>Total VAT due</td><td class="num">${boxes.box3_totalVatDue.toFixed(2)}</td></tr>
+  <tr><td>4</td><td>VAT reclaimed</td><td class="num">${boxes.box4_vatReclaimedCurrPeriod.toFixed(2)}</td></tr>
+  <tr><td>5</td><td>Net VAT (${boxes.box5_direction})</td><td class="num">${boxes.box5_netVatDue.toFixed(2)}</td></tr>
+  <tr><td>6</td><td>Sales ex VAT</td><td class="num">${boxes.box6_totalValueSalesExVAT}</td></tr>
+  <tr><td>7</td><td>Purchases ex VAT</td><td class="num">${boxes.box7_totalValuePurchasesExVAT}</td></tr>
+  <tr><td>8</td><td>Supplies ex VAT</td><td class="num">${boxes.box8_totalValueSuppliesExVAT}</td></tr>
+  <tr><td>9</td><td>Acquisitions ex VAT</td><td class="num">${boxes.box9_totalValueAcquisitionsExVAT}</td></tr>
+  </tbody></table></body></html>`;
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.onload = () => setTimeout(() => printWindow.print(), 250);
+  } else {
+    alert('Please allow popups to export the PDF.');
+  }
+};
+
+export const exportUkIncomeTaxCSV = (
+  data: ReportData,
+  taxYear: UkTaxYearId,
+  opts?: { useExVat?: boolean }
+) => {
+  const useExVat = opts?.useExVat !== false;
+  const turnover = data.income.reduce((s, r) => {
+    const gross = Number(r.amount) || 0;
+    const vat = Number(r.vat_amount) || 0;
+    return s + (useExVat ? gross - vat : gross);
+  }, 0);
+  const allowableExpenses = data.expenses.reduce((s, r) => {
+    const gross = Number(r.amount) || 0;
+    const vat = Number(r.vat_amount) || 0;
+    return s + (useExVat ? gross - vat : gross);
+  }, 0);
+  const est = buildUkIncomeTaxEstimate({ taxYear, turnover, allowableExpenses });
+  const lines = [
+    `UK income tax estimate - ${taxYear}`,
+    `Period,${est.taxYearStart} to ${est.taxYearEnd}`,
+    `Disclaimer,${est.disclaimer}`,
+    ``,
+    `Metric,Amount GBP`,
+    `Turnover,${est.turnover.toFixed(2)}`,
+    `Allowable expenses,${est.allowableExpenses.toFixed(2)}`,
+    `Net profit,${est.netProfit.toFixed(2)}`,
+    `Personal allowance,${est.personalAllowance.toFixed(2)}`,
+    `Taxable income,${est.taxableIncome.toFixed(2)}`,
+    `Income tax (estimate),${est.incomeTaxEstimate.toFixed(2)}`,
+    `Class 4 NI (estimate),${est.class4NiEstimate.toFixed(2)}`,
+    `Total estimate,${est.totalEstimate.toFixed(2)}`,
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `UK_income_tax_estimate_${taxYear}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };

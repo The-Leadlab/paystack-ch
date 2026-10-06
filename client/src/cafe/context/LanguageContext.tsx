@@ -665,6 +665,16 @@ const translations = {
     billingJurisdictionHint:
       'Residency is where you live. Incorporation is where the company is registered. UK VAT (20%) and GBP display are enabled in production.',
     billingJurisdictionSaveError: 'Could not save residency or incorporation. Please try again.',
+    billingJurisdictionSaved: 'Account settings saved.',
+    billingJurisdictionUkUatLocked: 'UK (forced by UK UAT sandbox). Change tax region on /app for production accounts.',
+    billingResidencyTaxMismatchHint:
+      'Tax region is still Switzerland — change Tax region below if you want GBP and UK VAT.',
+    billingBusinessNamesLabel: 'Business name(s) as printed on your invoices',
+    billingBusinessNamesPlaceholder: 'e.g. Bramley Lane Motors',
+    billingBusinessNamesHint: 'One name per line. Used to detect your sales invoices vs supplier bills.',
+    billingVatNumberLabel: 'VAT registration number (VRN)',
+    billingVatNumberHint: 'Nine digits, no spaces. Required for HMRC Making Tax Digital.',
+    billingVatNumberInvalid: 'VAT number must be exactly 9 digits.',
     billingTaxRegionSaveError: 'Could not save your tax region. Please try again.',
     billingChangePasswordTitle: 'Change password',
     billingCurrentPassword: 'Current password',
@@ -1908,6 +1918,18 @@ const translations = {
     billingJurisdictionHint:
       'La résidence est le lieu de vie. L\'immatriculation est le siège de la société. TVA UK (20 %) et affichage GBP sont actifs en production.',
     billingJurisdictionSaveError: 'Impossible d’enregistrer la résidence ou l’immatriculation. Réessayez.',
+    billingJurisdictionSaved: 'Paramètres du compte enregistrés.',
+    billingJurisdictionUkUatLocked:
+      'Royaume-Uni (forcé par le bac à sable UK UAT). Modifiez la région fiscale sur /app pour les comptes de production.',
+    billingResidencyTaxMismatchHint:
+      'La région fiscale est encore la Suisse — changez-la ci-dessous pour GBP et TVA UK.',
+    billingBusinessNamesLabel: 'Nom(s) commercial(aux) tel(s) qu’imprimé(s) sur vos factures',
+    billingBusinessNamesPlaceholder: 'ex. Bramley Lane Motors',
+    billingBusinessNamesHint:
+      'Un nom par ligne. Sert à distinguer vos factures de vente des factures fournisseurs.',
+    billingVatNumberLabel: 'Numéro de TVA (VRN)',
+    billingVatNumberHint: 'Neuf chiffres, sans espaces. Requis pour Making Tax Digital (HMRC).',
+    billingVatNumberInvalid: 'Le numéro de TVA doit comporter exactement 9 chiffres.',
     billingTaxRegionSaveError: 'Impossible d’enregistrer votre région fiscale. Veuillez réessayer.',
     billingChangePasswordTitle: 'Modifier le mot de passe',
     billingCurrentPassword: 'Mot de passe actuel',

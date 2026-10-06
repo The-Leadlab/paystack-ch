@@ -24,9 +24,33 @@ import {
 } from "../lib/firebase";
 import { useAuth } from "./AuthContext";
 
+const TAX_REGION_CACHE_PREFIX = "paystack:taxRegion:";
+
+function readCachedTaxRegion(uid: string | undefined): TaxRegion | null {
+  if (!uid || typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(`${TAX_REGION_CACHE_PREFIX}${uid}`);
+    if (raw === "ch" || raw === "uk" || raw === "off") return raw;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function writeCachedTaxRegion(uid: string | undefined, region: TaxRegion): void {
+  if (!uid || typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(`${TAX_REGION_CACHE_PREFIX}${uid}`, region);
+  } catch {
+    /* ignore */
+  }
+}
+
 type UkUatContextValue = {
   /** True when the Admin UK UAT sandbox is active. */
   ukUatActive: boolean;
+  /** False until profile tax region has resolved (or sandbox forced UK). */
+  regionReady: boolean;
   fiscalLocale: FiscalLocale;
   taxRegion: TaxRegion;
   currency: "CHF" | "GBP";
@@ -37,6 +61,7 @@ type UkUatContextValue = {
 
 const UkUatContext = createContext<UkUatContextValue>({
   ukUatActive: false,
+  regionReady: true,
   fiscalLocale: "ch",
   taxRegion: "ch",
   currency: "CHF",
@@ -62,7 +87,11 @@ export function UkUatProvider({
   children: ReactNode;
 }) {
   const { user } = useAuth();
-  const [profileTaxRegion, setProfileTaxRegion] = useState<TaxRegion>("ch");
+  const cached = readCachedTaxRegion(user?.uid);
+  const [profileTaxRegion, setProfileTaxRegion] = useState<TaxRegion>(
+    active ? "uk" : cached ?? "ch"
+  );
+  const [regionReady, setRegionReady] = useState(active || !user?.uid);
 
   // Sync module locale + Firestore DB immediately so providers under this tree
   // never open listeners on the wrong database.
@@ -74,6 +103,7 @@ export function UkUatProvider({
     if (active) {
       setActiveFiscalLocale("uk");
       setActiveFirestoreDatabase(FIRESTORE_ADMIN_UK_DATABASE_ID);
+      setRegionReady(true);
       return () => {
         setActiveFiscalLocale("ch");
         setActiveFirestoreDatabase(FIRESTORE_DEFAULT_DATABASE_ID);
@@ -90,24 +120,32 @@ export function UkUatProvider({
 
   useEffect(() => {
     if (active || !user?.uid || !db) {
-      if (active) setProfileTaxRegion("uk");
+      if (active) {
+        setProfileTaxRegion("uk");
+        setRegionReady(true);
+      } else if (!user?.uid) {
+        setRegionReady(true);
+      }
       return;
     }
 
+    setRegionReady(false);
     const unsub = onSnapshot(
       doc(db, "users", user.uid),
       (snapshot) => {
         const data = snapshot.data();
-        setProfileTaxRegion(
-          resolveTaxRegion({
-            taxRegion: data?.taxRegion,
-            incorporationCountry: data?.incorporationCountry,
-          })
-        );
+        const next = resolveTaxRegion({
+          taxRegion: data?.taxRegion,
+          incorporationCountry: data?.incorporationCountry,
+        });
+        setProfileTaxRegion(next);
+        writeCachedTaxRegion(user.uid, next);
+        setRegionReady(true);
       },
       (error) => {
         console.warn("UkUatProvider: could not watch tax region", error);
-        setProfileTaxRegion("ch");
+        setProfileTaxRegion(cached ?? "ch");
+        setRegionReady(true);
       }
     );
     return () => unsub();
@@ -121,6 +159,7 @@ export function UkUatProvider({
     const currency = reportingCurrencyForLocale(fiscalLocale);
     return {
       ukUatActive: active,
+      regionReady: active ? true : regionReady,
       fiscalLocale,
       taxRegion,
       currency,
@@ -129,9 +168,9 @@ export function UkUatProvider({
         ? FIRESTORE_ADMIN_UK_DATABASE_ID
         : getActiveFirestoreDatabaseId(),
     };
-  }, [active, profileTaxRegion]);
+  }, [active, profileTaxRegion, regionReady]);
 
-  // Touch config so rates are warm for InvoiceMaker / VAT UI
+  // Touch config so rates are warm for Invoice Maker / VAT UI
   void getTaxRegionConfig(value.taxRegion);
   // Keep module in sync even if a child reads getActiveFiscalLocale() mid-render
   if (getActiveFiscalLocale() !== value.fiscalLocale) {

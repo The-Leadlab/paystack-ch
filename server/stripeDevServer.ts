@@ -11,6 +11,7 @@ import { registerGeminiRoutes } from "./gemini";
 import { registerAliLabRoutes } from "./aliLab";
 import { registerAdminUkRoutes } from "./adminUk";
 import { registerGoogleDriveRoutes } from "./googleDrive";
+import { registerHmrcMtdRoutes } from "./hmrcMtd";
 import { registerAdminRoutes } from "./adminUsers";
 import { registerTeamRoutes } from "./team";
 
@@ -20,12 +21,13 @@ registerGeminiRoutes(app);
 registerAliLabRoutes(app);
 registerAdminUkRoutes(app);
 registerGoogleDriveRoutes(app);
+registerHmrcMtdRoutes(app);
 registerAdminRoutes(app);
 registerTeamRoutes(app);
 
 const port = parseInt(process.env.STRIPE_DEV_PORT || "8787", 10);
 app.listen(port, "127.0.0.1", () => {
   console.log(
-    `[stripe-dev] http://127.0.0.1:${port}  (stripe: /api/stripe/* ; gemini: /api/gemini/generate ; oauth: /api/oauth/google/* ; test stripe when STRIPE_TEST_SECRET_KEY is set)`
+    `[stripe-dev] http://127.0.0.1:${port}  (stripe: /api/stripe/* ; gemini: /api/gemini/generate ; oauth: /api/oauth/google/* ; hmrc: /api/hmrc/* ; test stripe when STRIPE_TEST_SECRET_KEY is set)`
   );
 });

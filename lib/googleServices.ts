@@ -11,8 +11,25 @@ const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_OAUTH_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const GOOGLE_DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
 const GOOGLE_DRIVE_UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
-const GOOGLE_DRIVE_SCOPE =
-  "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly";
+const GOOGLE_DRIVE_SCOPE_FILE = "https://www.googleapis.com/auth/drive.file";
+const GOOGLE_DRIVE_SCOPE_READONLY = "https://www.googleapis.com/auth/drive.readonly";
+
+/** `file` = drive.file only (no restricted-scope consent wall). Default `readonly` keeps today's behaviour. */
+export function resolveGoogleDriveScopeMode(
+  raw: string | undefined = process.env.GOOGLE_DRIVE_SCOPE_MODE
+): "file" | "readonly" {
+  return String(raw || "").trim().toLowerCase() === "file" ? "file" : "readonly";
+}
+
+export function resolveGoogleDriveOAuthScope(
+  mode: "file" | "readonly" = resolveGoogleDriveScopeMode()
+): string {
+  return mode === "file"
+    ? GOOGLE_DRIVE_SCOPE_FILE
+    : `${GOOGLE_DRIVE_SCOPE_FILE} ${GOOGLE_DRIVE_SCOPE_READONLY}`;
+}
+
+const GOOGLE_DRIVE_SCOPE = resolveGoogleDriveOAuthScope();
 const GOOGLE_DRIVE_FOLDER_NAME = "Paystack Documents";
 const GOOGLE_DRIVE_UNCATEGORIZED_FOLDER_NAME = "Uncategorised";
 const GOOGLE_DRIVE_PERSONAL_FOLDER_NAME = "Personal";
@@ -174,7 +191,7 @@ export async function startGoogleDriveOAuth(
     authUrl.searchParams.set("client_id", resolveGoogleDriveClientId());
     authUrl.searchParams.set("redirect_uri", resolveGoogleDriveRedirectUri());
     authUrl.searchParams.set("response_type", "code");
-    authUrl.searchParams.set("scope", GOOGLE_DRIVE_SCOPE);
+    authUrl.searchParams.set("scope", resolveGoogleDriveOAuthScope());
     authUrl.searchParams.set("access_type", "offline");
     authUrl.searchParams.set("prompt", "consent");
     authUrl.searchParams.set(

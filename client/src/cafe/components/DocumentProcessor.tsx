@@ -57,6 +57,7 @@ import { useSession } from '../context/SessionContext';
 import { useDataWriteAccess } from '../hooks/useDataWriteAccess';
 import { logUserActivity } from '../lib/userActivity';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { useUkUat } from '../context/UkUatContext';
 import {
   buildOwnBusinessAiHint,
@@ -64,6 +65,7 @@ import {
 } from '../lib/ownBusinessIdentity';
 import { useExpenseCategoryMeta } from '../i18n/expenseCategoryI18n';
 import { defaultVatBreakdownLines, getActiveFiscalLocale } from '../lib/fiscalLocale';
+import { db } from '../lib/firebase';
 import { formatIssuerForDisplay, invoicesDetectedIssuer, documentDisplayName, conjoinedInvoicesLabel } from '../i18n/documentDisplayI18n';
 import { resolveDocumentBatchSize, runInDocumentBatches } from '../lib/runDocumentBatches';
 import { isLocalDocMirroredInFirestore } from '../lib/dedupeProcessedDocuments';
@@ -2552,7 +2554,8 @@ export const DocumentProcessor: React.FC<{
   const activitySessionId = currentSession?.id;
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
-  const { currency: ukReportingCurrency, ukUatActive } = useUkUat();
+  const { currency: reportingCurrencyFromLocale, fiscalLocale, regionReady } = useUkUat();
+  const moneyLocale = fiscalLocale === 'uk' ? 'en-GB' : 'de-CH';
   const docStatusLabel = (status: string) => {
     const map: Record<string, string> = {
       pending: t('dpStatusPending'),
@@ -2570,13 +2573,31 @@ export const DocumentProcessor: React.FC<{
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [reportingCurrency, setReportingCurrency] = useState(() =>
-    ukUatActive ? ukReportingCurrency : 'CHF',
-  );
+  const reportingCurrency = reportingCurrencyFromLocale;
+  const [profileBusinessNames, setProfileBusinessNames] = useState<string[]>([]);
 
   useEffect(() => {
-    if (ukUatActive) setReportingCurrency(ukReportingCurrency);
-  }, [ukUatActive, ukReportingCurrency]);
+    if (!user?.uid || !db) {
+      setProfileBusinessNames([]);
+      return;
+    }
+    const unsub = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+      const raw = snap.data()?.businessNames;
+      if (Array.isArray(raw)) {
+        setProfileBusinessNames(raw.filter((n): n is string => typeof n === 'string'));
+      } else if (typeof raw === 'string') {
+        setProfileBusinessNames(
+          raw
+            .split(/[\n,;]+/)
+            .map((s) => s.trim())
+            .filter((s) => s.length >= 2)
+        );
+      } else {
+        setProfileBusinessNames([]);
+      }
+    });
+    return () => unsub();
+  }, [user?.uid]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [localDocs, setLocalDocs] = useState<ProcessedDocument[]>([]);
   /** Full lineItems restored from Storage when Firestore only keeps a preview. */
@@ -3307,7 +3328,9 @@ export const DocumentProcessor: React.FC<{
         analyzeFinancialDocument(
           inputFile,
           reportingCurrency,
-          buildOwnBusinessAiHint(resolveOwnBusinessNames(user?.uid, user?.displayName)) || undefined,
+          buildOwnBusinessAiHint(
+            resolveOwnBusinessNames(user?.uid, user?.displayName, profileBusinessNames)
+          ) || undefined,
           pdfPageSplit ? undefined : storageForAi,
           abortController.signal,
           {
@@ -3750,7 +3773,7 @@ export const DocumentProcessor: React.FC<{
               <tbody>
                 {allDocs.map((doc) => {
                   const fmtDocChf = (n: number) =>
-                    `${n.toLocaleString(ukUatActive ? 'en-GB' : 'de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${reportingCurrency}`;
+                    `${n.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${reportingCurrency}`;
                   const isExpanded = expandedRows.has(doc.id);
                   const vat = Number(doc.data?.vatAmount || 0);
                   const swissLines = doc.data?.swissVatBreakdown;
@@ -3816,7 +3839,11 @@ export const DocumentProcessor: React.FC<{
                         </td>
                         <td className="px-4 py-3 ba-table-muted hidden md:table-cell">{doc.data?.date || '---'}</td>
                         <td className="px-4 py-3 text-right ba-doc-amount hidden md:table-cell">
-                          {doc.data ? fmtDocChf(documentTableDisplayAmount(doc.data)) : '0.00 CHF'}
+                          {doc.data
+                            ? fmtDocChf(documentTableDisplayAmount(doc.data))
+                            : regionReady
+                              ? `— ${reportingCurrency}`
+                              : '—'}
                         </td>
                         <td className="px-4 py-3 hidden md:table-cell align-top">
                           {doc.data ? (

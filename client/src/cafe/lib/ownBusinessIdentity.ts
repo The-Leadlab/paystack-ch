@@ -12,17 +12,20 @@ export function normalizeBusinessName(value: string | null | undefined): string 
 
 /**
  * Names that identify the Paystack account holder’s business:
- * Invoice Maker company name(s) + optional Firebase display name.
+ * profile `businessNames` (Billing → Account) first, then Firebase display name,
+ * then Invoice Maker company name(s) from this browser.
  */
 export function resolveOwnBusinessNames(
   userId: string | undefined,
-  displayName?: string | null
+  displayName?: string | null,
+  profileBusinessNames?: string[] | null
 ): string[] {
   const names = new Set<string>();
   const push = (raw: string | null | undefined) => {
     const t = String(raw || "").trim();
     if (t.length >= 2) names.add(t);
   };
+  for (const n of profileBusinessNames || []) push(n);
   push(displayName);
   for (const inv of loadSavedInvoices(userId)) {
     push(inv.companyName);

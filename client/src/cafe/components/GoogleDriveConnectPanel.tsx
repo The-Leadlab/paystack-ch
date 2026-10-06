@@ -275,10 +275,12 @@ export function GoogleDriveConnectPanel({
         </div>
       ) : (
         <div className="space-y-3">
+          {import.meta.env.VITE_GOOGLE_DRIVE_SCOPE_MODE !== 'file' ? (
           <p className="flex items-start gap-2 text-[11px] leading-relaxed rounded-md border border-cdlp-border/80 bg-cdlp-dark/40 px-3 py-2.5 text-cdlp-muted">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-cdlp-gold/80" aria-hidden />
             <span>{t('driveUnverifiedWarning')}</span>
           </p>
+          ) : null}
           {user?.uid ? (
             <label className="flex items-start gap-2 text-[11px] text-cdlp-muted cursor-pointer px-1">
               <input

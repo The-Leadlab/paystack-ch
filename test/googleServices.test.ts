@@ -118,6 +118,22 @@ describe("startGoogleDriveOAuth", () => {
     );
   });
 
+  it("requests only drive.file when GOOGLE_DRIVE_SCOPE_MODE=file", async () => {
+    vi.mocked(verifyFirebaseAuthorizationHeader).mockResolvedValue("test-uid");
+    const prev = process.env.GOOGLE_DRIVE_SCOPE_MODE;
+    process.env.GOOGLE_DRIVE_SCOPE_MODE = "file";
+    try {
+      const result = await startGoogleDriveOAuth("Bearer valid-token");
+      if (!("redirectUrl" in result)) throw new Error("Expected redirect");
+      expect(new URL(result.redirectUrl).searchParams.get("scope")).toBe(
+        "https://www.googleapis.com/auth/drive.file"
+      );
+    } finally {
+      if (prev === undefined) delete process.env.GOOGLE_DRIVE_SCOPE_MODE;
+      else process.env.GOOGLE_DRIVE_SCOPE_MODE = prev;
+    }
+  });
+
   it("generates a `state` value that's unique per request and bound to the requesting user", async () => {
     vi.mocked(verifyFirebaseAuthorizationHeader).mockResolvedValue("test-uid");
 

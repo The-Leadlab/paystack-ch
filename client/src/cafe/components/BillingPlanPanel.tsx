@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CreditCard, KeyRound, Loader2, ArrowUpCircle, XCircle } from 'lucide-react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useWorkspaceOptional } from '../context/WorkspaceContext';
+import { useUkUat } from '../context/UkUatContext';
 import type { PaystackPlanId } from '@shared/planCatalog';
 import {
   type BillingInterval,
@@ -12,6 +13,7 @@ import {
 import { parseTaxRegion, type TaxRegion } from '@shared/taxRegions';
 import {
   parseJurisdictionCountry,
+  resolveIncorporationCountryFromUserDoc,
   taxRegionFromIncorporation,
   type JurisdictionCountry,
 } from '@shared/jurisdiction';
@@ -43,6 +45,7 @@ const UPGRADE_PLANS: PaystackPlanId[] = ['starter', 'business', 'unlimited', 'en
 export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<{ count: number }> }) {
   const { t } = useLanguage();
   const { user, changePassword } = useAuth();
+  const { ukUatActive } = useUkUat();
   const workspace = useWorkspaceOptional();
   const { enforcementEnabled, loading, billing, entitlements, startCheckout, openCustomerPortal, cancelSubscription, isPlanTestUser, setPlanTestPlan } = useSubscription();
 
@@ -65,9 +68,13 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
   const [taxRegion, setTaxRegion] = useState<TaxRegion>('ch');
   const [residencyCountry, setResidencyCountry] = useState<JurisdictionCountry>('ch');
   const [incorporationCountry, setIncorporationCountry] = useState<JurisdictionCountry>('ch');
+  const [businessNames, setBusinessNames] = useState('');
+  const [vatRegistrationNumber, setVatRegistrationNumber] = useState('');
   const [taxRegionLoading, setTaxRegionLoading] = useState(Boolean(user?.uid));
   const [taxRegionSaving, setTaxRegionSaving] = useState(false);
   const [taxRegionError, setTaxRegionError] = useState<string | null>(null);
+  const [taxRegionSaved, setTaxRegionSaved] = useState(false);
+  const jurisdictionLocked = ukUatActive;
 
   const isOwner = workspace ? workspace.isOwner : true;
   const canCancelPlan = isOwner && statusIsCancellable(billing?.subscriptionStatus);
@@ -145,42 +152,47 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
   };
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadTaxRegion() {
-      if (!user?.uid || !db) {
-        if (!cancelled) setTaxRegionLoading(false);
-        return;
-      }
-      setTaxRegionLoading(true);
-      try {
-        const snapshot = await getDoc(doc(db, 'users', user.uid));
-        if (!cancelled) {
-          const data = snapshot.data();
-          setTaxRegion(parseTaxRegion(data?.taxRegion));
-          setResidencyCountry(parseJurisdictionCountry(data?.residencyCountry));
-          setIncorporationCountry(parseJurisdictionCountry(data?.incorporationCountry ?? data?.taxRegion === 'uk' ? 'gb' : 'ch'));
-        }
-      } catch (error) {
-        console.warn('Could not load tax region:', error);
-      } finally {
-        if (!cancelled) setTaxRegionLoading(false);
-      }
+    if (!user?.uid || !db) {
+      setTaxRegionLoading(false);
+      return;
     }
-
-    void loadTaxRegion();
-    return () => {
-      cancelled = true;
-    };
+    setTaxRegionLoading(true);
+    const unsub = onSnapshot(
+      doc(db, 'users', user.uid),
+      (snapshot) => {
+        const data = snapshot.data();
+        setTaxRegion(parseTaxRegion(data?.taxRegion));
+        setResidencyCountry(parseJurisdictionCountry(data?.residencyCountry));
+        setIncorporationCountry(resolveIncorporationCountryFromUserDoc(data));
+        const names = Array.isArray(data?.businessNames)
+          ? data.businessNames.filter((n: unknown) => typeof n === 'string').join('\n')
+          : typeof data?.businessNames === 'string'
+            ? data.businessNames
+            : '';
+        setBusinessNames(names);
+        setVatRegistrationNumber(
+          typeof data?.vatRegistrationNumber === 'string' ? data.vatRegistrationNumber : ''
+        );
+        setTaxRegionLoading(false);
+      },
+      (error) => {
+        console.warn('Could not load tax region:', error);
+        setTaxRegionLoading(false);
+      }
+    );
+    return () => unsub();
   }, [user?.uid]);
 
   const saveJurisdiction = async (patch: {
     residencyCountry?: JurisdictionCountry;
     incorporationCountry?: JurisdictionCountry;
     taxRegion?: TaxRegion;
+    businessNames?: string;
+    vatRegistrationNumber?: string;
   }) => {
-    if (!user?.uid || !db) return;
+    if (!user?.uid || !db || jurisdictionLocked) return;
     setTaxRegionError(null);
+    setTaxRegionSaved(false);
     setTaxRegionSaving(true);
     try {
       const nextIncorporation = patch.incorporationCountry ?? incorporationCountry;
@@ -188,14 +200,33 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
       const nextTax =
         patch.taxRegion ??
         (patch.incorporationCountry ? taxRegionFromIncorporation(nextIncorporation) : taxRegion);
-      await updateDoc(doc(db, 'users', user.uid), {
-        residencyCountry: nextResidency,
-        incorporationCountry: nextIncorporation,
-        taxRegion: nextTax,
-      });
+      const nextBusinessNamesRaw = patch.businessNames ?? businessNames;
+      const nextBusinessNames = nextBusinessNamesRaw
+        .split(/[\n,;]+/)
+        .map((s) => s.trim())
+        .filter((s) => s.length >= 2);
+      const nextVrn = (patch.vatRegistrationNumber ?? vatRegistrationNumber).replace(/\s+/g, '');
+      if (nextVrn && !/^\d{9}$/.test(nextVrn)) {
+        setTaxRegionError(t('billingVatNumberInvalid'));
+        return;
+      }
+      await setDoc(
+        doc(db, 'users', user.uid),
+        {
+          residencyCountry: nextResidency,
+          incorporationCountry: nextIncorporation,
+          taxRegion: nextTax,
+          businessNames: nextBusinessNames,
+          vatRegistrationNumber: nextVrn || null,
+        },
+        { merge: true }
+      );
       setResidencyCountry(nextResidency);
       setIncorporationCountry(nextIncorporation);
       setTaxRegion(nextTax);
+      setBusinessNames(nextBusinessNames.join('\n'));
+      setVatRegistrationNumber(nextVrn);
+      setTaxRegionSaved(true);
     } catch (error) {
       console.error('Could not save jurisdiction:', error);
       setTaxRegionError(t('billingJurisdictionSaveError'));
@@ -207,6 +238,11 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
   const saveTaxRegion = async (nextRegion: TaxRegion) => {
     await saveJurisdiction({ taxRegion: nextRegion });
   };
+
+  const residencyTaxMismatch =
+    !jurisdictionLocked &&
+    ((residencyCountry === 'gb' && taxRegion !== 'uk') ||
+      (residencyCountry === 'ch' && taxRegion === 'uk' && incorporationCountry !== 'gb'));
 
   const handleUpgrade = async () => {
     if (!upgradePlan) {
@@ -502,14 +538,17 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
           <span className="font-bold ba-field-value">{user?.email ?? '—'}</span>
         </p>
         <div className="max-w-md space-y-4">
+          {jurisdictionLocked ? (
+            <p className="text-xs text-cdlp-gold font-medium">{t('billingJurisdictionUkUatLocked')}</p>
+          ) : null}
           <div>
             <label htmlFor="residency-country" className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted mb-2 block">
               {t('billingResidencyLabel')}
             </label>
             <select
               id="residency-country"
-              value={residencyCountry}
-              disabled={taxRegionLoading || taxRegionSaving || !user?.uid}
+              value={jurisdictionLocked ? 'gb' : residencyCountry}
+              disabled={jurisdictionLocked || taxRegionLoading || taxRegionSaving || !user?.uid}
               onChange={(event) => void saveJurisdiction({ residencyCountry: event.target.value as JurisdictionCountry })}
               className="ba-verify-field"
             >
@@ -519,6 +558,9 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
                 {t('billingJurisdictionFr')}
               </option>
             </select>
+            {residencyTaxMismatch ? (
+              <p className="mt-2 text-xs text-amber-400 font-medium">{t('billingResidencyTaxMismatchHint')}</p>
+            ) : null}
           </div>
           <div>
             <label htmlFor="incorporation-country" className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted mb-2 block">
@@ -526,8 +568,8 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
             </label>
             <select
               id="incorporation-country"
-              value={incorporationCountry}
-              disabled={taxRegionLoading || taxRegionSaving || !user?.uid}
+              value={jurisdictionLocked ? 'gb' : incorporationCountry}
+              disabled={jurisdictionLocked || taxRegionLoading || taxRegionSaving || !user?.uid}
               onChange={(event) => void saveJurisdiction({ incorporationCountry: event.target.value as JurisdictionCountry })}
               className="ba-verify-field"
             >
@@ -544,8 +586,8 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
           </label>
           <select
             id="tax-region"
-            value={taxRegion}
-            disabled={taxRegionLoading || taxRegionSaving || !user?.uid}
+            value={jurisdictionLocked ? 'uk' : taxRegion}
+            disabled={jurisdictionLocked || taxRegionLoading || taxRegionSaving || !user?.uid}
             onChange={(event) => void saveTaxRegion(event.target.value as TaxRegion)}
             className="ba-verify-field"
           >
@@ -554,6 +596,41 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
             <option value="off">{t('billingTaxRegionOff')}</option>
           </select>
           <p className="mt-2 text-xs text-cdlp-muted">{t('billingJurisdictionHint')}</p>
+          <div className="mt-4">
+            <label htmlFor="business-names" className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted mb-2 block">
+              {t('billingBusinessNamesLabel')}
+            </label>
+            <textarea
+              id="business-names"
+              rows={2}
+              value={businessNames}
+              disabled={jurisdictionLocked || taxRegionLoading || taxRegionSaving || !user?.uid}
+              onChange={(event) => setBusinessNames(event.target.value)}
+              onBlur={() => void saveJurisdiction({ businessNames })}
+              placeholder={t('billingBusinessNamesPlaceholder')}
+              className="ba-verify-field w-full min-h-[4rem]"
+            />
+            <p className="mt-1 text-xs text-cdlp-muted">{t('billingBusinessNamesHint')}</p>
+          </div>
+          <div className="mt-4">
+            <label htmlFor="vat-registration-number" className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted mb-2 block">
+              {t('billingVatNumberLabel')}
+            </label>
+            <input
+              id="vat-registration-number"
+              type="text"
+              inputMode="numeric"
+              maxLength={9}
+              value={vatRegistrationNumber}
+              disabled={jurisdictionLocked || taxRegionLoading || taxRegionSaving || !user?.uid}
+              onChange={(event) => setVatRegistrationNumber(event.target.value.replace(/\D/g, '').slice(0, 9))}
+              onBlur={() => void saveJurisdiction({ vatRegistrationNumber })}
+              placeholder="123456789"
+              className="ba-verify-field"
+            />
+            <p className="mt-1 text-xs text-cdlp-muted">{t('billingVatNumberHint')}</p>
+          </div>
+          {taxRegionSaved ? <p className="mt-2 text-xs text-emerald-400 font-medium">{t('billingJurisdictionSaved')}</p> : null}
           {taxRegionError ? <p className="mt-2 text-xs text-red-400 font-medium">{taxRegionError}</p> : null}
           </div>
         </div>

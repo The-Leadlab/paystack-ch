@@ -99,6 +99,24 @@
     "api/oauth/google/disconnect.ts": {
       "includeFiles": "{lib,shared}/**"
     },
+    "api/hmrc/oauth/status.ts": {
+      "includeFiles": "{lib,shared}/**"
+    },
+    "api/hmrc/oauth/start.ts": {
+      "includeFiles": "{lib,shared}/**"
+    },
+    "api/hmrc/oauth/callback.ts": {
+      "includeFiles": "{lib,shared}/**"
+    },
+    "api/hmrc/oauth/disconnect.ts": {
+      "includeFiles": "{lib,shared}/**"
+    },
+    "api/hmrc/vat/obligations.ts": {
+      "includeFiles": "{lib,shared}/**"
+    },
+    "api/hmrc/vat/return.ts": {
+      "includeFiles": "{lib,shared}/**"
+    },
     "api/drive/save-document.ts": {
       "maxDuration": 60,
       "includeFiles": "lib/**"

@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { registerGeminiRoutes } from "./gemini";
 import { registerGoogleDriveRoutes } from "./googleDrive";
+import { registerHmrcMtdRoutes } from "./hmrcMtd";
 import { registerStripeIfConfigured } from "./stripe";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,6 +17,7 @@ async function startServer() {
   registerStripeIfConfigured(app);
   registerGeminiRoutes(app);
   registerGoogleDriveRoutes(app);
+  registerHmrcMtdRoutes(app);
 
   // Serve static files from dist/public in production
   const staticPath =

@@ -405,7 +405,18 @@ export async function runDriveSyncFromDrive(authorization: string | undefined): 
 }
 
 /** OAuth scopes required for bidirectional sync (exported for tests). */
-export const GOOGLE_DRIVE_OAUTH_SCOPES = [
-  "https://www.googleapis.com/auth/drive.file",
-  GOOGLE_DRIVE_SCOPE_READONLY,
-].join(" ");
+export function resolveGoogleDriveOauthScopesForTests(
+  mode: "file" | "readonly" = String(process.env.GOOGLE_DRIVE_SCOPE_MODE || "")
+    .trim()
+    .toLowerCase() === "file"
+    ? "file"
+    : "readonly"
+): string {
+  if (mode === "file") return "https://www.googleapis.com/auth/drive.file";
+  return [
+    "https://www.googleapis.com/auth/drive.file",
+    GOOGLE_DRIVE_SCOPE_READONLY,
+  ].join(" ");
+}
+
+export const GOOGLE_DRIVE_OAUTH_SCOPES = resolveGoogleDriveOauthScopesForTests();

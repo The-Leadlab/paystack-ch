@@ -298,6 +298,7 @@ export default defineConfig({
       "/api/admin": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/api/team": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/api/oauth": { target: "http://127.0.0.1:8787", changeOrigin: true },
+      "/api/hmrc": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/api/drive": { target: "http://127.0.0.1:8787", changeOrigin: true },
       // /api/gemini is served in-process by vitePluginGeminiLocalApi (avoids Failed to fetch when 8787 is down)
       ...(stripeDevProxy
