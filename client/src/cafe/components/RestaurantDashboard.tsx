@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'wouter';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, ExternalLink, CreditCard, Lock, Settings, Wallet, FilePenLine, Mail, Shield, ArrowDownCircle, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, CreditCard, Lock, Settings, Wallet, FilePenLine, Mail, Shield, ArrowDownCircle, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { BillingPlanPanel } from './BillingPlanPanel';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
@@ -13,7 +13,7 @@ import { moneyLocaleForFiscal } from '../lib/fiscalLocale';
 import { formatIssuerForDisplay, formatMonthYearLabel, parseMonthKey, documentDisplayName, conjoinedInvoicesLabel, supplierGroupKeysForDocument, normalizeEntityKey, documentAmountForSupplierGroup, conjoinedCountForSupplierGroup } from '../i18n/documentDisplayI18n';
 import { useDocuments } from '../context/DocumentContext';
 import { usePOS } from '../context/POSContext';
-import { DocumentProcessor } from './DocumentProcessor';
+import { DocumentProcessor, VerificationHub } from './DocumentProcessor';
 import { SessionAccessShell } from "@/cafe/components/SessionAccessShell";
 import { SessionAccessBanner } from "@/cafe/components/SessionAccessBanner";
 import { SharedLoginPresenceBalls } from "@/cafe/components/SharedLoginPresenceBalls";
@@ -35,7 +35,6 @@ import { ExpensesManager } from './ExpensesManager';
 import { InvoiceMakerPanel } from './InvoiceMakerPanel';
 import type { ProcessedDocument, POSReading } from '../types';
 import { DocumentType } from '../types';
-import { openDocumentInNewTab } from '../lib/openDocumentInNewTab';
 import { brandLockupSrc, brandMarkSrc, BRAND_LOGO_SIZE, BRAND_LOCKUP_HEIGHT } from '@/const/branding';
 import { useTheme } from '@/contexts/ThemeContext';
 import { doc, onSnapshot, type DocumentReference } from 'firebase/firestore';
@@ -1415,7 +1414,7 @@ export function RestaurantDashboard() {
               <DocumentsTab
                 selectedDocument={selectedDocumentFromFinance}
                 onClearSelection={() => setSelectedDocumentFromFinance(null)}
-                onOpenVerification={handleNavigateToDocument}
+                onDocumentUpdated={handleDocumentUpdated}
               />
             </div>
           )}
@@ -3147,36 +3146,74 @@ function ReportsPlaceholder() {
 function DocumentsTab({
   selectedDocument: initialSelectedDocument,
   onClearSelection,
-  onOpenVerification,
+  onDocumentUpdated,
 }: {
   selectedDocument?: ProcessedDocument | null;
   onClearSelection?: () => void;
-  /** Open full Verification Center on the dashboard (same as income/expense row click). */
-  onOpenVerification?: (doc: ProcessedDocument) => void;
+  /** Rebuild ledger after Approve in Documents Verification Center. */
+  onDocumentUpdated?: (documentId: string, newData: FinancialData) => Promise<void>;
 }) {
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
   const { currencySuffix, fiscalLocale } = useUkUat();
   const moneyLocale = moneyLocaleForFiscal(fiscalLocale);
   const posReportsLabel = t('docPosReports');
-  const { documents } = useDocuments();
+  const { documents, updateDocumentData } = useDocuments();
   const [filter, setFilter] = useState<'all' | 'suppliers' | 'employees' | 'pos'>('all');
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
-  const [selectedDocument, setSelectedDocument] = useState<ProcessedDocument | null>(initialSelectedDocument || null);
-  const [invoiceBreakdownTab, setInvoiceBreakdownTab] = useState(0);
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(
+    initialSelectedDocument?.id || null
+  );
+  const [hydratingDoc, setHydratingDoc] = useState(false);
 
-  // Update selectedDocument when initialSelectedDocument changes
+  // Update selection when parent passes a document (e.g. deep-link from finance)
   React.useEffect(() => {
     if (initialSelectedDocument) {
-      setSelectedDocument(initialSelectedDocument);
+      setSelectedDocumentId(initialSelectedDocument.id);
       setFilter('all');
       setSelectedEntity(null);
     }
   }, [initialSelectedDocument?.id]);
 
+  const selectedDocument = useMemo(() => {
+    if (!selectedDocumentId) return null;
+    return (
+      documents.find(
+        (d) => d.id === selectedDocumentId || d.persistedDocumentId === selectedDocumentId
+      ) ||
+      (initialSelectedDocument?.id === selectedDocumentId ? initialSelectedDocument : null)
+    );
+  }, [documents, selectedDocumentId, initialSelectedDocument]);
+
+  // Hydrate full lineItems from Storage when opening (same as dashboard Verification Center)
   React.useEffect(() => {
-    setInvoiceBreakdownTab(0);
-  }, [selectedDocument?.id, selectedDocument?.data?.subDocuments?.length ?? 0]);
+    if (!selectedDocument?.data) return;
+    let cancelled = false;
+    void (async () => {
+      setHydratingDoc(true);
+      try {
+        const hydrated = await hydrateProcessedDocumentLineItems(selectedDocument);
+        if (cancelled) return;
+        if (
+          hydrated !== selectedDocument &&
+          hydrated.data &&
+          (hydrated.data.lineItems?.length || 0) >
+            (selectedDocument.data?.lineItems?.length || 0)
+        ) {
+          const recordId = selectedDocument.persistedDocumentId || selectedDocument.id;
+          await updateDocumentData(recordId, { data: hydrated.data });
+        }
+      } catch (err) {
+        console.warn('Documents Verification Center hydrate failed', err);
+      } finally {
+        if (!cancelled) setHydratingDoc(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-run when opening a different file
+  }, [selectedDocumentId]);
 
   // Group documents by entity (supplier or employee)
   const groupedDocs = useMemo(() => {
@@ -3246,300 +3283,61 @@ function DocumentsTab({
   };
 
   const openDocument = (doc: ProcessedDocument) => {
-    if (onOpenVerification) {
-      onOpenVerification(doc);
-      return;
-    }
-    setSelectedDocument(doc);
+    setSelectedDocumentId(doc.id);
   };
 
-  // If viewing a specific document
+  const closeDocument = () => {
+    setSelectedDocumentId(null);
+    if (onClearSelection) onClearSelection();
+  };
+
+  // Full Verification Center (same component as dashboard) when viewing a file
   if (selectedDocument) {
+    const recordId = selectedDocument.persistedDocumentId || selectedDocument.id;
     return (
-      <div className="space-y-6">
-        <div className="ba-page-header flex-col items-start !mb-4">
+      <div className="space-y-4">
+        <div className="ba-page-header flex-col items-start !mb-2">
           <button
             type="button"
-            onClick={() => {
-              setSelectedDocument(null);
-              if (onClearSelection) onClearSelection();
-            }}
+            onClick={closeDocument}
             className="flex items-center gap-2 text-cdlp-gold hover:text-cdlp-gold-light text-sm font-bold uppercase mb-2"
           >
             <ChevronRight className="w-4 h-4 rotate-180" /> {t('docBackToDocuments')}
           </button>
-          <h1 className="truncate max-w-full">{selectedDocument.fileName}</h1>
+          {hydratingDoc && (
+            <p className="text-[10px] text-cdlp-muted uppercase tracking-wider">
+              {t('docLoadingDetails') || 'Loading full line items…'}
+            </p>
+          )}
         </div>
-
-        <div className="ba-verify-shell">
-          <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[480px]">
-            <div className="lg:col-span-4 ba-verify-preview flex flex-col">
-              <div className="p-4 border-b border-cdlp-border">
-                <h3 className="text-xs font-black uppercase text-emerald-400 tracking-widest">{t('docPreview')}</h3>
-              </div>
-              <div className="flex-1 min-h-[280px] overflow-hidden flex items-center justify-center">
-                {(selectedDocument.fileUrl || selectedDocument.fileDataUrl || selectedDocument.fileRaw) ? (
-                  selectedDocument.fileName.toLowerCase().endsWith('.pdf') ? (
-                    <iframe
-                      src={selectedDocument.fileUrl || selectedDocument.fileDataUrl || (selectedDocument.fileRaw ? URL.createObjectURL(selectedDocument.fileRaw) : '')}
-                      className="w-full h-full min-h-[280px]"
-                      title="Document Preview"
-                    />
-                  ) : (
-                    <img
-                      src={selectedDocument.fileUrl || selectedDocument.fileDataUrl || (selectedDocument.fileRaw ? URL.createObjectURL(selectedDocument.fileRaw) : '')}
-                      alt="Document Preview"
-                      className="w-full h-full object-contain"
-                    />
-                  )
-                ) : (
-                  <div className="text-center p-8">
-                    <FileText className="w-16 h-16 text-cdlp-muted mx-auto mb-4 opacity-40" />
-                    <p className="text-sm text-cdlp-muted mb-2">{t('docFileNotAvailable')}</p>
-                    <p className="text-xs text-cdlp-muted opacity-70">{t('docFileNotStored')}</p>
-                  </div>
-                )}
-              </div>
-              <div className="p-4 border-t border-cdlp-border">
-                {(selectedDocument.fileUrl || selectedDocument.fileDataUrl || selectedDocument.fileRaw) ? (
-                  <button
-                    type="button"
-                    onClick={() => openDocumentInNewTab(selectedDocument)}
-                    className="ba-btn-approve w-full h-10 flex items-center justify-center gap-2"
-                  >
-                    <ExternalLink className="w-4 h-4" /> {t('docOpenRawTrace')}
-                  </button>
-                ) : (
-                  <div className="text-center text-xs text-cdlp-muted italic">{t('docOriginalUnavailable')}</div>
-                )}
-              </div>
-            </div>
-
-            <div className="lg:col-span-8 ba-verify-form p-4 md:p-6 overflow-y-auto">
-              <div className="space-y-6">
-                {/* Document Info */}
-                <div>
-                  <h3 className="text-sm font-black uppercase text-cdlp-gold mb-4">{t('docInformation')}</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docVendor')}</label>
-                      <p className="ba-field-value">{selectedDocument.data?.issuer || t('na')}</p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docDate')}</label>
-                      <p className="ba-field-value">{selectedDocument.data?.date || t('na')}</p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docTotalAmount')}</label>
-                      <p className="text-lg font-black text-cdlp-gold">{(selectedDocument.data?.totalAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || currencySuffix.trim() || 'CHF'}</p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docDocumentType')}</label>
-                      <p className="ba-field-value">{selectedDocument.data?.documentType || t('repUnknown')}</p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docVatAmount')}</label>
-                      <p className="text-sm font-bold text-blue-400">{(selectedDocument.data?.vatAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || currencySuffix.trim() || 'CHF'}</p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docNetAmount')}</label>
-                      <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data?.netAmount || 0).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedDocument.data?.originalCurrency || currencySuffix.trim() || 'CHF'}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docCategory')}</label>
-                      <p className="ba-field-value">{selectedDocument.data?.expenseCategory || t('docUncategorized')}</p>
-                    </div>
-                    {selectedDocument.data?.notes && (
-                      <div className="col-span-2">
-                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docNotes')}</label>
-                        <p className="ba-field-value font-normal">{selectedDocument.data.notes}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* AI Interpretation */}
-                {selectedDocument.data?.aiInterpretation && (
-                  <div>
-                    <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">{t('docAiAnalysis')}</h3>
-                    <div className="ba-subpanel">
-                      <p className="text-sm text-cdlp-muted italic">{selectedDocument.data.aiInterpretation}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Multi-invoice breakdown (one item per detected invoice block across pages) */}
-                {selectedDocument.data?.subDocuments && selectedDocument.data.subDocuments.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">
-                      {t('docInvoiceBreakdown').replace('{n}', String(selectedDocument.data.subDocuments.length))}
-                    </h3>
-                    <p className="text-[10px] text-cdlp-muted mb-3">{t('docInvoiceBreakdownHint')}</p>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {selectedDocument.data.subDocuments.map((subDoc: any, idx: number) => {
-                        const active = idx === invoiceBreakdownTab;
-                        return (
-                          <button
-                            key={`doc-inv-tab-${idx}`}
-                            type="button"
-                            onClick={() => setInvoiceBreakdownTab(idx)}
-                            className={`ba-filter-chip max-w-[200px] truncate ${active ? 'ba-filter-chip--active' : ''}`}
-                          >
-                            <span className="font-bold block truncate">{subDoc.issuer || t('docInvoiceN').replace('{n}', String(idx + 1))}</span>
-                            <span className="font-mono text-[10px] text-cdlp-gold">
-                              {(Number(subDoc.totalAmount || 0)).toLocaleString(chfLocale, { minimumFractionDigits: 2 })}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {(() => {
-                      const subs = selectedDocument.data!.subDocuments!;
-                      const idx = Math.min(invoiceBreakdownTab, Math.max(0, subs.length - 1));
-                      const subDoc = subs[idx];
-                      return (
-                        <div className="ba-subpanel grid grid-cols-2 gap-3 text-xs">
-                          <div>
-                            <p className="text-cdlp-muted uppercase">{t('docDate')}</p>
-                            <p className="font-bold text-foreground">{subDoc.date || t('na')}</p>
-                          </div>
-                          <div>
-                            <p className="text-cdlp-muted uppercase">{t('docCurrency')}</p>
-                            <p className="font-bold text-foreground">{subDoc.originalCurrency || selectedDocument.data?.originalCurrency || currencySuffix.trim() || 'CHF'}</p>
-                          </div>
-                          <div>
-                            <p className="text-cdlp-muted uppercase">{t('docGrossTotal')}</p>
-                            <p className="font-black text-cdlp-gold">
-                              {(Number(subDoc.totalAmount || 0)).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-cdlp-muted uppercase">{t('docNetAmount')}</p>
-                            <p className="font-bold text-foreground">
-                              {(Number(subDoc.netAmount || 0)).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-cdlp-muted uppercase">{t('docVatAmount')}</p>
-                            <p className="font-bold text-foreground">
-                              {(Number(subDoc.vatAmount || 0)).toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-cdlp-muted uppercase">{t('docVatRate')}</p>
-                            <p className="font-bold text-foreground">{Number(subDoc.vatRate || 0)}%</p>
-                          </div>
-                          {subDoc.pageRange && (
-                            <div className="col-span-2">
-                              <p className="text-cdlp-muted uppercase">{t('docPages')}</p>
-                              <p className="font-bold text-foreground">{subDoc.pageRange}</p>
-                            </div>
-                          )}
-                          <div className="col-span-2">
-                            <p className="text-cdlp-muted uppercase">{t('docCategory')}</p>
-                            <p className="font-bold text-foreground">{subDoc.expenseCategory || 'OTHER'}</p>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-
-                {/* Line Items if available */}
-                {selectedDocument.data?.lineItems && selectedDocument.data.lineItems.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">{t('docLineItems')}</h3>
-                    <div className="border border-cdlp-border rounded overflow-hidden">
-                      <table className="ba-data-table min-w-full text-xs">
-                        <thead>
-                          <tr>
-                            <th>{t('docDate')}</th>
-                            <th>{t('docDescription')}</th>
-                            <th className="text-right">{t('docAmount')}</th>
-                            <th className="text-center">{t('docType')}</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-cdlp-border">
-                          {selectedDocument.data.lineItems.map((item, idx) => (
-                            <tr key={idx}>
-                              <td className="px-3 py-2 text-cdlp-muted">{item.date}</td>
-                              <td className="px-3 py-2 ba-field-value">{item.description}</td>
-                              <td className={`px-3 py-2 text-right font-bold ${item.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {item.amount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </td>
-                              <td className="px-3 py-2 text-center">
-                                <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                                  item.type === 'INCOME' ? 'bg-emerald-600/20 text-emerald-400' : 'bg-red-600/20 text-red-400'
-                                }`}>
-                                  {item.type === 'INCOME' ? t('dpFlowIncome') : t('dpFlowExpense')}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {/* Payslip Details if available */}
-                {selectedDocument.data?.paySlip && (
-                  <div>
-                    <h3 className="text-sm font-black uppercase text-cdlp-gold mb-2">{t('docPayslipDetails')}</h3>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docEmployee')}</label>
-                        <p className="ba-field-value">{selectedDocument.data.paySlip.employee?.name || t('na')}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docEmployer')}</label>
-                        <p className="ba-field-value">{selectedDocument.data.paySlip.employer?.name || t('na')}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docGrossPay')}</label>
-                        <p className="text-sm font-bold text-emerald-400">{(selectedDocument.data.paySlip.grossPay || 0).toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{currencySuffix}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold uppercase text-cdlp-muted block mb-1">{t('docNetPay')}</label>
-                        <p className="text-sm font-bold text-cdlp-gold">{(selectedDocument.data.paySlip.netPay || 0).toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{currencySuffix}</p>
-                      </div>
-                    </div>
-                    {selectedDocument.data.paySlip.components && selectedDocument.data.paySlip.components.length > 0 && (
-                      <div className="border border-cdlp-border rounded overflow-hidden">
-                        <table className="ba-data-table min-w-full text-xs">
-                          <thead>
-                            <tr>
-                              <th>{t('docComponent')}</th>
-                              <th className="text-right">{t('docAmount')}</th>
-                              <th className="text-center">{t('docType')}</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-cdlp-border">
-                            {selectedDocument.data.paySlip.components.map((comp, idx) => (
-                              <tr key={idx}>
-                                <td className="px-3 py-2 ba-field-value">{comp.description}</td>
-                                <td className={`px-3 py-2 text-right font-bold ${comp.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}>
-                                  {comp.amount.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </td>
-                                <td className="px-3 py-2 text-center">
-                                  <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                                    comp.type === 'INCOME' ? 'bg-emerald-600/20 text-emerald-400' : 'bg-red-600/20 text-red-400'
-                                  }`}>
-                                    {comp.type === 'INCOME' ? t('dpFlowIncome') : t('dpFlowExpense')}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
+        {selectedDocument.data ? (
+          <VerificationHub
+            doc={selectedDocument}
+            onUpdate={(newData) => {
+              void updateDocumentData(recordId, { data: newData });
+            }}
+            onSave={async (newData) => {
+              const confirmed = {
+                ...newData,
+                vatConfirmed: true,
+                isHumanVerified: true,
+              };
+              await updateDocumentData(recordId, {
+                status: 'completed',
+                data: confirmed,
+              });
+              if (onDocumentUpdated) {
+                await onDocumentUpdated(recordId, confirmed);
+              }
+              closeDocument();
+            }}
+          />
+        ) : (
+          <div className="ba-panel text-center py-12">
+            <FileText className="w-12 h-12 text-cdlp-muted mx-auto mb-3 opacity-40" />
+            <p className="text-sm text-cdlp-muted">{t('docFileNotAvailable')}</p>
           </div>
-        </div>
+        )}
       </div>
     );
   }

@@ -1136,11 +1136,11 @@ function rollUpMultiInvoiceTotals(data: FinancialData): FinancialData {
   };
 }
 
-// Verification Hub - Main editing interface
-const VerificationHub: React.FC<{
+// Verification Hub - Main editing interface (shared by Dashboard queue + Documents library)
+export const VerificationHub: React.FC<{
   doc: ProcessedDocument;
   onUpdate: (data: FinancialData) => void;
-  onSave: (data: FinancialData) => void;
+  onSave: (data: FinancialData) => void | Promise<void>;
 }> = ({ doc, onUpdate, onSave }) => {
   const { t, language } = useLanguage();
   const chfLocale = useChfLocale();
