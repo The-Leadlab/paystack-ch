@@ -3252,20 +3252,57 @@ function DocumentsTab({
     return { suppliers, employees, posReports, other };
   }, [documents]);
 
+  const otherDocsLabel = t('docOtherDocuments') || 'Other documents';
+
   const filteredEntities = useMemo((): Array<[string, ProcessedDocument[]]> => {
     if (filter === 'suppliers') return Object.entries(groupedDocs.suppliers);
     if (filter === 'employees') return Object.entries(groupedDocs.employees);
     if (filter === 'pos') return [[posReportsLabel, groupedDocs.posReports]];
 
-    // All documents
+    // All documents — include POS + uncategorized so no card opens empty
     return [
       ...Object.entries(groupedDocs.suppliers),
       ...Object.entries(groupedDocs.employees),
       ...(groupedDocs.posReports.length > 0
         ? ([[posReportsLabel, groupedDocs.posReports]] as Array<[string, ProcessedDocument[]]>)
         : []),
+      ...(groupedDocs.other.length > 0
+        ? ([[otherDocsLabel, groupedDocs.other]] as Array<[string, ProcessedDocument[]]>)
+        : []),
     ];
-  }, [filter, groupedDocs, posReportsLabel]);
+  }, [filter, groupedDocs, posReportsLabel, otherDocsLabel]);
+
+  /** Resolve docs for an entity card under any filter (fixes empty POS under All Documents). */
+  const resolveEntityDocs = (entityName: string): ProcessedDocument[] => {
+    if (entityName === posReportsLabel || filter === 'pos') {
+      return groupedDocs.posReports;
+    }
+    if (entityName === otherDocsLabel) {
+      return groupedDocs.other;
+    }
+    if (filter === 'employees') {
+      return groupedDocs.employees[entityName] || [];
+    }
+    if (filter === 'suppliers') {
+      return groupedDocs.suppliers[entityName] || [];
+    }
+    // filter === 'all'
+    return (
+      groupedDocs.suppliers[entityName] ||
+      groupedDocs.employees[entityName] ||
+      (entityName === posReportsLabel ? groupedDocs.posReports : undefined) ||
+      []
+    );
+  };
+
+  const entityKind = (
+    entityName: string
+  ): 'supplier' | 'employee' | 'pos' | 'other' => {
+    if (entityName === posReportsLabel || filter === 'pos') return 'pos';
+    if (entityName === otherDocsLabel) return 'other';
+    if (filter === 'employees' || groupedDocs.employees[entityName]) return 'employee';
+    return 'supplier';
+  };
 
   // Group documents by month within an entity (keep undated docs visible)
   const groupByMonth = (docs: ProcessedDocument[]) => {
@@ -3343,21 +3380,15 @@ function DocumentsTab({
   }
 
   if (selectedEntity) {
-    const entityDocs = filter === 'suppliers' 
-      ? groupedDocs.suppliers[selectedEntity] 
-      : filter === 'employees'
-      ? groupedDocs.employees[selectedEntity]
-      : filter === 'pos'
-      ? groupedDocs.posReports
-      : // For 'all' filter, find the entity in suppliers or employees
-        groupedDocs.suppliers[selectedEntity] || groupedDocs.employees[selectedEntity] || [];
-    
+    const entityDocs = resolveEntityDocs(selectedEntity);
+    const kind = entityKind(selectedEntity);
     const monthlyGroups = groupByMonth(entityDocs || []);
 
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4 min-w-0">
           <button
+            type="button"
             onClick={() => setSelectedEntity(null)}
             className="flex items-center gap-2 text-cdlp-gold hover:text-cdlp-gold-light text-sm font-bold uppercase shrink-0"
           >
@@ -3366,6 +3397,8 @@ function DocumentsTab({
           <div className="min-w-0">
             <h2 className="text-xl md:text-2xl font-black text-cdlp-gold uppercase truncate">
               {(() => {
+                if (kind === 'pos') return posReportsLabel;
+                if (kind === 'other') return otherDocsLabel;
                 const count = conjoinedCountForSupplierGroup(entityDocs || [], selectedEntity);
                 if (count > 1) {
                   return documentDisplayName(entityDocs?.[0]?.fileName, t('dpMultiInvoiceDocument'));
@@ -3502,18 +3535,39 @@ function DocumentsTab({
               0
             );
             const docCount = docs.length;
-            const isEmployee = filter === 'employees' || groupedDocs.employees[entityName];
+            const kind = entityKind(entityName);
             const conjoinedCount = conjoinedCountForSupplierGroup(docs, entityName);
             const primaryTitle =
-              conjoinedCount > 1
-                ? documentDisplayName(docs[0]?.fileName, t('dpMultiInvoiceDocument'))
-                : formatIssuerForDisplay(entityName, t, { fileName: docs[0]?.fileName });
+              kind === 'pos'
+                ? docCount === 1
+                  ? documentDisplayName(docs[0]?.fileName, posReportsLabel)
+                  : posReportsLabel
+                : kind === 'other'
+                  ? otherDocsLabel
+                  : conjoinedCount > 1
+                    ? documentDisplayName(docs[0]?.fileName, t('dpMultiInvoiceDocument'))
+                    : formatIssuerForDisplay(entityName, t, { fileName: docs[0]?.fileName });
+            const kindLabel =
+              kind === 'employee'
+                ? t('docEntityEmployee')
+                : kind === 'pos'
+                  ? t('docPosReports')
+                  : kind === 'other'
+                    ? otherDocsLabel
+                    : t('docEntitySupplier');
 
             return (
               <button
                 type="button"
                 key={entityName}
-                onClick={() => setSelectedEntity(entityName)}
+                onClick={() => {
+                  // One file → open Verification Center directly (All Documents + POS + suppliers)
+                  if (docs.length === 1) {
+                    openDocument(docs[0]);
+                    return;
+                  }
+                  setSelectedEntity(entityName);
+                }}
                 className="ba-entity-card group"
               >
                 <div className="flex items-start justify-between mb-4">
@@ -3522,9 +3576,7 @@ function DocumentsTab({
                     {conjoinedCount > 1 ? (
                       <p className="text-xs text-cdlp-muted mb-1">{conjoinedInvoicesLabel(conjoinedCount, t)}</p>
                     ) : null}
-                    <p className="text-xs text-cdlp-muted uppercase">
-                      {isEmployee ? t('docEntityEmployee') : t('docEntitySupplier')}
-                    </p>
+                    <p className="text-xs text-cdlp-muted uppercase">{kindLabel}</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-cdlp-muted group-hover:text-cdlp-gold transition-colors" />
                 </div>
