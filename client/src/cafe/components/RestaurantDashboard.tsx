@@ -71,6 +71,11 @@ import { filterBusinessExpenses } from '../lib/personalBleedFilter';
 import { computeDashboardTotals, isInflatedMultiInvoiceLedger } from '../lib/dashboardTotals';
 import { resolveDocumentAmountInCHF } from '../lib/subInvoiceAmounts';
 import {
+  formatProductLinesPreview,
+  productLinesForLedgerEntry,
+} from '../lib/documentProductLines';
+import { splitVendorAndProductDetail } from '../services/reportExportService';
+import {
   BUSINESS_SIDEBAR_COLLAPSED_KEY,
   usePersistedSidebarCollapsed,
 } from '@/hooks/usePersistedSidebarCollapsed';
@@ -1407,7 +1412,11 @@ export function RestaurantDashboard() {
           )}
           {activeTab === 'documents' && (
             <div data-tour="biz-documents-panel">
-              <DocumentsTab selectedDocument={selectedDocumentFromFinance} onClearSelection={() => setSelectedDocumentFromFinance(null)} />
+              <DocumentsTab
+                selectedDocument={selectedDocumentFromFinance}
+                onClearSelection={() => setSelectedDocumentFromFinance(null)}
+                onOpenVerification={handleNavigateToDocument}
+              />
             </div>
           )}
           {activeTab === 'billing' ? (
@@ -1723,6 +1732,7 @@ function IncomeExpenseSection({
   onDrop,
   onUpdate,
   onItemClick,
+  documents = [],
   t 
 }: { 
   title: string; 
@@ -1734,6 +1744,7 @@ function IncomeExpenseSection({
   onDrop: (item: any) => Promise<void>;
   onUpdate: (id: string, updates: any) => Promise<void>;
   onItemClick?: (item: any) => void;
+  documents?: ProcessedDocument[];
   t: (key: string) => string;
 }) {
   const formatChf = useFormatChf();
@@ -1973,7 +1984,30 @@ function IncomeExpenseSection({
                   </div>
                 </div>
               ) : (
-                // View Mode
+                // View Mode — vendor + product lines (not just "Sales")
+                (() => {
+                  const typeLabel = localizeLedgerCategory(
+                    isIncome ? item.type : item.category,
+                    t
+                  );
+                  const { vendor, detail } = splitVendorAndProductDetail(
+                    item.description,
+                    typeLabel
+                  );
+                  const productLines = productLinesForLedgerEntry(
+                    documents,
+                    item.document_id,
+                    { amount: item.amount, date: item.date }
+                  );
+                  const itemsPreview =
+                    formatProductLinesPreview(productLines, 4) ||
+                    (detail && detail !== typeLabel ? detail : '');
+                  const titleText =
+                    vendor && vendor !== '—'
+                      ? vendor
+                      : localizeLedgerDescription(item.description || typeLabel, t);
+
+                  return (
                 <div className="flex justify-between items-start">
                   <button
                     onClick={() => onItemClick?.(item)}
@@ -1982,17 +2016,29 @@ function IncomeExpenseSection({
                   >
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-bold text-xs md:text-sm truncate">
-                        {localizeLedgerCategory(isIncome ? item.type : item.category, t)}
+                        {titleText}
                       </p>
+                      <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-cdlp-border/60 text-cdlp-muted shrink-0">
+                        {typeLabel}
+                      </span>
                       <SwissAccountCodeBadge konto={item.account_code} lang={language} />
                       {(item.document_id || item.description) && (
                         <FileText className="w-3 h-3 text-cdlp-gold flex-shrink-0" aria-label={t('linkedToDocument')} />
                       )}
                     </div>
                     <p className="text-[10px] md:text-xs text-cdlp-muted">{item.date}</p>
-                    {item.description && (
-                      <p className="text-[10px] md:text-xs text-cdlp-muted mt-1 truncate">
-                        {localizeLedgerDescription(item.description, t)}
+                    {itemsPreview && (
+                      <p
+                        className="text-[10px] md:text-xs text-cdlp-muted/90 mt-1 line-clamp-2"
+                        title={itemsPreview}
+                      >
+                        {itemsPreview}
+                      </p>
+                    )}
+                    {productLines.length > 0 && (
+                      <p className="text-[9px] text-cdlp-gold/80 mt-0.5 font-semibold uppercase tracking-wide">
+                        {productLines.length}{' '}
+                        {productLines.length === 1 ? 'item' : 'items'}
                       </p>
                     )}
                   </button>
@@ -2024,6 +2070,8 @@ function IncomeExpenseSection({
                     </div>
                   </div>
                 </div>
+                  );
+                })()
               )}
             </div>
           ))
@@ -2250,6 +2298,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           title={t('income')}
           items={filteredIncome}
           type="income"
+          documents={documents}
           onAdd={currentSession ? onAddIncome : undefined}
           onEdit={(item) => {/* TODO: Implement edit */}}
           onDelete={async (id) => {
@@ -2308,6 +2357,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           title={t('expenses')}
           items={filteredExpenses}
           type="expense"
+          documents={documents}
           onAdd={currentSession ? onAddExpense : undefined}
           onEdit={(item) => {/* TODO: Implement edit */}}
           onDelete={async (id) => {
@@ -2384,6 +2434,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
 // Reports Tab Component - Full Implementation
 function ReportsPlaceholder() {
   const { income, expenses } = useFinance();
+  const { documents } = useDocuments();
   const { currentSession, isAllSessionsView, sessions } = useSession();
   const { enforcementEnabled, entitlements } = useSubscription();
   const { t, language } = useLanguage();
@@ -2605,6 +2656,9 @@ function ReportsPlaceholder() {
       type === 'SALES' || type === 'RESERVATION' ? t(type) : type,
     includeLedger: true,
     currency: (currencySuffix || '').trim() || (isUkFiscal ? 'GBP' : 'CHF'),
+    documents: documents.filter(
+      (d) => d.data && (d.status === 'completed' || d.status === 'needs_review')
+    ),
   });
 
   const handleExport = (format: 'csv' | 'pdf') => {
@@ -3090,7 +3144,16 @@ function ReportsPlaceholder() {
   );
 }
 
-function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelection }: { selectedDocument?: ProcessedDocument | null; onClearSelection?: () => void }) {
+function DocumentsTab({
+  selectedDocument: initialSelectedDocument,
+  onClearSelection,
+  onOpenVerification,
+}: {
+  selectedDocument?: ProcessedDocument | null;
+  onClearSelection?: () => void;
+  /** Open full Verification Center on the dashboard (same as income/expense row click). */
+  onOpenVerification?: (doc: ProcessedDocument) => void;
+}) {
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
   const { currencySuffix, fiscalLocale } = useUkUat();
@@ -3180,6 +3243,14 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
       if (b[0] === 'undated') return -1;
       return b[0].localeCompare(a[0]);
     });
+  };
+
+  const openDocument = (doc: ProcessedDocument) => {
+    if (onOpenVerification) {
+      onOpenVerification(doc);
+      return;
+    }
+    setSelectedDocument(doc);
   };
 
   // If viewing a specific document
@@ -3545,7 +3616,7 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                     <div className="flex justify-between items-start">
                       <button
                         type="button"
-                        onClick={() => setSelectedDocument(doc)}
+                        onClick={() => openDocument(doc)}
                         className="flex-1 text-left"
                       >
                         <p className="font-bold ba-field-value text-sm group-hover:text-cdlp-gold transition-colors">{doc.fileName}</p>
@@ -3560,7 +3631,8 @@ function DocumentsTab({ selectedDocument: initialSelectedDocument, onClearSelect
                           <p className="text-xs text-cdlp-muted">{doc.data?.originalCurrency || currencySuffix.trim() || 'CHF'}</p>
                         </div>
                         <button
-                          onClick={() => setSelectedDocument(doc)}
+                          type="button"
+                          onClick={() => openDocument(doc)}
                           className="p-2 hover:bg-cdlp-gold/10 rounded transition-colors"
                           title={t('docViewDetails')}
                         >

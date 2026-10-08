@@ -2,13 +2,14 @@ import * as XLSX from 'xlsx';
 import { buildFinancialReportHtml } from '@shared/financialReportHtml';
 import { buildUkVatReturn, type UkVatStagger, ukVatQuarterBounds } from '@shared/ukVatReturn';
 import { buildUkIncomeTaxEstimate, type UkTaxYearId } from '@shared/ukIncomeTaxEstimate';
-import { Income, Expense } from '../types';
+import { Income, Expense, type ProcessedDocument } from '../types';
 import {
   chfLocaleFor,
   getReportExportLabels,
   type ReportExportLocale,
 } from '../i18n/reportExportTranslations';
 import { canonicalizeSupplierName } from '../lib/swissDocumentNormalize';
+import { collectProductLinesFromDocument } from '../lib/documentProductLines';
 
 function money(n: unknown): number {
   const v = typeof n === 'number' ? n : Number(n);
@@ -82,6 +83,8 @@ export interface ReportData {
   includeLedger?: boolean;
   /** Reporting currency label (CHF / GBP). Defaults to CHF. */
   currency?: string;
+  /** Completed documents — used to build the Invoice items sheet (qty, products, etc.). */
+  documents?: ProcessedDocument[];
 }
 
 export type SwissVatPeriodMode = 'month' | 'semester' | 'year' | 'allYears';
@@ -378,6 +381,48 @@ export const exportFinancialReportExcel = (data: ReportData) => {
   const expenseSheet = XLSX.utils.aoa_to_sheet(expenseRows);
   autosizeSheet(expenseSheet, expenseRows);
   XLSX.utils.book_append_sheet(workbook, expenseSheet, L.expenseDetails.slice(0, 31));
+
+  // Per-invoice product/service lines (Verification Center item detail)
+  const docs = Array.isArray(data.documents) ? data.documents : [];
+  const itemRows: Array<Array<string | number>> = [
+    [
+      L.sourceFile,
+      L.vendor,
+      L.invoiceLabel,
+      L.date,
+      L.description,
+      L.quantity,
+      L.unitPrice,
+      L.lineAmount,
+      L.type,
+      L.category,
+    ],
+  ];
+  for (const doc of docs) {
+    if (!doc?.data) continue;
+    const lines = collectProductLinesFromDocument(doc);
+    for (const line of lines) {
+      if (dateFrom && line.date && line.date < dateFrom) continue;
+      if (dateTo && line.date && line.date > dateTo) continue;
+      itemRows.push([
+        line.fileName,
+        line.issuer,
+        line.invoiceLabel,
+        line.date || '',
+        line.description,
+        line.quantity ?? '',
+        line.unitPrice != null ? round2(line.unitPrice) : '',
+        round2(line.amount),
+        line.type || '',
+        line.category || '',
+      ]);
+    }
+  }
+  if (itemRows.length > 1) {
+    const itemsSheet = XLSX.utils.aoa_to_sheet(itemRows);
+    autosizeSheet(itemsSheet, itemRows, 8, 42);
+    XLSX.utils.book_append_sheet(workbook, itemsSheet, L.invoiceItems.slice(0, 31));
+  }
 
   downloadWorkbook(
     workbook,

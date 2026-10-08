@@ -123,9 +123,14 @@ async function postSingleAmount(
     cleanedIssuer ||
     fileName;
   const lineProductHint = (data.lineItems || [])
-    .map((l) => String(l.description || '').trim())
+    .map((l) => {
+      const desc = String(l.description || '').trim();
+      if (!desc) return '';
+      const qty = l.quantity != null && Number(l.quantity) > 1 ? `${Number(l.quantity)}× ` : '';
+      return `${qty}${desc}`;
+    })
     .filter(Boolean)
-    .slice(0, 4)
+    .slice(0, 8)
     .join(', ');
   const productHint =
     lineProductHint ||

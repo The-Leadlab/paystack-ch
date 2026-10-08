@@ -85,6 +85,13 @@ export type ReportExportLabels = {
   csvFilenameVat: string;
   ledgerTitle: string;
   ledgerDesc: string;
+  /** Per-invoice product/service lines sheet */
+  invoiceItems: string;
+  invoiceLabel: string;
+  quantity: string;
+  unitPrice: string;
+  lineAmount: string;
+  sourceFile: string;
 };
 
 const en: ReportExportLabels = {
@@ -173,6 +180,12 @@ const en: ReportExportLabels = {
   csvFilenameVat: "Swiss_VAT",
   ledgerTitle: "Invoicing & revenue ledger",
   ledgerDesc: "Combined income and expense lines with vendor, account, amount, and VAT.",
+  invoiceItems: "Invoice items",
+  invoiceLabel: "Invoice",
+  quantity: "Qty",
+  unitPrice: "Unit price",
+  lineAmount: "Line amount",
+  sourceFile: "Source file",
 };
 
 const fr: ReportExportLabels = {
@@ -262,6 +275,12 @@ const fr: ReportExportLabels = {
   ledgerTitle: "Grand livre facturation & revenus",
   ledgerDesc:
     "Lignes revenus et dépenses avec fournisseur, compte, montant et TVA.",
+  invoiceItems: "Articles facture",
+  invoiceLabel: "Facture",
+  quantity: "Qté",
+  unitPrice: "Prix unit.",
+  lineAmount: "Montant ligne",
+  sourceFile: "Fichier source",
 };
 
 export function getReportExportLabels(locale: ReportExportLocale = "en"): ReportExportLabels {
