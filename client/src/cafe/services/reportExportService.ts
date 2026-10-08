@@ -1,3 +1,4 @@
+import * as XLSX from 'xlsx';
 import { buildFinancialReportHtml } from '@shared/financialReportHtml';
 import { buildUkVatReturn, type UkVatStagger, ukVatQuarterBounds } from '@shared/ukVatReturn';
 import { buildUkIncomeTaxEstimate, type UkTaxYearId } from '@shared/ukIncomeTaxEstimate';
@@ -7,26 +8,64 @@ import {
   getReportExportLabels,
   type ReportExportLocale,
 } from '../i18n/reportExportTranslations';
+import { canonicalizeSupplierName } from '../lib/swissDocumentNormalize';
 
 function money(n: unknown): number {
   const v = typeof n === 'number' ? n : Number(n);
   return Number.isFinite(v) ? v : 0;
 }
 
-function triggerBrowserDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.rel = 'noopener';
-  link.style.display = 'none';
-  document.body.appendChild(link);
-  link.click();
-  // Revoke on next tick so Safari finishes the download navigation.
-  window.setTimeout(() => {
-    URL.revokeObjectURL(url);
-    link.remove();
-  }, 1_000);
+function downloadWorkbook(workbook: XLSX.WorkBook, filename: string) {
+  const safeName = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
+  XLSX.writeFile(workbook, safeName, { bookType: 'xlsx', compression: true });
+}
+
+function autosizeSheet(sheet: XLSX.WorkSheet, rows: Array<Array<string | number>>, min = 10, max = 48) {
+  sheet['!cols'] = rows[0]?.map((_, colIdx) => {
+    let width = min;
+    for (const row of rows) {
+      const cell = row[colIdx];
+      const len = String(cell ?? '').length;
+      if (len > width) width = len;
+    }
+    return { wch: Math.min(max, width + 2) };
+  });
+}
+
+/**
+ * Split stored ledger text into vendor vs product/service detail.
+ * Older rows often only stored the vendor name in `description`.
+ */
+export function splitVendorAndProductDetail(
+  raw: string | undefined,
+  fallbackDetail: string
+): { vendor: string; detail: string } {
+  const text = String(raw || '').trim();
+  if (!text) {
+    return { vendor: '—', detail: fallbackDetail };
+  }
+
+  const canonical = canonicalizeSupplierName(text, '');
+  const dashSplit = text.split(/\s*[—–\-|:]\s+/).map((p) => p.trim()).filter(Boolean);
+
+  let vendor = canonical || dashSplit[0] || text;
+  let detail = '';
+
+  if (dashSplit.length >= 2) {
+    vendor = canonicalizeSupplierName(dashSplit[0], '') || dashSplit[0];
+    detail = dashSplit.slice(1).join(' — ');
+  } else if (canonical && text.toLowerCase().startsWith(canonical.toLowerCase())) {
+    detail = text.slice(canonical.length).replace(/^[\s\-–—:|]+/, '').trim();
+    vendor = canonical;
+  } else {
+    detail = '';
+  }
+
+  if (!detail || detail.toLowerCase() === vendor.toLowerCase()) {
+    detail = fallbackDetail;
+  }
+
+  return { vendor: vendor || '—', detail };
 }
 
 export interface ReportData {
@@ -41,6 +80,8 @@ export interface ReportData {
   labelCategory?: (category: string) => string;
   labelIncomeType?: (type: string) => string;
   includeLedger?: boolean;
+  /** Reporting currency label (CHF / GBP). Defaults to CHF. */
+  currency?: string;
 }
 
 export type SwissVatPeriodMode = 'month' | 'semester' | 'year' | 'allYears';
@@ -169,9 +210,11 @@ function buildSwissVatStatement(
       netVatDue: round2(acc.netVatDue + row.netVatDue),
       salesWithoutVatCount: acc.salesWithoutVatCount + row.salesWithoutVatCount,
       purchasesWithoutVatCount: acc.purchasesWithoutVatCount + row.purchasesWithoutVatCount,
+      periodKey: 'total',
+      periodLabel: L.total,
     }),
     {
-      periodKey: 'TOTAL',
+      periodKey: 'total',
       periodLabel: L.total,
       turnover: 0,
       purchases: 0,
@@ -196,23 +239,21 @@ function buildSwissVatFormMapping(totals: SwissVatPeriodRow): SwissVatFormMappin
 }
 
 /**
- * Export report data to CSV format
+ * Export financial report as a real Excel workbook (.xlsx).
+ * Works the same on Mac and Windows (no CSV delimiter issues).
  */
 export const exportToCSV = (data: ReportData) => {
+  exportFinancialReportExcel(data);
+};
+
+export const exportFinancialReportExcel = (data: ReportData) => {
   const { income, expenses, monthlyData, supplierData, dateFrom, dateTo, sessionName } = data;
   const locale = data.locale ?? 'en';
   const L = getReportExportLabels(locale);
   const chfLoc = chfLocaleFor(locale);
+  const currency = data.currency || 'CHF';
   const cat = data.labelCategory ?? ((c: string) => c);
   const incType = data.labelIncomeType ?? ((t: string) => t);
-
-  let csvContent = '';
-
-  csvContent += `${L.financialReport} - ${sessionName || L.allSessions}\n`;
-  if (dateFrom && dateTo) {
-    csvContent += `${L.period}: ${dateFrom} ${L.periodTo} ${dateTo}\n`;
-  }
-  csvContent += `${L.generated}: ${new Date().toLocaleString(chfLoc)}\n\n`;
 
   const totalIncome = income.reduce((sum, i) => sum + money(i.amount), 0);
   const operatingExpenses = expenses.filter((e) => e.category !== 'PAYROLL');
@@ -222,52 +263,130 @@ export const exportToCSV = (data: ReportData) => {
     .reduce((sum, e) => sum + money(e.amount), 0);
   const balance = totalIncome - totalExpenses - totalPayroll;
 
-  csvContent += `${L.summary}\n`;
-  csvContent += `${L.totalIncome},${totalIncome.toFixed(2)} CHF\n`;
-  csvContent += `${L.totalExpenses},${totalExpenses.toFixed(2)} CHF\n`;
-  csvContent += `Payroll (net),${totalPayroll.toFixed(2)} CHF\n`;
-  csvContent += `${L.balance},${balance.toFixed(2)} CHF\n\n`;
+  const summaryRows: Array<Array<string | number>> = [
+    [L.financialReport, sessionName || L.allSessions],
+    ...(dateFrom && dateTo ? [[L.period, `${dateFrom} ${L.periodTo} ${dateTo}`]] : []),
+    [L.generated, new Date().toLocaleString(chfLoc)],
+    [],
+    [L.summary, ''],
+    [L.totalIncome, round2(totalIncome), currency],
+    [L.totalExpenses, round2(totalExpenses), currency],
+    ['Payroll (net)', round2(totalPayroll), currency],
+    [L.balance, round2(balance), currency],
+  ];
 
-  csvContent += `${L.monthlyBreakdown}\n`;
-  csvContent += `${L.month},${L.incomeChf},${L.expensesChf},${L.balanceChf}\n`;
+  const monthlyRows: Array<Array<string | number>> = [
+    [L.month, `${L.incomeChf.replace('(CHF)', `(${currency})`)}`, `${L.expensesChf.replace('(CHF)', `(${currency})`)}`, `${L.balanceChf.replace('(CHF)', `(${currency})`)}`],
+  ];
   monthlyData.forEach(([month, row]) => {
-    const monthName = new Date(month + '-01').toLocaleDateString(chfLoc, { year: 'numeric', month: 'long' });
-    csvContent += `${monthName},${money(row.income).toFixed(2)},${money(row.expenses).toFixed(2)},${money(row.balance).toFixed(2)}\n`;
+    const monthName = new Date(month + '-01').toLocaleDateString(chfLoc, {
+      year: 'numeric',
+      month: 'long',
+    });
+    monthlyRows.push([
+      monthName,
+      round2(money(row.income)),
+      round2(money(row.expenses)),
+      round2(money(row.balance)),
+    ]);
   });
-  csvContent += `\n`;
+
+  const supplierRows: Array<Array<string | number>> = [
+    [L.supplier, `${L.amountChf.replace('(CHF)', `(${currency})`)}`],
+  ];
+  supplierData.forEach(([supplier, amount]) => {
+    supplierRows.push([supplier, round2(money(amount))]);
+  });
+
+  const incomeRows: Array<Array<string | number>> = [
+    [
+      L.date,
+      L.vendor,
+      L.type,
+      L.accountCode,
+      `${L.amountChf.replace('(CHF)', `(${currency})`)}`,
+      `${L.vatChf.replace('(CHF)', `(${currency})`)}`,
+      L.description,
+    ],
+  ];
+  income.forEach((item) => {
+    const typeLabel = incType(item.type);
+    const { vendor, detail } = splitVendorAndProductDetail(
+      item.description,
+      item.type === 'RESERVATION'
+        ? `${typeLabel} — reservation / booking`
+        : `${typeLabel} — product / service sale`
+    );
+    incomeRows.push([
+      item.date,
+      vendor,
+      typeLabel,
+      item.account_code || '',
+      round2(money(item.amount)),
+      round2(money(item.vat_amount)),
+      detail,
+    ]);
+  });
+
+  const expenseRows: Array<Array<string | number>> = [
+    [
+      L.date,
+      L.vendor,
+      L.category,
+      L.accountCode,
+      `${L.amountChf.replace('(CHF)', `(${currency})`)}`,
+      `${L.vatChf.replace('(CHF)', `(${currency})`)}`,
+      L.description,
+    ],
+  ];
+  expenses.forEach((item) => {
+    const categoryLabel = cat(item.category);
+    const { vendor, detail } = splitVendorAndProductDetail(
+      item.description,
+      `${categoryLabel} — purchase / expense`
+    );
+    expenseRows.push([
+      item.date,
+      vendor,
+      categoryLabel,
+      item.account_code || '',
+      round2(money(item.amount)),
+      round2(money(item.vat_amount)),
+      detail,
+    ]);
+  });
+
+  const workbook = XLSX.utils.book_new();
+  const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+  autosizeSheet(summarySheet, summaryRows);
+  XLSX.utils.book_append_sheet(workbook, summarySheet, L.summary.slice(0, 31));
+
+  const monthlySheet = XLSX.utils.aoa_to_sheet(monthlyRows);
+  autosizeSheet(monthlySheet, monthlyRows);
+  XLSX.utils.book_append_sheet(workbook, monthlySheet, L.monthlyBreakdown.slice(0, 31));
 
   if (supplierData.length > 0) {
-    csvContent += `${L.topSuppliers}\n`;
-    csvContent += `${L.supplier},${L.amountChf}\n`;
-    supplierData.forEach(([supplier, amount]) => {
-      csvContent += `"${String(supplier).replace(/"/g, '""')}",${money(amount).toFixed(2)}\n`;
-    });
-    csvContent += `\n`;
+    const supplierSheet = XLSX.utils.aoa_to_sheet(supplierRows);
+    autosizeSheet(supplierSheet, supplierRows);
+    XLSX.utils.book_append_sheet(workbook, supplierSheet, L.topSuppliers.slice(0, 31));
   }
 
-  csvContent += `${L.incomeDetails}\n`;
-  csvContent += `${L.date},${L.vendor},${L.type},${L.accountCode},${L.amountChf},${L.vatChf},${L.description}\n`;
-  income.forEach((item) => {
-    const desc = String(item.description || '').replace(/"/g, '""');
-    csvContent += `${item.date},"${desc}",${incType(item.type)},${item.account_code || ''},${money(item.amount).toFixed(2)},${money(item.vat_amount).toFixed(2)},"${desc}"\n`;
-  });
-  csvContent += `\n`;
+  const incomeSheet = XLSX.utils.aoa_to_sheet(incomeRows);
+  autosizeSheet(incomeSheet, incomeRows);
+  XLSX.utils.book_append_sheet(workbook, incomeSheet, L.incomeDetails.slice(0, 31));
 
-  csvContent += `${L.expenseDetails}\n`;
-  csvContent += `${L.date},${L.vendor},${L.category},${L.accountCode},${L.amountChf},${L.vatChf},${L.description}\n`;
-  expenses.forEach((item) => {
-    const desc = String(item.description || '').replace(/"/g, '""');
-    csvContent += `${item.date},"${desc}",${cat(item.category)},${item.account_code || ''},${money(item.amount).toFixed(2)},${money(item.vat_amount).toFixed(2)},"${desc}"\n`;
-  });
+  const expenseSheet = XLSX.utils.aoa_to_sheet(expenseRows);
+  autosizeSheet(expenseSheet, expenseRows);
+  XLSX.utils.book_append_sheet(workbook, expenseSheet, L.expenseDetails.slice(0, 31));
 
-  triggerBrowserDownload(
-    new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }),
-    `${L.csvFilenameReport}_${new Date().toISOString().split('T')[0]}.csv`
+  downloadWorkbook(
+    workbook,
+    `${L.csvFilenameReport}_${new Date().toISOString().split('T')[0]}.xlsx`
   );
 };
 
 /**
- * Export report data to PDF format using HTML canvas
+ * Export report data to PDF format using HTML print window
  */
 export const exportToPDF = async (data: ReportData) => {
   const locale = data.locale ?? 'en';
@@ -301,7 +420,6 @@ export const exportToPDF = async (data: ReportData) => {
   }
 };
 
-
 export const exportSwissVatCSV = (data: ReportData, mode: SwissVatPeriodMode) => {
   const locale = data.locale ?? 'en';
   const L = getReportExportLabels(locale);
@@ -311,30 +429,70 @@ export const exportSwissVatCSV = (data: ReportData, mode: SwissVatPeriodMode) =>
   const modeLabel =
     mode === 'month' ? L.modeMonthly : mode === 'semester' ? L.modeSemiannual : L.modeYearly;
 
-  let csvContent = '';
-  csvContent += `${L.swissVatReport} - ${data.sessionName || L.allSessions}\n`;
-  csvContent += `${L.mode},${modeLabel}\n`;
-  if (data.dateFrom && data.dateTo)
-    csvContent += `${L.filteredPeriod},${data.dateFrom} ${L.periodTo} ${data.dateTo}\n`;
-  csvContent += `${L.generated},${new Date().toLocaleString(chfLoc)}\n\n`;
-  csvContent += `${L.periodCol},${L.turnoverClients},${L.purchases},${L.tvaCollected},${L.tvaPaid},${L.netTvaDue},${L.salesMissingTva},${L.purchasesMissingTva}\n`;
+  const periodRows: Array<Array<string | number>> = [
+    [
+      L.periodCol,
+      L.turnoverClients,
+      L.purchases,
+      L.tvaCollected,
+      L.tvaPaid,
+      L.netTvaDue,
+      L.salesMissingTva,
+      L.purchasesMissingTva,
+    ],
+    ...statement.rows.map((row) => [
+      row.periodLabel,
+      row.turnover,
+      row.purchases,
+      row.vatCollected,
+      row.vatPaid,
+      row.netVatDue,
+      row.salesWithoutVatCount,
+      row.purchasesWithoutVatCount,
+    ]),
+    [
+      L.total,
+      statement.totals.turnover,
+      statement.totals.purchases,
+      statement.totals.vatCollected,
+      statement.totals.vatPaid,
+      statement.totals.netVatDue,
+      statement.totals.salesWithoutVatCount,
+      statement.totals.purchasesWithoutVatCount,
+    ],
+  ];
 
-  statement.rows.forEach((row) => {
-    csvContent += `${row.periodLabel},${row.turnover.toFixed(2)},${row.purchases.toFixed(2)},${row.vatCollected.toFixed(2)},${row.vatPaid.toFixed(2)},${row.netVatDue.toFixed(2)},${row.salesWithoutVatCount},${row.purchasesWithoutVatCount}\n`;
-  });
+  const mappingRows: Array<Array<string | number>> = [
+    [L.formCode, L.formDescription, L.amountChf],
+    ['200', L.form200, mapping.code200_taxableTurnover],
+    ['220', L.form220, mapping.code220_outputVat],
+    ['400', L.form400, mapping.code400_inputVat],
+    ['500', L.form500, mapping.code500_netVatPayable],
+  ];
 
-  csvContent += `${L.total},${statement.totals.turnover.toFixed(2)},${statement.totals.purchases.toFixed(2)},${statement.totals.vatCollected.toFixed(2)},${statement.totals.vatPaid.toFixed(2)},${statement.totals.netVatDue.toFixed(2)},${statement.totals.salesWithoutVatCount},${statement.totals.purchasesWithoutVatCount}\n`;
-  csvContent += `\n`;
-  csvContent += `${L.formMappingTitle}\n`;
-  csvContent += `${L.formCode},${L.formDescription},${L.amountChf}\n`;
-  csvContent += `200,${L.form200},${mapping.code200_taxableTurnover.toFixed(2)}\n`;
-  csvContent += `220,${L.form220},${mapping.code220_outputVat.toFixed(2)}\n`;
-  csvContent += `400,${L.form400},${mapping.code400_inputVat.toFixed(2)}\n`;
-  csvContent += `500,${L.form500},${mapping.code500_netVatPayable.toFixed(2)}\n`;
+  const metaRows: Array<Array<string | number>> = [
+    [L.swissVatReport, data.sessionName || L.allSessions],
+    [L.mode, modeLabel],
+    ...(data.dateFrom && data.dateTo
+      ? [[L.filteredPeriod, `${data.dateFrom} ${L.periodTo} ${data.dateTo}`]]
+      : []),
+    [L.generated, new Date().toLocaleString(chfLoc)],
+  ];
 
-  triggerBrowserDownload(
-    new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }),
-    `${L.csvFilenameVat}_${modeLabel}_${new Date().toISOString().split('T')[0]}.csv`
+  const workbook = XLSX.utils.book_new();
+  const metaSheet = XLSX.utils.aoa_to_sheet(metaRows);
+  autosizeSheet(metaSheet, metaRows);
+  XLSX.utils.book_append_sheet(workbook, metaSheet, 'Info');
+  const periodSheet = XLSX.utils.aoa_to_sheet(periodRows);
+  autosizeSheet(periodSheet, periodRows);
+  XLSX.utils.book_append_sheet(workbook, periodSheet, 'VAT periods');
+  const mapSheet = XLSX.utils.aoa_to_sheet(mappingRows);
+  autosizeSheet(mapSheet, mappingRows);
+  XLSX.utils.book_append_sheet(workbook, mapSheet, 'Form mapping');
+
+  downloadWorkbook(
+    workbook,
+    `${L.csvFilenameVat}_${modeLabel}_${new Date().toISOString().split('T')[0]}.xlsx`
   );
 };
 
@@ -406,12 +564,11 @@ export const exportSwissVatPDF = async (data: ReportData, mode: SwissVatPeriodMo
               <td class="num">${formatCHF(row.netVatDue)}</td>
               <td class="num">${row.salesWithoutVatCount}</td>
               <td class="num">${row.purchasesWithoutVatCount}</td>
-            </tr>
-          `
+            </tr>`
             )
             .join('')}
           <tr class="total-row">
-            <td>${statement.totals.periodLabel}</td>
+            <td>${L.total}</td>
             <td class="num">${formatCHF(statement.totals.turnover)}</td>
             <td class="num">${formatCHF(statement.totals.purchases)}</td>
             <td class="num">${formatCHF(statement.totals.vatCollected)}</td>
@@ -422,36 +579,14 @@ export const exportSwissVatPDF = async (data: ReportData, mode: SwissVatPeriodMo
           </tr>
         </tbody>
       </table>
-      <h2 style="margin-top: 20px;">${L.formMappingTitle}</h2>
+      <h2 style="margin-top:24px;font-size:16px">${L.formMappingTitle}</h2>
       <table>
-        <thead>
-          <tr>
-            <th>${L.formCode}</th>
-            <th>${L.formDescription}</th>
-            <th class="num">${L.amountChf}</th>
-          </tr>
-        </thead>
+        <thead><tr><th>${L.formCode}</th><th>${L.formDescription}</th><th class="num">${L.amountChf}</th></tr></thead>
         <tbody>
-          <tr>
-            <td>200</td>
-            <td>${L.form200}</td>
-            <td class="num">${formatCHF(mapping.code200_taxableTurnover)}</td>
-          </tr>
-          <tr>
-            <td>220</td>
-            <td>${L.form220}</td>
-            <td class="num">${formatCHF(mapping.code220_outputVat)}</td>
-          </tr>
-          <tr>
-            <td>400</td>
-            <td>${L.form400}</td>
-            <td class="num">${formatCHF(mapping.code400_inputVat)}</td>
-          </tr>
-          <tr class="total-row">
-            <td>500</td>
-            <td>${L.form500}</td>
-            <td class="num">${formatCHF(mapping.code500_netVatPayable)}</td>
-          </tr>
+          <tr><td>200</td><td>${L.form200}</td><td class="num">${formatCHF(mapping.code200_taxableTurnover)}</td></tr>
+          <tr><td>220</td><td>${L.form220}</td><td class="num">${formatCHF(mapping.code220_outputVat)}</td></tr>
+          <tr><td>400</td><td>${L.form400}</td><td class="num">${formatCHF(mapping.code400_inputVat)}</td></tr>
+          <tr><td>500</td><td>${L.form500}</td><td class="num">${formatCHF(mapping.code500_netVatPayable)}</td></tr>
         </tbody>
       </table>
     </body>
@@ -481,26 +616,27 @@ export type UkVatExportOpts = {
 export const exportUkVatCSV = (data: ReportData, opts: UkVatExportOpts) => {
   const { start, end } = ukVatQuarterBounds(opts.year, opts.quarterIndex, opts.stagger);
   const boxes = buildUkVatReturn(data.income, data.expenses, { start, end });
-  const lines = [
-    `UK VAT return (9-box) - ${data.sessionName || 'All sessions'}`,
-    `Period,${boxes.periodStart} to ${boxes.periodEnd}`,
-    `Disclaimer,Figures prepared from documents in Paystack. Review before filing.`,
-    ``,
-    `Box,Description,Amount`,
-    `1,VAT due on sales,${boxes.box1_vatDueSales.toFixed(2)}`,
-    `2,VAT due on acquisitions,${boxes.box2_vatDueAcquisitions.toFixed(2)}`,
-    `3,Total VAT due,${boxes.box3_totalVatDue.toFixed(2)}`,
-    `4,VAT reclaimed,${boxes.box4_vatReclaimedCurrPeriod.toFixed(2)}`,
-    `5,Net VAT (${boxes.box5_direction}),${boxes.box5_netVatDue.toFixed(2)}`,
-    `6,Total value of sales ex VAT,${boxes.box6_totalValueSalesExVAT}`,
-    `7,Total value of purchases ex VAT,${boxes.box7_totalValuePurchasesExVAT}`,
-    `8,Total value of supplies ex VAT,${boxes.box8_totalValueSuppliesExVAT}`,
-    `9,Total value of acquisitions ex VAT,${boxes.box9_totalValueAcquisitionsExVAT}`,
+  const rows: Array<Array<string | number>> = [
+    ['UK VAT return (9-box)', data.sessionName || 'All sessions'],
+    ['Period', `${boxes.periodStart} to ${boxes.periodEnd}`],
+    ['Disclaimer', 'Figures prepared from documents in Paystack. Review before filing.'],
+    [],
+    ['Box', 'Description', 'Amount'],
+    [1, 'VAT due on sales', boxes.box1_vatDueSales],
+    [2, 'VAT due on acquisitions', boxes.box2_vatDueAcquisitions],
+    [3, 'Total VAT due', boxes.box3_totalVatDue],
+    [4, 'VAT reclaimed', boxes.box4_vatReclaimedCurrPeriod],
+    [5, `Net VAT (${boxes.box5_direction})`, boxes.box5_netVatDue],
+    [6, 'Total value of sales ex VAT', boxes.box6_totalValueSalesExVAT],
+    [7, 'Total value of purchases ex VAT', boxes.box7_totalValuePurchasesExVAT],
+    [8, 'Total value of supplies ex VAT', boxes.box8_totalValueSuppliesExVAT],
+    [9, 'Total value of acquisitions ex VAT', boxes.box9_totalValueAcquisitionsExVAT],
   ];
-  triggerBrowserDownload(
-    new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' }),
-    `UK_VAT_return_${boxes.periodStart}_${boxes.periodEnd}.csv`
-  );
+  const workbook = XLSX.utils.book_new();
+  const sheet = XLSX.utils.aoa_to_sheet(rows);
+  autosizeSheet(sheet, rows);
+  XLSX.utils.book_append_sheet(workbook, sheet, 'UK VAT');
+  downloadWorkbook(workbook, `UK_VAT_return_${boxes.periodStart}_${boxes.periodEnd}.xlsx`);
 };
 
 export const exportUkVatPDF = async (data: ReportData, opts: UkVatExportOpts) => {
@@ -539,33 +675,34 @@ export const exportUkIncomeTaxCSV = (
 ) => {
   const useExVat = opts?.useExVat !== false;
   const turnover = data.income.reduce((s, r) => {
-    const gross = Number(r.amount) || 0;
-    const vat = Number(r.vat_amount) || 0;
+    const gross = money(r.amount);
+    const vat = money(r.vat_amount);
     return s + (useExVat ? gross - vat : gross);
   }, 0);
   const allowableExpenses = data.expenses.reduce((s, r) => {
-    const gross = Number(r.amount) || 0;
-    const vat = Number(r.vat_amount) || 0;
+    const gross = money(r.amount);
+    const vat = money(r.vat_amount);
     return s + (useExVat ? gross - vat : gross);
   }, 0);
   const est = buildUkIncomeTaxEstimate({ taxYear, turnover, allowableExpenses });
-  const lines = [
-    `UK income tax estimate - ${taxYear}`,
-    `Period,${est.taxYearStart} to ${est.taxYearEnd}`,
-    `Disclaimer,${est.disclaimer}`,
-    ``,
-    `Metric,Amount GBP`,
-    `Turnover,${est.turnover.toFixed(2)}`,
-    `Allowable expenses,${est.allowableExpenses.toFixed(2)}`,
-    `Net profit,${est.netProfit.toFixed(2)}`,
-    `Personal allowance,${est.personalAllowance.toFixed(2)}`,
-    `Taxable income,${est.taxableIncome.toFixed(2)}`,
-    `Income tax (estimate),${est.incomeTaxEstimate.toFixed(2)}`,
-    `Class 4 NI (estimate),${est.class4NiEstimate.toFixed(2)}`,
-    `Total estimate,${est.totalEstimate.toFixed(2)}`,
+  const rows: Array<Array<string | number>> = [
+    ['UK income tax estimate', taxYear],
+    ['Period', `${est.taxYearStart} to ${est.taxYearEnd}`],
+    ['Disclaimer', est.disclaimer],
+    [],
+    ['Metric', 'Amount GBP'],
+    ['Turnover', est.turnover],
+    ['Allowable expenses', est.allowableExpenses],
+    ['Net profit', est.netProfit],
+    ['Personal allowance', est.personalAllowance],
+    ['Taxable income', est.taxableIncome],
+    ['Income tax (estimate)', est.incomeTaxEstimate],
+    ['Class 4 NI (estimate)', est.class4NiEstimate],
+    ['Total estimate', est.totalEstimate],
   ];
-  triggerBrowserDownload(
-    new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' }),
-    `UK_income_tax_estimate_${taxYear}.csv`
-  );
+  const workbook = XLSX.utils.book_new();
+  const sheet = XLSX.utils.aoa_to_sheet(rows);
+  autosizeSheet(sheet, rows);
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Income tax');
+  downloadWorkbook(workbook, `UK_income_tax_estimate_${taxYear}.xlsx`);
 };

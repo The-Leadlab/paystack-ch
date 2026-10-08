@@ -2604,6 +2604,7 @@ function ReportsPlaceholder() {
     labelIncomeType: (type: string) =>
       type === 'SALES' || type === 'RESERVATION' ? t(type) : type,
     includeLedger: true,
+    currency: (currencySuffix || '').trim() || (isUkFiscal ? 'GBP' : 'CHF'),
   });
 
   const handleExport = (format: 'csv' | 'pdf') => {
@@ -2905,7 +2906,7 @@ function ReportsPlaceholder() {
                   onClick={() => handleUkIncomeTaxExport()}
                   className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-gold text-cdlp-gold text-xs font-bold uppercase rounded hover:bg-cdlp-gold/10 transition-colors"
                 >
-                  <Download className="w-4 h-4" /> Income tax estimate CSV
+                  <Download className="w-4 h-4" /> Income tax estimate Excel
                 </button>
                 {hmrcMtdUiEnabled ? (
                   <button

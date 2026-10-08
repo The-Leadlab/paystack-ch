@@ -118,18 +118,32 @@ async function postSingleAmount(
   if (amount <= 0) return null;
 
   const cleanedIssuer = splitIssuerAndReference(data.issuer).issuer || data.issuer;
-  const description =
+  const vendorName =
     canonicalizeSupplierName(cleanedIssuer, '') ||
     cleanedIssuer ||
-    data.notes ||
     fileName;
+  const lineProductHint = (data.lineItems || [])
+    .map((l) => String(l.description || '').trim())
+    .filter(Boolean)
+    .slice(0, 4)
+    .join(', ');
+  const productHint =
+    lineProductHint ||
+    String(data.notes || '').trim() ||
+    String(data.documentNumber ? `Doc ${data.documentNumber}` : '').trim();
   const vatAmount = resolveDocumentVatAmount(data);
 
   if (isRevenueDoc(data, ownBusinessNames)) {
+    const incomeType = incomeTypeFromCategory(data.expenseCategory);
+    const fallbackProduct =
+      incomeType === 'RESERVATION' ? 'Reservation / booking' : 'Product / service sale';
+    const description = productHint
+      ? `${vendorName} — ${productHint}`
+      : `${vendorName} — ${fallbackProduct}`;
     const code = resolveAccountCode(data, { kind: 'income', description });
     await writers.addIncome(
       date,
-      incomeTypeFromCategory(data.expenseCategory),
+      incomeType,
       amount,
       description,
       sessionId,
@@ -139,6 +153,10 @@ async function postSingleAmount(
     );
     return 'income';
   }
+
+  const description = productHint
+    ? `${vendorName} — ${productHint}`
+    : vendorName;
 
   const category = mapAiExpenseCategoryToLedger({
     expenseCategory: data.expenseCategory,
