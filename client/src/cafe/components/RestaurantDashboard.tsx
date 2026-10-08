@@ -70,6 +70,7 @@ import { filterBusinessExpenses } from '../lib/personalBleedFilter';
 import { computeDashboardTotals, isInflatedMultiInvoiceLedger } from '../lib/dashboardTotals';
 import { resolveDocumentAmountInCHF } from '../lib/subInvoiceAmounts';
 import {
+  collectProductLinesFromDocument,
   formatProductLinesPreview,
   productLinesForLedgerEntry,
 } from '../lib/documentProductLines';
@@ -1406,7 +1407,7 @@ export function RestaurantDashboard() {
           )}
           {activeTab === 'reports' && (
             <div data-tour="biz-reports-panel">
-              <ReportsPlaceholder />
+              <ReportsPlaceholder onNavigateToDocument={handleNavigateToDocument} />
             </div>
           )}
           {activeTab === 'documents' && (
@@ -2431,7 +2432,11 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
 
 // Revenue Tab Component - Full POS/Z-Reading Management
 // Reports Tab Component - Full Implementation
-function ReportsPlaceholder() {
+function ReportsPlaceholder({
+  onNavigateToDocument,
+}: {
+  onNavigateToDocument?: (doc: ProcessedDocument) => void;
+}) {
   const { income, expenses } = useFinance();
   const { documents } = useDocuments();
   const { currentSession, isAllSessionsView, sessions } = useSession();
@@ -2591,6 +2596,39 @@ function ReportsPlaceholder() {
       .slice(0, 10);
   }, [dateFilteredExpenses, t]);
 
+  const reportDocuments = React.useMemo(
+    () =>
+      documents.filter(
+        (d) => d.data && (d.status === 'completed' || d.status === 'needs_review')
+      ),
+    [documents]
+  );
+
+  const reportInsights = React.useMemo(() => {
+    const vatCollected = dateFilteredIncome.reduce((s, i) => s + (Number(i.vat_amount) || 0), 0);
+    const vatPaid = dateFilteredExpenses.reduce((s, e) => s + (Number(e.vat_amount) || 0), 0);
+    const invoiceCount = dateFilteredIncome.length + dateFilteredExpenses.length;
+    const productAgg = new Map<string, { name: string; qty: number; amount: number }>();
+    let productLineCount = 0;
+
+    for (const doc of reportDocuments) {
+      const lines = collectProductLinesFromDocument(doc);
+      for (const line of lines) {
+        if (dateFrom && line.date && line.date < dateFrom) continue;
+        if (dateTo && line.date && line.date > dateTo) continue;
+        productLineCount += 1;
+        const key = line.description.toLowerCase();
+        const prev = productAgg.get(key) || { name: line.description, qty: 0, amount: 0 };
+        prev.qty += line.quantity != null && line.quantity > 0 ? Number(line.quantity) : 1;
+        prev.amount += Number(line.amount) || 0;
+        productAgg.set(key, prev);
+      }
+    }
+
+    const topItems = [...productAgg.values()].sort((a, b) => b.amount - a.amount).slice(0, 8);
+    return { vatCollected, vatPaid, invoiceCount, productLineCount, topItems };
+  }, [dateFilteredIncome, dateFilteredExpenses, reportDocuments, dateFrom, dateTo]);
+
   // Get unique categories and suppliers for filters
   const uniqueCategories = React.useMemo(() => {
     const cats = new Set(filteredExpenses.map(e => e.category));
@@ -2655,9 +2693,7 @@ function ReportsPlaceholder() {
       type === 'SALES' || type === 'RESERVATION' ? t(type) : type,
     includeLedger: true,
     currency: (currencySuffix || '').trim() || (isUkFiscal ? 'GBP' : 'CHF'),
-    documents: documents.filter(
-      (d) => d.data && (d.status === 'completed' || d.status === 'needs_review')
-    ),
+    documents: reportDocuments,
   });
 
   const handleExport = (format: 'csv' | 'pdf') => {
@@ -3065,6 +3101,46 @@ function ReportsPlaceholder() {
         </div>
       ) : null}
 
+      {/* Period insights */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="ba-panel !p-4">
+          <p className="text-[10px] font-bold uppercase text-cdlp-muted tracking-wider mb-1">
+            {t('repSummaryInvoices')}
+          </p>
+          <p className="text-xl font-black ba-field-value">{reportInsights.invoiceCount}</p>
+        </div>
+        <div className="ba-panel !p-4">
+          <p className="text-[10px] font-bold uppercase text-cdlp-muted tracking-wider mb-1">
+            {t('repSummaryItems')}
+          </p>
+          <p className="text-xl font-black text-cdlp-gold">{reportInsights.productLineCount}</p>
+        </div>
+        <div className="ba-panel !p-4">
+          <p className="text-[10px] font-bold uppercase text-cdlp-muted tracking-wider mb-1">
+            {t('repSummaryVatCollected')}
+          </p>
+          <p className="text-xl font-black text-emerald-500">
+            {reportInsights.vatCollected.toLocaleString(moneyLocale, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+            {currencySuffix}
+          </p>
+        </div>
+        <div className="ba-panel !p-4">
+          <p className="text-[10px] font-bold uppercase text-cdlp-muted tracking-wider mb-1">
+            {t('repSummaryVatPaid')}
+          </p>
+          <p className="text-xl font-black text-blue-400">
+            {reportInsights.vatPaid.toLocaleString(moneyLocale, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+            {currencySuffix}
+          </p>
+        </div>
+      </div>
+
       {/* Monthly Revenue Analysis */}
       <div className="ba-panel">
         <div className="ba-section-head">
@@ -3112,32 +3188,75 @@ function ReportsPlaceholder() {
         )}
       </div>
 
-      {/* Supplier Analysis */}
-      <div className="ba-panel">
-        <div className="ba-section-head">
-          <Users className="w-5 h-5" />
-          <h2>{t('repTopSuppliers')}</h2>
+      {/* Supplier Analysis + Top products */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="ba-panel">
+          <div className="ba-section-head">
+            <Users className="w-5 h-5" />
+            <h2>{t('repTopSuppliers')}</h2>
+          </div>
+          {supplierData.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-cdlp-muted text-sm">{t('repNoSuppliers')}</p>
+              <p className="text-cdlp-muted/70 text-xs mt-2">{t('repNoSuppliersHint')}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {supplierData.map(([supplier, amount]) => (
+                <div key={supplier} className="ba-stat-row flex justify-between items-center !py-3">
+                  <span className="text-sm font-bold ba-field-value truncate flex-1">{supplier}</span>
+                  <span className="text-sm font-black text-cdlp-gold ml-4">
+                    {amount.toLocaleString(moneyLocale, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                    {currencySuffix}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-        {supplierData.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-cdlp-muted text-sm">{t('repNoSuppliers')}</p>
-            <p className="text-cdlp-muted/70 text-xs mt-2">{t('repNoSuppliersHint')}</p>
+
+        <div className="ba-panel">
+          <div className="ba-section-head">
+            <Receipt className="w-5 h-5" />
+            <h2>{t('repTopItems')}</h2>
           </div>
-        ) : (
-          <div className="space-y-2">
-            {supplierData.map(([supplier, amount]) => (
-              <div key={supplier} className="ba-stat-row flex justify-between items-center !py-3">
-                <span className="text-sm font-bold ba-field-value truncate flex-1">{supplier}</span>
-                <span className="text-sm font-black text-cdlp-gold ml-4">{amount.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{currencySuffix}</span>
-              </div>
-            ))}
-          </div>
-        )}
+          <p className="text-xs text-cdlp-muted mb-3">{t('repTopItemsHint')}</p>
+          {reportInsights.topItems.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-cdlp-muted text-sm">{t('repTopItemsEmpty')}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {reportInsights.topItems.map((item) => (
+                <div key={item.name} className="ba-stat-row flex justify-between items-center !py-3 gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold ba-field-value truncate">{item.name}</p>
+                    <p className="text-[10px] text-cdlp-muted uppercase">
+                      {t('repQtySold')}: {item.qty % 1 === 0 ? item.qty : item.qty.toFixed(1)}
+                    </p>
+                  </div>
+                  <span className="text-sm font-black text-cdlp-gold shrink-0">
+                    {item.amount.toLocaleString(moneyLocale, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                    {currencySuffix}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <RevenueLedgerTable
         income={dateFilteredIncome}
         expenses={dateFilteredExpenses}
+        documents={reportDocuments}
+        onOpenDocument={onNavigateToDocument}
       />
     </div>
   );

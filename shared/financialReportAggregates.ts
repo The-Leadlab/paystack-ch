@@ -1,19 +1,23 @@
 export type ReportIncomeRow = {
+  id?: string;
   date: string;
   amount: number;
   vat_amount?: number;
   description?: string;
   type?: string;
   account_code?: string;
+  document_id?: string;
 };
 
 export type ReportExpenseRow = {
+  id?: string;
   date: string;
   amount: number;
   vat_amount?: number;
   description?: string;
   category?: string;
   account_code?: string;
+  document_id?: string;
 };
 
 export type MonthlyBucket = { income: number; expenses: number; balance: number };
@@ -114,6 +118,7 @@ export type LedgerRow = {
   vat: number;
   description: string;
   tone: "income" | "expense";
+  documentId?: string;
 };
 
 export function buildLedgerRows(
@@ -123,8 +128,8 @@ export function buildLedgerRows(
   labelIncomeType: (type: string) => string
 ): LedgerRow[] {
   return [
-    ...income.map((item) => ({
-      id: `in-${item.date}-${item.description}-${item.amount}`,
+    ...income.map((item, idx) => ({
+      id: item.id ? `in-${item.id}` : `in-${item.date}-${item.description}-${item.amount}-${idx}`,
       date: item.date,
       vendor: canonicalizeSupplierKey(item.description, "—"),
       category: labelIncomeType(item.type || "SALES"),
@@ -133,9 +138,10 @@ export function buildLedgerRows(
       vat: Number(item.vat_amount || 0),
       description: item.description || "—",
       tone: "income" as const,
+      documentId: item.document_id || undefined,
     })),
-    ...expenses.map((item) => ({
-      id: `ex-${item.date}-${item.description}-${item.amount}`,
+    ...expenses.map((item, idx) => ({
+      id: item.id ? `ex-${item.id}` : `ex-${item.date}-${item.description}-${item.amount}-${idx}`,
       date: item.date,
       vendor: canonicalizeSupplierKey(item.description, "—"),
       category: labelCategory(item.category || "OTHER"),
@@ -144,6 +150,7 @@ export function buildLedgerRows(
       vat: Number(item.vat_amount || 0),
       description: item.description || "—",
       tone: "expense" as const,
+      documentId: item.document_id || undefined,
     })),
   ].sort((a, b) => b.date.localeCompare(a.date));
 }
