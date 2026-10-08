@@ -50,6 +50,16 @@ import { suggestSwissAccountCode } from '@shared/suggestSwissAccountCode';
 import type { FinancialData } from '../types';
 import { loadReportSchedule, saveReportSchedule } from '../lib/reportScheduleClient';
 import type { ReportScheduleCadenceDays } from '@shared/reportSchedule';
+import {
+  exportToCSV,
+  exportToPDF,
+  exportSwissVatCSV,
+  exportSwissVatPDF,
+  exportUkVatCSV,
+  exportUkVatPDF,
+  exportUkIncomeTaxCSV,
+} from '../services/reportExportService';
+import { emailFinancialReport } from '../lib/reportEmailClient';
 import { RevenueLedgerTable } from './RevenueLedgerTable';
 import { mapAiExpenseCategoryToLedger } from '../lib/mapExpenseCategory';
 import { postLedgerFromFinancialData } from '../lib/postLedgerFromFinancialData';
@@ -2596,37 +2606,44 @@ function ReportsPlaceholder() {
     includeLedger: true,
   });
 
-  const handleExport = async (format: 'csv' | 'pdf') => {
-    const { exportToCSV, exportToPDF } = await import('../services/reportExportService');
-    const reportData = reportPayload();
-    
-    if (format === 'csv') {
-      exportToCSV(reportData);
-    } else {
-      await exportToPDF(reportData);
+  const handleExport = (format: 'csv' | 'pdf') => {
+    try {
+      const reportData = reportPayload();
+      if (format === 'csv') {
+        exportToCSV(reportData);
+      } else {
+        void exportToPDF(reportData);
+      }
+    } catch (e) {
+      alert(t('alertGenericError').replace('{msg}', e instanceof Error ? e.message : String(e)));
     }
   };
 
-  const handleVatExport = async (format: 'csv' | 'pdf') => {
-    const reportData = reportPayload();
-    if (isUkFiscal) {
-      const { exportUkVatCSV, exportUkVatPDF } = await import('../services/reportExportService');
-      const opts = { year: ukVatYear, quarterIndex: ukVatQuarter, stagger: ukVatStagger };
-      if (format === 'csv') exportUkVatCSV(reportData, opts);
-      else await exportUkVatPDF(reportData, opts);
-      return;
-    }
-    const { exportSwissVatCSV, exportSwissVatPDF } = await import('../services/reportExportService');
-    if (format === 'csv') {
-      exportSwissVatCSV(reportData, vatPeriodMode);
-    } else {
-      await exportSwissVatPDF(reportData, vatPeriodMode);
+  const handleVatExport = (format: 'csv' | 'pdf') => {
+    try {
+      const reportData = reportPayload();
+      if (isUkFiscal) {
+        const opts = { year: ukVatYear, quarterIndex: ukVatQuarter, stagger: ukVatStagger };
+        if (format === 'csv') exportUkVatCSV(reportData, opts);
+        else void exportUkVatPDF(reportData, opts);
+        return;
+      }
+      if (format === 'csv') {
+        exportSwissVatCSV(reportData, vatPeriodMode);
+      } else {
+        void exportSwissVatPDF(reportData, vatPeriodMode);
+      }
+    } catch (e) {
+      alert(t('alertGenericError').replace('{msg}', e instanceof Error ? e.message : String(e)));
     }
   };
 
-  const handleUkIncomeTaxExport = async () => {
-    const { exportUkIncomeTaxCSV } = await import('../services/reportExportService');
-    exportUkIncomeTaxCSV(reportPayload(), ukTaxYear);
+  const handleUkIncomeTaxExport = () => {
+    try {
+      exportUkIncomeTaxCSV(reportPayload(), ukTaxYear);
+    } catch (e) {
+      alert(t('alertGenericError').replace('{msg}', e instanceof Error ? e.message : String(e)));
+    }
   };
 
   const handleHmrcConnect = async () => {
@@ -2647,7 +2664,6 @@ function ReportsPlaceholder() {
     if (!advancedReports) return;
     setEmailBusy(cadence);
     try {
-      const { emailFinancialReport } = await import('../lib/reportEmailClient');
       const payload = reportPayload();
       const { sentTo } = await emailFinancialReport({
         cadence,
@@ -2793,6 +2809,7 @@ function ReportsPlaceholder() {
           <div className="w-full lg:w-auto space-y-3">
             <div className="flex flex-wrap gap-2">
               <button
+                type="button"
                 onClick={() => handleExport('csv')}
                 className="flex items-center gap-2 px-4 py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light transition-colors"
               >
@@ -2802,7 +2819,9 @@ function ReportsPlaceholder() {
                 type="button"
                 disabled={!advancedReports}
                 title={!advancedReports ? t('reportsAdvancedLocked') : undefined}
-                onClick={() => advancedReports && handleExport('pdf')}
+                onClick={() => {
+                  if (advancedReports) handleExport('pdf');
+                }}
                 className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-gold text-cdlp-gold text-xs font-bold uppercase rounded hover:bg-cdlp-gold/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Download className="w-4 h-4" /> {t('repDownloadPdf')}
@@ -2883,7 +2902,7 @@ function ReportsPlaceholder() {
                 </select>
                 <button
                   type="button"
-                  onClick={() => void handleUkIncomeTaxExport()}
+                  onClick={() => handleUkIncomeTaxExport()}
                   className="flex items-center gap-2 px-4 py-2 bg-cdlp-card border border-cdlp-gold text-cdlp-gold text-xs font-bold uppercase rounded hover:bg-cdlp-gold/10 transition-colors"
                 >
                   <Download className="w-4 h-4" /> Income tax estimate CSV

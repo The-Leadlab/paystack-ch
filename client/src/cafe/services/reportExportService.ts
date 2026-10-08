@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import { buildFinancialReportHtml } from '@shared/financialReportHtml';
 import { buildUkVatReturn, type UkVatStagger, ukVatQuarterBounds } from '@shared/ukVatReturn';
 import { buildUkIncomeTaxEstimate, type UkTaxYearId } from '@shared/ukIncomeTaxEstimate';
@@ -8,6 +7,27 @@ import {
   getReportExportLabels,
   type ReportExportLocale,
 } from '../i18n/reportExportTranslations';
+
+function money(n: unknown): number {
+  const v = typeof n === 'number' ? n : Number(n);
+  return Number.isFinite(v) ? v : 0;
+}
+
+function triggerBrowserDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.rel = 'noopener';
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  // Revoke on next tick so Safari finishes the download navigation.
+  window.setTimeout(() => {
+    URL.revokeObjectURL(url);
+    link.remove();
+  }, 1_000);
+}
 
 export interface ReportData {
   income: Income[];
@@ -99,9 +119,9 @@ function buildSwissVatStatement(
         purchasesWithoutVatCount: 0,
       };
     }
-    buckets[key].turnover += Number(i.amount || 0);
-    buckets[key].vatCollected += Number(i.vat_amount || 0);
-    if (Number(i.amount || 0) > 0 && Number(i.vat_amount || 0) <= 0) {
+    buckets[key].turnover += money(i.amount);
+    buckets[key].vatCollected += money(i.vat_amount);
+    if (money(i.amount) > 0 && money(i.vat_amount) <= 0) {
       buckets[key].salesWithoutVatCount += 1;
     }
   }
@@ -121,9 +141,9 @@ function buildSwissVatStatement(
         purchasesWithoutVatCount: 0,
       };
     }
-    buckets[key].purchases += Number(e.amount || 0);
-    buckets[key].vatPaid += Number(e.vat_amount || 0);
-    if (Number(e.amount || 0) > 0 && Number(e.vat_amount || 0) <= 0) {
+    buckets[key].purchases += money(e.amount);
+    buckets[key].vatPaid += money(e.vat_amount);
+    if (money(e.amount) > 0 && money(e.vat_amount) <= 0) {
       buckets[key].purchasesWithoutVatCount += 1;
     }
   }
@@ -194,12 +214,12 @@ export const exportToCSV = (data: ReportData) => {
   }
   csvContent += `${L.generated}: ${new Date().toLocaleString(chfLoc)}\n\n`;
 
-  const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
+  const totalIncome = income.reduce((sum, i) => sum + money(i.amount), 0);
   const operatingExpenses = expenses.filter((e) => e.category !== 'PAYROLL');
-  const totalExpenses = operatingExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalExpenses = operatingExpenses.reduce((sum, e) => sum + money(e.amount), 0);
   const totalPayroll = expenses
     .filter((e) => e.category === 'PAYROLL')
-    .reduce((sum, e) => sum + e.amount, 0);
+    .reduce((sum, e) => sum + money(e.amount), 0);
   const balance = totalIncome - totalExpenses - totalPayroll;
 
   csvContent += `${L.summary}\n`;
@@ -212,7 +232,7 @@ export const exportToCSV = (data: ReportData) => {
   csvContent += `${L.month},${L.incomeChf},${L.expensesChf},${L.balanceChf}\n`;
   monthlyData.forEach(([month, row]) => {
     const monthName = new Date(month + '-01').toLocaleDateString(chfLoc, { year: 'numeric', month: 'long' });
-    csvContent += `${monthName},${row.income.toFixed(2)},${row.expenses.toFixed(2)},${row.balance.toFixed(2)}\n`;
+    csvContent += `${monthName},${money(row.income).toFixed(2)},${money(row.expenses).toFixed(2)},${money(row.balance).toFixed(2)}\n`;
   });
   csvContent += `\n`;
 
@@ -220,7 +240,7 @@ export const exportToCSV = (data: ReportData) => {
     csvContent += `${L.topSuppliers}\n`;
     csvContent += `${L.supplier},${L.amountChf}\n`;
     supplierData.forEach(([supplier, amount]) => {
-      csvContent += `"${supplier}",${amount.toFixed(2)}\n`;
+      csvContent += `"${String(supplier).replace(/"/g, '""')}",${money(amount).toFixed(2)}\n`;
     });
     csvContent += `\n`;
   }
@@ -228,25 +248,22 @@ export const exportToCSV = (data: ReportData) => {
   csvContent += `${L.incomeDetails}\n`;
   csvContent += `${L.date},${L.vendor},${L.type},${L.accountCode},${L.amountChf},${L.vatChf},${L.description}\n`;
   income.forEach((item) => {
-    csvContent += `${item.date},"${item.description || ''}",${incType(item.type)},${item.account_code || ''},${item.amount.toFixed(2)},${(item.vat_amount || 0).toFixed(2)},"${item.description || ''}"\n`;
+    const desc = String(item.description || '').replace(/"/g, '""');
+    csvContent += `${item.date},"${desc}",${incType(item.type)},${item.account_code || ''},${money(item.amount).toFixed(2)},${money(item.vat_amount).toFixed(2)},"${desc}"\n`;
   });
   csvContent += `\n`;
 
   csvContent += `${L.expenseDetails}\n`;
   csvContent += `${L.date},${L.vendor},${L.category},${L.accountCode},${L.amountChf},${L.vatChf},${L.description}\n`;
   expenses.forEach((item) => {
-    csvContent += `${item.date},"${item.description || ''}",${cat(item.category)},${item.account_code || ''},${item.amount.toFixed(2)},${(item.vat_amount || 0).toFixed(2)},"${item.description}"\n`;
+    const desc = String(item.description || '').replace(/"/g, '""');
+    csvContent += `${item.date},"${desc}",${cat(item.category)},${item.account_code || ''},${money(item.amount).toFixed(2)},${money(item.vat_amount).toFixed(2)},"${desc}"\n`;
   });
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', `${L.csvFilenameReport}_${new Date().toISOString().split('T')[0]}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  triggerBrowserDownload(
+    new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }),
+    `${L.csvFilenameReport}_${new Date().toISOString().split('T')[0]}.csv`
+  );
 };
 
 /**
@@ -315,15 +332,10 @@ export const exportSwissVatCSV = (data: ReportData, mode: SwissVatPeriodMode) =>
   csvContent += `400,${L.form400},${mapping.code400_inputVat.toFixed(2)}\n`;
   csvContent += `500,${L.form500},${mapping.code500_netVatPayable.toFixed(2)}\n`;
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', `${L.csvFilenameVat}_${modeLabel}_${new Date().toISOString().split('T')[0]}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  triggerBrowserDownload(
+    new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }),
+    `${L.csvFilenameVat}_${modeLabel}_${new Date().toISOString().split('T')[0]}.csv`
+  );
 };
 
 export const exportSwissVatPDF = async (data: ReportData, mode: SwissVatPeriodMode) => {
@@ -485,16 +497,10 @@ export const exportUkVatCSV = (data: ReportData, opts: UkVatExportOpts) => {
     `8,Total value of supplies ex VAT,${boxes.box8_totalValueSuppliesExVAT}`,
     `9,Total value of acquisitions ex VAT,${boxes.box9_totalValueAcquisitionsExVAT}`,
   ];
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', `UK_VAT_return_${boxes.periodStart}_${boxes.periodEnd}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  triggerBrowserDownload(
+    new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' }),
+    `UK_VAT_return_${boxes.periodStart}_${boxes.periodEnd}.csv`
+  );
 };
 
 export const exportUkVatPDF = async (data: ReportData, opts: UkVatExportOpts) => {
@@ -558,13 +564,8 @@ export const exportUkIncomeTaxCSV = (
     `Class 4 NI (estimate),${est.class4NiEstimate.toFixed(2)}`,
     `Total estimate,${est.totalEstimate.toFixed(2)}`,
   ];
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', `UK_income_tax_estimate_${taxYear}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  triggerBrowserDownload(
+    new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' }),
+    `UK_income_tax_estimate_${taxYear}.csv`
+  );
 };
