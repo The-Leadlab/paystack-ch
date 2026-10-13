@@ -737,10 +737,10 @@ export function RestaurantDashboard() {
   };
 
   const handleNavigateToDocument = (doc: ProcessedDocument) => {
-    // Open Verification center on the dashboard (not the Documents tab)
-    setActiveTab('dashboard');
+    // Open Verification Center on the Documents tab for the linked file
+    setSelectedDocumentFromFinance(doc);
     setOpenVerificationDocId(doc.id);
-    setSelectedDocumentFromFinance(null);
+    switchTab('documents');
   };
 
   const handleDocumentUpdated = async (documentId: string, newData: FinancialData) => {
@@ -1383,6 +1383,7 @@ export function RestaurantDashboard() {
               addExpense={addExpense}
               onDeleteDocument={handleDeleteDocument}
               onNavigateToDocument={handleNavigateToDocument}
+              onNavigateTab={switchTab}
               openVerificationDocId={openVerificationDocId}
               onOpenVerificationHandled={() => setOpenVerificationDocId(null)}
               onShowEmployeePanel={() => setShowEmployeePanel(true)}
@@ -1987,7 +1988,9 @@ function IncomeExpenseSection({
                 // View Mode — vendor + product lines (not just "Sales")
                 (() => {
                   const typeLabel = localizeLedgerCategory(
-                    isIncome ? item.type : item.category,
+                    isIncome
+                      ? item.ai_category || item.type
+                      : item.ai_category || item.category,
                     t
                   );
                   const { vendor, detail } = splitVendorAndProductDetail(
@@ -2146,37 +2149,42 @@ function useLiveClock(): string {
   return clock;
 }
 
-function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, onResyncLedger, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument, openVerificationDocId, onOpenVerificationHandled }: any) {
+function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, onResyncLedger, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument, onNavigateTab, openVerificationDocId, onOpenVerificationHandled }: any) {
   const liveClock = useLiveClock();
   const { fiscalLocale } = useUkUat();
   const moneyLocale = moneyLocaleForFiscal(fiscalLocale);
   const vatFlowBase = Math.max(vatReceived, vatPaid, Math.abs(vatBalance), 1);
+  const documentsCount = Array.isArray(documents) ? documents.length : 0;
 
-  const handleItemClick = (item: any) => {
-    if (!onNavigateToDocument) return;
-    if (item.document_id) {
-      const doc =
+  const resolveLinkedDocument = (item: any) => {
+    if (item?.document_id) {
+      const byId =
         documents.find((d: any) => d.id === item.document_id) ||
         documents.find((d: any) => d.persistedDocumentId === item.document_id);
-      if (doc) {
-        onNavigateToDocument(doc);
-        return;
-      }
+      if (byId) return byId;
     }
-    // Fallback: match by description ≈ issuer / fileName for older rows missing document_id
-    const needle = String(item.description || '').toLowerCase().trim();
-    if (needle.length >= 3) {
-      const fuzzy = documents.find((d: any) => {
+    const needle = String(item?.description || '').toLowerCase().trim();
+    if (needle.length < 3) return null;
+    return (
+      documents.find((d: any) => {
         const issuer = String(d.data?.issuer || '').toLowerCase();
         const name = String(d.fileName || '').toLowerCase();
         return (issuer && needle.includes(issuer.slice(0, 12))) || (name && needle.includes(name.slice(0, 12)));
-      });
-      if (fuzzy) {
-        onNavigateToDocument(fuzzy);
-        return;
-      }
+      }) || null
+    );
+  };
+
+  const handleItemClick = (item: any, listType: 'income' | 'expense') => {
+    const doc = resolveLinkedDocument(item);
+    if (doc && onNavigateToDocument) {
+      onNavigateToDocument(doc);
+      return;
     }
-    alert(t('alertDocumentNotFound'));
+    if (onNavigateTab) {
+      onNavigateTab(listType === 'income' ? 'revenue' : 'expenses');
+      return;
+    }
+    if (!doc) alert(t('alertDocumentNotFound'));
   };
 
   return (
@@ -2203,6 +2211,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                 icon={TrendingUp}
                 tone="green"
                 progressPct={(totalIncome / flowBase) * 100}
+                onClick={() => onNavigateTab?.('revenue')}
               />
               <BusinessKpiCard
                 label={t('expenses')}
@@ -2210,6 +2219,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                 icon={TrendingDown}
                 tone="red"
                 progressPct={(totalExpenses / flowBase) * 100}
+                onClick={() => onNavigateTab?.('expenses')}
               />
               <BusinessKpiCard
                 label={t('payroll')}
@@ -2217,6 +2227,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                 icon={Users}
                 tone="neutral"
                 progressPct={(totalPayroll / flowBase) * 100}
+                onClick={() => onNavigateTab?.('expenses')}
               />
               <BusinessKpiCard
                 label={t('balance')}
@@ -2224,10 +2235,11 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                 icon={DollarSign}
                 tone={balance >= 0 ? 'green' : 'red'}
                 progressPct={(Math.abs(balance) / flowBase) * 100}
+                onClick={() => onNavigateTab?.('reports')}
               />
             </div>
 
-            <div className="ba-kpi-grid-3" data-tour="biz-dashboard-vat">
+            <div className="ba-kpi-grid-4" data-tour="biz-dashboard-vat">
               <BusinessKpiCard
                 label={t('vatReceivedLabel')}
                 value={fmtKpi(vatReceived)}
@@ -2235,6 +2247,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                 icon={Receipt}
                 tone="blue"
                 progressPct={Math.min((vatReceived / vatFlowBase) * 100, 100)}
+                onClick={() => onNavigateTab?.('reports')}
               />
               <BusinessKpiCard
                 label={t('vatPaidLabel')}
@@ -2243,6 +2256,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                 icon={Receipt}
                 tone="neutral"
                 progressPct={Math.min((vatPaid / vatFlowBase) * 100, 100)}
+                onClick={() => onNavigateTab?.('reports')}
               />
               <BusinessKpiCard
                 label={t('vatBalanceLabel')}
@@ -2251,6 +2265,17 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                 icon={Receipt}
                 tone={vatBalance >= 0 ? 'green' : 'red'}
                 progressPct={Math.min((Math.abs(vatBalance) / vatFlowBase) * 100, 100)}
+                onClick={() => onNavigateTab?.('reports')}
+              />
+              <BusinessKpiCard
+                label={t('dashDocumentsKpi') || t('documents')}
+                value={String(documentsCount)}
+                hint={t('dashDocumentsKpiHint') || t('documentsLibraryTitle')}
+                icon={FileText}
+                tone="gold"
+                progressPct={Math.min(documentsCount * 5, 100)}
+                suffix=""
+                onClick={() => onNavigateTab?.('documents')}
               />
             </div>
           </>
@@ -2309,7 +2334,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           onUpdate={async (id, updates) => {
             await updateIncome(id, updates);
           }}
-          onItemClick={handleItemClick}
+          onItemClick={(item: any) => handleItemClick(item, 'income')}
           onDrop={async (item) => {
             // Convert expense to income
             console.log('=== INCOME DROP START ===');
@@ -2368,7 +2393,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           onUpdate={async (id, updates) => {
             await updateExpense(id, updates);
           }}
-          onItemClick={handleItemClick}
+          onItemClick={(item: any) => handleItemClick(item, 'expense')}
           onDrop={async (item) => {
             // Convert income to expense
             console.log('=== EXPENSE DROP START ===');
@@ -2455,11 +2480,7 @@ function ReportsPlaceholder({
   const [hmrcBusy, setHmrcBusy] = React.useState(false);
   const [hmrcMsg, setHmrcMsg] = React.useState<string | null>(null);
 
-  const categoryLabel = (cat: string) => {
-    const known = ['BILLS', 'SUPPLIERS', 'PAYROLL', 'PAYROLL_TAXES', 'OTHER'] as const;
-    if ((known as readonly string[]).includes(cat)) return t(cat);
-    return cat;
-  };
+  const categoryLabel = (cat: string) => localizeLedgerCategory(cat, t);
   const [dateFrom, setDateFrom] = React.useState('');
   const [dateTo, setDateTo] = React.useState('');
   const [filterActive, setFilterActive] = React.useState(false);
@@ -2525,7 +2546,9 @@ function ReportsPlaceholder({
   
   // Apply category filter
   if (categoryFilter !== 'all') {
-    dateFilteredExpenses = dateFilteredExpenses.filter(e => e.category === categoryFilter);
+    dateFilteredExpenses = dateFilteredExpenses.filter(
+      (e) => e.category === categoryFilter || e.ai_category === categoryFilter
+    );
   }
   
   // Apply supplier filter (description contains supplier name)

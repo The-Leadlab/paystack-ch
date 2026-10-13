@@ -12,6 +12,7 @@ const EXPENSE_CATEGORY_KONTO: Record<string, string> = {
   UTILITIES: "6400",
   INSURANCE: "6310",
   FOOD_SUPPLIES: "4200",
+  /** Soft drinks / beer / wine purchases — same merchandise class; description keywords refine */
   BEVERAGES: "4200",
   RESTAURANT_SUPPLIES: "4200",
   PACKAGING: "4205",
@@ -48,6 +49,10 @@ const DESCRIPTION_KONTO: [RegExp, string][] = [
   [/salaire|salary|lohn|payroll/i, "5200"],
   [/tva|vat|mwst/i, "1175"],
   [/assurance|insurance|krankenkasse/i, "6310"],
+  [/feldschlösschen|feldschloesschen|heineken|coca-?cola|valaisanne|bière|biere|beer|vin |wine|boisson/i, "4200"],
+  [/swisscom|sunrise|salt\.|upc cablecom|telecom|téléphone|telephone/i, "6510"],
+  [/fiduciaire|treuhand|comptable|accounting|expert-comptable/i, "6530"],
+  [/nettoyage|cleaning|hygiène|hygiene|javel|détergent|detergent/i, "6040"],
 ];
 
 export function suggestSwissAccountCode(input: {

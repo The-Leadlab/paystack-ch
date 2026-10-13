@@ -56,6 +56,12 @@ export const exportToExcel = (data: FinancialData[], fileNamePrefix: string, rep
       fileName: item.issuer || item.documentNumber || `Document ${idx + 1}`,
     });
     for (const line of lines) {
+      const docVat = Number(item.vatAmount) || 0;
+      const linesTotal = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+      const lineVat =
+        linesTotal > 0 && docVat > 0
+          ? ((Number(line.amount) || 0) / linesTotal) * docVat
+          : 0;
       itemRows.push({
         'Source / Issuer': line.issuer,
         Invoice: line.invoiceLabel,
@@ -64,6 +70,7 @@ export const exportToExcel = (data: FinancialData[], fileNamePrefix: string, rep
         Qty: line.quantity ?? '',
         'Unit price': line.unitPrice != null ? Number(line.unitPrice).toFixed(2) : '',
         [`Line amount (${reportingCurrency})`]: Number(line.amount).toFixed(2),
+        [`VAT Amount (${reportingCurrency})`]: lineVat.toFixed(2),
         Type: line.type || '',
         Category: line.category || '',
       });
@@ -80,6 +87,7 @@ export const exportToExcel = (data: FinancialData[], fileNamePrefix: string, rep
       { wch: 8 },
       { wch: 12 },
       { wch: 16 },
+      { wch: 14 },
       { wch: 10 },
       { wch: 18 },
     ];

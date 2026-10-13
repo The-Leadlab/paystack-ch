@@ -1102,12 +1102,12 @@ async function extractProductLineItemsPass(
   const issuer = String(base.issuer || '').trim();
   const date = String(base.date || '').trim();
   const currency = String(base.originalCurrency || 'CHF').trim() || 'CHF';
-  const category = String(base.expenseCategory || 'BEVERAGES').trim() || 'BEVERAGES';
+  const category = String(base.expenseCategory || 'FOOD_SUPPLIES').trim() || 'FOOD_SUPPLIES';
 
   const promptText = `You extract PRODUCT LINE ITEMS from a Swiss supplier invoice / delivery note (Bulletin de livraison / Lieferschein / Facture).
 ${hintSection}
 
-Context: issuer="${issuer}", date="${date}", currency="${currency}", document total ≈ ${Number(base.totalAmount || 0)}.
+Context: issuer="${issuer}", date="${date}", currency="${currency}", document total ≈ ${Number(base.totalAmount || 0)}, parent category="${category}".
 
 MANDATORY:
 1. Read EVERY page. Extract EVERY article/product/service row from item tables.
@@ -1117,7 +1117,7 @@ MANDATORY:
    - unitPrice = Prix
    - amount = Valeur (merchandise line value — NOT the whole invoice total)
    - type = EXPENSE
-   - category = "${category}" (or BEVERAGES / FOOD_SUPPLIES when obvious)
+   - category = classify EACH line as an accountant category: BEVERAGES for drinks/beer/wine/soft drinks; FOOD_SUPPLIES for food; PACKAGING for containers; CLEANING for hygiene products; otherwise inherit "${category}". Never use OTHER when a finer class fits.
    - date = "${date || 'invoice date YYYY-MM-DD'}"
 3. If Consigne (deposit) > 0 on a row, ALSO add a separate line: description "Consigne — {Désignation}", amount = Consigne, type EXPENSE, same category.
 4. Multiple "Commande" / "Bulletin de livraison" sections from the SAME supplier under ONE Montant final = still ONE list — include ALL article rows from ALL sections.
@@ -1809,7 +1809,7 @@ CRITICAL RULES:
 1. Identify document type accurately
 2. Determine if this is INCOME (revenue, sales, deposits) or EXPENSE (bills, invoices to pay, purchases)
 3. For INCOME documents: Set expenseCategory to "REVENUE" or "SALES"
-4. For EXPENSE documents: ALWAYS assign a precise category — NEVER use "OTHER" when you can classify. Prefer one of: FOOD_SUPPLIES, BEVERAGES, RESTAURANT_SUPPLIES, PACKAGING, CLEANING, MAINTENANCE, RENT, UTILITIES, INSURANCE, TELECOM, BANK_FEES, ACCOUNTING, MARKETING, DELIVERY, OFFICE_SUPPLIES, LICENSES, TAXES, PAYROLL, PAYROLL_TAXES, SUPPLIERS, BILLS. Use issuer name + line items to decide (e.g. Transgourmet/Aligro → FOOD_SUPPLIES; Swisscom → TELECOM; landlord → RENT).
+4. For EXPENSE documents: ALWAYS assign ONE precise accountant category — NEVER default to "OTHER", "SUPPLIERS", or "BILLS" when a finer class fits. Allowed values ONLY: FOOD_SUPPLIES, BEVERAGES, RESTAURANT_SUPPLIES, PACKAGING, CLEANING, MAINTENANCE, RENT, UTILITIES, INSURANCE, TELECOM, BANK_FEES, ACCOUNTING, MARKETING, DELIVERY, OFFICE_SUPPLIES, LICENSES, TAXES, PAYROLL, PAYROLL_TAXES. Use issuer + line items + document title. Examples: Transgourmet / Aligro / Prodega / Metro food → FOOD_SUPPLIES; Feldschlösschen / Heineken / Coca-Cola / Valaisanne / wine merchants → BEVERAGES; Swisscom / Sunrise / Salt → TELECOM; landlord / régie → RENT; SIG / Romande Energie / water → UTILITIES; fiduciary / Treuhand → ACCOUNTING; detergent / hygiene → CLEANING; cardboard / takeaway boxes → PACKAGING; kitchen equipment / crockery → RESTAURANT_SUPPLIES. Use SUPPLIERS or BILLS only if nothing more specific applies.
 5. Extract key financial data (amounts, printed dates, issuer). DATE RULE: date MUST be the date printed on the invoice/receipt/ticket (Facture du / Datum / Date / Invoice date), converted to YYYY-MM-DD. ${isUkFiscal ? "UK DD/MM/YYYY" : "Swiss DD.MM.YYYY"} → YYYY-MM-DD. NEVER use today's date, upload date, or processing date.
 6. For bank statements: extract ALL transactions into lineItems
 7. For payslips (bulletin de salaire / fiche de paie / Lohnabrechnung): read EVERY page and EVERY totals block (often at the bottom). Copy labeled totals exactly — see PAY SLIP RULES below.
@@ -1868,7 +1868,16 @@ CRITICAL RULES:
 43. PER-ITEM DETECTION (CRITICAL): For Invoice / Ticket/Receipt / Bulletin de livraison / Lieferschein, extract EVERY visible product or service line into lineItems (description, amount; quantity and unitPrice when printed). NEVER collapse an itemized invoice into a single lineItem equal to Montant final / Total TTC. If the PDF has an article table, returning only one total row is a hard failure.
 44. SWISS DELIVERY / BEVERAGE TABLES: Columns often include Article, Désignation, Contenu, Quantité, Unité, Prix, Valeur, TVA, Consigne. One lineItem per article row: description=Désignation, quantity=package count when clear, unitPrice=Prix, amount=Valeur. If Consigne>0, also add "Consigne — {Désignation}" as a separate EXPENSE line with amount=Consigne. Include recycling tax / logistics / eco-tax footer lines as their own lineItems. Skip sous-total and total rows.
 45. SAME-SUPPLIER COMMANDE BLOCKS: Multiple "Commande" / "Bulletin de livraison" sections from the SAME issuer under ONE Montant final = ONE invoice. Put ALL article rows into top-level lineItems (and into that single subDocument.lineItems if you emit one sub). Do NOT create one subDocuments entry per Commande unless each block is a separately payable invoice with its own total due.
-46. CATEGORY HINT: Beverage wholesalers (Feldschlösschen, Heineken, Coca-Cola, Valaisanne, etc.) → expenseCategory BEVERAGES; food wholesalers → FOOD_SUPPLIES.
+46. ACCOUNTANT CATEGORY MATRIX (expenseCategory — pick the single best; never collapse everything to FOOD/OTHER):
+   - FOOD_SUPPLIES: meat, fish, produce, dairy, bakery, dry goods, spices, oil, Transgourmet, Aligro, Prodega, Demaurex, butcher, fishmonger.
+   - BEVERAGES: beer, wine, spirits, soft drinks, coffee beans, water crates, Feldschlösschen, Heineken, Coca-Cola, Valaisanne, Castel, wine négociants.
+   - RESTAURANT_SUPPLIES: crockery, cutlery, glassware, kitchen tools, small equipment (not food).
+   - PACKAGING: boxes, bags, foil, takeaway containers, napkin packs sold as packaging.
+   - CLEANING: detergents, bleach, hygiene paper for cleaning, pest control chemicals.
+   - MAINTENANCE: repairs, plumber, electrician, fridge service, oven repair.
+   - RENT / UTILITIES / INSURANCE / TELECOM / BANK_FEES / ACCOUNTING / MARKETING / DELIVERY / OFFICE_SUPPLIES / LICENSES / TAXES / PAYROLL / PAYROLL_TAXES: as named.
+   - Mixed food+beverage invoice: choose the dominant merchandise value; if roughly equal, prefer FOOD_SUPPLIES and note both in aiInterpretation.
+   - NEVER invent a category outside the allowed list.
 
 INCOME vs EXPENSE Detection:
 - INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings, and invoices ISSUED BY the account holder's own business (issuer/letterhead matches OWN BUSINESS IDENTITY in the user hint — usually top or left of the page). For those, set expenseCategory to "REVENUE" / "SALES".

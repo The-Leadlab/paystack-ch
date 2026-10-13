@@ -1,6 +1,6 @@
 import type { Expense, FinancialData, Income } from '../types';
 import { DocumentType } from '../types';
-import { mapAiExpenseCategoryToLedger } from './mapExpenseCategory';
+import { mapAiExpenseCategoryToLedger, resolveFineExpenseCategory } from './mapExpenseCategory';
 import {
   buildPayrollExpenseLines,
   resolvePayrollSettlementMode,
@@ -28,7 +28,8 @@ type LedgerWriters = {
     sessionId: string,
     documentId?: string,
     vatAmount?: number,
-    accountCode?: string
+    accountCode?: string,
+    aiCategory?: string
   ) => Promise<Income | null>;
   addExpense: (
     date: string,
@@ -39,7 +40,8 @@ type LedgerWriters = {
     employeeId?: string,
     documentId?: string,
     vatAmount?: number,
-    accountCode?: string
+    accountCode?: string,
+    aiCategory?: string
   ) => Promise<Expense | null>;
   /** Preferred for CSV / bank statements — avoids live UI count spam. */
   addLedgerEntriesBatch?: (
@@ -146,6 +148,8 @@ async function postSingleAmount(
       ? `${vendorName} — ${productHint}`
       : `${vendorName} — ${fallbackProduct}`;
     const code = resolveAccountCode(data, { kind: 'income', description });
+    const fineIncome =
+      incomeType === 'RESERVATION' ? 'RESERVATION' : 'SALES';
     await writers.addIncome(
       date,
       incomeType,
@@ -154,7 +158,8 @@ async function postSingleAmount(
       sessionId,
       documentId,
       vatAmount,
-      code
+      code,
+      fineIncome
     );
     return 'income';
   }
@@ -163,10 +168,17 @@ async function postSingleAmount(
     ? `${vendorName} — ${productHint}`
     : vendorName;
 
-  const category = mapAiExpenseCategoryToLedger({
+  const fineCategory = resolveFineExpenseCategory({
     expenseCategory: data.expenseCategory,
     issuer: data.issuer,
-    description: description,
+    description,
+    notes: data.notes,
+    documentType: data.documentType,
+  });
+  const category = mapAiExpenseCategoryToLedger({
+    expenseCategory: fineCategory,
+    issuer: data.issuer,
+    description,
     notes: data.notes,
     documentType: data.documentType,
   });
@@ -183,13 +195,18 @@ async function postSingleAmount(
         undefined,
         documentId,
         vatAmount / splits.length,
-        split.account_code
+        split.account_code,
+        fineCategory
       );
     }
     return 'expense';
   }
 
-  const code = resolveAccountCode(data, { kind: 'expense', category, description });
+  const code = resolveAccountCode(data, {
+    kind: 'expense',
+    category: fineCategory || category,
+    description,
+  });
   await writers.addExpense(
     date,
     category,
@@ -199,7 +216,8 @@ async function postSingleAmount(
     undefined,
     documentId,
     vatAmount,
-    code
+    code,
+    fineCategory
   );
   return 'expense';
 }
@@ -240,6 +258,7 @@ export async function postLedgerFromFinancialData(
           documentId,
           vatAmount: 0,
           accountCode: code,
+          aiCategory: incomeTypeFromCategory(item.category),
         });
       } else if (item.type === 'EXPENSE') {
         const description =
@@ -247,13 +266,23 @@ export async function postLedgerFromFinancialData(
           item.description ||
           data.issuer ||
           fileName;
-        const category = mapAiExpenseCategoryToLedger({
+        const fineCategory = resolveFineExpenseCategory({
           expenseCategory: item.category || item.description,
           issuer: data.issuer,
           description: item.description,
           documentType: docType,
         });
-        const code = resolveAccountCode(data, { kind: 'expense', category, description });
+        const category = mapAiExpenseCategoryToLedger({
+          expenseCategory: fineCategory,
+          issuer: data.issuer,
+          description: item.description,
+          documentType: docType,
+        });
+        const code = resolveAccountCode(data, {
+          kind: 'expense',
+          category: fineCategory || category,
+          description,
+        });
         expenseDrafts.push({
           date: lineDate,
           category,
@@ -263,6 +292,7 @@ export async function postLedgerFromFinancialData(
           documentId,
           vatAmount: 0,
           accountCode: code,
+          aiCategory: fineCategory,
         });
       }
     }
@@ -292,7 +322,8 @@ export async function postLedgerFromFinancialData(
           draft.employeeId,
           draft.documentId,
           draft.vatAmount,
-          draft.accountCode
+          draft.accountCode,
+          draft.aiCategory
         );
       }
     }
@@ -348,7 +379,8 @@ export async function postLedgerFromFinancialData(
           undefined,
           documentId,
           undefined,
-          code
+          code,
+          line.category
         );
         expensePosted += 1;
       }

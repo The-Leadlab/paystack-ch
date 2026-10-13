@@ -31,6 +31,7 @@ export type LedgerIncomeDraft = {
   documentId?: string;
   vatAmount?: number;
   accountCode?: string;
+  aiCategory?: string;
 };
 
 export type LedgerExpenseDraft = {
@@ -43,6 +44,7 @@ export type LedgerExpenseDraft = {
   documentId?: string;
   vatAmount?: number;
   accountCode?: string;
+  aiCategory?: string;
 };
 
 /** Prefer camelCase Firestore field; accept legacy snake_case so KPIs don't drop to 0. */
@@ -66,6 +68,7 @@ function docToIncome(id: string, data: any): Income {
     vat_amount: data.vatAmount || 0,
     description: data.description,
     account_code: data.accountCode || undefined,
+    ai_category: data.aiCategory || undefined,
     document_id: data.documentId,
     created_at: data.createdAt?.toDate?.()?.toISOString?.() ?? new Date().toISOString(),
   };
@@ -82,6 +85,7 @@ function docToExpense(id: string, data: any): Expense {
     vat_amount: data.vatAmount || 0,
     description: data.description,
     account_code: data.accountCode || undefined,
+    ai_category: data.aiCategory || undefined,
     employee_id: data.employeeId,
     document_id: data.documentId,
     created_at: data.createdAt?.toDate?.()?.toISOString?.() ?? new Date().toISOString(),
@@ -93,8 +97,8 @@ type FinanceContextValue = {
   expenses: Expense[];
   loading: boolean;
   error: string | null;
-  addIncome: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number, accountCode?: string) => Promise<Income | null>;
-  addExpense: (date: string, category: Expense['category'], amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number, accountCode?: string) => Promise<Expense | null>;
+  addIncome: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number, accountCode?: string, aiCategory?: string) => Promise<Income | null>;
+  addExpense: (date: string, category: Expense['category'], amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number, accountCode?: string, aiCategory?: string) => Promise<Expense | null>;
   /** Bulk write for CSV / bank-statement imports — one UI update after all rows land. */
   addLedgerEntriesBatch: (
     incomeDrafts: LedgerIncomeDraft[],
@@ -163,7 +167,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   }, [fetchFinances]);
 
   const addIncome = useCallback(
-    async (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number, accountCode?: string): Promise<Income | null> => {
+    async (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number, accountCode?: string, aiCategory?: string): Promise<Income | null> => {
       const uid = dataOwnerUid;
       if (!uid || !canWrite || !db) {
         console.error('addIncome failed: No user or database');
@@ -191,6 +195,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           vatAmount: vatAmount || 0,
           description: description || '',
           accountCode: resolvedAccountCode || null,
+          aiCategory: aiCategory || null,
           documentId: documentId || null,
           createdAt: serverTimestamp(),
         });
@@ -204,6 +209,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           vat_amount: vatAmount || 0,
           description,
           account_code: resolvedAccountCode,
+          ai_category: aiCategory,
           document_id: documentId,
           created_at: new Date().toISOString(),
         };
@@ -220,7 +226,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addExpense = useCallback(
-    async (date: string, category: Expense['category'], amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number, accountCode?: string): Promise<Expense | null> => {
+    async (date: string, category: Expense['category'], amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number, accountCode?: string, aiCategory?: string): Promise<Expense | null> => {
       const uid = dataOwnerUid;
       if (!uid || !canWrite || !db) {
         console.error('addExpense failed: No user or database');
@@ -235,7 +241,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           accountCode ||
           suggestSwissAccountCode({
             kind: 'expense',
-            category,
+            category: aiCategory || category,
             description,
           });
         const ref = await addDoc(collection(db, EXPENSE_COLLECTION), {
@@ -247,6 +253,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           vatAmount: vatAmount || 0,
           description,
           accountCode: resolvedAccountCode || null,
+          aiCategory: aiCategory || null,
           employeeId: employeeId || null,
           documentId: documentId || null,
           createdAt: serverTimestamp(),
@@ -261,6 +268,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           vat_amount: vatAmount || 0,
           description,
           account_code: resolvedAccountCode,
+          ai_category: aiCategory,
           employee_id: employeeId,
           document_id: documentId,
           created_at: new Date().toISOString(),
@@ -313,6 +321,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           vatAmount: draft.vatAmount || 0,
           description: draft.description || '',
           accountCode: resolvedAccountCode || null,
+          aiCategory: draft.aiCategory || null,
           documentId: draft.documentId || null,
           createdAt: serverTimestamp(),
         };
@@ -326,6 +335,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           vat_amount: draft.vatAmount || 0,
           description: draft.description,
           account_code: resolvedAccountCode,
+          ai_category: draft.aiCategory,
           document_id: draft.documentId,
           created_at: new Date().toISOString(),
         };
@@ -339,7 +349,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           draft.accountCode ||
           suggestSwissAccountCode({
             kind: 'expense',
-            category: draft.category,
+            category: draft.aiCategory || draft.category,
             description: draft.description,
           });
         const ref = doc(collection(db, EXPENSE_COLLECTION));
@@ -352,6 +362,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           vatAmount: draft.vatAmount || 0,
           description: draft.description,
           accountCode: resolvedAccountCode || null,
+          aiCategory: draft.aiCategory || null,
           employeeId: draft.employeeId || null,
           documentId: draft.documentId || null,
           createdAt: serverTimestamp(),
@@ -366,6 +377,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           vat_amount: draft.vatAmount || 0,
           description: draft.description,
           account_code: resolvedAccountCode,
+          ai_category: draft.aiCategory,
           employee_id: draft.employeeId,
           document_id: draft.documentId,
           created_at: new Date().toISOString(),
@@ -488,6 +500,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       if (updates.session_id !== undefined) updateData.sessionId = updates.session_id;
       if (updates.document_id !== undefined) updateData.documentId = updates.document_id;
       if (updates.account_code !== undefined) updateData.accountCode = updates.account_code || null;
+      if (updates.ai_category !== undefined) updateData.aiCategory = updates.ai_category || null;
       
       await updateDoc(docRef(db, INCOME_COLLECTION, id), updateData);
       
@@ -514,6 +527,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       if (updates.employee_id !== undefined) updateData.employeeId = updates.employee_id;
       if (updates.document_id !== undefined) updateData.documentId = updates.document_id;
       if (updates.account_code !== undefined) updateData.accountCode = updates.account_code || null;
+      if (updates.ai_category !== undefined) updateData.aiCategory = updates.ai_category || null;
       
       await updateDoc(docRef(db, EXPENSE_COLLECTION, id), updateData);
       

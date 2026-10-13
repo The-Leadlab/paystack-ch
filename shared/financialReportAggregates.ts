@@ -6,6 +6,7 @@ export type ReportIncomeRow = {
   description?: string;
   type?: string;
   account_code?: string;
+  ai_category?: string;
   document_id?: string;
 };
 
@@ -17,6 +18,8 @@ export type ReportExpenseRow = {
   description?: string;
   category?: string;
   account_code?: string;
+  /** Fine AI category (FOOD_SUPPLIES, BEVERAGES, …) preferred in reports */
+  ai_category?: string;
   document_id?: string;
 };
 
@@ -132,7 +135,7 @@ export function buildLedgerRows(
       id: item.id ? `in-${item.id}` : `in-${item.date}-${item.description}-${item.amount}-${idx}`,
       date: item.date,
       vendor: canonicalizeSupplierKey(item.description, "—"),
-      category: labelIncomeType(item.type || "SALES"),
+      category: labelIncomeType(item.ai_category || item.type || "SALES"),
       account: item.account_code || "—",
       amount: Number(item.amount || 0),
       vat: Number(item.vat_amount || 0),
@@ -144,7 +147,7 @@ export function buildLedgerRows(
       id: item.id ? `ex-${item.id}` : `ex-${item.date}-${item.description}-${item.amount}-${idx}`,
       date: item.date,
       vendor: canonicalizeSupplierKey(item.description, "—"),
-      category: labelCategory(item.category || "OTHER"),
+      category: labelCategory(item.ai_category || item.category || "OTHER"),
       account: item.account_code || "—",
       amount: -Number(item.amount || 0),
       vat: Number(item.vat_amount || 0),

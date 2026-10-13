@@ -265,6 +265,9 @@ export const exportFinancialReportExcel = (data: ReportData) => {
     .filter((e) => e.category === 'PAYROLL')
     .reduce((sum, e) => sum + money(e.amount), 0);
   const balance = totalIncome - totalExpenses - totalPayroll;
+  const vatReceived = income.reduce((sum, i) => sum + money(i.vat_amount), 0);
+  const vatPaid = expenses.reduce((sum, e) => sum + money(e.vat_amount), 0);
+  const vatBalance = vatReceived - vatPaid;
 
   const summaryRows: Array<Array<string | number>> = [
     [L.financialReport, sessionName || L.allSessions],
@@ -276,6 +279,11 @@ export const exportFinancialReportExcel = (data: ReportData) => {
     [L.totalExpenses, round2(totalExpenses), currency],
     ['Payroll (net)', round2(totalPayroll), currency],
     [L.balance, round2(balance), currency],
+    [],
+    [L.vatSummary, ''],
+    [L.vatReceived, round2(vatReceived), currency, L.fromCustomers],
+    [L.vatPaid, round2(vatPaid), currency, L.onExpenses],
+    [L.vatBalance, round2(vatBalance), currency, vatBalance >= 0 ? L.toPay : L.refund],
   ];
 
   const monthlyRows: Array<Array<string | number>> = [
@@ -343,7 +351,8 @@ export const exportFinancialReportExcel = (data: ReportData) => {
     ],
   ];
   expenses.forEach((item) => {
-    const categoryLabel = cat(item.category);
+    const fineOrLedger = (item as { ai_category?: string }).ai_category || item.category;
+    const categoryLabel = cat(fineOrLedger);
     const { vendor, detail } = splitVendorAndProductDetail(
       item.description,
       `${categoryLabel} — purchase / expense`
@@ -394,6 +403,7 @@ export const exportFinancialReportExcel = (data: ReportData) => {
       L.quantity,
       L.unitPrice,
       L.lineAmount,
+      `${L.vatChf.replace('(CHF)', `(${currency})`)}`,
       L.type,
       L.category,
     ],
@@ -401,9 +411,15 @@ export const exportFinancialReportExcel = (data: ReportData) => {
   for (const doc of docs) {
     if (!doc?.data) continue;
     const lines = collectProductLinesFromDocument(doc);
+    const docVat = money(doc.data.vatAmount);
+    const linesTotal = lines.reduce((s, l) => s + money(l.amount), 0);
     for (const line of lines) {
       if (dateFrom && line.date && line.date < dateFrom) continue;
       if (dateTo && line.date && line.date > dateTo) continue;
+      const lineVat =
+        linesTotal > 0 && docVat > 0
+          ? round2((money(line.amount) / linesTotal) * docVat)
+          : 0;
       itemRows.push([
         line.fileName,
         line.issuer,
@@ -413,6 +429,7 @@ export const exportFinancialReportExcel = (data: ReportData) => {
         line.quantity ?? '',
         line.unitPrice != null ? round2(line.unitPrice) : '',
         round2(line.amount),
+        lineVat,
         line.type || '',
         line.category || '',
       ]);

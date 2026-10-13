@@ -1,5 +1,7 @@
 /** Localize ledger category codes and known English payroll description prefixes. */
 
+import { EXPENSE_CAT_KEYS } from '../i18n/expenseCategoryI18n';
+
 const LEDGER_KEYS = [
   'SALES',
   'RESERVATION',
@@ -20,12 +22,18 @@ function fill(template: string, params: Record<string, string>): string {
   return out;
 }
 
-/** Translate income type / expense category codes (SALES → Ventes, etc.). */
+/** Translate income type / expense category codes (SALES → Ventes, FOOD_SUPPLIES → …). */
 export function localizeLedgerCategory(raw: string | undefined, t: TFn): string {
   if (!raw) return '';
-  if ((LEDGER_KEYS as readonly string[]).includes(raw)) return t(raw);
-  const translated = t(raw);
-  return translated !== raw ? translated : raw;
+  const code = raw.toUpperCase().replace(/[\s-]+/g, '_');
+  if ((LEDGER_KEYS as readonly string[]).includes(code)) return t(code);
+  const fineKey = EXPENSE_CAT_KEYS[code];
+  if (fineKey) {
+    const labeled = t(fineKey);
+    if (labeled && labeled !== fineKey) return labeled;
+  }
+  const translated = t(code);
+  return translated !== code ? translated : raw;
 }
 
 /**

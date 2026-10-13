@@ -102,6 +102,67 @@ function includesAny(text: string, hints: string[]): boolean {
   return hints.some((h) => text.includes(h));
 }
 
+const FINE_CATEGORY_IDS = new Set([
+  'FOOD_SUPPLIES',
+  'BEVERAGES',
+  'RESTAURANT_SUPPLIES',
+  'PACKAGING',
+  'CLEANING',
+  'MAINTENANCE',
+  'RENT',
+  'UTILITIES',
+  'INSURANCE',
+  'TELECOM',
+  'BANK_FEES',
+  'ACCOUNTING',
+  'MARKETING',
+  'DELIVERY',
+  'OFFICE_SUPPLIES',
+  'LICENSES',
+  'TAXES',
+  'PAYROLL',
+  'PAYROLL_TAXES',
+  'SALARY',
+  'SUPPLIERS',
+  'BILLS',
+]);
+
+/**
+ * Resolve the accountant-level fine category (FOOD_SUPPLIES, RENT, …)
+ * before collapsing to the 5-way ledger enum. Used for reports + Swiss konto.
+ */
+export function resolveFineExpenseCategory(opts: {
+  expenseCategory?: string | null;
+  issuer?: string | null;
+  description?: string | null;
+  notes?: string | null;
+  documentType?: string | null;
+}): string {
+  if (opts.documentType?.toLowerCase().includes('pay')) return 'PAYROLL';
+
+  const raw = (opts.expenseCategory || '').toUpperCase().replace(/[\s-]+/g, '_').trim();
+  if (raw === 'REVENUE' || raw === 'SALES' || raw.includes('RESERV')) return raw;
+  if (FINE_CATEGORY_IDS.has(raw) && raw !== 'OTHER') return raw === 'SALARY' ? 'PAYROLL' : raw;
+
+  const detected = detectCategory(
+    `${opts.description || ''} ${opts.notes || ''} ${opts.expenseCategory || ''}`,
+    opts.issuer || undefined
+  );
+  if (detected && detected !== 'OTHER') return detected === 'SALARY' ? 'PAYROLL' : detected;
+
+  const blob = haystack(opts.expenseCategory, opts.issuer, opts.description, opts.notes, opts.documentType);
+  if (includesAny(blob, PAYROLL_TAX_HINTS)) return 'PAYROLL_TAXES';
+  if (includesAny(blob, PAYROLL_HINTS)) return 'PAYROLL';
+  if (includesAny(blob, SUPPLIER_HINTS)) return 'SUPPLIERS';
+  if (includesAny(blob, BILL_HINTS)) return 'BILLS';
+
+  const dtype = (opts.documentType || '').toLowerCase();
+  if (dtype.includes('invoice') || dtype.includes('facture') || dtype.includes('receipt')) {
+    return 'SUPPLIERS';
+  }
+  return 'OTHER';
+}
+
 /**
  * Prefer fine AI category, then issuer/description heuristics.
  * OTHER is the fallback exception — not the default for restaurant suppliers/bills.
@@ -113,49 +174,7 @@ export function mapAiExpenseCategoryToLedger(opts: {
   notes?: string | null;
   documentType?: string | null;
 }): LedgerExpenseCategory {
-  const cat = (opts.expenseCategory || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
-  const blob = haystack(opts.expenseCategory, opts.issuer, opts.description, opts.notes, opts.documentType);
-
-  if (opts.documentType?.toLowerCase().includes('pay')) return 'PAYROLL';
-
-  // Fine AI categories (FOOD_SUPPLIES, RENT, …) → ledger enum first
-  const fromFine = mapFineCategoryToLedger((opts.expenseCategory || '').toUpperCase().replace(/\s+/g, '_'));
-  if (fromFine !== 'OTHER') return fromFine;
-
-  if (includesAny(cat, PAYROLL_TAX_HINTS) || includesAny(blob, PAYROLL_TAX_HINTS)) {
-    return 'PAYROLL_TAXES';
-  }
-  if (includesAny(cat, PAYROLL_HINTS) || includesAny(blob, PAYROLL_HINTS)) {
-    return 'PAYROLL';
-  }
-  if (includesAny(cat, SUPPLIER_HINTS) || includesAny(blob, SUPPLIER_HINTS)) {
-    return 'SUPPLIERS';
-  }
-  if (includesAny(cat, BILL_HINTS) || includesAny(blob, BILL_HINTS)) {
-    return 'BILLS';
-  }
-
-  // Exact coarse enums from AI
-  if (cat === 'suppliers' || cat === 'supplier') return 'SUPPLIERS';
-  if (cat === 'bills' || cat === 'bill') return 'BILLS';
-  if (cat === 'payroll') return 'PAYROLL';
-  if (cat === 'payroll taxes' || cat === 'payroll_taxes') return 'PAYROLL_TAXES';
-
-  // Keyword detector on issuer + description before OTHER
-  const detected = detectCategory(
-    `${opts.description || ''} ${opts.notes || ''}`,
-    opts.issuer || undefined
-  );
-  const fromDetector = mapFineCategoryToLedger(detected);
-  if (fromDetector !== 'OTHER') return fromDetector;
-
-  // Restaurant default: supplier invoice when document looks like a purchase invoice
-  const dtype = (opts.documentType || '').toLowerCase();
-  if (dtype.includes('invoice') || dtype.includes('facture') || dtype.includes('receipt')) {
-    return 'SUPPLIERS';
-  }
-
-  return 'OTHER';
+  return mapFineCategoryToLedger(resolveFineExpenseCategory(opts));
 }
 
 function mapFineCategoryToLedger(fine: string): LedgerExpenseCategory {

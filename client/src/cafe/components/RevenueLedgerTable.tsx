@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, FileText } from "lucide-react";
 import type { Expense, Income, ProcessedDocument } from "../types";
 import { buildLedgerRows, type LedgerRow } from "@shared/financialReportAggregates";
 import { useChfLocale, useLanguage } from "../context/LanguageContext";
-import { localizeLedgerDescription } from "../lib/localizeLedgerCopy";
+import { localizeLedgerCategory, localizeLedgerDescription } from "../lib/localizeLedgerCopy";
 import {
   formatProductLinesPreview,
   productLinesForLedgerEntry,
@@ -46,19 +46,7 @@ export function RevenueLedgerTable({
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const categoryLabel = (cat: string) => {
-    const known = [
-      "SALES",
-      "RESERVATION",
-      "BILLS",
-      "SUPPLIERS",
-      "PAYROLL",
-      "PAYROLL_TAXES",
-      "OTHER",
-    ] as const;
-    if ((known as readonly string[]).includes(cat)) return t(cat);
-    return cat;
-  };
+  const categoryLabel = (cat: string) => localizeLedgerCategory(cat, t);
 
   const allRows = buildLedgerRows(
     expensesOnly ? [] : income,

@@ -37,8 +37,10 @@ const CATEGORY_RULES: CategoryKeywords[] = [
       'food', 'nourriture', 'aliment', 'viande', 'meat', 'poisson', 'fish', 'légume', 'vegetable',
       'fruit', 'pain', 'bread', 'fromage', 'cheese', 'épice', 'spice', 'huile', 'oil',
       'farine', 'flour', 'sucre', 'sugar', 'sel', 'salt', 'grocery', 'groceries',
-      'valigro', 'transgourmet', 'metro', 'cash', 'makro', 'sysco',
-      'filet', 'brochette', 'saumon', 'salmon', 'boeuf', 'beef', 'poulet', 'chicken'
+      'aligro', 'valigro', 'transgourmet', 'prodega', 'demaurex', 'metro', 'cash', 'makro', 'sysco',
+      'filet', 'brochette', 'saumon', 'salmon', 'boeuf', 'beef', 'poulet', 'chicken',
+      'boucherie', 'charcuterie', 'poissonnerie', 'boulangerie', 'pâtisserie', 'patisserie',
+      'marchandise alimentaire', 'denrées', 'ingrédient', 'ingredient'
     ],
     priority: 9
   },
@@ -46,9 +48,12 @@ const CATEGORY_RULES: CategoryKeywords[] = [
     category: 'BEVERAGES',
     keywords: [
       'beverage', 'boisson', 'drink', 'wine', 'vin', 'beer', 'bière', 'bier',
-      'coffee', 'café', 'tea', 'thé', 'juice', 'jus', 'water', 'eau',
-      'soda', 'soft drink', 'alcohol', 'alcool', 'liquor', 'spirits',
-      'pale ale', 'lager', 'ipa', 'stout', 'champagne', 'prosecco'
+      'coffee', 'café', 'tea', 'thé', 'juice', 'jus', 'soda', 'soft drink',
+      'alcohol', 'alcool', 'liquor', 'spirits', 'spiritueux', 'liqueur',
+      'pale ale', 'lager', 'ipa', 'stout', 'champagne', 'prosecco', 'cidre', 'cider',
+      'feldschlösschen', 'feldschloesschen', 'heineken', 'coca-cola', 'coca cola', 'valaisanne',
+      'castel', 'carlsberg', 'schweppes', 'red bull', 'sanpellegrino', 'san pellegrino',
+      'négociant', 'negociant', 'cave ', 'brasserie', 'brewery', 'fût', 'fut ', 'crate'
     ],
     priority: 9
   },

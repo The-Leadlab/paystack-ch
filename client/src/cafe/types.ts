@@ -38,6 +38,8 @@ export interface Income {
   description?: string;
   /** Plan comptable CH konto (e.g. 3200, 1020) */
   account_code?: string;
+  /** Fine AI / accountant category (e.g. SALES, FOOD_SUPPLIES) for reports */
+  ai_category?: string;
   document_id?: string; // Link to source document
   created_at: string;
 }
@@ -53,6 +55,11 @@ export interface Expense {
   description: string;
   /** Plan comptable CH konto (e.g. 4200, 1500) */
   account_code?: string;
+  /**
+   * Fine restaurant category from AI (FOOD_SUPPLIES, BEVERAGES, RENT, …).
+   * Ledger `category` stays the 5-way rollup; reports prefer this when set.
+   */
+  ai_category?: string;
   employee_id?: string;
   document_id?: string; // Link to source document
   created_at: string;
