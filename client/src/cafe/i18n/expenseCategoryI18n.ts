@@ -23,10 +23,12 @@ export const EXPENSE_CAT_KEYS: Record<string, string> = {
   LICENSES: 'catLicenses',
   TAXES: 'catTaxes',
   OTHER: 'catOther',
-  /** Sales ticket product lines (revenue mix) */
-  SALES_FOOD: 'catSalesFood',
-  SALES_BEVERAGES: 'catSalesBeverages',
-  SALES_OTHER: 'catSalesOther',
+  /** Aliases → same dashboard labels */
+  SALES_FOOD: 'catFoodSupplies',
+  SALES_BEVERAGES: 'catBeverages',
+  SALES_OTHER: 'catOther',
+  FOOD: 'catFoodSupplies',
+  BEVERAGE: 'catBeverages',
   SALES: 'SALES',
 };
 
