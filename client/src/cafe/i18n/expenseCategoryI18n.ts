@@ -23,6 +23,11 @@ export const EXPENSE_CAT_KEYS: Record<string, string> = {
   LICENSES: 'catLicenses',
   TAXES: 'catTaxes',
   OTHER: 'catOther',
+  /** Sales ticket product lines (revenue mix) */
+  SALES_FOOD: 'catSalesFood',
+  SALES_BEVERAGES: 'catSalesBeverages',
+  SALES_OTHER: 'catSalesOther',
+  SALES: 'SALES',
 };
 
 export const EXPENSE_GROUP_KEYS: Record<string, string> = {

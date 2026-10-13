@@ -431,7 +431,7 @@ export const exportFinancialReportExcel = (data: ReportData) => {
         round2(line.amount),
         lineVat,
         line.type || '',
-        line.category || '',
+        cat(line.category || 'OTHER'),
       ]);
     }
   }

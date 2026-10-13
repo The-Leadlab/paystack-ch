@@ -1,4 +1,5 @@
 import type { BankTransaction, FinancialData, ProcessedDocument } from '../types';
+import { normalizeLineItemCategory } from '../services/categoryDetectionService';
 
 export type DocumentProductLine = {
   documentId: string;
@@ -13,6 +14,20 @@ export type DocumentProductLine = {
   type: string;
   category: string;
 };
+
+function lineCategory(
+  item: { category?: string; description?: string; type?: string },
+  data: FinancialData,
+  subCategory?: string
+): string {
+  return normalizeLineItemCategory({
+    category: item.category || subCategory || data.expenseCategory,
+    description: item.description,
+    type: item.type,
+    parentCategory: subCategory || data.expenseCategory,
+    documentType: data.documentType,
+  });
+}
 
 function isLikelyRollupOnly(items: BankTransaction[], invoiceCount: number): boolean {
   if (invoiceCount <= 1) return false;
@@ -55,25 +70,30 @@ export function collectProductLinesFromFinancialData(
                 : null,
             amount,
             type: String(item.type || ''),
-            category: String(item.category || sub.expenseCategory || data.expenseCategory || ''),
+            category: lineCategory(item, data, sub.expenseCategory),
           });
         }
       } else {
         // No nested products — still emit one row for the invoice total so reports aren't empty.
         const amount = Number(sub.amountInCHF ?? sub.totalAmount ?? 0) || 0;
         if (amount > 0 || sub.issuer) {
+          const description = String(sub.notes || sub.issuer || invoiceLabel).trim() || invoiceLabel;
           rows.push({
             documentId: meta.documentId,
             fileName: meta.fileName,
             issuer,
             invoiceLabel,
             date: sub.date || data.date || '',
-            description: String(sub.notes || sub.issuer || invoiceLabel).trim() || invoiceLabel,
+            description,
             quantity: null,
             unitPrice: null,
             amount,
             type: 'INCOME',
-            category: String(sub.expenseCategory || data.expenseCategory || ''),
+            category: lineCategory(
+              { category: sub.expenseCategory, description, type: 'INCOME' },
+              data,
+              sub.expenseCategory
+            ),
           });
         }
       }
@@ -98,7 +118,7 @@ export function collectProductLinesFromFinancialData(
         item.unitPrice != null && Number.isFinite(Number(item.unitPrice)) ? Number(item.unitPrice) : null,
       amount,
       type: String(item.type || ''),
-      category: String(item.category || data.expenseCategory || ''),
+      category: lineCategory(item, data),
     });
   }
   return rows;

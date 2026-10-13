@@ -25,7 +25,11 @@ import {
   renderPdfPagesToJpegFiles,
   shouldSplitPdfToPageImages,
 } from "../lib/pdfPagesToImages";
-import { inferLineItemType, matchLineItemTypeFromAi } from "./categoryDetectionService";
+import {
+  inferLineItemType,
+  matchLineItemTypeFromAi,
+  normalizeLineItemCategory,
+} from "./categoryDetectionService";
 import { getActiveFiscalLocale, reportingCurrencyForLocale } from "../lib/fiscalLocale";
 import {
   normalizeIsoDate,
@@ -810,22 +814,30 @@ function sanitizeLineItemRow(
 ): BankTransaction {
   const amount = toFiniteNumber(item?.amount, 0);
   const description = sanitizeLooseText(item?.description, 220) || 'Unlabeled line item';
-  const category = sanitizeLooseText(item?.category, 80) || 'OTHER';
+  const rawCategory = sanitizeLooseText(item?.category, 80) || 'OTHER';
   const rawType = item?.type === 'INCOME' ? 'INCOME' : 'EXPENSE';
+  const type = inferLineItemType({
+    expenseCategory: rawCategory,
+    documentType: docType,
+    description,
+    category: rawCategory,
+    parentExpenseCategory: parentCat,
+    existingType: rawType,
+  });
+  const category = normalizeLineItemCategory({
+    category: rawCategory,
+    description,
+    type,
+    parentCategory: parentCat,
+    documentType: docType,
+  });
   const qty = toFiniteNumber(item?.quantity, NaN);
   const unit = toFiniteNumber(item?.unitPrice, NaN);
   return {
     date: normalizeIsoDate(item?.date) || sanitizeLooseText(item?.date, 24),
     description,
     amount,
-    type: inferLineItemType({
-      expenseCategory: category,
-      documentType: docType,
-      description,
-      category,
-      parentExpenseCategory: parentCat,
-      existingType: rawType,
-    }),
+    type,
     category,
     notes: sanitizeLooseText(item?.notes, 220),
     isHumanVerified: Boolean(item?.isHumanVerified),
@@ -1865,7 +1877,7 @@ CRITICAL RULES:
    - Reading only page 1 when totals are on a later page.
    EXAMPLE (do not copy these numbers; copy the document's numbers): Salaire général 4200, heures supp 400, Salaire brut 4600, Salaire net 3900, acompte 100, Chèque salarié 3800 → grossPay=4600, netPay=3900, paymentToEmployee=3800, components include 4200 + 400 + deductions, not the three totals.
 42. ITEMS vs INVOICES: lineItems are products/services ON an invoice. Never create a subDocuments entry per line item. subDocuments are ONLY for distinct invoices/receipts (different supplier, invoice number, or separate receipt). One invoice with 20 products → subDocuments empty or one entry + 20 lineItems. A PDF with 3 separate supplier invoices → 3 subDocuments (label "3 invoices detected"), not "items".
-43. PER-ITEM DETECTION (CRITICAL): For Invoice / Ticket/Receipt / Bulletin de livraison / Lieferschein, extract EVERY visible product or service line into lineItems (description, amount; quantity and unitPrice when printed). NEVER collapse an itemized invoice into a single lineItem equal to Montant final / Total TTC. If the PDF has an article table, returning only one total row is a hard failure.
+43. PER-ITEM DETECTION (CRITICAL): For Invoice / Ticket/Receipt / Bulletin de livraison / Lieferschein, extract EVERY visible product or service line into lineItems (description, amount; quantity and unitPrice when printed). NEVER collapse an itemized invoice into a single lineItem equal to Montant final / Total TTC. If the PDF has an article table, returning only one total row is a hard failure. For SALES / restaurant tickets (INCOME): set each line category to EXACTLY one of SALES_FOOD (food/tapas/menus), SALES_BEVERAGES (wine/beer/soft drinks/sangria/water), or SALES_OTHER — never Food/Beverage/FOOD_SUPPLIES/OTHER mixed casing. For supplier EXPENSE invoices: use FOOD_SUPPLIES / BEVERAGES / PACKAGING / etc. (canonical UPPER_SNAKE_CASE only).
 44. SWISS DELIVERY / BEVERAGE TABLES: Columns often include Article, Désignation, Contenu, Quantité, Unité, Prix, Valeur, TVA, Consigne. One lineItem per article row: description=Désignation, quantity=package count when clear, unitPrice=Prix, amount=Valeur. If Consigne>0, also add "Consigne — {Désignation}" as a separate EXPENSE line with amount=Consigne. Include recycling tax / logistics / eco-tax footer lines as their own lineItems. Skip sous-total and total rows.
 45. SAME-SUPPLIER COMMANDE BLOCKS: Multiple "Commande" / "Bulletin de livraison" sections from the SAME issuer under ONE Montant final = ONE invoice. Put ALL article rows into top-level lineItems (and into that single subDocument.lineItems if you emit one sub). Do NOT create one subDocuments entry per Commande unless each block is a separately payable invoice with its own total due.
 46. ACCOUNTANT CATEGORY MATRIX (expenseCategory — pick the single best; never collapse everything to FOOD/OTHER):

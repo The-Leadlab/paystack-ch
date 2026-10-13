@@ -39,7 +39,11 @@ import {
   displayStatusForDocument,
   isStaleProcessingDocument,
 } from '../lib/staleDocumentStatus';
-import { detectCategory, inferLineItemType } from '../services/categoryDetectionService';
+import {
+  detectCategory,
+  inferLineItemType,
+  normalizeLineItemCategory,
+} from '../services/categoryDetectionService';
 import { isCsvDocumentFile } from '../lib/businessDocumentFile';
 import { maxRawBytesForGeminiPayload } from '../lib/prepareDocumentForAi';
 import { hydrateProcessedDocumentLineItems } from '../lib/financialDataFirestorePayload';
@@ -317,17 +321,24 @@ const EditableLineItemsTable: React.FC<{
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddRow, setShowAddRow] = useState(false);
   
-  const applyInferredType = (row: BankTransaction): BankTransaction => ({
-    ...row,
-    type: inferLineItemType({
+  const applyInferredType = (row: BankTransaction): BankTransaction => {
+    const type = inferLineItemType({
       expenseCategory: row.category,
       documentType: documentContext?.documentType,
       description: row.description,
       category: row.category,
       parentExpenseCategory: documentContext?.expenseCategory,
       existingType: row.type,
-    }),
-  });
+    });
+    const category = normalizeLineItemCategory({
+      category: row.category,
+      description: row.description,
+      type,
+      parentCategory: documentContext?.expenseCategory,
+      documentType: documentContext?.documentType,
+    });
+    return { ...row, type, category };
+  };
 
   const handleItemChange = (idx: number, field: keyof BankTransaction, value: any) => {
     const next = [...items];

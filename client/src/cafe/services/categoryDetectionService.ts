@@ -415,3 +415,147 @@ export function getCategorySuggestions(description: string, issuer?: string): Ar
     .sort((a, b) => b.confidence - a.confidence)
     .slice(0, 3);
 }
+
+/** Canonical accountant IDs used in Excel / reports for sales product lines. */
+export type SalesLineCategory = 'SALES_FOOD' | 'SALES_BEVERAGES' | 'SALES_OTHER';
+
+const BEVERAGE_DESC_RE =
+  /\b(sangria|bière|biere|beer|vin|wine|prosecco|champagne|soft\s*drink|soda|coca|cola|jus|juice|café|cafe|coffee|thé|tea|eau|water|boisson|beverage|drink|alcool|alcohol|spirit|liqueur|aperol|mojito|cocktail|cidre|cider|fût|fut|lager|ipa|stout)\b/i;
+
+const FOOD_DESC_RE =
+  /\b(tapas|patatas|brava|nachos|planche|charcuterie|fromage|cheese|formule|midi|menu|burger|pizza|salade|salad|viande|meat|poisson|fish|poulet|chicken|saumon|pain|bread|dessert|glace|ice\s*cream|taco|empanada|croquette|paella|riz|rice|plat|dish|food|nourriture|aliment)\b/i;
+
+const ALIAS_TO_FINE: Record<string, string> = {
+  FOOD: 'FOOD_SUPPLIES',
+  FOODS: 'FOOD_SUPPLIES',
+  FOOD_SUPPLY: 'FOOD_SUPPLIES',
+  FOOD_SUPPLIES: 'FOOD_SUPPLIES',
+  GROCERY: 'FOOD_SUPPLIES',
+  GROCERIES: 'FOOD_SUPPLIES',
+  ALIMENTATION: 'FOOD_SUPPLIES',
+  NOURRITURE: 'FOOD_SUPPLIES',
+  BEVERAGE: 'BEVERAGES',
+  BEVERAGES: 'BEVERAGES',
+  BOISSON: 'BEVERAGES',
+  BOISSONS: 'BEVERAGES',
+  DRINK: 'BEVERAGES',
+  DRINKS: 'BEVERAGES',
+  WINE: 'BEVERAGES',
+  BEER: 'BEVERAGES',
+  SALES: 'SALES',
+  REVENUE: 'SALES',
+  SALES_FOOD: 'SALES_FOOD',
+  SALES_BEVERAGES: 'SALES_BEVERAGES',
+  SALES_BEVERAGE: 'SALES_BEVERAGES',
+  SALES_OTHER: 'SALES_OTHER',
+  FOOD_SALES: 'SALES_FOOD',
+  BEVERAGE_SALES: 'SALES_BEVERAGES',
+  BEVERAGES_SALES: 'SALES_BEVERAGES',
+};
+
+function classifySalesProductFromDescription(description: string): SalesLineCategory {
+  const text = description || '';
+  const bev = BEVERAGE_DESC_RE.test(text);
+  const food = FOOD_DESC_RE.test(text);
+  if (bev && !food) return 'SALES_BEVERAGES';
+  if (food && !bev) return 'SALES_FOOD';
+  if (bev && food) {
+    // Mixed phrase — prefer the stronger beverage signal for drinks menus
+    if (/\b(sangria|bière|biere|beer|vin|wine|soft|boisson|cocktail)\b/i.test(text)) {
+      return 'SALES_BEVERAGES';
+    }
+    return 'SALES_FOOD';
+  }
+  const detected = detectCategory(text);
+  if (detected === 'BEVERAGES') return 'SALES_BEVERAGES';
+  if (detected === 'FOOD_SUPPLIES') return 'SALES_FOOD';
+  return 'SALES_OTHER';
+}
+
+/**
+ * Normalize messy AI line categories (Food / Beverage / OTHER / FOOD_SUPPLIES)
+ * into stable accountant IDs for reports and Excel.
+ * Sales tickets (INCOME) → SALES_FOOD | SALES_BEVERAGES | SALES_OTHER.
+ * Purchases (EXPENSE) → FOOD_SUPPLIES | BEVERAGES | …
+ */
+export function normalizeLineItemCategory(opts: {
+  category?: string | null;
+  description?: string | null;
+  type?: string | null;
+  parentCategory?: string | null;
+  documentType?: string | null;
+}): string {
+  const raw = String(opts.category || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s/-]+/g, '_');
+  const desc = String(opts.description || '');
+  const parent = String(opts.parentCategory || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s/-]+/g, '_');
+  const flow = inferLineItemType({
+    expenseCategory: opts.parentCategory || opts.category,
+    category: opts.category,
+    description: desc,
+    documentType: opts.documentType,
+    parentExpenseCategory: opts.parentCategory,
+    existingType: opts.type === 'INCOME' || opts.type === 'EXPENSE' ? opts.type : undefined,
+  });
+
+  const aliased = ALIAS_TO_FINE[raw] || raw;
+  const parentAliased = ALIAS_TO_FINE[parent] || parent;
+
+  if (flow === 'INCOME') {
+    if (aliased === 'SALES_FOOD' || aliased === 'FOOD_SUPPLIES' || aliased === 'FOOD') {
+      return 'SALES_FOOD';
+    }
+    if (aliased === 'SALES_BEVERAGES' || aliased === 'BEVERAGES' || aliased === 'BEVERAGE') {
+      return 'SALES_BEVERAGES';
+    }
+    if (aliased === 'SALES_OTHER') return 'SALES_OTHER';
+    // Weak / OTHER / SALES / REVENUE — classify from product description
+    return classifySalesProductFromDescription(desc);
+  }
+
+  // Expense path
+  const FINE = new Set([
+    'FOOD_SUPPLIES',
+    'BEVERAGES',
+    'RESTAURANT_SUPPLIES',
+    'PACKAGING',
+    'CLEANING',
+    'MAINTENANCE',
+    'RENT',
+    'UTILITIES',
+    'INSURANCE',
+    'TELECOM',
+    'BANK_FEES',
+    'ACCOUNTING',
+    'MARKETING',
+    'DELIVERY',
+    'OFFICE_SUPPLIES',
+    'LICENSES',
+    'TAXES',
+    'PAYROLL',
+    'PAYROLL_TAXES',
+    'SUPPLIERS',
+    'BILLS',
+  ]);
+
+  if (FINE.has(aliased) && aliased !== 'OTHER') return aliased;
+
+  // Map sales-ish labels on expense docs back to purchase classes
+  if (aliased === 'SALES_FOOD') return 'FOOD_SUPPLIES';
+  if (aliased === 'SALES_BEVERAGES') return 'BEVERAGES';
+
+  if (!aliased || aliased === 'OTHER' || aliased === 'SALES' || aliased === 'REVENUE') {
+    const fromDesc = detectCategory(desc);
+    if (fromDesc !== 'OTHER') return fromDesc === 'SALARY' ? 'PAYROLL' : fromDesc;
+    if (FINE.has(parentAliased)) return parentAliased;
+    if (BEVERAGE_DESC_RE.test(desc)) return 'BEVERAGES';
+    if (FOOD_DESC_RE.test(desc)) return 'FOOD_SUPPLIES';
+  }
+
+  return FINE.has(aliased) ? aliased : 'OTHER';
+}
