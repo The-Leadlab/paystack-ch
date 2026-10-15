@@ -1,5 +1,6 @@
 import type { BankTransaction, FinancialData, ProcessedDocument } from '../types';
 import { normalizeLineItemCategory } from '../services/categoryDetectionService';
+import { applyDocumentDirectionToFinancialData, lineTypeForDocumentFlow, classifyDocumentDirection } from '@shared/documentDirection';
 
 export type DocumentProductLine = {
   documentId: string;
@@ -44,8 +45,25 @@ export function collectProductLinesFromFinancialData(
   meta: { documentId: string; fileName: string }
 ): DocumentProductLine[] {
   if (!data) return [];
-  const subs = Array.isArray(data.subDocuments) ? data.subDocuments.filter(Boolean) : [];
+  const directed = applyDocumentDirectionToFinancialData(data, {
+    fileName: meta.fileName || data.sourceFileName,
+  });
+  const parentFlow = classifyDocumentDirection({
+    documentType: directed.documentType,
+    expenseCategory: directed.expenseCategory,
+    issuer: directed.issuer,
+    recipient: directed.recipient,
+    notes: directed.notes,
+    aiInterpretation: directed.aiInterpretation,
+    fileName: meta.fileName || directed.sourceFileName,
+    userFlowOverride: directed.userFlowOverride,
+    uploadIntent: directed.uploadIntent,
+    aiFlowHint: directed.aiFlowHint,
+  });
+  const fallbackType = lineTypeForDocumentFlow(parentFlow);
+  const subs = Array.isArray(directed.subDocuments) ? directed.subDocuments.filter(Boolean) : [];
   const rows: DocumentProductLine[] = [];
+  data = directed;
 
   if (subs.length > 0) {
     subs.forEach((sub, idx) => {
@@ -69,7 +87,7 @@ export function collectProductLinesFromFinancialData(
                 ? Number(item.unitPrice)
                 : null,
             amount,
-            type: String(item.type || ''),
+            type: String(item.type || fallbackType),
             category: lineCategory(item, data, sub.expenseCategory),
           });
         }
@@ -88,9 +106,9 @@ export function collectProductLinesFromFinancialData(
             quantity: null,
             unitPrice: null,
             amount,
-            type: 'INCOME',
+            type: fallbackType,
             category: lineCategory(
-              { category: sub.expenseCategory, description, type: 'INCOME' },
+              { category: sub.expenseCategory, description, type: fallbackType },
               data,
               sub.expenseCategory
             ),
@@ -117,7 +135,7 @@ export function collectProductLinesFromFinancialData(
       unitPrice:
         item.unitPrice != null && Number.isFinite(Number(item.unitPrice)) ? Number(item.unitPrice) : null,
       amount,
-      type: String(item.type || ''),
+      type: String(item.type || fallbackType),
       category: lineCategory(item, data),
     });
   }

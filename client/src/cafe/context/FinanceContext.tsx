@@ -32,6 +32,7 @@ export type LedgerIncomeDraft = {
   vatAmount?: number;
   accountCode?: string;
   aiCategory?: string;
+  paymentMethod?: string | null;
 };
 
 export type LedgerExpenseDraft = {
@@ -70,6 +71,7 @@ function docToIncome(id: string, data: any): Income {
     account_code: data.accountCode || undefined,
     ai_category: data.aiCategory || undefined,
     document_id: data.documentId,
+    payment_method: data.paymentMethod || data.payment_method || null,
     created_at: data.createdAt?.toDate?.()?.toISOString?.() ?? new Date().toISOString(),
   };
 }
@@ -97,7 +99,7 @@ type FinanceContextValue = {
   expenses: Expense[];
   loading: boolean;
   error: string | null;
-  addIncome: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number, accountCode?: string, aiCategory?: string) => Promise<Income | null>;
+  addIncome: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number, accountCode?: string, aiCategory?: string, paymentMethod?: string | null) => Promise<Income | null>;
   addExpense: (date: string, category: Expense['category'], amount: number, description: string, sessionId: string, employeeId?: string, documentId?: string, vatAmount?: number, accountCode?: string, aiCategory?: string) => Promise<Expense | null>;
   /** Bulk write for CSV / bank-statement imports — one UI update after all rows land. */
   addLedgerEntriesBatch: (
@@ -167,7 +169,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   }, [fetchFinances]);
 
   const addIncome = useCallback(
-    async (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number, accountCode?: string, aiCategory?: string): Promise<Income | null> => {
+    async (date: string, type: 'SALES' | 'RESERVATION', amount: number, description: string | undefined, sessionId: string, documentId?: string, vatAmount?: number, accountCode?: string, aiCategory?: string, paymentMethod?: string | null): Promise<Income | null> => {
       const uid = dataOwnerUid;
       if (!uid || !canWrite || !db) {
         console.error('addIncome failed: No user or database');
@@ -197,6 +199,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           accountCode: resolvedAccountCode || null,
           aiCategory: aiCategory || null,
           documentId: documentId || null,
+          paymentMethod: paymentMethod || null,
           createdAt: serverTimestamp(),
         });
         const newIncome: Income = {
@@ -211,6 +214,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           account_code: resolvedAccountCode,
           ai_category: aiCategory,
           document_id: documentId,
+          payment_method: paymentMethod || null,
           created_at: new Date().toISOString(),
         };
         setIncome((prev) => [newIncome, ...prev]);
@@ -323,6 +327,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           accountCode: resolvedAccountCode || null,
           aiCategory: draft.aiCategory || null,
           documentId: draft.documentId || null,
+          paymentMethod: draft.paymentMethod || null,
           createdAt: serverTimestamp(),
         };
         const local: Income = {
@@ -337,6 +342,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           account_code: resolvedAccountCode,
           ai_category: draft.aiCategory,
           document_id: draft.documentId,
+          payment_method: draft.paymentMethod || null,
           created_at: new Date().toISOString(),
         };
         ops.push({ kind: 'income', ref, payload, local });
@@ -501,6 +507,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       if (updates.document_id !== undefined) updateData.documentId = updates.document_id;
       if (updates.account_code !== undefined) updateData.accountCode = updates.account_code || null;
       if (updates.ai_category !== undefined) updateData.aiCategory = updates.ai_category || null;
+      if (updates.payment_method !== undefined) updateData.paymentMethod = updates.payment_method || null;
       
       await updateDoc(docRef(db, INCOME_COLLECTION, id), updateData);
       
@@ -564,4 +571,8 @@ export function useFinance() {
   const ctx = useContext(FinanceContext);
   if (!ctx) throw new Error('useFinance must be used within FinanceProvider');
   return ctx;
+}
+
+export function useFinanceOptional() {
+  return useContext(FinanceContext);
 }

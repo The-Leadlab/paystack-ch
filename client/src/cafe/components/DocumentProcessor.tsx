@@ -44,6 +44,13 @@ import {
   inferLineItemType,
   normalizeLineItemCategory,
 } from '../services/categoryDetectionService';
+import {
+  applyDocumentDirectionToFinancialData,
+  classifyDocumentDirection,
+} from '@shared/documentDirection';
+import { PaymentMethodSelect } from './PaymentMethodSelect';
+import { useFinanceOptional } from '../context/FinanceContext';
+import type { StoredPaymentMethod } from '@shared/paymentMethod';
 import { isCsvDocumentFile } from '../lib/businessDocumentFile';
 import { maxRawBytesForGeminiPayload } from '../lib/prepareDocumentForAi';
 import { hydrateProcessedDocumentLineItems } from '../lib/financialDataFirestorePayload';
@@ -313,7 +320,18 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
 const EditableLineItemsTable: React.FC<{
   items: BankTransaction[];
   currency: string;
-  documentContext?: { expenseCategory?: string; documentType?: string };
+  documentContext?: {
+    expenseCategory?: string;
+    documentType?: string;
+    issuer?: string;
+    recipient?: string;
+    notes?: string;
+    fileName?: string;
+    userFlowOverride?: string;
+    uploadIntent?: string;
+    ownBusinessNames?: string[];
+    aiFlowHint?: string;
+  };
   onUpdate: (newItems: BankTransaction[]) => void;
 }> = ({ items, currency, documentContext, onUpdate }) => {
   const { t } = useLanguage();
@@ -329,6 +347,14 @@ const EditableLineItemsTable: React.FC<{
       category: row.category,
       parentExpenseCategory: documentContext?.expenseCategory,
       existingType: row.type,
+      issuer: documentContext?.issuer,
+      recipient: documentContext?.recipient,
+      notes: documentContext?.notes,
+      fileName: documentContext?.fileName,
+      userFlowOverride: documentContext?.userFlowOverride,
+      uploadIntent: documentContext?.uploadIntent,
+      ownBusinessNames: documentContext?.ownBusinessNames,
+      aiFlowHint: documentContext?.aiFlowHint,
     });
     const category = normalizeLineItemCategory({
       category: row.category,
@@ -1098,7 +1124,13 @@ function rollUpMultiInvoiceTotals(data: FinancialData): FinancialData {
         description,
         category: sub.expenseCategory || data.expenseCategory,
         issuer: sub.issuer,
+        recipient: sub.recipient || data.recipient,
         parentExpenseCategory: data.expenseCategory,
+        fileName: data.sourceFileName,
+        userFlowOverride: sub.userFlowOverride || data.userFlowOverride,
+        uploadIntent: data.uploadIntent,
+        aiFlowHint: sub.aiFlowHint || data.aiFlowHint,
+        notes: sub.notes || data.notes,
       }),
       category: sub.expenseCategory || data.expenseCategory || 'OTHER',
       notes: `VAT Amount ${Number(sub.vatAmount || 0)}`,
@@ -1115,8 +1147,7 @@ function rollUpMultiInvoiceTotals(data: FinancialData): FinancialData {
     const products = nested.length > 0 ? nested : prior;
     mergedLineItems = products.length > 0 ? products : lineItems;
   } else {
-    const existingIncome = (data.lineItems || []).filter((i) => i.type === 'INCOME');
-    mergedLineItems = [...existingIncome, ...lineItems];
+    mergedLineItems = lineItems;
   }
 
   const calculatedTotalIncome = mergedLineItems
@@ -2362,6 +2393,13 @@ export const VerificationHub: React.FC<{
                  documentContext={{
                    expenseCategory: editedData.expenseCategory,
                    documentType: editedData.documentType,
+                   issuer: editedData.issuer,
+                   recipient: editedData.recipient,
+                   notes: editedData.notes,
+                   fileName: doc.fileName || editedData.sourceFileName,
+                   userFlowOverride: editedData.userFlowOverride,
+                   uploadIntent: editedData.uploadIntent,
+                   aiFlowHint: editedData.aiFlowHint,
                  }}
                  onUpdate={(newItems) => handleFieldChange('lineItems', newItems)}
                />
@@ -2564,6 +2602,7 @@ export const DocumentProcessor: React.FC<{
   const { currentSession } = useSession();
   const activitySessionId = currentSession?.id;
   const { t } = useLanguage();
+  const finance = useFinanceOptional();
   const chfLocale = useChfLocale();
   const { currency: reportingCurrencyFromLocale, fiscalLocale, regionReady } = useUkUat();
   const moneyLocale = fiscalLocale === 'uk' ? 'en-GB' : 'de-CH';
@@ -2818,11 +2857,44 @@ export const DocumentProcessor: React.FC<{
 
   const manualQueueCount = allDocs.filter(isManualQueueDoc).length;
 
-  const classifyDocFlowType = (data?: FinancialData): 'INCOME' | 'EXPENSE' | 'SALARY' => {
-    const cat = String(data?.expenseCategory || '').toUpperCase();
-    if (cat.includes('REVENUE') || cat.includes('SALES')) return 'INCOME';
-    if (cat.includes('PAYROLL') || cat.includes('SALARY') || cat.includes('PAYSLIP')) return 'SALARY';
+  const ownNamesForDoc = () =>
+    resolveOwnBusinessNames(user?.uid, user?.displayName, profileBusinessNames);
+
+  const classifyDocFlowType = (
+    data?: FinancialData,
+    fileName?: string
+  ): 'INCOME' | 'EXPENSE' | 'SALARY' => {
+    if (!data) return 'EXPENSE';
+    const flow = classifyDocumentDirection({
+      documentType: data.documentType,
+      expenseCategory: data.expenseCategory,
+      issuer: data.issuer,
+      recipient: data.recipient,
+      notes: data.notes,
+      aiInterpretation: data.aiInterpretation,
+      fileName: fileName || data.sourceFileName,
+      ownBusinessNames: ownNamesForDoc(),
+      userFlowOverride: data.userFlowOverride,
+      uploadIntent: data.uploadIntent,
+      aiFlowHint: data.aiFlowHint,
+    });
+    if (flow === 'INCOME') return 'INCOME';
+    if (flow === 'SALARY') return 'SALARY';
     return 'EXPENSE';
+  };
+
+  const persistDocumentData = async (
+    doc: ProcessedDocument & { source?: 'firestore' | 'local' },
+    nextData: FinancialData,
+    rePostLedger: boolean
+  ) => {
+    if ((doc as any).source === 'firestore') {
+      const recordId = firestoreRecordId(doc);
+      await updateDocument(recordId, { data: nextData });
+      if (rePostLedger && onDocumentUpdated) await onDocumentUpdated(recordId, nextData);
+      return;
+    }
+    setLocalDocs((prev) => prev.map((d) => (d.id === doc.id ? { ...d, data: nextData } : d)));
   };
 
   const applyDocFlowType = async (
@@ -2830,31 +2902,40 @@ export const DocumentProcessor: React.FC<{
     flowType: 'INCOME' | 'EXPENSE' | 'SALARY'
   ) => {
     if (!doc.data) return;
-    const currentCategory = String(doc.data.expenseCategory || '').toUpperCase();
-    let nextCategory = doc.data.expenseCategory;
-    if (flowType === 'INCOME') {
-      nextCategory = 'REVENUE';
-    } else if (flowType === 'SALARY') {
-      nextCategory = 'PAYROLL';
-    } else if (
-      currentCategory.includes('REVENUE') ||
-      currentCategory.includes('SALES') ||
-      currentCategory.includes('PAYROLL') ||
-      currentCategory.includes('SALARY')
-    ) {
-      nextCategory = 'OTHER';
+    const nextData = applyDocumentDirectionToFinancialData(
+      {
+        ...doc.data,
+        userFlowOverride: flowType,
+        sourceFileName: doc.fileName || doc.data.sourceFileName,
+      },
+      {
+        ownBusinessNames: ownNamesForDoc(),
+        fileName: doc.fileName,
+      }
+    );
+    await persistDocumentData(doc, nextData, true);
+  };
+
+  const applyDocPaymentMethod = async (
+    doc: ProcessedDocument & { source?: 'firestore' | 'local' },
+    method: StoredPaymentMethod
+  ) => {
+    if (!doc.data) return;
+    const stored = method === 'unspecified' ? null : method;
+    const nextData: FinancialData = { ...doc.data, paymentMethod: stored };
+    await persistDocumentData(doc, nextData, false);
+    if (!finance) return;
+    const docId = firestoreRecordId(doc) || doc.id;
+    const linked = finance.income.filter(
+      (row) => row.document_id === docId || row.document_id === doc.id
+    );
+    for (const row of linked) {
+      try {
+        await finance.updateIncome(row.id, { payment_method: stored });
+      } catch (err) {
+        console.warn('Could not update income payment method', row.id, err);
+      }
     }
-
-    const nextData: FinancialData = { ...doc.data, expenseCategory: nextCategory };
-
-    if ((doc as any).source === 'firestore') {
-      const recordId = firestoreRecordId(doc);
-      await updateDocument(recordId, { data: nextData });
-      if (onDocumentUpdated) await onDocumentUpdated(recordId, nextData);
-      return;
-    }
-
-    setLocalDocs((prev) => prev.map((d) => (d.id === doc.id ? { ...d, data: nextData } : d)));
   };
 
   const stats = useMemo(() => {
@@ -3349,6 +3430,11 @@ export const DocumentProcessor: React.FC<{
             forcePdfPageSplit: pdfPageSplit,
             pdfPageCount,
             preferInline: pdfPageSplit || (!storageForAi?.storagePath && canInline),
+            ownBusinessNames: resolveOwnBusinessNames(
+              user?.uid,
+              user?.displayName,
+              profileBusinessNames
+            ),
           }
         ),
         timeoutPromise,
@@ -3370,6 +3456,10 @@ export const DocumentProcessor: React.FC<{
         console.warn(`⚠️ Swiss account classification skipped for ${doc.fileName}:`, classifyErr);
       }
       console.log(`✅ Parsed: ${doc.fileName} (${(res.lineItems || []).length} lines)`);
+      res = {
+        ...res,
+        sourceFileName: inputFile.name || doc.fileName,
+      };
 
       const completedAt = doc.created_at || new Date().toISOString();
       // Stay on "processing" until Firestore + ledger/report rows finish (onDataExtracted).
@@ -3858,23 +3948,38 @@ export const DocumentProcessor: React.FC<{
                         </td>
                         <td className="px-4 py-3 hidden md:table-cell align-top">
                           {doc.data ? (
-                            <select
-                              value={classifyDocFlowType(doc.data)}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={async (e) => {
-                                e.stopPropagation();
-                                await applyDocFlowType(
-                                  doc as ProcessedDocument & { source?: 'firestore' | 'local' },
-                                  e.target.value as 'INCOME' | 'EXPENSE' | 'SALARY'
-                                );
-                              }}
-                              className="ba-table-select"
-                              title={t('dpSelectFlowType')}
-                            >
-                              <option value="INCOME">{t('dpFlowIncome')}</option>
-                              <option value="EXPENSE">{t('dpFlowExpense')}</option>
-                              <option value="SALARY">{t('dpFlowSalary')}</option>
-                            </select>
+                            <div className="flex flex-col gap-1">
+                              <select
+                                value={classifyDocFlowType(doc.data, doc.fileName)}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={async (e) => {
+                                  e.stopPropagation();
+                                  await applyDocFlowType(
+                                    doc as ProcessedDocument & { source?: 'firestore' | 'local' },
+                                    e.target.value as 'INCOME' | 'EXPENSE' | 'SALARY'
+                                  );
+                                }}
+                                className="ba-table-select"
+                                title={t('dpSelectFlowType')}
+                              >
+                                <option value="INCOME">{t('dpFlowIncome')}</option>
+                                <option value="EXPENSE">{t('dpFlowExpense')}</option>
+                                <option value="SALARY">{t('dpFlowSalary')}</option>
+                              </select>
+                              {classifyDocFlowType(doc.data, doc.fileName) === 'INCOME' ? (
+                                <PaymentMethodSelect
+                                  value={doc.data.paymentMethod}
+                                  t={t}
+                                  title={t('rhPaymentMethod')}
+                                  onChange={async (method) => {
+                                    await applyDocPaymentMethod(
+                                      doc as ProcessedDocument & { source?: 'firestore' | 'local' },
+                                      method
+                                    );
+                                  }}
+                                />
+                              ) : null}
+                            </div>
                           ) : (
                             <span className="text-[10px] text-cdlp-muted">---</span>
                           )}

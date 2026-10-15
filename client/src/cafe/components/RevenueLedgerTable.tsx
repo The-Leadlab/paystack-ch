@@ -9,6 +9,7 @@ import {
   productLinesForLedgerEntry,
   type DocumentProductLine,
 } from "../lib/documentProductLines";
+import { PaymentMethodSelect } from "./PaymentMethodSelect";
 
 const PAGE_SIZE = 10;
 
@@ -27,6 +28,7 @@ type RevenueLedgerTableProps = {
   documents?: ProcessedDocument[];
   /** Open full Verification Center for a linked document. */
   onOpenDocument?: (doc: ProcessedDocument) => void;
+  onUpdateIncome?: (id: string, updates: Partial<Omit<Income, "id" | "restaurant_id" | "created_at">>) => Promise<void>;
 };
 
 export function RevenueLedgerTable({
@@ -40,6 +42,7 @@ export function RevenueLedgerTable({
   toggleBusy = false,
   documents = [],
   onOpenDocument,
+  onUpdateIncome,
 }: RevenueLedgerTableProps) {
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
@@ -77,6 +80,8 @@ export function RevenueLedgerTable({
         "Click a row to see product/service lines from the invoice.";
   const vendorCol = incomeOnly ? t("revColSource") : t("repColVendor");
   const categoryCol = incomeOnly ? t("revColType") : t("repColCategory");
+  const showPayment = Boolean(incomeOnly && onUpdateIncome);
+  const colSpan = showPayment ? 10 : 9;
 
   const linesForRow = (row: LedgerRow): DocumentProductLine[] => {
     if (!documents.length) return [];
@@ -123,6 +128,7 @@ export function RevenueLedgerTable({
             <th>{t("repColAccount")}</th>
             <th className="text-right">{t("repColAmount")}</th>
             <th className="text-right">{t("repColVat")}</th>
+            {showPayment ? <th>{t("revColPayment")}</th> : null}
             <th>{t("repColDescription")}</th>
             <th className="text-center">{t("repColItems") || "Items"}</th>
           </tr>
@@ -130,7 +136,7 @@ export function RevenueLedgerTable({
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={9} className="text-center text-cdlp-muted py-6">
+              <td colSpan={colSpan} className="text-center text-cdlp-muted py-6">
                 {t("repNoData")}
               </td>
             </tr>
@@ -175,6 +181,26 @@ export function RevenueLedgerTable({
                         maximumFractionDigits: 2,
                       })}
                     </td>
+                    {showPayment ? (
+                      <td
+                        className="ba-field-value"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {row.tone === "income" && row.id.startsWith("in-") && onUpdateIncome ? (
+                          <PaymentMethodSelect
+                            value={income.find((i) => i.id === row.id.slice(3))?.payment_method}
+                            t={t}
+                            onChange={(method) => {
+                              void onUpdateIncome(row.id.slice(3), {
+                                payment_method: method === "unspecified" ? null : method,
+                              });
+                            }}
+                          />
+                        ) : (
+                          <span className="text-cdlp-muted">—</span>
+                        )}
+                      </td>
+                    ) : null}
                     <td className="truncate max-w-[14rem] ba-field-value">
                       {localizeLedgerDescription(row.description, t)}
                     </td>
@@ -190,7 +216,7 @@ export function RevenueLedgerTable({
                   </tr>
                   {expanded ? (
                     <tr className="bg-cdlp-card/40">
-                      <td colSpan={9} className="p-0 border-t border-cdlp-border">
+                      <td colSpan={colSpan} className="p-0 border-t border-cdlp-border">
                         <div className="p-3 md:p-4 space-y-3">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div>

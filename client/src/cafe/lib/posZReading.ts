@@ -92,8 +92,8 @@ export function parseZReadingFromFinancialData(
 
   const paymentTotal = cash + card + other;
   if (gross > 0 && paymentTotal <= 0) {
-    cash = gross * 0.4;
-    card = gross * 0.6;
+    // Leave tenders at 0 — do not invent cash/card splits when the Z-reading
+    // does not report payment methods.
   } else if (gross > 0 && paymentTotal > 0 && Math.abs(paymentTotal - gross) > 0.05) {
     const scale = gross / paymentTotal;
     cash *= scale;

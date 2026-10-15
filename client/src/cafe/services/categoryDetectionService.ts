@@ -3,6 +3,8 @@
  * Automatically detects expense/income categories based on description and issuer
  */
 
+import { classifyDocumentDirection, lineTypeForDocumentFlow } from '@shared/documentDirection';
+
 export type CategoryId = 
   | 'SALARY' | 'PAYROLL_TAXES' | 'RENT' | 'UTILITIES' | 'INSURANCE'
   | 'FOOD_SUPPLIES' | 'BEVERAGES' | 'RESTAURANT_SUPPLIES' | 'PACKAGING'
@@ -226,24 +228,19 @@ export type LineItemTypeInput = {
   description?: string;
   category?: string;
   issuer?: string;
+  recipient?: string;
+  notes?: string;
+  aiInterpretation?: string;
   parentExpenseCategory?: string;
-  /** Trust model when it already classified a row as income */
   existingType?: string;
+  fileName?: string;
+  ownBusinessNames?: string[];
+  userFlowOverride?: string;
+  uploadIntent?: string;
+  aiFlowHint?: string;
 };
 
-const INCOME_CATEGORY_MARKERS = ['REVENUE', 'SALES', 'RESERVATION'] as const;
-
-const INCOME_DOC_MARKERS = [
-  'TICKET',
-  'RECEIPT',
-  'Z2',
-  'Z-READ',
-  'Z READING',
-  'BANK DEPOSIT',
-  'POS',
-] as const;
-
-const INCOME_DESC_KEYWORDS = [
+const BANK_INCOME_DESC_KEYWORDS = [
   'deposit',
   'dépôt',
   'depot',
@@ -258,7 +255,6 @@ const INCOME_DESC_KEYWORDS = [
   'paiement client',
   'z-reading',
   'z report',
-  'caisse',
   'incoming',
   'versement',
   'credit',
@@ -266,33 +262,46 @@ const INCOME_DESC_KEYWORDS = [
 ] as const;
 
 /**
- * Infer INCOME vs EXPENSE for a ledger line (matches document-level revenue/expense signals).
+ * Infer INCOME vs EXPENSE for a ledger line.
+ * Directed documents (invoice / receipt) force every item to follow the parent.
+ * Product names must not flip a supplier wine line to INCOME.
  */
 export function inferLineItemType(input: LineItemTypeInput): LineItemFlowType {
-  if (input.existingType === 'INCOME') return 'INCOME';
+  const flow = classifyDocumentDirection({
+    documentType: input.documentType,
+    expenseCategory: input.parentExpenseCategory || input.expenseCategory,
+    issuer: input.issuer,
+    recipient: input.recipient,
+    notes: input.notes,
+    aiInterpretation: input.aiInterpretation,
+    fileName: input.fileName,
+    ownBusinessNames: input.ownBusinessNames,
+    userFlowOverride: input.userFlowOverride,
+    uploadIntent: input.uploadIntent,
+    aiFlowHint: input.aiFlowHint,
+  });
+
+  if (flow !== 'MIXED') {
+    return lineTypeForDocumentFlow(flow, input.existingType);
+  }
+
+  if (input.existingType === 'INCOME' || input.existingType === 'EXPENSE') {
+    return input.existingType;
+  }
 
   const cats = [input.expenseCategory, input.category, input.parentExpenseCategory].map((c) =>
     String(c || '').toUpperCase()
   );
-
-  if (cats.some((c) => INCOME_CATEGORY_MARKERS.some((m) => c.includes(m)))) {
+  if (cats.some((c) => c.includes('REVENUE') || c.includes('SALES') || c.includes('RESERVATION'))) {
     return 'INCOME';
   }
-
-  const docType = String(input.documentType || '').toUpperCase();
-  if (INCOME_DOC_MARKERS.some((m) => docType.includes(m))) {
-    return 'INCOME';
-  }
-
   const text = `${input.description || ''} ${input.issuer || ''}`.toLowerCase();
-  if (INCOME_DESC_KEYWORDS.some((kw) => text.includes(kw))) {
+  if (BANK_INCOME_DESC_KEYWORDS.some((kw) => text.includes(kw))) {
     return 'INCOME';
   }
-
   if (cats.some((c) => c.includes('PAYROLL') || c.includes('SALARY'))) {
     return 'EXPENSE';
   }
-
   return 'EXPENSE';
 }
 
