@@ -223,7 +223,12 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
           buildOwnBusinessAiHint(resolveOwnBusinessNames(user?.uid, user?.displayName)) || undefined,
           undefined,
           abortController.signal,
-          { forceDeepPdfReads, forcePdfPageSplit: pdfPageSplit, pdfPageCount }
+          {
+            forceDeepPdfReads,
+            forcePdfPageSplit: pdfPageSplit,
+            pdfPageCount,
+            ownBusinessNames: resolveOwnBusinessNames(user?.uid, user?.displayName),
+          }
         ),
         timeoutPromise,
       ])) as any;

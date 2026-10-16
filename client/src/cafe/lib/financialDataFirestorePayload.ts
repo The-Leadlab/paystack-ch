@@ -5,6 +5,7 @@
 
 import type { BankTransaction, FinancialData, ProcessedDocument } from "../types";
 import { uploadDocument } from "../services/storageService";
+import { repairLineItemsToDocumentDirection } from "@shared/documentDirection";
 
 /** Leave headroom for status, fileUrl, metadata, and Firestore encoding overhead. */
 export const FIRESTORE_SAFE_PAYLOAD_BYTES = 750_000;
@@ -77,6 +78,14 @@ export async function packDocumentUpdatesForFirestore(
   ownerUid: string,
   updates: Partial<ProcessedDocument>
 ): Promise<PackedDocumentUpdates> {
+  if (updates.data) {
+    updates = {
+      ...updates,
+      data: repairLineItemsToDocumentDirection(updates.data, {
+        fileName: updates.fileName || updates.data.sourceFileName,
+      }),
+    };
+  }
   const data = updates.data;
   if (!data || !financialDataNeedsLineItemsSidecar(data) || !ownerUid) {
     return { forFirestore: updates, forLocal: updates };

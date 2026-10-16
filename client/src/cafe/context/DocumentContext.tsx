@@ -8,6 +8,10 @@ import { db } from '../lib/firebase';
 import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, orderBy, deleteField } from 'firebase/firestore';
 import { dedupeProcessedDocuments } from '../lib/dedupeProcessedDocuments';
 import { packDocumentUpdatesForFirestore } from '../lib/financialDataFirestorePayload';
+import {
+  lineItemsConflictWithDocument,
+  repairLineItemsToDocumentDirection,
+} from '@shared/documentDirection';
 
 function removeUndefinedDeep<T>(value: T): T {
   if (Array.isArray(value)) {
@@ -117,7 +121,33 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
         console.log('Sample document:', keepers[0]);
       }
 
-      setDocuments(keepers);
+      const repairedKeepers = keepers.map((d) => {
+        if (!d.data) return d;
+        if (!lineItemsConflictWithDocument(d.data, { fileName: d.fileName })) return d;
+        return {
+          ...d,
+          data: repairLineItemsToDocumentDirection(d.data, { fileName: d.fileName }),
+        };
+      });
+      setDocuments(repairedKeepers);
+
+      if (canWrite && db) {
+        const database = db;
+        const uid = dataOwnerUid || '';
+        void (async () => {
+          for (let i = 0; i < keepers.length; i += 1) {
+            const original = keepers[i];
+            const next = repairedKeepers[i];
+            if (!original?.id || !next?.data || next.data === original.data) continue;
+            try {
+              const packed = await packDocumentUpdatesForFirestore(original.id, uid, { data: next.data });
+              await updateDoc(doc(database, 'documents', original.id), removeUndefinedDeep(packed.forFirestore) as any);
+            } catch (repairErr) {
+              console.warn('Could not persist line-type repair for', original.id, repairErr);
+            }
+          }
+        })();
+      }
 
       // Best-effort cleanup of orphan pending twins left by Drive re-import / double-queue
       if (duplicateIds.length > 0 && db && canWrite) {

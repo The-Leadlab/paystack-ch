@@ -30,6 +30,7 @@ import {
   matchLineItemTypeFromAi,
   normalizeLineItemCategory,
 } from "./categoryDetectionService";
+import { applyDocumentDirectionToFinancialData } from "@shared/documentDirection";
 import { getActiveFiscalLocale, reportingCurrencyForLocale } from "../lib/fiscalLocale";
 import {
   normalizeIsoDate,
@@ -305,7 +306,7 @@ MANDATORY:
 4. If one invoice spans multiple pages, merge into ONE entry with pageRange like "3-4".
 5. Extract per-invoice: issuer = supplier trade name ONLY (never append invoice/ref numbers to issuer). Put invoice/ref in documentNumber when available. date = printed invoice date converted to YYYY-MM-DD (Swiss DD.MM.YYYY → YYYY-MM-DD). NEVER use today's/upload date. Also extract pageRange, originalCurrency, netAmount, vatAmount (TVA CHF), vatRate, totalAmount (gross TTC including VAT). If TVA is printed in a multi-rate table, sum column TVA into vatAmount.
 6. Top-level lineItems: one EXPENSE rollup row per sub-invoice (amount = that invoice gross total, description = clean issuer name + pages — no "| REF").
-7. Nested subDocuments[].lineItems: when an invoice has an item table, include product rows (description, amount, quantity, unitPrice). Prefer completeness.
+7. Nested subDocuments[].lineItems: when an invoice has an item table, include product rows (description, amount, quantity, unitPrice). Prefer completeness. LINE ITEM TYPE MUST MATCH THE PARENT INVOICE (supplier invoice → every line EXPENSE; sales invoice → every line INCOME). Never set type from the product name (wine, food, groceries).
 8. After extraction, verify detectedInvoiceCount matches len(subDocuments); if not, fix before returning.
 9. JSON only: no raw newlines or unescaped " inside strings; keep descriptions short.
 10. DISTINCT-INVOICE RULE: invoices with different dates/page blocks/invoice numbers are separate entries, even if supplier and amounts look similar.
@@ -589,6 +590,9 @@ function lineItemFromSubDocument(
     issuer: sub.issuer,
     parentExpenseCategory: parsed.expenseCategory,
     existingType: aiType,
+    fileName: parsed.sourceFileName,
+    userFlowOverride: parsed.userFlowOverride,
+    uploadIntent: parsed.uploadIntent,
   });
   return {
     date: sub.date || parsed.date || new Date().toISOString().slice(0, 10),
@@ -807,10 +811,29 @@ function sanitizeSwissVatFields(
   };
 }
 
+function parseAiFlowHint(raw: unknown): "INCOME" | "EXPENSE" | undefined {
+  const t = String(raw || "").trim().toUpperCase();
+  if (t === "INCOME" || t === "EXPENSE") return t;
+  return undefined;
+}
+
+type DirectionSanitizeCtx = {
+  ownBusinessNames?: string[];
+  fileName?: string;
+  uploadIntent?: 'revenue' | 'expense';
+  userFlowOverride?: string;
+  issuer?: string;
+  recipient?: string;
+  notes?: string;
+  aiInterpretation?: string;
+  aiFlowHint?: string;
+};
+
 function sanitizeLineItemRow(
   item: BankTransaction | any,
   docType: DocumentType,
-  parentCat: string
+  parentCat: string,
+  ctx?: DirectionSanitizeCtx
 ): BankTransaction {
   const amount = toFiniteNumber(item?.amount, 0);
   const description = sanitizeLooseText(item?.description, 220) || 'Unlabeled line item';
@@ -823,6 +846,15 @@ function sanitizeLineItemRow(
     category: rawCategory,
     parentExpenseCategory: parentCat,
     existingType: rawType,
+    fileName: ctx?.fileName,
+    ownBusinessNames: ctx?.ownBusinessNames,
+    userFlowOverride: ctx?.userFlowOverride,
+    uploadIntent: ctx?.uploadIntent,
+    issuer: ctx?.issuer,
+    recipient: ctx?.recipient,
+    notes: ctx?.notes,
+    aiInterpretation: ctx?.aiInterpretation,
+    aiFlowHint: ctx?.aiFlowHint,
   });
   const category = normalizeLineItemCategory({
     category: rawCategory,
@@ -846,12 +878,26 @@ function sanitizeLineItemRow(
   };
 }
 
-function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
+function sanitizeFinancialDataForUi(
+  data: FinancialData,
+  ctx?: DirectionSanitizeCtx
+): FinancialData {
   const docType = coerceDocumentType(data.documentType);
   const parentCat = sanitizeLooseText(data.expenseCategory, 80) || 'OTHER';
+  const lineCtx: DirectionSanitizeCtx = {
+    ...ctx,
+    issuer: ctx?.issuer || data.issuer,
+    recipient: ctx?.recipient || data.recipient,
+    notes: ctx?.notes || data.notes,
+    aiInterpretation: ctx?.aiInterpretation || data.aiInterpretation,
+    aiFlowHint: ctx?.aiFlowHint || data.aiFlowHint,
+    userFlowOverride: ctx?.userFlowOverride || data.userFlowOverride,
+    fileName: ctx?.fileName || data.sourceFileName,
+    uploadIntent: ctx?.uploadIntent || data.uploadIntent,
+  };
 
   const safeLineItems: BankTransaction[] = (Array.isArray(data.lineItems) ? data.lineItems : [])
-    .map((item) => sanitizeLineItemRow(item, docType, parentCat))
+    .map((item) => sanitizeLineItemRow(item, docType, parentCat, lineCtx))
     .filter((item) => item.amount >= 0);
 
   const rootSwiss = sanitizeSwissVatFields(data, data.expenseCategory || "OTHER");
@@ -862,7 +908,12 @@ function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
       const subCat = sanitizeLooseText(sub?.expenseCategory, 80) || data.expenseCategory || "OTHER";
       const subSplit = splitIssuerAndReference(sub?.issuer);
       const nestedItems = (Array.isArray((sub as any)?.lineItems) ? (sub as any).lineItems : [])
-        .map((item: BankTransaction) => sanitizeLineItemRow(item, coerceDocumentType(sub?.documentType) || docType, subCat))
+        .map((item: BankTransaction) =>
+          sanitizeLineItemRow(item, coerceDocumentType(sub?.documentType) || docType, subCat, {
+            ...lineCtx,
+            issuer: subSplit.issuer || lineCtx.issuer,
+          })
+        )
         .filter((item: BankTransaction) => item.amount >= 0);
       const baseSub = {
         ...sub,
@@ -902,6 +953,11 @@ function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
     documentType: coerceDocumentType(data.documentType),
     date: normalizeIsoDate(data.date) || sanitizeLooseText(data.date, 24),
     issuer: sanitizeLooseText(rootSplit.issuer, 120) || "Unknown issuer",
+    recipient: sanitizeLooseText((data as { recipient?: string }).recipient, 120) || undefined,
+    aiFlowHint:
+      parseAiFlowHint((data as { flowDirection?: string; aiFlowHint?: string }).flowDirection) ||
+      parseAiFlowHint((data as { aiFlowHint?: string }).aiFlowHint) ||
+      undefined,
     documentNumber:
       sanitizeLooseText(data.documentNumber, 80) ||
       sanitizeLooseText(rootSplit.reference, 80) ||
@@ -929,14 +985,26 @@ function sanitizeFinancialDataForUi(data: FinancialData): FinancialData {
     subDocuments: safeSubDocuments,
   } as FinancialData;
 
-  return {
-    ...rootWithSwiss,
-    vatAmount: resolveDocumentVatAmount(rootWithSwiss),
-    date:
-      normalizeIsoDate(rootWithSwiss.date) ||
-      (safeSubDocuments.map((s) => normalizeIsoDate(s.date)).find(Boolean) as string | undefined) ||
-      rootWithSwiss.date,
-  };
+  const directed = applyDocumentDirectionToFinancialData(
+    {
+      ...rootWithSwiss,
+      vatAmount: resolveDocumentVatAmount(rootWithSwiss),
+      date:
+        normalizeIsoDate(rootWithSwiss.date) ||
+        (safeSubDocuments.map((s) => normalizeIsoDate(s.date)).find(Boolean) as string | undefined) ||
+        rootWithSwiss.date,
+      sourceFileName: lineCtx.fileName || rootWithSwiss.sourceFileName,
+      uploadIntent: lineCtx.uploadIntent || rootWithSwiss.uploadIntent,
+      recipient: lineCtx.recipient || rootWithSwiss.recipient,
+      aiFlowHint: parseAiFlowHint(lineCtx.aiFlowHint) || rootWithSwiss.aiFlowHint,
+    } as FinancialData,
+    {
+      ownBusinessNames: lineCtx.ownBusinessNames,
+      fileName: lineCtx.fileName,
+      uploadIntent: lineCtx.uploadIntent,
+    }
+  );
+  return directed;
 }
 
 function maxPageMentionedInSubDocs(parsed: FinancialData): number {
@@ -999,6 +1067,8 @@ export type AnalyzeFinancialDocumentOptions = {
   pdfPageCount?: number;
   /** Use inline bytes; skip a blocking Storage round-trip (small files / page images). */
   preferInline?: boolean;
+  ownBusinessNames?: string[];
+  uploadIntent?: 'revenue' | 'expense';
 };
 
 /** Count product-like lines (exclude synthetic invoice rollups). */
@@ -1108,7 +1178,8 @@ async function extractProductLineItemsPass(
   model: string,
   base: FinancialData,
   userHint?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  directionCtx?: DirectionSanitizeCtx
 ): Promise<BankTransaction[] | null> {
   const hintSection = userHint ? `USER HINT: "${userHint}".` : '';
   const issuer = String(base.issuer || '').trim();
@@ -1128,7 +1199,7 @@ MANDATORY:
    - quantity = package count when clear (e.g. 2 from "2 FUT", 4 from "4 CA")
    - unitPrice = Prix
    - amount = Valeur (merchandise line value — NOT the whole invoice total)
-   - type = EXPENSE
+   - type = EXPENSE (always — this is a supplier invoice; never INCOME even if the article is wine, food, or beverages)
    - category = SAME dashboard IDs only: BEVERAGES for drinks/beer/wine/soft drinks; FOOD_SUPPLIES for food; PACKAGING for containers; CLEANING for hygiene; otherwise inherit "${category}" if it is already a valid ID. Never write Food/Beverage/food — always FOOD_SUPPLIES or BEVERAGES.
    - date = "${date || 'invoice date YYYY-MM-DD'}"
 3. If Consigne (deposit) > 0 on a row, ALSO add a separate line: description "Consigne — {Désignation}", amount = Consigne, type EXPENSE, same category.
@@ -1187,7 +1258,15 @@ Return JSON matching schema.`;
     );
     const items = Array.isArray(parsed.lineItems) ? parsed.lineItems : [];
     const cleaned = items
-      .map((item) => sanitizeLineItemRow(item, coerceDocumentType(base.documentType), category))
+      .map((item) =>
+        sanitizeLineItemRow(item, coerceDocumentType(base.documentType), category, {
+          issuer: base.issuer,
+          userFlowOverride: base.userFlowOverride,
+          fileName: file.name || base.sourceFileName,
+          uploadIntent: base.uploadIntent,
+          ownBusinessNames: directionCtx?.ownBusinessNames,
+        })
+      )
       .filter((item) => item.amount > 0 && item.description.trim().length > 0);
     return cleaned.length > 0 ? cleaned : null;
   } catch (error) {
@@ -1508,11 +1587,21 @@ export const analyzeFinancialDocument = async (
               : `Page ${i + 1} of ${images.length} from multi-ticket PDF ${file.name}`,
             undefined,
             signal,
-            { skipPdfPageSplit: true, forceDeepPdfReads: false, preferInline: true }
+            {
+              skipPdfPageSplit: true,
+              forceDeepPdfReads: false,
+              preferInline: true,
+              ownBusinessNames: options?.ownBusinessNames,
+              uploadIntent: options?.uploadIntent,
+            }
           );
         });
         let merged = mergePdfPageAnalyses(pageResults, file.name);
-        merged = sanitizeFinancialDataForUi(applySwissVatWarnings(merged));
+        merged = sanitizeFinancialDataForUi(applySwissVatWarnings(merged), {
+          ownBusinessNames: options?.ownBusinessNames,
+          fileName: file.name,
+          uploadIntent: options?.uploadIntent,
+        });
         if (merged.totalAmount !== undefined) {
           const fromCur = String(merged.originalCurrency || targetCurrency || "CHF")
             .trim()
@@ -1582,7 +1671,18 @@ export const analyzeFinancialDocument = async (
         issuer: {
           type: Type.STRING,
           description:
-            "Supplier/company trade name only. Do NOT append invoice number, reference, or '| REF …'.",
+            "Supplier/company trade name only. Do NOT append invoice number, reference, or '| REF …'. For a sales invoice issued by the restaurant, issuer is the restaurant.",
+        },
+        recipient: {
+          type: Type.STRING,
+          description:
+            "Bill-to / invoiced party (customer for a sales invoice; the restaurant for a supplier invoice).",
+        },
+        flowDirection: {
+          type: Type.STRING,
+          enum: ["INCOME", "EXPENSE"],
+          description:
+            "INCOME if this business is the seller (sales/customer invoice). EXPENSE if this business is the buyer (supplier/purchase invoice). Ignore product names such as wine or food.",
         },
         documentNumber: {
           type: Type.STRING,
@@ -1790,7 +1890,17 @@ export const analyzeFinancialDocument = async (
       required: ["documentType", "totalAmount", "originalCurrency", "issuer", "expenseCategory"]
     };
 
-    const hintSection = userHint ? `USER HINT: "${userHint}".` : "";
+    const directionCtx: DirectionSanitizeCtx = {
+      ownBusinessNames: options?.ownBusinessNames,
+      fileName: file.name,
+      uploadIntent: options?.uploadIntent,
+    };
+    const hintSection = [
+      userHint ? `USER HINT: "${userHint}".` : "",
+      `Uploaded file name: "${file.name}". Use this to distinguish facture fournisseur / supplier purchase (EXPENSE) from facture de vente / sales invoice (INCOME).`,
+    ]
+      .filter(Boolean)
+      .join(" ");
     const isUkFiscal = getActiveFiscalLocale() === "uk";
     const fiscalOverlay = isUkFiscal
       ? `
@@ -1892,9 +2002,14 @@ CRITICAL RULES:
    - NEVER invent a category outside the allowed list.
 
 INCOME vs EXPENSE Detection:
-- INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings, and invoices ISSUED BY the account holder's own business (issuer/letterhead matches OWN BUSINESS IDENTITY in the user hint — usually top or left of the page). For those, set expenseCategory to "REVENUE" / "SALES".
-- EXPENSE: Supplier invoices, bills to pay, purchases, rent, utilities, salaries — including invoices where the account holder is only the recipient / bill-to party (often right side), even if their name appears on the document.
+- Decide at DOCUMENT level first (issuer vs recipient, wording, filename). Then copy that type onto EVERY line item.
+- Set flowDirection = INCOME when this business is the SELLER (sales/customer invoice). Set flowDirection = EXPENSE when this business is the BUYER (supplier/purchase invoice). Never set flowDirection from product names.
+- Fill recipient with the bill-to / invoiced party.
+- INCOME: Sales receipts, revenue reports, customer payments, deposits, Z-readings, facture de vente / sales invoice / customer invoice, and invoices ISSUED BY the account holder's own business (issuer/letterhead matches OWN BUSINESS IDENTITY — usually top or left). expenseCategory = "REVENUE" / "SALES".
+- EXPENSE: Supplier invoices (facture fournisseur, Fournisseurs, purchase invoice, invoice to us, bulletin de livraison), bills to pay, purchases, rent, utilities, salaries — including invoices where the account holder is only the recipient / bill-to (often right side).
 - When OWN BUSINESS IDENTITY is provided: matching issuer → INCOME; matching recipient only → EXPENSE. Do not classify own-business customer invoices as supplier bills.
+- LINE ITEM TYPE (CRITICAL): Do NOT guess INCOME vs EXPENSE from the product name. Six bottles of wine on a supplier invoice are EXPENSE, not INCOME. Food/wine/groceries on a purchase invoice never become sales. Every item on a supplier/purchase invoice is EXPENSE. Every item on a sales/customer invoice is INCOME.
+- Filename hints: "Fournisseurs", "supplier", "achat" → EXPENSE document. "vente", "sales", "facture client" → INCOME document.
 
 MULTI-PAGE / MULTI-INVOICE REQUIREMENT:
 - Process the full file from first page to last page.
@@ -1924,7 +2039,8 @@ Return JSON only.`;
     console.log(`✅ Gemini API responded in ${elapsed}ms`);
 
     const parsed = sanitizeFinancialDataForUi(
-      parseModelJsonResponse<FinancialData>(response.text, "analyze-financial-document")
+      parseModelJsonResponse<FinancialData>(response.text, "analyze-financial-document"),
+      directionCtx
     );
     console.log(`📊 Parsed data:`, parsed);
 
@@ -2030,7 +2146,8 @@ Return JSON only.`;
         model,
         normalized,
         userHint,
-        signal
+        signal,
+        directionCtx
       );
       if (products && products.length >= 2) {
         normalized = mergeProductLineItemsIntoData(normalized, products);
@@ -2042,8 +2159,14 @@ Return JSON only.`;
 
     normalized = repairPaySlipMultiInvoiceBlocks(normalized, file);
     normalized = applyPayrollPaymentFields(normalized);
-    normalized = sanitizeFinancialDataForUi(syncGrandTotalsFromSubDocuments(normalized));
-    normalized = sanitizeFinancialDataForUi(applySwissVatWarnings(normalized));
+    normalized = sanitizeFinancialDataForUi(syncGrandTotalsFromSubDocuments(normalized), directionCtx);
+    normalized = sanitizeFinancialDataForUi(applySwissVatWarnings(normalized), directionCtx);
+
+    normalized = {
+      ...normalized,
+      sourceFileName: file.name || normalized.sourceFileName,
+      uploadIntent: options?.uploadIntent || normalized.uploadIntent,
+    };
 
     if (normalized.totalAmount !== undefined) {
       const fromCur = String(normalized.originalCurrency || targetCurrency || "CHF")

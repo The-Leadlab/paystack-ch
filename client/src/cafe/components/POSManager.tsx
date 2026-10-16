@@ -222,6 +222,7 @@ export function POSManager({
         amount: i.amount,
         type: i.type,
         description: i.description,
+        payment_method: i.payment_method,
       })),
     [filteredIncome]
   );
@@ -345,7 +346,7 @@ export function POSManager({
     setShowCashDeposit(false);
   };
 
-  const paymentBase = Math.max(paymentMix.cash + paymentMix.card + paymentMix.other, 1);
+  const paymentBase = Math.max(paymentMix.gross, 1);
   const flowBase = Math.max(revPeriod, dailyAvg, paymentMix.gross, 1);
 
   const fmt = (n: number) =>
@@ -489,10 +490,21 @@ export function POSManager({
     const items = [
       { name: t('posCash'), amount: paymentMix.cash, fill: CHART_GREEN },
       { name: t('posCard'), amount: paymentMix.card, fill: CHART_BLUE },
-      { name: t('rhPaymentTwint'), amount: paymentMix.other, fill: CHART_GOLD },
+      { name: t('rhPaymentTwint'), amount: paymentMix.twint, fill: CHART_GOLD },
+      { name: t('rhPaymentBankTransfer'), amount: paymentMix.bankTransfer, fill: '#a78bfa' },
+      { name: t('posOther'), amount: paymentMix.other, fill: '#fb7185' },
+      { name: t('rhPaymentUnspecified'), amount: paymentMix.unspecified, fill: '#9aa0a6' },
     ].filter((x) => x.amount > 0);
-    return items.length ? items : [{ name: t('posCash'), amount: 0, fill: CHART_GREEN }];
-  }, [paymentMix.cash, paymentMix.card, paymentMix.other, t]);
+    return items.length ? items : [{ name: t('rhPaymentUnspecified'), amount: 0, fill: '#9aa0a6' }];
+  }, [
+    paymentMix.cash,
+    paymentMix.card,
+    paymentMix.twint,
+    paymentMix.bankTransfer,
+    paymentMix.other,
+    paymentMix.unspecified,
+    t,
+  ]);
 
   const hasTransactions = baseIncomeRows.length > 0 || basePosReadings.length > 0;
   const hasPayments = paymentMix.gross > 0;
@@ -1408,16 +1420,18 @@ export function POSManager({
         </div>
       ) : null}
 
-      {paymentMix.fromPos === false && hasPayments ? (
-        <p className="text-[10px] text-cdlp-muted uppercase tracking-wide">
-          {t('posFromIncome')} · {t('posEstimated')}
-        </p>
+      {paymentMix.fromPos ? (
+        <p className="text-[10px] text-cdlp-muted uppercase tracking-wide">{t('posFromZReadings')}</p>
+      ) : paymentMix.unspecified > 0 ? (
+        <p className="text-[10px] text-cdlp-muted uppercase tracking-wide">{t('posPaymentUnspecifiedHint')}</p>
       ) : null}
 
       <RevenueLedgerTable
         income={filteredIncome.filter((i) => i.date >= rangeStart && i.date <= rangeEnd)}
         expenses={[]}
         incomeOnly
+        documents={documents}
+        onUpdateIncome={updateIncome}
       />
 
       <div className="ba-panel" ref={activityRef}>
@@ -1670,8 +1684,9 @@ function POSModal({
     setGrossSales(gross.toFixed(2));
     setVatAmount(vat.toFixed(2));
     setNetSales(net.toFixed(2));
-    setCard((gross * 0.6).toFixed(2));
-    setCash((gross * 0.4).toFixed(2));
+    setCard('0.00');
+    setCash('0.00');
+    setOtherPayment('0.00');
     setNotes(
       start === end
         ? t('posAutoNotes').replace('{n}', String(rangedIncome.length))
@@ -1698,7 +1713,14 @@ function POSModal({
         setMode('csv');
         return;
       }
-      const result = await analyzeFinancialDocument(file, reportingCurrencyForLocale(), getZReadingAiHint());
+      const result = await analyzeFinancialDocument(
+        file,
+        reportingCurrencyForLocale(),
+        getZReadingAiHint(),
+        undefined,
+        undefined,
+        { uploadIntent: "revenue" }
+      );
       applyDraft(parseZReadingFromFinancialData(result, date));
     } catch (error) {
       alert(

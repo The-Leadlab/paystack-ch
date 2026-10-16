@@ -60,6 +60,7 @@ import {
 } from '../services/reportExportService';
 import { emailFinancialReport } from '../lib/reportEmailClient';
 import { RevenueLedgerTable } from './RevenueLedgerTable';
+import { PaymentMethodSelect } from './PaymentMethodSelect';
 import { mapAiExpenseCategoryToLedger } from '../lib/mapExpenseCategory';
 import { postLedgerFromFinancialData } from '../lib/postLedgerFromFinancialData';
 import { resolveOwnBusinessNames } from '../lib/ownBusinessIdentity';
@@ -1513,7 +1514,15 @@ export function RestaurantDashboard() {
 
       {/* Modals */}
       {showAddEmployee && <AddEmployeeModal onClose={() => setShowAddEmployee(false)} onAdd={addEmployee} t={t} />}
-      {showAddIncome && <AddIncomeModal onClose={() => setShowAddIncome(false)} onAdd={(date, type, amount, desc) => addIncome(date, type, amount, desc, currentSession?.id || '')} t={t} />}
+      {showAddIncome && (
+        <AddIncomeModal
+          onClose={() => setShowAddIncome(false)}
+          onAdd={(date, type, amount, desc, paymentMethod) =>
+            addIncome(date, type, amount, desc, currentSession?.id || '', undefined, undefined, undefined, undefined, paymentMethod)
+          }
+          t={t}
+        />
+      )}
       {showAddExpense && <AddExpenseModal onClose={() => setShowAddExpense(false)} onAdd={(date, cat, amount, desc) => addExpense(date, cat, amount, desc, currentSession?.id || '')} t={t} />}
       
       {/* Master Reset Confirmation Modal */}
@@ -3813,15 +3822,22 @@ function AddEmployeeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (
   );
 }
 
-function AddIncomeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description?: string) => Promise<any>; t: (key: string) => string }) {
+function AddIncomeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (date: string, type: 'SALES' | 'RESERVATION', amount: number, description?: string, paymentMethod?: string | null) => Promise<any>; t: (key: string) => string }) {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [type, setType] = useState<'SALES' | 'RESERVATION'>('SALES');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<string>('unspecified');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onAdd(date, type, parseFloat(amount), description);
+    await onAdd(
+      date,
+      type,
+      parseFloat(amount),
+      description,
+      paymentMethod === 'unspecified' ? null : paymentMethod
+    );
     onClose();
   };
 
@@ -3868,6 +3884,15 @@ function AddIncomeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (da
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase text-cdlp-muted mb-1">{t('rhPaymentMethod')}</label>
+            <PaymentMethodSelect
+              value={paymentMethod}
+              onChange={setPaymentMethod}
+              t={t}
               className="w-full px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
             />
           </div>

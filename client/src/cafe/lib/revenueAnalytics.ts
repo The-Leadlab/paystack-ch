@@ -1,10 +1,13 @@
 /** Revenue analytics — live sums, cash, profit, reconciliation, insights (no UI). */
 
+import { paymentMixBucket } from '@shared/paymentMethod';
+
 export type IncomeRow = {
   date: string;
   amount: number;
   type?: string;
   description?: string;
+  payment_method?: string | null;
 };
 
 export type ExpenseRow = {
@@ -81,7 +84,10 @@ export type Profitability = {
 export type PaymentMix = {
   cash: number;
   card: number;
+  twint: number;
+  bankTransfer: number;
   other: number;
+  unspecified: number;
   gross: number;
   fromPos: boolean;
 };
@@ -240,11 +246,23 @@ export function buildPaymentMix(
   readings: PosReadingRow[],
   income: IncomeRow[],
   monthStart: string,
-  monthEnd: string
+  monthEnd: string,
+  options?: { allowDemoHeuristic?: boolean }
 ): PaymentMix {
+  const empty: PaymentMix = {
+    cash: 0,
+    card: 0,
+    twint: 0,
+    bankTransfer: 0,
+    other: 0,
+    unspecified: 0,
+    gross: 0,
+    fromPos: false,
+  };
   const pos = sumPosInRange(readings, monthStart, monthEnd);
   if (pos.count > 0) {
     return {
+      ...empty,
       cash: pos.cash,
       card: pos.card,
       other: pos.other,
@@ -252,17 +270,33 @@ export function buildPaymentMix(
       fromPos: true,
     };
   }
-  const rev = sumInRange(income, monthStart, monthEnd);
-  if (rev <= 0) {
-    return { cash: 0, card: 0, other: 0, gross: 0, fromPos: false };
+  const inRange = income.filter((i) => i.date >= monthStart && i.date <= monthEnd);
+  const rev = inRange.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  if (rev <= 0) return empty;
+
+  if (options?.allowDemoHeuristic) {
+    return {
+      ...empty,
+      cash: rev * 0.4,
+      card: rev * 0.55,
+      other: rev * 0.05,
+      gross: rev,
+      fromPos: false,
+    };
   }
-  return {
-    cash: rev * 0.4,
-    card: rev * 0.55,
-    other: rev * 0.05,
-    gross: rev,
-    fromPos: false,
-  };
+
+  const mix: PaymentMix = { ...empty, gross: rev };
+  for (const row of inRange) {
+    const amt = Number(row.amount) || 0;
+    const bucket = paymentMixBucket(row.payment_method);
+    if (bucket === 'cash') mix.cash += amt;
+    else if (bucket === 'card') mix.card += amt;
+    else if (bucket === 'twint') mix.twint += amt;
+    else if (bucket === 'bank_transfer') mix.bankTransfer += amt;
+    else if (bucket === 'other') mix.other += amt;
+    else mix.unspecified += amt;
+  }
+  return mix;
 }
 
 export function buildReconciliation(

@@ -12,7 +12,7 @@ import {
   resolveDocumentVatAmount,
   splitIssuerAndReference,
 } from './swissDocumentNormalize';
-import { issuerLooksLikeOwnBusiness } from './ownBusinessIdentity';
+import { isRevenueDocument } from '@shared/documentDirection';
 import type { LedgerExpenseDraft, LedgerIncomeDraft } from '../context/FinanceContext';
 import {
   resolveDocumentAmountInCHF,
@@ -29,7 +29,8 @@ type LedgerWriters = {
     documentId?: string,
     vatAmount?: number,
     accountCode?: string,
-    aiCategory?: string
+    aiCategory?: string,
+    paymentMethod?: string | null
   ) => Promise<Income | null>;
   addExpense: (
     date: string,
@@ -73,21 +74,26 @@ function resolveAccountCode(
   });
 }
 
-function isRevenueDoc(data: FinancialData, ownBusinessNames?: string[]): boolean {
-  const cat = String(data.expenseCategory || '').toUpperCase();
-  const docType = data.documentType;
-  if (
-    cat.includes('REVENUE') ||
-    cat.includes('SALES') ||
-    docType === 'Ticket/Receipt' ||
-    docType === 'Z2 Multi-Ticket Sheet'
-  ) {
-    return true;
-  }
-  if (docType === 'Pay Slip' || docType === 'Bank Statement' || docType === 'Bank Deposit') {
-    return false;
-  }
-  return issuerLooksLikeOwnBusiness(data.issuer, ownBusinessNames || []);
+function isRevenueDoc(
+  data: FinancialData,
+  ownBusinessNames?: string[],
+  fileName?: string
+): boolean {
+  return isRevenueDocument(
+    {
+      documentType: data.documentType,
+      expenseCategory: data.expenseCategory,
+      issuer: data.issuer,
+      recipient: data.recipient,
+      notes: data.notes,
+      aiInterpretation: data.aiInterpretation,
+      fileName: fileName || data.sourceFileName,
+      userFlowOverride: data.userFlowOverride,
+      uploadIntent: data.uploadIntent,
+      aiFlowHint: data.aiFlowHint,
+    },
+    ownBusinessNames
+  );
 }
 
 function incomeTypeFromCategory(category?: string): 'SALES' | 'RESERVATION' {
@@ -140,7 +146,7 @@ async function postSingleAmount(
     String(data.documentNumber ? `Doc ${data.documentNumber}` : '').trim();
   const vatAmount = resolveDocumentVatAmount(data);
 
-  if (isRevenueDoc(data, ownBusinessNames)) {
+  if (isRevenueDoc(data, ownBusinessNames, fileName)) {
     const incomeType = incomeTypeFromCategory(data.expenseCategory);
     const fallbackProduct =
       incomeType === 'RESERVATION' ? 'Reservation / booking' : 'Product / service sale';
@@ -159,7 +165,8 @@ async function postSingleAmount(
       documentId,
       vatAmount,
       code,
-      fineIncome
+      fineIncome,
+      data.paymentMethod || null
     );
     return 'income';
   }
@@ -414,6 +421,9 @@ export async function postLedgerFromFinancialData(
         documentType: sub.documentType || data.documentType,
         expenseCategory: sub.expenseCategory || data.expenseCategory,
         swissAccountClassification: sub.swissAccountClassification || undefined,
+        userFlowOverride: sub.userFlowOverride || data.userFlowOverride,
+        sourceFileName: data.sourceFileName || fileName,
+        paymentMethod: sub.paymentMethod || data.paymentMethod,
         // Prevent nested re-entry into the multi-invoice branch
         subDocuments: [],
       };

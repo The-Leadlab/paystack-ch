@@ -41,6 +41,12 @@ export interface Income {
   /** Fine AI / accountant category (e.g. SALES, FOOD_SUPPLIES) for reports */
   ai_category?: string;
   document_id?: string; // Link to source document
+  /**
+   * How this revenue was paid. Unset / "unspecified" for manual invoice uploads
+   * until the user picks Cash, Card, Twint, Bank transfer, or Other.
+   * Auto-set only from POS / Stripe / similar integrations that report tender.
+   */
+  payment_method?: string | null;
   created_at: string;
 }
 
@@ -220,6 +226,21 @@ export interface FinancialData {
   swissVatFormPreview?: SwissVatFormPreview;
   /** AI-assigned Plan comptable CH konto with confidence (see swissAccountClassifierService). */
   swissAccountClassification?: SwissAccountClassification;
+  /**
+   * User override of document cash-flow (Income / Expense / Salary). When set,
+   * ledger totals and line-item types follow this instead of AI guesses.
+   */
+  userFlowOverride?: 'INCOME' | 'EXPENSE' | 'SALARY';
+  /** Manual tender for revenue documents (unset = unspecified). */
+  paymentMethod?: string | null;
+  /** Original upload filename — used to detect facture fournisseur vs vente. */
+  sourceFileName?: string;
+  /** Where the file was uploaded from, when known. */
+  uploadIntent?: 'revenue' | 'expense';
+  /** Bill-to / recipient printed on the invoice (customer vs ourselves). */
+  recipient?: string;
+  /** Gemini seller-vs-buyer hint (INCOME = we issued it, EXPENSE = we were billed). */
+  aiFlowHint?: 'INCOME' | 'EXPENSE';
   // Bank specific fields for audit
   openingBalance?: number;
   finalBalance?: number;
