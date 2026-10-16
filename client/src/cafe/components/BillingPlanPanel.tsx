@@ -21,6 +21,7 @@ import { PlanMarketingFeatureBullets, PlanMarketingPanel, PLAN_ENTERPRISE_SALES_
 import { GoogleDriveConnectPanel } from './GoogleDriveConnectPanel';
 import { TeamInvitePanel } from './TeamInvitePanel';
 import { db } from '../lib/firebase';
+import { PasswordField } from '@/components/PasswordField';
 
 function planDisplayName(id: PaystackPlanId | null | undefined, t: (k: string) => string): string {
   if (id === 'personal') return t('planPersonalName');
@@ -637,17 +638,17 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
         {isPasswordUser ? (
           <form onSubmit={handlePasswordChange} className="space-y-3 max-w-md">
             <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-muted">{t('billingChangePasswordTitle')}</p>
-            <input
-              type="password"
+            <PasswordField
               autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               placeholder={t('billingCurrentPassword')}
               required
               className="ba-verify-field"
+              revealLabel={t('authShowPassword')}
+              hideLabel={t('authHidePassword')}
             />
-            <input
-              type="password"
+            <PasswordField
               autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
@@ -655,9 +656,10 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
               required
               minLength={6}
               className="ba-verify-field"
+              revealLabel={t('authShowPassword')}
+              hideLabel={t('authHidePassword')}
             />
-            <input
-              type="password"
+            <PasswordField
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
@@ -665,6 +667,8 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
               required
               minLength={6}
               className="ba-verify-field"
+              revealLabel={t('authShowPassword')}
+              hideLabel={t('authHidePassword')}
             />
             {passwordErr ? <p className="text-xs text-red-400 font-medium">{passwordErr}</p> : null}
             {passwordMsg ? <p className="text-xs text-emerald-400 font-medium">{passwordMsg}</p> : null}

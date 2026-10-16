@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
-import { CreditCard, ExternalLink, Loader2, Lock, LogIn, LogOut, Mail, Users, Wrench } from "lucide-react";
+import { AlertTriangle, CreditCard, ExternalLink, Loader2, Lock, LogIn, LogOut, Mail, Users, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,8 +22,9 @@ import { SeoNoIndex } from "@/components/SeoNoIndex";
 import { PlanMarketingPanel } from "@/cafe/components/PlanMarketingPanel";
 import { AdminUsersPanel } from "./admin/AdminUsersPanel";
 import { AdminOutreachPanel } from "./admin/AdminOutreachPanel";
+import { AdminErrorLogsPanel } from "./admin/AdminErrorLogsPanel";
 
-type AdminTab = "users" | "outreach" | "operator";
+type AdminTab = "users" | "errors" | "outreach" | "operator";
 
 function OperatorToolsPanel() {
   const { t } = useLanguage();
@@ -304,6 +305,7 @@ export default function AdminDashboardPage() {
   const { t } = useLanguage();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<AdminTab>("users");
+  const [openUserUid, setOpenUserUid] = useState<string | null>(null);
   const [sessionOk, setSessionOk] = useState<boolean | null>(null);
   const [lockBusy, setLockBusy] = useState(false);
 
@@ -339,6 +341,7 @@ export default function AdminDashboardPage() {
 
   const tabs: { id: AdminTab; label: string; icon: typeof Users }[] = [
     { id: "users", label: t("adminTabUsers"), icon: Users },
+    { id: "errors", label: t("adminTabErrors"), icon: AlertTriangle },
     { id: "outreach", label: t("adminTabOutreach"), icon: Mail },
     { id: "operator", label: t("adminTabOperator"), icon: Wrench },
   ];
@@ -351,7 +354,7 @@ export default function AdminDashboardPage() {
         description={t("adminDashboardDescription")}
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:gap-2">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const active = activeTab === tab.id;
@@ -387,13 +390,25 @@ export default function AdminDashboardPage() {
           <p className="text-sm text-muted-foreground -mt-2">
             {activeTab === "users"
               ? t("adminUsersHint")
-              : activeTab === "outreach"
-                ? t("adminTabOutreachHint")
-                : t("adminTabOperatorHint")}
+              : activeTab === "errors"
+                ? t("adminTabErrorsHint")
+                : activeTab === "outreach"
+                  ? t("adminTabOutreachHint")
+                  : t("adminTabOperatorHint")}
           </p>
 
           {activeTab === "users" ? (
-            <AdminUsersPanel />
+            <AdminUsersPanel
+              openUid={openUserUid}
+              onOpenUidConsumed={() => setOpenUserUid(null)}
+            />
+          ) : activeTab === "errors" ? (
+            <AdminErrorLogsPanel
+              onOpenUser={(uid) => {
+                setOpenUserUid(uid);
+                setActiveTab("users");
+              }}
+            />
           ) : activeTab === "outreach" ? (
             <AdminOutreachPanel />
           ) : (

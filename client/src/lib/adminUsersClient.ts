@@ -285,6 +285,28 @@ export type AdminUserUsageInsights = {
   errorLog?: AdminErrorLogEntry[];
 };
 
+export type AdminGlobalErrorEntry = {
+  id: string;
+  uid: string | null;
+  email: string | null;
+  displayName: string | null;
+  at: string;
+  fileName: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  sessionId: string | null;
+  documentId: string | null;
+};
+
+export async function listAdminErrorLogs(options?: {
+  limit?: number;
+}): Promise<{ errors: AdminGlobalErrorEntry[]; generatedAt: string }> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set("limit", String(options.limit));
+  const q = params.toString() ? `?${params}` : "";
+  return adminFetch(`/api/admin/error-logs${q}`);
+}
+
 export async function listAdminUserActivity(
   uid: string,
   options?: { limit?: number; errorsOnly?: boolean }

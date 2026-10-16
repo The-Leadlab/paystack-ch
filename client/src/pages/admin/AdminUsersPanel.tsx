@@ -54,6 +54,12 @@ type ProductTab = "platform" | "personal";
 
 type ConfirmKind = "admin_one" | "admin_bulk" | "delete_bulk" | "archive_bulk" | null;
 
+type AdminUsersPanelProps = {
+  /** Open this user detail when set (e.g. from Error logs tab). */
+  openUid?: string | null;
+  onOpenUidConsumed?: () => void;
+};
+
 /** Live Stripe only — test-mode / admin simulated plans are not billable. */
 function hasLiveStripeSubscription(user: AdminUserSummary): boolean {
   if (user.disabled) return false;
@@ -129,7 +135,7 @@ function loginModeAdminLabel(
   return isMultiLoginMode(mode) ? t("adminLoginModeShared") : t("adminLoginModeExclusive");
 }
 
-export function AdminUsersPanel() {
+export function AdminUsersPanel({ openUid = null, onOpenUidConsumed }: AdminUsersPanelProps = {}) {
   const { t } = useLanguage();
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,6 +167,12 @@ export function AdminUsersPanel() {
   useEffect(() => {
     void loadUsers();
   }, [loadUsers]);
+
+  useEffect(() => {
+    if (!openUid) return;
+    setSelectedUid(openUid);
+    onOpenUidConsumed?.();
+  }, [openUid, onOpenUidConsumed]);
 
   const onSearch = () => void loadUsers(search);
 

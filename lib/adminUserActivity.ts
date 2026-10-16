@@ -477,6 +477,96 @@ export async function listAdminUserActivity(
   return { events: insights.events, documents: insights.documents };
 }
 
+export type AdminGlobalErrorEntry = {
+  id: string;
+  uid: string | null;
+  email: string | null;
+  displayName: string | null;
+  at: string;
+  fileName: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  sessionId: string | null;
+  documentId: string | null;
+};
+
+/** Recent document-process errors across all users (admin fix queue). */
+export async function listGlobalDocumentErrors(
+  options?: { limit?: number }
+): Promise<{ errors: AdminGlobalErrorEntry[]; generatedAt: string }> {
+  if (!hasFirebaseAdminCredentials()) {
+    throw Object.assign(new Error("Firebase Admin credentials are not configured."), { status: 503 });
+  }
+  ensureFirebaseAdmin();
+
+  const limit = Math.min(Math.max(options?.limit ?? 100, 1), 250);
+  const db = getFirestore();
+  let rows: Array<{ id: string; data: Record<string, unknown> }> = [];
+  try {
+    const snap = await db
+      .collection("userActivity")
+      .where("type", "==", "document_process_error")
+      .orderBy("at", "desc")
+      .limit(limit)
+      .get();
+    rows = snap.docs.map((d) => ({ id: d.id, data: d.data() as Record<string, unknown> }));
+  } catch {
+    const fallback = await db.collection("userActivity").where("type", "==", "document_process_error").limit(400).get();
+    rows = fallback.docs
+      .map((d) => ({ id: d.id, data: d.data() as Record<string, unknown> }))
+      .sort((a, b) => {
+        const atA = typeof a.data.at === "string" ? a.data.at : "";
+        const atB = typeof b.data.at === "string" ? b.data.at : "";
+        return atB.localeCompare(atA);
+      })
+      .slice(0, limit);
+  }
+
+  const { getAuth } = await import("firebase-admin/auth");
+  const auth = getAuth();
+  const uidSet = new Set<string>();
+  for (const row of rows) {
+    const uid = typeof row.data.uid === "string" ? row.data.uid.trim() : "";
+    if (uid) uidSet.add(uid);
+  }
+
+  const identity = new Map<string, { email: string | null; displayName: string | null }>();
+  await Promise.all(
+    [...uidSet].map(async (uid) => {
+      try {
+        const user = await auth.getUser(uid);
+        identity.set(uid, {
+          email: user.email ?? null,
+          displayName: user.displayName ?? null,
+        });
+      } catch {
+        identity.set(uid, { email: null, displayName: null });
+      }
+    })
+  );
+
+  const errors: AdminGlobalErrorEntry[] = rows.map((row) => {
+    const data = row.data;
+    const uid = typeof data.uid === "string" ? data.uid.trim() : null;
+    const meta = asMeta(data.meta);
+    const who = uid ? identity.get(uid) : undefined;
+    return {
+      id: row.id,
+      uid,
+      email: who?.email ?? null,
+      displayName: who?.displayName ?? null,
+      at: typeof data.at === "string" ? data.at : tsToIso(data.at) ?? "",
+      fileName: meta?.fileName ?? null,
+      errorCode: meta?.errorCode ?? null,
+      errorMessage: meta?.errorMessage ?? null,
+      sessionId: meta?.sessionId ?? null,
+      documentId: meta?.documentId ?? null,
+    };
+  });
+
+  return { errors, generatedAt: new Date().toISOString() };
+}
+
 export async function listAdminUserUsageInsights(
   uid: string,
   options?: { limit?: number; errorsOnly?: boolean }

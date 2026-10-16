@@ -16,19 +16,21 @@ export function PasswordField({
 }: Props) {
   const [visible, setVisible] = useState(false);
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <Input
         {...props}
         type={visible ? "text" : "password"}
-        className={cn("pr-10", className)}
+        className={cn("pr-11", className)}
       />
       <button
         type="button"
-        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1 text-muted-foreground hover:text-foreground"
+        tabIndex={-1}
+        className="absolute right-1.5 top-1/2 z-10 -translate-y-1/2 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label={visible ? hideLabel : revealLabel}
+        aria-pressed={visible}
         onClick={() => setVisible((v) => !v)}
       >
-        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        {visible ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
       </button>
     </div>
   );

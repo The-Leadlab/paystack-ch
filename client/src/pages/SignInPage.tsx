@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useSearch } from "wouter";
-import { LogIn } from "lucide-react";
+import { confirmPasswordReset, sendPasswordResetEmail } from "firebase/auth";
+import { KeyRound, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +9,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { PasswordField } from "@/components/PasswordField";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 import { useAuth } from "@/cafe/context/AuthContext";
-import { firebaseReady } from "@/cafe/lib/firebase";
+import { auth, firebaseReady } from "@/cafe/lib/firebase";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { AuthLayout } from "./auth/AuthLayout";
 import { GoogleGIcon } from "@/components/icons/GoogleGIcon";
@@ -41,11 +42,20 @@ export default function SignInPage() {
   const [, setLocation] = useLocation();
   const search = useSearch();
 
+  const params = useMemo(
+    () => new URLSearchParams(search.startsWith("?") ? search.slice(1) : search),
+    [search]
+  );
+  const resetOobCode = params.get("mode") === "resetPassword" ? params.get("oobCode")?.trim() || null : null;
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [forgotBusy, setForgotBusy] = useState(false);
   const [checkoutLinkError, setCheckoutLinkError] = useState<string | null>(null);
   const linkStartedRef = useRef(false);
 
@@ -56,9 +66,9 @@ export default function SignInPage() {
 
   useEffect(() => {
     try {
-      if (sessionStorage.getItem('paystack_session_kicked') === '1') {
-        sessionStorage.removeItem('paystack_session_kicked');
-        setError(`${t('sessionKicked')} ${t('sessionKickedHint')}`);
+      if (sessionStorage.getItem("paystack_session_kicked") === "1") {
+        sessionStorage.removeItem("paystack_session_kicked");
+        setError(`${t("sessionKicked")} ${t("sessionKickedHint")}`);
       }
     } catch {
       /* ignore */
@@ -66,7 +76,7 @@ export default function SignInPage() {
   }, [t]);
 
   useEffect(() => {
-    if (loading || !user) return;
+    if (resetOobCode || loading || !user) return;
     if (!checkoutSid) {
       setLocation(nextPath);
       return;
@@ -88,13 +98,23 @@ export default function SignInPage() {
     return () => {
       alive = false;
     };
-  }, [loading, user, checkoutSid, checkoutBillingPath, nextPath, setLocation, checkoutLinkError]);
+  }, [
+    loading,
+    user,
+    checkoutSid,
+    checkoutBillingPath,
+    nextPath,
+    setLocation,
+    checkoutLinkError,
+    resetOobCode,
+    t,
+  ]);
 
   if (!firebaseReady) {
     return <FirebaseMissing />;
   }
 
-  if (loading && !user) {
+  if (loading && !user && !resetOobCode) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="font-display text-sm text-muted-foreground animate-pulse">{t("authWorking")}</div>
@@ -102,7 +122,7 @@ export default function SignInPage() {
     );
   }
 
-  if (user && checkoutSid) {
+  if (user && checkoutSid && !resetOobCode) {
     if (checkoutLinkError) {
       return (
         <AuthLayout heading={t("checkoutLinkErrorTitle")} showAdminEntry>
@@ -148,7 +168,7 @@ export default function SignInPage() {
     );
   }
 
-  if (user && !checkoutSid) {
+  if (user && !checkoutSid && !resetOobCode) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="font-display text-sm text-muted-foreground animate-pulse">{t("authWorking")}</div>
@@ -156,9 +176,37 @@ export default function SignInPage() {
     );
   }
 
+  const handleResetSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setInfo(null);
+    if (!auth || !resetOobCode) return;
+    if (password.length < 6) {
+      setError(t("billingPasswordTooShort"));
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError(t("billingPasswordMismatch"));
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await confirmPasswordReset(auth, resetOobCode, password);
+      setInfo(t("authResetSuccess"));
+      setPassword("");
+      setConfirmPassword("");
+      window.setTimeout(() => setLocation("/sign-in"), 1200);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    setInfo(null);
     setSubmitting(true);
     try {
       const { error: err } = await signIn(email, password);
@@ -168,6 +216,26 @@ export default function SignInPage() {
       }
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleForgot = async () => {
+    setError(null);
+    setInfo(null);
+    if (!auth) return;
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setError(t("authForgotNeedEmail"));
+      return;
+    }
+    setForgotBusy(true);
+    try {
+      await sendPasswordResetEmail(auth, trimmed);
+      setInfo(t("authForgotSent"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setForgotBusy(false);
     }
   };
 
@@ -183,6 +251,79 @@ export default function SignInPage() {
   };
 
   const signUpHref = preserveCheckoutInAuthHref(`/sign-up?redirect=${encodeURIComponent(nextPath)}`, search);
+
+  if (resetOobCode) {
+    return (
+      <AuthLayout heading={t("authResetTitle")} showAdminEntry>
+        <Card className="border-border shadow-sm">
+          <CardHeader className="pb-2">
+            <p className="font-editorial text-sm text-muted-foreground leading-relaxed">{t("authResetHint")}</p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleResetSubmit} className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label htmlFor="reset-password" className="font-display text-xs">
+                  {t("billingNewPassword")}
+                </Label>
+                <PasswordField
+                  id="reset-password"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="font-editorial"
+                  revealLabel={t("authShowPassword")}
+                  hideLabel={t("authHidePassword")}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reset-confirm" className="font-display text-xs">
+                  {t("billingConfirmPassword")}
+                </Label>
+                <PasswordField
+                  id="reset-confirm"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="font-editorial"
+                  revealLabel={t("authShowPassword")}
+                  hideLabel={t("authHidePassword")}
+                />
+              </div>
+              {error ? (
+                <p className="text-sm text-destructive font-medium" role="alert">
+                  {error}
+                </p>
+              ) : null}
+              {info ? (
+                <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium" role="status">
+                  {info}
+                </p>
+              ) : null}
+              <Button
+                type="submit"
+                className="w-full font-display bg-brand-red text-white hover:bg-brand-red/90 gap-2"
+                disabled={submitting}
+              >
+                <KeyRound className="size-4" />
+                {submitting ? t("authWorking") : t("authResetSubmit")}
+              </Button>
+            </form>
+          </CardContent>
+          <CardFooter className="border-t border-border pt-4">
+            <p className="font-display text-sm text-muted-foreground text-center w-full">
+              <Link href="/sign-in" className="text-brand-red hover:underline font-medium">
+                {t("authSignInLink")}
+              </Link>
+            </p>
+          </CardFooter>
+        </Card>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout heading={t("authSignInTitle")} showAdminEntry>
@@ -235,9 +376,19 @@ export default function SignInPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="signin-password" className="font-display text-xs">
-                {t("authPasswordLabel")}
-              </Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="signin-password" className="font-display text-xs">
+                  {t("authPasswordLabel")}
+                </Label>
+                <button
+                  type="button"
+                  className="font-display text-[11px] text-brand-red hover:underline"
+                  disabled={forgotBusy || submitting}
+                  onClick={() => void handleForgot()}
+                >
+                  {forgotBusy ? t("authWorking") : t("authForgotLink")}
+                </button>
+              </div>
               <PasswordField
                 id="signin-password"
                 autoComplete="current-password"
@@ -253,6 +404,11 @@ export default function SignInPage() {
             {error ? (
               <p className="text-sm text-destructive font-medium" role="alert">
                 {error}
+              </p>
+            ) : null}
+            {info ? (
+              <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium" role="status">
+                {info}
               </p>
             ) : null}
             <Button

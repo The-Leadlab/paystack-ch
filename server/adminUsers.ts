@@ -3,6 +3,7 @@ import { createHash, timingSafeEqual } from "crypto";
 import { adminSessionCookieValue, adminSessionSetCookieHeader } from "../lib/adminGateCookie.js";
 import { adminSessionIsValid, requireAdminSession } from "../lib/adminSession.js";
 import { getAdminUserDetail, createAdminUser, listAdminUsers, runAdminUserAction, type AdminUserAction, type CreateAdminUserInput } from "../lib/adminUsers.js";
+import { listAdminUserUsageInsights, listGlobalDocumentErrors } from "../lib/adminUserActivity.js";
 import { sendOutreachBatch } from "../lib/sendOutreachBatch.js";
 import { OUTREACH_MAX_RECIPIENTS } from "../shared/outreachMail.js";
 import { parsePaystackPlanId } from "../shared/planCatalog.js";
@@ -122,6 +123,52 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  app.get("/api/admin/user-activity", async (req: Request, res: Response) => {
+    try {
+      const gate = requireAdminSession(req.headers.cookie);
+      if (!gate.ok) {
+        res.status(gate.status).json({ error: gate.error });
+        return;
+      }
+      const uid = typeof req.query.uid === "string" ? req.query.uid.trim() : "";
+      if (!uid) {
+        res.status(400).json({ error: "uid is required" });
+        return;
+      }
+      const limitRaw = typeof req.query.limit === "string" ? parseInt(req.query.limit, 10) : 120;
+      const errorsOnly =
+        req.query.errorsOnly === "1" ||
+        req.query.errorsOnly === "true" ||
+        req.query.errorsOnly === "yes";
+      const result = await listAdminUserUsageInsights(uid, {
+        limit: Number.isFinite(limitRaw) ? limitRaw : 120,
+        errorsOnly,
+      });
+      res.json(result);
+    } catch (e) {
+      const status = (e as { status?: number }).status ?? 500;
+      res.status(status).json({ error: e instanceof Error ? e.message : "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/error-logs", async (req: Request, res: Response) => {
+    try {
+      const gate = requireAdminSession(req.headers.cookie);
+      if (!gate.ok) {
+        res.status(gate.status).json({ error: gate.error });
+        return;
+      }
+      const limitRaw = typeof req.query.limit === "string" ? parseInt(req.query.limit, 10) : 100;
+      const result = await listGlobalDocumentErrors({
+        limit: Number.isFinite(limitRaw) ? limitRaw : 100,
+      });
+      res.json(result);
+    } catch (e) {
+      const status = (e as { status?: number }).status ?? 500;
+      res.status(status).json({ error: e instanceof Error ? e.message : "Internal server error" });
+    }
+  });
+
   app.post("/api/admin/outreach", express.json({ limit: "1mb" }), async (req: Request, res: Response) => {
     try {
       const gate = requireAdminSession(req.headers.cookie);
@@ -164,6 +211,6 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   console.info(
-    "[admin] POST /api/admin/verify, GET /api/admin/session, GET|POST /api/admin/users, GET|POST /api/admin/user, POST /api/admin/outreach"
+    "[admin] POST /api/admin/verify, GET /api/admin/session, GET|POST /api/admin/users, GET|POST /api/admin/user, GET /api/admin/user-activity, GET /api/admin/error-logs, POST /api/admin/outreach"
   );
 }

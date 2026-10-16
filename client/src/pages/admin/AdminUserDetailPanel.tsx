@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordField } from "@/components/PasswordField";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -608,15 +609,16 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                     <Label htmlFor="edit-password" className="font-display text-xs">
                       {t("adminUserNewPassword")}
                     </Label>
-                    <Input
+                    <PasswordField
                       id="edit-password"
-                      type="password"
                       value={editPassword}
                       onChange={(e) => setEditPassword(e.target.value)}
                       placeholder={t("adminUserPasswordPlaceholder")}
                       className="bg-background"
                       minLength={6}
                       disabled={!canSetPassword}
+                      revealLabel={t("authShowPassword")}
+                      hideLabel={t("authHidePassword")}
                     />
                   </div>
                 </div>
@@ -1088,14 +1090,15 @@ export function AdminUserDetailPanel({ uid, onBack, onUserUpdated }: Props) {
                   {t("adminUserSetPasswordHint")}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <Input
-                    type="password"
+                  <PasswordField
                     value={actionPassword}
                     onChange={(e) => setActionPassword(e.target.value)}
                     placeholder={t("adminUserNewPassword")}
                     className="bg-background flex-1"
                     minLength={6}
                     disabled={!canSetPassword || actionBusy !== null}
+                    revealLabel={t("authShowPassword")}
+                    hideLabel={t("authHidePassword")}
                   />
                   <Button
                     type="button"

@@ -3,6 +3,7 @@ import { Loader2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordField } from "@/components/PasswordField";
 import {
   Dialog,
   DialogContent,
@@ -122,14 +123,15 @@ export function AdminCreateUserDialog({ open, onOpenChange, onCreated }: Props) 
             <Label htmlFor="create-password" className="font-display text-xs">
               {t("authPasswordLabel")} *
             </Label>
-            <Input
+            <PasswordField
               id="create-password"
-              type="password"
               required
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="bg-background"
+              revealLabel={t("authShowPassword")}
+              hideLabel={t("authHidePassword")}
             />
           </div>
           <div className="space-y-2">
