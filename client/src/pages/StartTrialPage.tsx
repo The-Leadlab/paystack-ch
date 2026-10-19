@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearch } from "wouter";
+import { Link, Redirect, useSearch } from "wouter";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import {
   SELECTED_PLAN_STORAGE_KEY,
   type PaystackPlanId,
 } from "@shared/planCatalog";
+import { PERSONAL_PRODUCT_PUBLICLY_AVAILABLE } from "@shared/personalProductAccess";
 import { type LoginMode } from "@shared/loginMode";
 import { storeSelectedLoginMode } from "@/cafe/lib/persistLoginMode";
 import { startGuestCheckoutSession } from "@/cafe/lib/stripeCheckoutClient";
@@ -30,12 +31,27 @@ export default function StartTrialPage() {
     const qs = search.startsWith("?") ? search.slice(1) : search;
     const params = new URLSearchParams(qs);
     const product = (params.get("product") || "").toLowerCase().trim();
-    if (product === "personal") return "personal" as PaystackPlanId;
+    if (product === "personal") {
+      if (!PERSONAL_PRODUCT_PUBLICLY_AVAILABLE) return "starter" as PaystackPlanId;
+      return "personal" as PaystackPlanId;
+    }
     const p = parsePaystackPlanId(params.get("plan"));
+    if (p === "personal" && !PERSONAL_PRODUCT_PUBLICLY_AVAILABLE) {
+      return "starter" as PaystackPlanId;
+    }
     return p && isSelfServePlan(p) ? p : ("starter" as PaystackPlanId);
   }, [search]);
 
   const isPersonal = planId === "personal";
+  const personalCheckoutBlocked = useMemo(() => {
+    if (PERSONAL_PRODUCT_PUBLICLY_AVAILABLE) return false;
+    const qs = search.startsWith("?") ? search.slice(1) : search;
+    const params = new URLSearchParams(qs);
+    return (
+      (params.get("product") || "").toLowerCase().trim() === "personal" ||
+      parsePaystackPlanId(params.get("plan")) === "personal"
+    );
+  }, [search]);
 
   const cancelled = useMemo(() => {
     const qs = search.startsWith("?") ? search.slice(1) : search;
@@ -48,6 +64,7 @@ export default function StartTrialPage() {
   }, [search]);
 
   useEffect(() => {
+    if (personalCheckoutBlocked) return;
     if (!firebaseReady || cancelled || !confirmed || redirectStarted.current) return;
     redirectStarted.current = true;
     storeSelectedLoginMode(loginMode);
@@ -63,7 +80,19 @@ export default function StartTrialPage() {
         redirectStarted.current = false;
       }
     })();
-  }, [firebaseReady, cancelled, confirmed, planId, billingInterval, loginMode]);
+  }, [
+    personalCheckoutBlocked,
+    firebaseReady,
+    cancelled,
+    confirmed,
+    planId,
+    billingInterval,
+    loginMode,
+  ]);
+
+  if (personalCheckoutBlocked) {
+    return <Redirect to="/" />;
+  }
 
   if (!firebaseReady) {
     return <FirebaseMissing />;

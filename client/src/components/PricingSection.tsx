@@ -1,6 +1,6 @@
 /*
  * Palette F — "Jet d'Eau" Light Theme
- * Business tiers + Personal (CHF 20) behind product-line tabs.
+ * Business tiers only — Personal is hidden until PUBLICLY_AVAILABLE is flipped.
  */
 
 import { Link } from "wouter";
@@ -18,24 +18,18 @@ import {
   type PaystackPlanId,
 } from "@shared/planCatalog";
 
-type PricingTab = "business" | "personal";
-
 function formatChfPrice(amount: number): string {
   return `${amount}.-`;
 }
 
 export default function PricingSection() {
   const { t, language } = useLanguage();
-  const [tab, setTab] = useState<PricingTab>("business");
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("month");
 
   const trialHref = (plan: string) => {
     const base = `/start-trial?plan=${plan}`;
     return billingInterval === "year" ? `${base}&interval=year` : base;
   };
-
-  const personalTrialHref =
-    billingInterval === "year" ? "/start-trial?product=personal&interval=year" : "/start-trial?product=personal";
 
   const priceFor = (planId: Exclude<PaystackPlanId, "enterprise">) => {
     if (billingInterval === "year") {
@@ -125,30 +119,7 @@ export default function PricingSection() {
     [t, language, billingInterval, periodLabel]
   );
 
-  const personalPlans = useMemo(
-    () => [
-      {
-        name: t("planPersonalName"),
-        price: priceFor("personal"),
-        period: periodLabel,
-        description: t("planPersonalDescription"),
-        features: [
-          t("planPersonalFeature1"),
-          t("planPersonalFeature2"),
-          t("planPersonalFeature3"),
-          t("planPersonalFeature4"),
-          t("planPersonalFeature5"),
-          t("planPersonalFeature6"),
-        ],
-        cta: t("ctaStartTrial"),
-        highlighted: true,
-        href: personalTrialHref,
-      },
-    ],
-    [t, language, billingInterval, periodLabel, personalTrialHref]
-  );
-
-  const plans = tab === "personal" ? personalPlans : businessPlans;
+  const plans = businessPlans;
 
   return (
     <section id="pricing" className="relative py-24 lg:py-32 border-t border-border">
@@ -158,22 +129,16 @@ export default function PricingSection() {
         <ScrollReveal>
           <div className="max-w-2xl mb-10">
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5 text-foreground">
-              {tab === "personal" ? (
-                t("pricingPersonalHeading")
-              ) : (
-                <>
-                  {t("pricingHeadingStart")}{" "}
-                  <span className="font-editorial italic font-normal text-gradient-red">{t("pricingHeadingHighlight")}</span>
-                </>
-              )}
+              {t("pricingHeadingStart")}{" "}
+              <span className="font-editorial italic font-normal text-gradient-red">{t("pricingHeadingHighlight")}</span>
             </h2>
             <p className="font-editorial text-lg text-muted-foreground leading-relaxed">
-              {tab === "personal" ? t("pricingPersonalDescription") : t("pricingDescription")}
+              {t("pricingDescription")}
             </p>
           </div>
         </ScrollReveal>
 
-        <div className="flex flex-wrap gap-2 mb-6 items-center">
+        <div className="flex flex-wrap gap-2 mb-12 items-center">
           <button
             type="button"
             onClick={() => setBillingInterval("month")}
@@ -201,36 +166,7 @@ export default function PricingSection() {
           ) : null}
         </div>
 
-        <div className="flex gap-2 mb-12 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setTab("business")}
-            className={`font-display text-sm px-5 py-2.5 rounded-lg border transition-colors ${
-              tab === "business"
-                ? "bg-brand-red text-white border-brand-red"
-                : "bg-card text-foreground border-border hover:border-brand-red/40"
-            }`}
-          >
-            {t("pricingTabBusiness")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("personal")}
-            className={`font-display text-sm px-5 py-2.5 rounded-lg border transition-colors ${
-              tab === "personal"
-                ? "bg-brand-red text-white border-brand-red"
-                : "bg-card text-foreground border-border hover:border-brand-red/40"
-            }`}
-          >
-            {t("pricingTabPersonal")}
-          </button>
-        </div>
-
-        <div
-          className={`grid gap-6 lg:gap-8 ${
-            tab === "personal" ? "sm:grid-cols-1 max-w-md" : "sm:grid-cols-2 xl:grid-cols-4"
-          }`}
-        >
+        <div className="grid gap-6 lg:gap-8 sm:grid-cols-2 xl:grid-cols-4">
           {plans.map((plan, index) => (
             <ScrollReveal key={plan.name} delay={index * 0.1}>
               <div

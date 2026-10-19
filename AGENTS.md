@@ -39,7 +39,7 @@ Paystack.ch is a Swiss restaurant/hospitality financial management SaaS (React 1
 
 Password-gated sandbox for competitor-gap features (budgeting, goals, bills, etc.). **Open Banking / live bank sync (`bank-sync`) stay out of scope.** Manual **personal bank-statement file upload** (CSV/PDF → personal IndexedDB ledger on `/personal` overview) is allowed — see `docs/PERSONAL_FINANCE_STATEMENT_SUPER_PROMPT.md`. Do not route personal imports through restaurant Revenue.
 
-**Personal product (CHF 20):** see `docs/PERSONAL_PRODUCT_SUPER_PROMPT.md` — separate Stripe plan, seats (1 invite free + CHF 5 extras), doc pack (CHF 8 → 100), admin Platform vs Personal lists, landing Business|Personal tabs.
+**Personal product (CHF 20):** hidden from public marketing/checkout until approved. Only **dev admin** `ali@the-leadlab.com` may use `/personal` while testing — see `docs/PERSONAL_DEV_ADMIN_HIDE_SUPER_PROMPT.md` and `shared/personalProductAccess.ts`. Full product spec: `docs/PERSONAL_PRODUCT_SUPER_PROMPT.md`.
 
 **Promotion gate:** Do **not** wire lab features into `/app` or set registry status to `promoted` until the user explicitly approves in chat after testing in `/ali`. Agents may harden prototypes and mark them `ready` in the lab only.
 

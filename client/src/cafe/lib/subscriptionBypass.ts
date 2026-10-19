@@ -1,8 +1,12 @@
 import type { User } from "firebase/auth";
+import {
+  PERSONAL_DEV_ADMIN_EMAIL,
+  isPersonalDevAdminEmail,
+} from "@shared/personalProductAccess";
 
 const BUILT_IN_BYPASS_EMAILS = [
   "admin@test.com",
-  "ali@the-leadlab.com",
+  PERSONAL_DEV_ADMIN_EMAIL,
   "joshua@the-leadlab.com",
   "kara@the-leadlab.com",
   "kldavies2016@gmail.com",
@@ -15,15 +19,24 @@ const BUILT_IN_BYPASS_EMAILS = [
 const BUILT_IN_PLAN_TEST_EMAILS: string[] = [];
 
 /** Ops who see an Admin panel shortcut inside `/app`. */
-const BUILT_IN_ADMIN_APP_ACCESS_EMAILS = ["joshua@the-leadlab.com", "ali@the-leadlab.com"];
+const BUILT_IN_ADMIN_APP_ACCESS_EMAILS = ["joshua@the-leadlab.com", PERSONAL_DEV_ADMIN_EMAIL];
 
-/** Team who can open Personal finances from `/app` (hidden for everyone else). */
-const BUILT_IN_PERSONAL_FINANCES_EMAILS = [
-  "ali@the-leadlab.com",
-  "joshua@the-leadlab.com",
-  "kara@the-leadlab.com",
-  "william@the-leadlab.com",
-];
+/**
+ * Who may open `/personal` while Personal is not publicly available.
+ * Dev admin (`ali@the-leadlab.com`) only — do not expand without product approval.
+ */
+const BUILT_IN_PERSONAL_FINANCES_EMAILS = [PERSONAL_DEV_ADMIN_EMAIL];
+
+export { isPersonalDevAdminEmail };
+
+/** Dev admin: Personal lab access + Admin panel labeled “Dev admin”. */
+export function isDevAdminEmail(email: string | null | undefined): boolean {
+  return isPersonalDevAdminEmail(email);
+}
+
+export function isDevAdminUser(user: User | null): boolean {
+  return isDevAdminEmail(user?.email);
+}
 
 export function planTestEmails(): string[] {
   const configured = String(import.meta.env.VITE_PLAN_TEST_EMAILS || "")

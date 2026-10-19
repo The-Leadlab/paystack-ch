@@ -28,6 +28,7 @@ import {
   SELECTED_PLAN_STORAGE_KEY,
   type PaystackPlanId,
 } from "@shared/planCatalog";
+import { PERSONAL_PRODUCT_PUBLICLY_AVAILABLE } from "@shared/personalProductAccess";
 import {
   canonicalizePersonalPath,
   isPersonalAppPath,
@@ -48,16 +49,18 @@ function canAccessPersonalWorkspace(
   planId: PaystackPlanId | null | undefined
 ): boolean {
   if (isPersonalFinancesAccessUser(user ?? null)) return true;
+  if (!PERSONAL_PRODUCT_PUBLICLY_AVAILABLE) return false;
   if (isPersonalPlan(planId)) return true;
   if (restaurantPlanIncludesPersonalBridge(planId)) return true;
   return false;
 }
 
-/** Personal-only: no restaurant /app. Ops allowlist may use both. */
+/** Personal-only: no restaurant /app. Dev admin / allowlist may use both. */
 function isPersonalOnlySubscriber(
   user: User | null | undefined,
   planId: PaystackPlanId | null | undefined
 ): boolean {
+  if (!PERSONAL_PRODUCT_PUBLICLY_AVAILABLE) return false;
   return isPersonalPlan(planId) && !isPersonalFinancesAccessUser(user ?? null);
 }
 
@@ -116,11 +119,20 @@ function PlatformContent() {
     const qs = search.startsWith("?") ? search.slice(1) : search;
     const params = new URLSearchParams(qs);
     const product = (params.get("product") || "").toLowerCase();
-    if (product === "personal" && typeof sessionStorage !== "undefined") {
+    if (
+      product === "personal" &&
+      PERSONAL_PRODUCT_PUBLICLY_AVAILABLE &&
+      typeof sessionStorage !== "undefined"
+    ) {
       sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, "personal");
     }
     const plan = parsePaystackPlanId(params.get("plan"));
-    if (plan && isSelfServePlan(plan) && typeof sessionStorage !== "undefined") {
+    if (
+      plan &&
+      isSelfServePlan(plan) &&
+      (plan !== "personal" || PERSONAL_PRODUCT_PUBLICLY_AVAILABLE) &&
+      typeof sessionStorage !== "undefined"
+    ) {
       sessionStorage.setItem(SELECTED_PLAN_STORAGE_KEY, plan);
     }
   }, [search]);

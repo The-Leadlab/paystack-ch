@@ -23,7 +23,12 @@ import { BusinessSidebarNav, type BusinessTab } from './BusinessSidebarNav';
 import '../businessApp.css';
 import { UpgradePromptModal } from './UpgradePromptModal';
 import { PlanTestBanner, PlanTestPickerModal } from './PlanTestPickerModal';
-import { isAdminAppAccessUser, isPersonalFinancesAccessUser } from '../lib/subscriptionBypass';
+import {
+  isAdminAppAccessUser,
+  isDevAdminUser,
+  isPersonalFinancesAccessUser,
+} from '../lib/subscriptionBypass';
+import { PERSONAL_PRODUCT_PUBLICLY_AVAILABLE } from '@shared/personalProductAccess';
 import { restaurantPlanIncludesPersonalBridge, isPersonalPlan } from '@shared/planCatalog';
 import { getSessionDisplayName } from '../lib/formatLocalDateTime';
 import {
@@ -1303,16 +1308,21 @@ export function RestaurantDashboard() {
           {isAdminAppAccessUser(user, { appAdmin: billing?.appAdmin }) ? (
             <Link
               href="/admin"
-              title={t("appAdminPanelLink")}
+              title={isDevAdminUser(user) ? t("appDevAdminPanelLink") : t("appAdminPanelLink")}
               className="ba-sidebar-link-btn ba-sidebar-link-btn--accent"
             >
               <Shield className="w-3 h-3 shrink-0" />
-              {!sidebarCollapsed ? t("appAdminPanelLink") : null}
+              {!sidebarCollapsed
+                ? isDevAdminUser(user)
+                  ? t("appDevAdminPanelLink")
+                  : t("appAdminPanelLink")
+                : null}
             </Link>
           ) : null}
           {isPersonalFinancesAccessUser(user) ||
-          restaurantPlanIncludesPersonalBridge(billing?.planId) ||
-          isPersonalPlan(billing?.planId) ? (
+          (PERSONAL_PRODUCT_PUBLICLY_AVAILABLE &&
+            (restaurantPlanIncludesPersonalBridge(billing?.planId) ||
+              isPersonalPlan(billing?.planId))) ? (
             <Link
               href="/personal/overview"
               data-tour="personal-link"

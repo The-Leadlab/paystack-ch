@@ -326,12 +326,6 @@ export const BUSINESS_TOUR_LONG: TourStep[] = [
     navigate: { kind: "biz-tab", tab: "billing" },
   },
   {
-    id: "personal",
-    target: "personal-link",
-    titleKey: "tourBizPersonalTitle",
-    bodyKey: "tourBizPersonalBody",
-  },
-  {
     id: "collapse",
     target: "sidebar-collapse",
     titleKey: "tourBizCollapseTitle",

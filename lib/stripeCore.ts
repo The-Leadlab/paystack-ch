@@ -16,6 +16,7 @@ import {
   type BillingInterval,
   type PaystackPlanId,
 } from "../shared/planCatalog.js";
+import { PERSONAL_PRODUCT_PUBLICLY_AVAILABLE } from "../shared/personalProductAccess.js";
 import {
   assertRecurringChfPrice,
   assertStripeCheckoutConfig,
@@ -227,6 +228,12 @@ export async function runCreateCheckoutSessionGuest(
   const requestedPlan = parsePaystackPlanId(body?.planId);
   if (requestedPlan === "enterprise") {
     return { status: 400, json: { error: "Enterprise plans are sold via sales — contact us instead of checkout." } };
+  }
+  if (requestedPlan === "personal" && !PERSONAL_PRODUCT_PUBLICLY_AVAILABLE) {
+    return {
+      status: 403,
+      json: { error: "Personal plan checkout is not available." },
+    };
   }
 
   const checkoutPlanId: PaystackPlanId = requestedPlan && isSelfServePlan(requestedPlan) ? requestedPlan : "starter";

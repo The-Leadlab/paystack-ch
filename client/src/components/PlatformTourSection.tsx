@@ -1,7 +1,7 @@
 /*
  * Palette F — "Jet d'Eau" Light Theme
  * Platform Tour: Tabbed showcase of real platform screenshots.
- * Dashboard, Revenue, Expenses, Reports, Documents, Personal.
+ * Dashboard, Revenue, Expenses, Reports, Documents.
  */
 
 import { useMemo, useState } from "react";
@@ -16,7 +16,6 @@ import {
   Wallet,
   BarChart3,
   FolderOpen,
-  PiggyBank,
 } from "lucide-react";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 
@@ -71,15 +70,6 @@ export default function PlatformTourSection() {
           description: t("landingPlatformV4Desc"),
           screen: "documents" as LandingScreenKey,
           alt: t("landingPlatformV4Alt"),
-        },
-        {
-          id: "personal",
-          label: t("landingPlatformV6Label"),
-          icon: PiggyBank,
-          title: t("landingPlatformV6Title"),
-          description: t("landingPlatformV6Desc"),
-          screen: "personal" as LandingScreenKey,
-          alt: t("landingPlatformV6Alt"),
         },
       ] as const,
     [language, t]

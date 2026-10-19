@@ -10,6 +10,7 @@ import {
   parsePaystackPlanId,
   type PaystackPlanId,
 } from '@shared/planCatalog';
+import { PERSONAL_PRODUCT_PUBLICLY_AVAILABLE } from '@shared/personalProductAccess';
 import { isPersonalAppPath } from '@/ali-lab/personal-plan/personalPlanNav';
 import { PlanMarketingPanel, PLAN_ENTERPRISE_SALES_MAILTO } from './PlanMarketingPanel';
 import { productionSiteHomeUrl } from '../lib/firebaseEmailAction';
@@ -33,15 +34,16 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
     return new URLSearchParams(qs).get('subscription') === 'success';
   });
   const personalProduct =
-    isPersonalAppPath(location) ||
-    (typeof sessionStorage !== 'undefined' &&
-      parsePaystackPlanId(sessionStorage.getItem(SELECTED_PLAN_STORAGE_KEY)) === 'personal');
+    PERSONAL_PRODUCT_PUBLICLY_AVAILABLE &&
+    (isPersonalAppPath(location) ||
+      (typeof sessionStorage !== 'undefined' &&
+        parsePaystackPlanId(sessionStorage.getItem(SELECTED_PLAN_STORAGE_KEY)) === 'personal'));
   const [chosenPlan, setChosenPlan] = useState<PaystackPlanId | null>(() => {
     if (typeof sessionStorage === 'undefined') return personalProduct ? 'personal' : 'starter';
     const raw = sessionStorage.getItem(SELECTED_PLAN_STORAGE_KEY);
     const p = parsePaystackPlanId(raw);
-    if (personalProduct || isPersonalPlan(p)) return 'personal';
-    if (p && p !== 'enterprise') return p;
+    if (personalProduct || (PERSONAL_PRODUCT_PUBLICLY_AVAILABLE && isPersonalPlan(p))) return 'personal';
+    if (p && p !== 'enterprise' && p !== 'personal') return p;
     return 'starter';
   });
   const st = billing?.subscriptionStatus;

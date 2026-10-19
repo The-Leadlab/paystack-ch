@@ -562,6 +562,7 @@ const translations = {
     adminUserNoStripeCustomer:
       'No Stripe customer ID on this Paystack account. If they paid in Stripe, use “Link Stripe by email” on the Billing tab.',
     appAdminPanelLink: 'Admin panel',
+    appDevAdminPanelLink: 'Dev admin',
     appPersonalFinancesLink: 'Personal finances',
     authNeedAccount: "Don't have an account?",
     authSignUpLink: 'Sign up',
@@ -1831,6 +1832,7 @@ const translations = {
     adminUserNoStripeCustomer:
       'Pas d\'ID client Stripe sur ce compte. S\'ils ont paye dans Stripe, utilisez « Lier Stripe par e-mail » dans Facturation.',
     appAdminPanelLink: 'Panneau admin',
+    appDevAdminPanelLink: 'Dev admin',
     appPersonalFinancesLink: 'Finances personnelles',
     authNeedAccount: 'Pas encore de compte ?',
     authSignUpLink: 'S\'inscrire',

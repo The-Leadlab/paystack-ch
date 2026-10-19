@@ -15,10 +15,6 @@ import {
   Users,
   Calendar,
   BarChart3,
-  PiggyBank,
-  Target,
-  Bell,
-  LayoutDashboard,
 } from "lucide-react";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 
@@ -33,7 +29,7 @@ export default function ModulesSection() {
   const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState("core");
 
-  // Core + Personal only — Enhanced roadmap/WIP modules stay off the marketing site for now.
+  // Core business modules only — Personal stays off the marketing site until publicly available.
   const modules = useMemo(
     () => [
       {
@@ -46,18 +42,6 @@ export default function ModulesSection() {
           { icon: Users, name: t("landingModCore4Name"), status: "live" as const, description: t("landingModCore4Desc") },
           { icon: Calendar, name: t("landingModCore5Name"), status: "live" as const, description: t("landingModCore5Desc") },
           { icon: BarChart3, name: t("landingModCore6Name"), status: "live" as const, description: t("landingModCore6Desc") },
-        ],
-      },
-      {
-        id: "personal",
-        label: t("landingModulesTabPersonal"),
-        items: [
-          { icon: LayoutDashboard, name: t("landingModPer1Name"), status: "live" as const, description: t("landingModPer1Desc") },
-          { icon: Wallet, name: t("landingModPer2Name"), status: "live" as const, description: t("landingModPer2Desc") },
-          { icon: Target, name: t("landingModPer3Name"), status: "live" as const, description: t("landingModPer3Desc") },
-          { icon: Bell, name: t("landingModPer4Name"), status: "live" as const, description: t("landingModPer4Desc") },
-          { icon: PiggyBank, name: t("landingModPer5Name"), status: "live" as const, description: t("landingModPer5Desc") },
-          { icon: FileText, name: t("landingModPer6Name"), status: "live" as const, description: t("landingModPer6Desc") },
         ],
       },
     ],
@@ -90,20 +74,26 @@ export default function ModulesSection() {
               </h2>
               <p className="font-editorial text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">{t("landingModulesSubtitle")}</p>
 
-              <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary w-fit mb-8">
-                {modules.map((mod) => (
-                  <button
-                    key={mod.id}
-                    type="button"
-                    onClick={() => setActiveTab(mod.id)}
-                    className={`font-display text-sm px-5 py-2 rounded-md transition-all duration-300 ${
-                      activeTab === mod.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {mod.label}
-                  </button>
-                ))}
-              </div>
+              {modules.length > 1 ? (
+                <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary w-fit mb-8">
+                  {modules.map((mod) => (
+                    <button
+                      key={mod.id}
+                      type="button"
+                      onClick={() => setActiveTab(mod.id)}
+                      className={`font-display text-sm px-5 py-2 rounded-md transition-all duration-300 ${
+                        activeTab === mod.id
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {mod.label}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="mb-8" />
+              )}
 
               <AnimatePresence mode="wait">
                 <motion.div
