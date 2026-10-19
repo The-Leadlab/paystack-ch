@@ -416,7 +416,7 @@ export function ExpensesManager({
         <div className="ba-revenue-toolbar__actions">
           <button
             type="button"
-            className="ba-revenue-link-btn"
+            className="ba-expense-cta ba-expense-cta--solid"
             onClick={() => {
               setShowAddForm(true);
               scrollTo(addFormRef);
@@ -424,8 +424,12 @@ export function ExpensesManager({
           >
             <Plus className="w-3.5 h-3.5" /> {t('ehAddExpense')}
           </button>
-          <button type="button" className="ba-expense-cta ba-revenue-cta" onClick={() => onNavigateTab?.('documents')}>
-            <FileText className="w-4 h-4" /> {t('ehUploadDocs')}
+          <button
+            type="button"
+            className="ba-btn-ghost"
+            onClick={() => onNavigateTab?.('documents')}
+          >
+            <FileText className="w-3.5 h-3.5" /> {t('ehUploadDocs')}
           </button>
         </div>
       </div>

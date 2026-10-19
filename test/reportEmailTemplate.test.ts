@@ -26,6 +26,7 @@ describe("buildReportEmailHtml", () => {
     expect(html).toMatch(/CHF 3[\u2019']550\.25/);
     expect(html).toContain("Café Geneva");
     expect(html).toContain("Open Paystack");
+    expect(html).toMatch(/Excel/i);
   });
 
   it("escapes HTML in session name", () => {

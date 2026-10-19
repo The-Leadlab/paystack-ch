@@ -4,6 +4,7 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { ensureFirebaseAdmin } from "../../lib/firebaseAdmin.js";
 import { buildServerFinancialReportHtml } from "../../lib/buildServerFinancialReport.js";
+import { buildFinancialReportExcelBuffer } from "../../shared/financialReportExcel.js";
 import { buildReportEmailHtml } from "../../lib/reportEmailTemplate.js";
 import { sendReportEmail } from "../../lib/resendReports.js";
 import {
@@ -184,7 +185,8 @@ async function sendScheduledReport(
   const userDoc = await db.collection("users").doc(uid).get();
   const includeLedger = userDoc.data()?.revenueLedgerEnabled === true;
   const cadence = reportCadence(cadenceDays);
-  const reportHtml = buildServerFinancialReportHtml({
+  const sessionName = locale === "fr" ? "Toutes les sessions" : "All sessions";
+  const reportRows = {
     income: income.map((row) => ({
       date: row.date as string,
       amount: valueAsNumber(row.amount),
@@ -201,28 +203,42 @@ async function sendScheduledReport(
       category: valueAsString(row.category),
       account_code: valueAsString(row.accountCode),
     })),
+  };
+  const reportHtml = buildServerFinancialReportHtml({
+    ...reportRows,
     dateFrom: from,
     dateTo: to,
-    sessionName: locale === "fr" ? "Toutes les sessions" : "All sessions",
+    sessionName,
     locale,
     includeLedger,
+  });
+  const reportExcel = buildFinancialReportExcelBuffer({
+    ...reportRows,
+    dateFrom: from,
+    dateTo: to,
+    sessionName,
+    locale,
+    currency: "CHF",
   });
   const html = buildReportEmailHtml({
     locale,
     periodLabel,
-    sessionName: locale === "fr" ? "Toutes les sessions" : "All sessions",
+    sessionName,
     dateFrom: from,
     dateTo: to,
     totalIncome,
     totalExpenses,
     balance: totalIncome - totalExpenses,
   });
+  const base = `paystack-financial-report-${cadence}-${to}`;
   await sendReportEmail({
     to: email,
     subject: `Paystack — ${periodLabel} (${from} → ${to})`,
     html,
-    reportHtml,
-    reportFilename: `paystack-financial-report-${cadence}-${to}.html`,
+    attachments: [
+      { filename: `${base}.html`, content: reportHtml },
+      { filename: `${base}.xlsx`, content: reportExcel },
+    ],
   });
   await db.collection("users").doc(uid).update({
     "reportSchedule.lastSentAt": new Date().toISOString(),

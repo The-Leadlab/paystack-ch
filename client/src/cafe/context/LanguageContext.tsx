@@ -22,6 +22,7 @@ const translations = {
     reports: 'Reports',
     documents: 'Documents',
     documentsLibraryTitle: 'Document library',
+    documentsLibrarySubtitle: 'Library of supplier documents',
 
     // Sidebar
     employees: 'Employees',
@@ -1293,6 +1294,7 @@ const translations = {
     reports: 'Rapports',
     documents: 'Documents',
     documentsLibraryTitle: 'Bibliotheque de documents',
+    documentsLibrarySubtitle: 'Bibliothèque de documents fournisseurs',
 
     // Sidebar
     employees: 'Employés',

@@ -7,7 +7,17 @@ import {
   SearchCode, Cpu, Landmark, TerminalSquare, ExternalLink,
   ArrowUpRight, ArrowDownRight, Scale as ScaleIcon, Eye, Plus
 } from 'lucide-react';
-import { analyzeFinancialDocument, syncSwissVatDerivedFields } from '../services/geminiService';
+import {
+  analyzeFinancialDocument,
+  applyLiveFxToFinancialData,
+  getLiveExchangeRate,
+  syncSwissVatDerivedFields,
+} from '../services/geminiService';
+import {
+  applyFxAndSwissVatRemap,
+  isForeignCurrency,
+  normalizeCurrencyCode,
+} from '@shared/foreignCurrencySwissVat';
 import { enrichFinancialDataWithSwissAccount } from '../services/swissAccountClassifierService';
 import {
   buildPayrollExpenseLines,
@@ -706,6 +716,21 @@ function roundDocAmount(n: number): number {
 }
 
 function seedSwissTableFromDocument(data: FinancialData): FinancialData {
+  const cur = normalizeCurrencyCode(data.originalCurrency || 'CHF');
+  const rate = Number(data.conversionRateUsed ?? 1) || 1;
+  // Foreign (e.g. EUR): rebuild Swiss TVA on CHF HT — do not copy French 20% into the table.
+  if (isForeignCurrency(cur, 'CHF') && Math.abs(rate - 1) > 0.0001) {
+    const remapped = applyFxAndSwissVatRemap(data, rate, 'CHF');
+    return syncSwissVatDerivedFields({
+      ...data,
+      ...remapped,
+      swissVatBreakdown: remapped.swissVatBreakdown,
+      swissVatReceiptTotals: remapped.swissVatReceiptTotals,
+      amountInCHF: remapped.amountInCHF,
+      conversionRateUsed: remapped.conversionRateUsed,
+      forensicAlerts: remapped.forensicAlerts,
+    } as FinancialData);
+  }
   const gross = Number(data.totalAmount || 0);
   const vat = Number(data.vatAmount || 0);
   const net = Number(data.netAmount || 0) || Math.max(roundDocAmount(gross - vat), 0);
@@ -759,7 +784,11 @@ const SwissVatBreakdownEditor: React.FC<{
             <ScaleIcon className="w-3.5 h-3.5" /> {isUk ? t('dpUkVatTitle') : t('dpSwissVatTitle')}
           </h5>
           <p className="text-[9px] text-cdlp-muted mt-1 max-w-xl">
-            {isUk ? t('dpUkVatHint') : t('dpSwissVatHint')}
+            {isUk
+              ? t('dpUkVatHint')
+              : isForeignCurrency(data.originalCurrency, 'CHF')
+                ? t('dpFxSwissVatNote')
+                : t('dpSwissVatHint')}
           </p>
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
@@ -1266,7 +1295,74 @@ export const VerificationHub: React.FC<{
     ) {
       const v = Number(value) || 0;
       const r = Number(newData.conversionRateUsed ?? 1) || 1;
+      const cur = normalizeCurrencyCode(newData.originalCurrency || 'CHF');
+      if (isForeignCurrency(cur, 'CHF') && Math.abs(r - 1) > 0.0001) {
+        const remapped = applyFxAndSwissVatRemap(newData, r, 'CHF');
+        newData = {
+          ...newData,
+          ...remapped,
+          swissVatBreakdown: remapped.swissVatBreakdown,
+          swissVatReceiptTotals: remapped.swissVatReceiptTotals,
+          amountInCHF: remapped.amountInCHF,
+        } as FinancialData;
+        onUpdate(syncSwissVatDerivedFields(newData));
+        return;
+      }
       newData.amountInCHF = r !== 1 ? Math.round(v * r * 100) / 100 : Math.round(v * 100) / 100;
+    }
+
+    // Currency or FX rate change → recompute CHF + Swiss TVA table.
+    if (
+      (field === 'originalCurrency' || field === 'conversionRateUsed') &&
+      newData.documentType !== DocumentType.BANK_STATEMENT &&
+      newData.documentType !== DocumentType.PAY_SLIP
+    ) {
+      const cur = normalizeCurrencyCode(
+        field === 'originalCurrency' ? String(value || 'CHF') : newData.originalCurrency || 'CHF'
+      );
+      newData.originalCurrency = cur;
+      if (field === 'conversionRateUsed') {
+        const r = Number(value) || 1;
+        newData.conversionRateUsed = r > 0 ? r : 1;
+        if (isForeignCurrency(cur, 'CHF')) {
+          const remapped = applyFxAndSwissVatRemap(newData, newData.conversionRateUsed, 'CHF');
+          onUpdate(
+            syncSwissVatDerivedFields({
+              ...newData,
+              ...remapped,
+              swissVatBreakdown: remapped.swissVatBreakdown,
+              swissVatReceiptTotals: remapped.swissVatReceiptTotals,
+              amountInCHF: remapped.amountInCHF,
+            } as FinancialData)
+          );
+          return;
+        }
+      } else if (isForeignCurrency(cur, 'CHF')) {
+        void applyLiveFxToFinancialData(newData, 'CHF').then((next) => onUpdate(next));
+        return;
+      } else {
+        newData.conversionRateUsed = 1;
+        newData.amountInCHF = Number(newData.totalAmount || 0);
+      }
+    }
+
+    // Also remap Swiss TVA when net/VAT change on a foreign invoice.
+    if (
+      (field === 'netAmount' || field === 'vatAmount' || field === 'vatRate') &&
+      isForeignCurrency(newData.originalCurrency, 'CHF') &&
+      Math.abs(Number(newData.conversionRateUsed || 1) - 1) > 0.0001
+    ) {
+      const remapped = applyFxAndSwissVatRemap(newData, Number(newData.conversionRateUsed) || 1, 'CHF');
+      onUpdate(
+        syncSwissVatDerivedFields({
+          ...newData,
+          ...remapped,
+          swissVatBreakdown: remapped.swissVatBreakdown,
+          swissVatReceiptTotals: remapped.swissVatReceiptTotals,
+          amountInCHF: remapped.amountInCHF,
+        } as FinancialData)
+      );
+      return;
     }
     
     // Pay slips: labeled Salaire brut / Chèque salarié win over summing every INCOME row
@@ -1827,6 +1923,68 @@ export const VerificationHub: React.FC<{
                        <input value={editedData.documentNumber} onChange={e => handleFieldChange('documentNumber', e.target.value)} className="ba-verify-field" />
                     </div>
                  </div>
+                 {isForeignCurrency(editedData.originalCurrency, 'CHF') && getActiveFiscalLocale() !== 'uk' && (
+                   <div className="rounded-sm border border-cdlp-gold/40 bg-cdlp-gold/10 p-3 space-y-3">
+                     <div className="flex items-center justify-between gap-2">
+                       <label className="text-[9px] font-black uppercase text-cdlp-gold tracking-[0.2em]">
+                         {t('dpExchangeRate')}
+                       </label>
+                       <button
+                         type="button"
+                         className="text-[8px] font-black uppercase tracking-wider text-cdlp-gold hover:underline"
+                         onClick={() => {
+                           const from = normalizeCurrencyCode(editedData.originalCurrency || 'EUR');
+                           void getLiveExchangeRate(from, 'CHF').then((rate) => {
+                             handleFieldChange('conversionRateUsed', rate);
+                           });
+                         }}
+                       >
+                         {t('dpRefreshFx')}
+                       </button>
+                     </div>
+                     <input
+                       type="number"
+                       step="0.0001"
+                       min="0"
+                       value={Number(editedData.conversionRateUsed || 1)}
+                       onChange={(e) =>
+                         handleFieldChange('conversionRateUsed', parseFloat(e.target.value) || 1)
+                       }
+                       className="ba-verify-field font-mono"
+                     />
+                     <p className="text-[8px] text-cdlp-muted leading-relaxed">{t('dpExchangeRateHint')}</p>
+                     <div className="grid grid-cols-2 gap-2">
+                       <div>
+                         <p className="text-[8px] font-black uppercase text-cdlp-muted tracking-widest mb-1">
+                           {(t('dpOriginalAmount') || 'Original ({currency})').replace(
+                             '{currency}',
+                             normalizeCurrencyCode(editedData.originalCurrency || 'EUR')
+                           )}
+                         </p>
+                         <p className="text-sm font-black font-mono text-foreground">
+                           {Number(editedData.totalAmount || 0).toLocaleString(chfLocale, {
+                             minimumFractionDigits: 2,
+                             maximumFractionDigits: 2,
+                           })}{' '}
+                           {normalizeCurrencyCode(editedData.originalCurrency || 'EUR')}
+                         </p>
+                       </div>
+                       <div>
+                         <p className="text-[8px] font-black uppercase text-cdlp-gold tracking-widest mb-1">
+                           {t('dpAmountInChf')}
+                         </p>
+                         <p className="text-sm font-black font-mono text-cdlp-gold">
+                           {Number(editedData.amountInCHF || 0).toLocaleString(chfLocale, {
+                             minimumFractionDigits: 2,
+                             maximumFractionDigits: 2,
+                           })}{' '}
+                           CHF
+                         </p>
+                       </div>
+                     </div>
+                     <p className="text-[8px] text-cdlp-muted leading-relaxed">{t('dpFxSwissVatNote')}</p>
+                   </div>
+                 )}
               </div>
               <div className="space-y-5">
                  <div>
@@ -3789,7 +3947,9 @@ export const DocumentProcessor: React.FC<{
           <p className="mb-4 text-xs text-cdlp-gold/90 font-medium">{t('billingTeamReadOnlyBanner')}</p>
         ) : null}
 
-        <p className="text-[9px] font-bold uppercase tracking-wider text-cdlp-muted mb-2">{t('dpUploadDocuments')}</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-cdlp-muted mb-3">
+          {t('dpUploadDocuments')}
+        </p>
 
         <label
           className={`ba-upload-zone w-full mb-4 ${documentLimitReached ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}

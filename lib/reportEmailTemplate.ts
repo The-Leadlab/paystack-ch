@@ -27,24 +27,26 @@ const COPY = {
   en: {
     greeting: "Hello,",
     intro: (period: string, session: string) =>
-      `Your <strong>${period}</strong> for <strong>${session}</strong> is attached as a PDF.`,
+      `Your <strong>${period}</strong> for <strong>${session}</strong> is attached as a printable PDF report and an Excel workbook.`,
     period: "Period",
     income: "Income",
     expenses: "Expenses",
     balance: "Balance",
-    attachment: "Open the PDF attachment for the full transaction list.",
+    attachment:
+      "Attachments: open the HTML/PDF report for the full printable statement, and the Excel (.xlsx) file for spreadsheets.",
     cta: "Open Paystack",
     footer: "Swiss hospitality financial management",
   },
   fr: {
     greeting: "Bonjour,",
     intro: (period: string, session: string) =>
-      `Votre <strong>${period}</strong> pour <strong>${session}</strong> est en pièce jointe (PDF).`,
+      `Votre <strong>${period}</strong> pour <strong>${session}</strong> est en pièces jointes (rapport PDF imprimable + Excel).`,
     period: "Période",
     income: "Revenus",
     expenses: "Dépenses",
     balance: "Solde",
-    attachment: "Ouvrez la pièce jointe PDF pour la liste complète des transactions.",
+    attachment:
+      "Pièces jointes : ouvrez le rapport HTML/PDF pour l’état imprimable, et le fichier Excel (.xlsx) pour les tableurs.",
     cta: "Ouvrir Paystack",
     footer: "Gestion financière pour l'hôtellerie suisse",
   },

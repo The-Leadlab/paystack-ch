@@ -31,6 +31,12 @@ import {
   normalizeLineItemCategory,
 } from "./categoryDetectionService";
 import { applyDocumentDirectionToFinancialData } from "@shared/documentDirection";
+import {
+  applyFxAndSwissVatRemap,
+  fallbackFxRate,
+  isForeignCurrency,
+  normalizeCurrencyCode,
+} from "@shared/foreignCurrencySwissVat";
 import { getActiveFiscalLocale, reportingCurrencyForLocale } from "../lib/fiscalLocale";
 import {
   normalizeIsoDate,
@@ -257,15 +263,74 @@ async function generateGeminiForDocumentFile(
 }
 
 export const getLiveExchangeRate = async (from: string, to: string): Promise<number> => {
-  if (!from || from === to || from === '---') return 1.0;
+  const fromCur = normalizeCurrencyCode(from);
+  const toCur = normalizeCurrencyCode(to);
+  if (!fromCur || fromCur === toCur || fromCur === "---") return 1.0;
+
   try {
-    const res = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}`);
-    const data = await res.json();
-    return data.rates[to] || 1.0;
-  } catch (e) {
-    return 1.0;
+    const res = await fetch(
+      `https://api.frankfurter.app/latest?from=${encodeURIComponent(fromCur)}&to=${encodeURIComponent(toCur)}`
+    );
+    if (res.ok) {
+      const data = (await res.json()) as { rates?: Record<string, number> };
+      const rate = Number(data?.rates?.[toCur]);
+      if (Number.isFinite(rate) && rate > 0) return rate;
+    }
+  } catch {
+    /* fall through */
   }
+
+  // Calendar-year series (Frankfurter returns rates keyed by date).
+  try {
+    const year = new Date().getFullYear();
+    const res = await fetch(
+      `https://api.frankfurter.app/${year}-01-01..${year}-12-31?from=${encodeURIComponent(fromCur)}&to=${encodeURIComponent(toCur)}`
+    );
+    if (res.ok) {
+      const data = (await res.json()) as { rates?: Record<string, Record<string, number>> };
+      const days = Object.values(data?.rates || {});
+      const vals = days
+        .map((d) => Number(d?.[toCur]))
+        .filter((n) => Number.isFinite(n) && n > 0);
+      if (vals.length > 0) {
+        return vals.reduce((a, b) => a + b, 0) / vals.length;
+      }
+    }
+  } catch {
+    /* fall through */
+  }
+
+  return fallbackFxRate(fromCur, toCur);
 };
+
+/** Apply FX + Swiss TVA remap when invoice currency ≠ reporting currency. */
+export async function applyLiveFxToFinancialData(
+  data: FinancialData,
+  targetCurrency: string = reportingCurrencyForLocale()
+): Promise<FinancialData> {
+  const fromCur = normalizeCurrencyCode(data.originalCurrency || targetCurrency);
+  const toCur = normalizeCurrencyCode(targetCurrency);
+  if (!isForeignCurrency(fromCur, toCur)) {
+    const amount = Number(data.totalAmount || 0);
+    return {
+      ...data,
+      originalCurrency: fromCur,
+      conversionRateUsed: 1,
+      amountInCHF: Number(data.amountInCHF || amount) || amount,
+    };
+  }
+  const rate = await getLiveExchangeRate(fromCur, toCur);
+  const remapped = applyFxAndSwissVatRemap(data, rate, toCur);
+  return syncSwissVatDerivedFields({
+    ...data,
+    ...remapped,
+    conversionRateUsed: remapped.conversionRateUsed,
+    amountInCHF: remapped.amountInCHF,
+    swissVatBreakdown: remapped.swissVatBreakdown,
+    swissVatReceiptTotals: remapped.swissVatReceiptTotals,
+    forensicAlerts: remapped.forensicAlerts,
+  } as FinancialData);
+}
 
 type ExhaustiveInvoicePass = {
   detectedInvoiceCount?: number;
@@ -744,7 +809,26 @@ export function syncSwissVatDerivedFields(data: FinancialData): FinancialData {
       : roundSwiss2(merchandise + vatTotal + deposit);
   const form = computeSwissVatFormPreview(data.expenseCategory || "", merchandise, vatTotal);
   const rate = Number(data.conversionRateUsed ?? 1) || 1;
-  const amountInCHF = rate !== 1 ? roundSwiss2(totalIncl * rate) : totalIncl;
+  const cur = normalizeCurrencyCode(data.originalCurrency || "CHF");
+  const foreign = isForeignCurrency(cur, "CHF") && Math.abs(rate - 1) > 0.0001;
+
+  // Foreign invoices: Swiss table is already in CHF — keep original-currency header amounts.
+  if (foreign) {
+    return {
+      ...data,
+      swissVatBreakdown: lines.length > 0 ? lines : undefined,
+      swissVatReceiptTotals: {
+        merchandiseSubtotal: merchandise,
+        vatTotal,
+        deposit,
+        totalInclVat: totalIncl,
+      },
+      swissVatFormPreview: form,
+      amountInCHF: totalIncl,
+      conversionRateUsed: rate,
+    };
+  }
+
   return {
     ...data,
     swissVatBreakdown: lines.length > 0 ? lines : undefined,
@@ -758,7 +842,7 @@ export function syncSwissVatDerivedFields(data: FinancialData): FinancialData {
     vatAmount: vatTotal,
     netAmount: merchandise,
     totalAmount: totalIncl,
-    amountInCHF,
+    amountInCHF: totalIncl,
   };
 }
 
@@ -1603,24 +1687,7 @@ export const analyzeFinancialDocument = async (
           uploadIntent: options?.uploadIntent,
         });
         if (merged.totalAmount !== undefined) {
-          const fromCur = String(merged.originalCurrency || targetCurrency || "CHF")
-            .trim()
-            .toUpperCase();
-          const toCur = String(targetCurrency || "CHF").trim().toUpperCase();
-          if (fromCur && toCur && fromCur !== toCur && fromCur !== "---") {
-            const rate = await getLiveExchangeRate(fromCur, toCur);
-            merged = {
-              ...merged,
-              amountInCHF: Math.round(merged.totalAmount * rate * 100) / 100,
-              conversionRateUsed: rate,
-            };
-          } else if (!merged.amountInCHF || merged.amountInCHF === 0) {
-            merged = {
-              ...merged,
-              amountInCHF: merged.totalAmount,
-              conversionRateUsed: 1,
-            };
-          }
+          merged = await applyLiveFxToFinancialData(merged, targetCurrency);
         }
         return merged;
       }
@@ -2169,18 +2236,7 @@ Return JSON only.`;
     };
 
     if (normalized.totalAmount !== undefined) {
-      const fromCur = String(normalized.originalCurrency || targetCurrency || "CHF")
-        .trim()
-        .toUpperCase();
-      const toCur = String(targetCurrency || "CHF").trim().toUpperCase();
-      if (fromCur && toCur && fromCur !== toCur && fromCur !== "---") {
-        const rate = await getLiveExchangeRate(fromCur, toCur);
-        normalized.amountInCHF = Math.round(normalized.totalAmount * rate * 100) / 100;
-        normalized.conversionRateUsed = rate;
-      } else if (!normalized.amountInCHF || normalized.amountInCHF === 0) {
-        normalized.amountInCHF = normalized.totalAmount;
-        normalized.conversionRateUsed = 1;
-      }
+      normalized = await applyLiveFxToFinancialData(normalized, targetCurrency);
     }
 
     return normalized;

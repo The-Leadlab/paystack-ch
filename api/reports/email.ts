@@ -3,6 +3,7 @@ import { stripeCorsApplyHeaders } from "../lib/stripeCors.js";
 import { verifyFirebaseUser } from "../../lib/verifyFirebaseIdToken.js";
 import { resolveReportPeriod, type ReportEmailCadence } from "../../shared/reportPeriod.js";
 import { buildServerFinancialReportHtml } from "../../lib/buildServerFinancialReport.js";
+import { buildFinancialReportExcelBuffer } from "../../shared/financialReportExcel.js";
 import { buildReportEmailHtml } from "../../lib/reportEmailTemplate.js";
 import { sendReportEmail } from "../../lib/resendReports.js";
 import { ensureFirebaseAdmin } from "../../lib/firebaseAdmin.js";
@@ -93,7 +94,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       includeLedger = userDoc.data()?.revenueLedgerEnabled === true;
     }
 
-    const reportHtml = buildServerFinancialReportHtml({
+    const reportRows = {
       income: income.map((r) => ({
         date: r.date,
         amount: Number(r.amount || 0),
@@ -110,11 +111,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         category: r.category,
         account_code: r.account_code,
       })),
+    };
+
+    const reportHtml = buildServerFinancialReportHtml({
+      ...reportRows,
       dateFrom: period.from,
       dateTo: period.to,
       sessionName,
       locale,
       includeLedger,
+    });
+
+    const reportExcel = buildFinancialReportExcelBuffer({
+      ...reportRows,
+      dateFrom: period.from,
+      dateTo: period.to,
+      sessionName,
+      locale,
+      currency: "CHF",
     });
 
     const subject =
@@ -133,9 +147,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       balance: totalIncome - totalExpenses,
     });
 
-    const reportFilename = `paystack-financial-report-${cadence}-${period.to}.html`;
+    const base = `paystack-financial-report-${cadence}-${period.to}`;
 
-    await sendReportEmail({ to: email, subject, html, reportHtml, reportFilename });
+    await sendReportEmail({
+      to: email,
+      subject,
+      html,
+      attachments: [
+        { filename: `${base}.html`, content: reportHtml },
+        { filename: `${base}.xlsx`, content: reportExcel },
+      ],
+    });
 
     res.status(200).json({ ok: true, sentTo: email, cadence, period });
   } catch (error) {
