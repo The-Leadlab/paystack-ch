@@ -905,7 +905,14 @@ export const dashboardEn: Record<string, string> = {
   dpAmountInChf: 'Amount in CHF',
   dpOriginalAmount: 'Original ({currency})',
   dpFxSwissVatNote:
-    'Swiss TVA (8.1% / 2.6%) is calculated on the CHF base — foreign VAT is not used for Swiss filing.',
+    'Book CHF HT (merchandise). Printed foreign VAT is flagged for reconciliation — not Swiss filing TVA (codes 220/400).',
+  dpForeignVatReconTitle: 'Foreign VAT — reconciliation',
+  dpForeignVatReconHint:
+    'This VAT was charged by a foreign supplier. It is not Swiss input tax (code 400). Keep it for your accountant / reverse-charge review.',
+  dpChfMerchandiseHt: 'CHF merchandise (HT)',
+  dpSwissVatZero: 'Swiss TVA (filing)',
+  dpForeignVatNotSwiss: 'Foreign VAT is not booked as Swiss TVA',
+  dpTotalChfCashOut: 'TOTAL CHF (cash out)',
   dpRefreshFx: 'Refresh rate',
   dpDocumentNumber: 'Document #',
   dpTotalAmount: 'Total amount',
@@ -1959,7 +1966,14 @@ export const dashboardFr: Record<string, string> = {
   dpAmountInChf: 'Montant en CHF',
   dpOriginalAmount: 'Original ({currency})',
   dpFxSwissVatNote:
-    'La TVA suisse (8,1 % / 2,6 %) est calculée sur la base CHF — la TVA étrangère n’est pas utilisée pour la déclaration suisse.',
+    'Comptabiliser le HT en CHF. La TVA étrangère imprimée est à rapprocher — ce n’est pas la TVA suisse (codes 220/400).',
+  dpForeignVatReconTitle: 'TVA étrangère — rapprochement',
+  dpForeignVatReconHint:
+    'TVA facturée par un fournisseur étranger. Ce n’est pas de la TVA déductible suisse (code 400). À transmettre à votre fiduciaire / reverse charge.',
+  dpChfMerchandiseHt: 'Marchandises CHF (HT)',
+  dpSwissVatZero: 'TVA suisse (déclaration)',
+  dpForeignVatNotSwiss: 'La TVA étrangère n’est pas comptabilisée comme TVA suisse',
+  dpTotalChfCashOut: 'TOTAL CHF (sortie de caisse)',
   dpRefreshFx: 'Actualiser le taux',
   dpDocumentNumber: 'N° document',
   dpTotalAmount: 'Montant total',

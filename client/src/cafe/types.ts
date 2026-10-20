@@ -207,6 +207,12 @@ export interface FinancialData {
   expenseCategory: string;
   amountInCHF: number;
   conversionRateUsed: number;
+  /** Printed foreign VAT (EUR etc.) — not Swiss filing TVA. */
+  foreignVatAmount?: number;
+  /** Foreign VAT × FX rate in CHF. */
+  foreignVatAmountInCHF?: number;
+  /** True when foreign VAT must be reconciled (not booked as Swiss code 400). */
+  foreignVatNeedsReconciliation?: boolean;
   notes: string;
   lineItems?: BankTransaction[];
   subDocuments?: FinancialData[];

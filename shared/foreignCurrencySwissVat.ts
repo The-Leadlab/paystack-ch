@@ -1,7 +1,8 @@
 /**
- * Border restaurants (e.g. Geneva) receive EUR invoices with foreign VAT (often FR 20%).
- * For Swiss books we keep original-currency amounts, convert HT → CHF, then apply Swiss
- * TVA rates (0 / 2.6 / 8.1) on the CHF base — never keep French 20% on the Swiss table.
+ * Border restaurants (e.g. Geneva) receive EUR invoices with foreign VAT.
+ * For a Swiss-domiciled buyer: keep printed EUR amounts, convert HT/TTC → CHF,
+ * put CHF HT on the Swiss table at 0% (EU VAT is NOT Swiss filing VAT), and
+ * flag foreign VAT for reconciliation.
  */
 
 export type SwissVatLineLike = {
@@ -27,6 +28,9 @@ export type FxSwissVatInput = {
     totalInclVat?: number | null;
   } | null;
   forensicAlerts?: string[] | null;
+  foreignVatAmount?: number | null;
+  foreignVatAmountInCHF?: number | null;
+  foreignVatNeedsReconciliation?: boolean | null;
 };
 
 export type FxSwissVatResult = FxSwissVatInput & {
@@ -44,6 +48,9 @@ export type FxSwissVatResult = FxSwissVatInput & {
     totalInclVat: number;
   };
   forensicAlerts: string[];
+  foreignVatAmount: number;
+  foreignVatAmountInCHF: number;
+  foreignVatNeedsReconciliation: boolean;
 };
 
 const RATE_EPS = 0.35;
@@ -71,16 +78,16 @@ export function isForeignCurrency(
 }
 
 /**
- * Map a printed foreign VAT % to the nearest Swiss filing rate.
- * FR 20% / DE 19% → 8.1%; reduced bands (~5.5 / 7 / 10) → 2.6%; zero stays 0.
+ * Map a printed foreign VAT % to the nearest Swiss filing rate (helper for
+ * domestic-style remaps / legacy helpers — import path uses 0% Swiss + recon).
  */
 export function mapForeignVatRateToSwiss(foreignRatePercent: number): number {
   const r = Number(foreignRatePercent);
   if (!Number.isFinite(r) || r <= RATE_EPS) return 0;
   if (Math.abs(r - 8.1) <= RATE_EPS || Math.abs(r - 7.7) <= RATE_EPS) return 8.1;
   if (Math.abs(r - 2.6) <= RATE_EPS || Math.abs(r - 2.5) <= RATE_EPS) return 2.6;
-  if (r >= 15) return 8.1; // standard EU rates → Swiss standard
-  if (r >= 4) return 2.6; // reduced EU rates → Swiss reduced
+  if (r >= 15) return 8.1;
+  if (r >= 4) return 2.6;
   return 8.1;
 }
 
@@ -100,9 +107,23 @@ export function inferSwissRateFromForeignAmounts(
   return 0;
 }
 
+function emptyRecon(alerts: string[] = []): Pick<
+  FxSwissVatResult,
+  "foreignVatAmount" | "foreignVatAmountInCHF" | "foreignVatNeedsReconciliation" | "forensicAlerts"
+> {
+  return {
+    foreignVatAmount: 0,
+    foreignVatAmountInCHF: 0,
+    foreignVatNeedsReconciliation: false,
+    forensicAlerts: alerts,
+  };
+}
+
 /**
- * Convert foreign invoice HT to CHF and rebuild Swiss TVA rows in CHF.
- * Preserves originalCurrency / totalAmount / netAmount / vatAmount in the invoice currency.
+ * Convert foreign invoice HT/TTC to CHF.
+ * Swiss table: CHF HT at 0% Swiss TVA (do not copy EU %).
+ * Foreign VAT → reconciliation flag (not Swiss form code 400).
+ * amountInCHF = TTC × rate (cash leaving the business).
  */
 export function applyFxAndSwissVatRemap(
   data: FxSwissVatInput,
@@ -146,11 +167,11 @@ export function applyFxAndSwissVatRemap(
           Number(data.swissVatReceiptTotals?.totalInclVat ?? foreignGross) || chf
         ),
       },
-      forensicAlerts: Array.isArray(data.forensicAlerts) ? [...data.forensicAlerts] : [],
+      ...emptyRecon(Array.isArray(data.forensicAlerts) ? [...data.forensicAlerts] : []),
     };
   }
 
-  // Only remap Swiss TVA when reporting in CHF (not GBP UK UAT).
+  // Non-CHF reporting (e.g. UK GBP): convert cash total only, no Swiss import remap.
   if (to !== "CHF") {
     const amountInCHF = roundMoney2(foreignGross * safeRate);
     return {
@@ -178,29 +199,26 @@ export function applyFxAndSwissVatRemap(
           Number(data.swissVatReceiptTotals?.totalInclVat ?? amountInCHF)
         ),
       },
-      forensicAlerts: Array.isArray(data.forensicAlerts) ? [...data.forensicAlerts] : [],
+      ...emptyRecon(Array.isArray(data.forensicAlerts) ? [...data.forensicAlerts] : []),
     };
   }
 
-  const swissRate = inferSwissRateFromForeignAmounts(foreignNet, foreignVat, data.vatRate);
+  // Swiss books + foreign invoice (Josh/Damien): HT→CHF, TTC→CHF cash out,
+  // Swiss TVA 0% on CHF HT, foreign VAT flagged for reconciliation.
   const chfNet = roundMoney2(foreignNet * safeRate);
-  const chfVat = roundMoney2(chfNet * (swissRate / 100));
-  const chfGross = roundMoney2(chfNet + chfVat);
+  const chfPaid = roundMoney2(foreignGross * safeRate);
+  const foreignVatInChf = roundMoney2(foreignVat * safeRate);
+  const needsRecon = foreignVat > 0.004;
 
-  const rates = [0, 2.6, 8.1] as const;
-  const swissVatBreakdown: SwissVatLineLike[] = rates.map((ratePercent) => {
-    if (Math.abs(ratePercent - swissRate) <= RATE_EPS && swissRate > 0) {
-      return { ratePercent, baseExclusive: chfNet, vatAmount: chfVat };
-    }
-    if (swissRate <= RATE_EPS && ratePercent === 0) {
-      return { ratePercent: 0, baseExclusive: chfNet, vatAmount: 0 };
-    }
-    return { ratePercent, baseExclusive: 0, vatAmount: 0 };
-  });
+  const swissVatBreakdown: SwissVatLineLike[] = [
+    { ratePercent: 0, baseExclusive: chfNet, vatAmount: 0 },
+    { ratePercent: 2.6, baseExclusive: 0, vatAmount: 0 },
+    { ratePercent: 8.1, baseExclusive: 0, vatAmount: 0 },
+  ];
 
   const alerts = new Set(Array.isArray(data.forensicAlerts) ? data.forensicAlerts : []);
   alerts.add(
-    `FX ${from}→CHF @ ${safeRate.toFixed(4)}: Swiss TVA ${swissRate}% applied on CHF HT ${chfNet.toFixed(2)} (foreign VAT not used for Swiss filing).`
+    `FX ${from}→CHF @ ${safeRate.toFixed(4)}: CHF HT ${chfNet.toFixed(2)}, cash out CHF ${chfPaid.toFixed(2)}. Foreign VAT ${foreignVat.toFixed(2)} ${from} (${foreignVatInChf.toFixed(2)} CHF) flagged for reconciliation — not Swiss filing TVA.`
   );
 
   return {
@@ -210,14 +228,18 @@ export function applyFxAndSwissVatRemap(
     netAmount: foreignNet,
     vatAmount: foreignVat,
     conversionRateUsed: safeRate,
-    amountInCHF: chfGross,
+    amountInCHF: chfPaid,
     swissVatBreakdown,
     swissVatReceiptTotals: {
       merchandiseSubtotal: chfNet,
-      vatTotal: chfVat,
+      vatTotal: 0,
       deposit: 0,
-      totalInclVat: chfGross,
+      // Cash leaving the business (TTC × rate), not HT+SwissVAT.
+      totalInclVat: chfPaid,
     },
+    foreignVatAmount: foreignVat,
+    foreignVatAmountInCHF: foreignVatInChf,
+    foreignVatNeedsReconciliation: needsRecon,
     forensicAlerts: [...alerts],
   };
 }

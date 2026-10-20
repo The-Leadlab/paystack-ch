@@ -303,33 +303,96 @@ export const getLiveExchangeRate = async (from: string, to: string): Promise<num
   return fallbackFxRate(fromCur, toCur);
 };
 
-/** Apply FX + Swiss TVA remap when invoice currency ≠ reporting currency. */
-export async function applyLiveFxToFinancialData(
+function mergeFxRemapOntoFinancialData(
   data: FinancialData,
-  targetCurrency: string = reportingCurrencyForLocale()
-): Promise<FinancialData> {
-  const fromCur = normalizeCurrencyCode(data.originalCurrency || targetCurrency);
-  const toCur = normalizeCurrencyCode(targetCurrency);
-  if (!isForeignCurrency(fromCur, toCur)) {
-    const amount = Number(data.totalAmount || 0);
-    return {
-      ...data,
-      originalCurrency: fromCur,
-      conversionRateUsed: 1,
-      amountInCHF: Number(data.amountInCHF || amount) || amount,
-    };
-  }
-  const rate = await getLiveExchangeRate(fromCur, toCur);
-  const remapped = applyFxAndSwissVatRemap(data, rate, toCur);
+  remapped: ReturnType<typeof applyFxAndSwissVatRemap>
+): FinancialData {
   return syncSwissVatDerivedFields({
     ...data,
     ...remapped,
+    originalCurrency: remapped.originalCurrency,
+    totalAmount: remapped.totalAmount,
+    netAmount: remapped.netAmount,
+    vatAmount: remapped.vatAmount,
     conversionRateUsed: remapped.conversionRateUsed,
     amountInCHF: remapped.amountInCHF,
     swissVatBreakdown: remapped.swissVatBreakdown,
     swissVatReceiptTotals: remapped.swissVatReceiptTotals,
     forensicAlerts: remapped.forensicAlerts,
+    foreignVatAmount: remapped.foreignVatAmount,
+    foreignVatAmountInCHF: remapped.foreignVatAmountInCHF,
+    foreignVatNeedsReconciliation: remapped.foreignVatNeedsReconciliation,
   } as FinancialData);
+}
+
+/** Apply FX + Swiss TVA remap when invoice currency ≠ reporting currency (parent + each subDocument). */
+export async function applyLiveFxToFinancialData(
+  data: FinancialData,
+  targetCurrency: string = reportingCurrencyForLocale()
+): Promise<FinancialData> {
+  const toCur = normalizeCurrencyCode(targetCurrency);
+  const parentFrom = normalizeCurrencyCode(data.originalCurrency || toCur);
+  const parentForeign = isForeignCurrency(parentFrom, toCur);
+
+  let parentRate = 1;
+  if (parentForeign) {
+    parentRate = await getLiveExchangeRate(parentFrom, toCur);
+  }
+
+  let next: FinancialData = data;
+  if (parentForeign) {
+    next = mergeFxRemapOntoFinancialData(data, applyFxAndSwissVatRemap(data, parentRate, toCur));
+  } else {
+    const amount = Number(data.totalAmount || 0);
+    next = {
+      ...data,
+      originalCurrency: parentFrom,
+      conversionRateUsed: 1,
+      amountInCHF: Number(data.amountInCHF || amount) || amount,
+      foreignVatAmount: 0,
+      foreignVatAmountInCHF: 0,
+      foreignVatNeedsReconciliation: false,
+    };
+  }
+
+  const subs = Array.isArray(next.subDocuments) ? next.subDocuments : [];
+  if (subs.length === 0) return next;
+
+  const remappedSubs: FinancialData[] = [];
+  for (const sub of subs) {
+    const subFrom = normalizeCurrencyCode(sub.originalCurrency || parentFrom || toCur);
+    const subForeign = isForeignCurrency(subFrom, toCur);
+    if (!subForeign) {
+      const amt = Number(sub.totalAmount || 0);
+      remappedSubs.push({
+        ...sub,
+        originalCurrency: subFrom,
+        conversionRateUsed: 1,
+        amountInCHF: Number(sub.amountInCHF || amt) || amt,
+        foreignVatAmount: 0,
+        foreignVatAmountInCHF: 0,
+        foreignVatNeedsReconciliation: false,
+      });
+      continue;
+    }
+    // Inherit parent rate when same currency; otherwise fetch.
+    const rate =
+      subFrom === parentFrom && parentForeign
+        ? parentRate
+        : await getLiveExchangeRate(subFrom, toCur);
+    remappedSubs.push(
+      mergeFxRemapOntoFinancialData(
+        {
+          ...sub,
+          originalCurrency: subFrom,
+          conversionRateUsed: rate,
+        },
+        applyFxAndSwissVatRemap({ ...sub, originalCurrency: subFrom }, rate, toCur)
+      )
+    );
+  }
+
+  return { ...next, subDocuments: remappedSubs };
 }
 
 type ExhaustiveInvoicePass = {
@@ -807,27 +870,47 @@ export function syncSwissVatDerivedFields(data: FinancialData): FinancialData {
     rt.totalInclVat != null && Number.isFinite(Number(rt.totalInclVat))
       ? roundSwiss2(Number(rt.totalInclVat))
       : roundSwiss2(merchandise + vatTotal + deposit);
-  const form = computeSwissVatFormPreview(data.expenseCategory || "", merchandise, vatTotal);
   const rate = Number(data.conversionRateUsed ?? 1) || 1;
   const cur = normalizeCurrencyCode(data.originalCurrency || "CHF");
   const foreign = isForeignCurrency(cur, "CHF") && Math.abs(rate - 1) > 0.0001;
 
   // Foreign invoices: Swiss table is already in CHF — keep original-currency header amounts.
+  // Form preview: code 200 = CHF HT; do NOT put foreign VAT into code 400.
   if (foreign) {
+    const form = computeSwissVatFormPreview(data.expenseCategory || "", merchandise, 0);
+    const foreignVat = roundSwiss2(
+      Number(
+        data.foreignVatAmount != null && Number.isFinite(Number(data.foreignVatAmount))
+          ? data.foreignVatAmount
+          : data.vatAmount || 0
+      )
+    );
+    const foreignVatChf = roundSwiss2(
+      Number(
+        data.foreignVatAmountInCHF != null && Number.isFinite(Number(data.foreignVatAmountInCHF))
+          ? data.foreignVatAmountInCHF
+          : foreignVat * rate
+      )
+    );
     return {
       ...data,
       swissVatBreakdown: lines.length > 0 ? lines : undefined,
       swissVatReceiptTotals: {
         merchandiseSubtotal: merchandise,
-        vatTotal,
+        vatTotal: 0,
         deposit,
         totalInclVat: totalIncl,
       },
       swissVatFormPreview: form,
       amountInCHF: totalIncl,
       conversionRateUsed: rate,
+      foreignVatAmount: foreignVat,
+      foreignVatAmountInCHF: foreignVatChf,
+      foreignVatNeedsReconciliation: foreignVat > 0.004,
     };
   }
+
+  const form = computeSwissVatFormPreview(data.expenseCategory || "", merchandise, vatTotal);
 
   return {
     ...data,
