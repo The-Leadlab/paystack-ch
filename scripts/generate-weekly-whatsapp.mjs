@@ -1,0 +1,151 @@
+#!/usr/bin/env node
+/**
+ * Generate weekly WhatsApp status update.
+ * Output: docs/weekly-updates/YYYY-MM-DD-whatsapp.md
+ *
+ * Usage:
+ *   node scripts/generate-weekly-whatsapp.mjs
+ *   WEEKLY_DATE=2026-08-07 node scripts/generate-weekly-whatsapp.mjs
+ */
+import { execSync } from "node:child_process";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(__dirname, "..");
+
+function isoDate(d = new Date()) {
+  return d.toISOString().slice(0, 10);
+}
+
+function lastFriday(from = new Date()) {
+  const d = new Date(from);
+  const day = d.getUTCDay();
+  const diff = day >= 5 ? day - 5 : day + 2;
+  d.setUTCDate(d.getUTCDate() - diff - 7);
+  return d;
+}
+
+function formatDisplayDate(iso) {
+  const d = new Date(`${iso}T12:00:00Z`);
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+}
+
+function gitLogSince(sinceIso) {
+  try {
+    return execSync(`git log --since="${sinceIso}" --format="%s" --no-merges`, {
+      cwd: ROOT,
+      encoding: "utf8",
+    })
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function countCommits(commits) {
+  return commits.length;
+}
+
+/** Map commit subjects to human-readable bullet groups. */
+function summarizeCommits(commits) {
+  const groups = {
+    personal: [],
+    business: [],
+    admin: [],
+    landing: [],
+    infra: [],
+    other: [],
+  };
+
+  for (const msg of commits) {
+    const lower = msg.toLowerCase();
+    if (/personal|statement|sessions|invite|seat|drive/.test(lower)) groups.personal.push(msg);
+    else if (/admin|bulk|stripe charge|capacity/.test(lower)) groups.admin.push(msg);
+    else if (/landing|screenshot|tour/.test(lower)) groups.landing.push(msg);
+    else if (/expenses|revenue|invoice|document|ledger|verification/.test(lower)) groups.business.push(msg);
+    else if (/onboard|icon-rail|cloud sync|tour/.test(lower)) groups.infra.push(msg);
+    else groups.other.push(msg);
+  }
+  return groups;
+}
+
+function buildWhatsAppMessage({ dateIso, displayDate, commitCount, sinceIso }) {
+  const commits = gitLogSince(sinceIso);
+  const actualCount = commitCount ?? commits.length;
+
+  return `👋 *Paystack.ch — Weekly Update (${displayDate})*
+
+*1. Client Brief*
+Paystack.ch is a Swiss hospitality & business finance SaaS — document upload + AI (Gemini), ledger, VAT, payroll, and reports for restaurants. We also sell *Paystack Personal* (CHF 20/mo) as a separate household-finance product with budgeting, goals, bills, forecasting, and bank-statement import. CHF-first, Stripe billing, Firebase backend, Google Drive backup.
+
+*2. What has been done? (this week — ${actualCount} commits)*
+See \`docs/weekly-updates/${dateIso}-whatsapp.md\` for the curated summary. Run \`git log --since="${sinceIso}" --oneline\` for the full list.
+
+*3. What is left to do?*
+🔲 *Invoice Maker* — templates, numbering, recurring (next release, in progress)
+🔲 Ali lab features ready but not promoted: shared-access, automation-rules, offline, DE/IT i18n
+🔲 Roadmap: inventory, supplier mgmt, full employee mgmt, multi-currency ledger
+🔲 Dress rehearsal ops: test-account cleanup in Stripe/Firebase
+🔲 Push notifications for bill reminders
+
+*4. Bottleneck issues*
+⚠️ *Ali lab promotion gate* — features stay in \`/ali\` until you test & approve in chat (by design)
+⚠️ Bank sync / Open Banking — explicitly out of scope
+⚠️ Pre-existing TS errors in codebase (not blocking deploys)
+⚠️ Stripe keys + Firebase creds needed for full local testing
+
+Questions or want to promote a lab feature? Just reply here. 🙏`;
+}
+
+async function main() {
+  const dateIso = process.env.WEEKLY_DATE || isoDate();
+  const displayDate = formatDisplayDate(dateIso);
+  const sinceFriday = lastFriday(new Date(`${dateIso}T12:00:00Z`));
+  const sinceIso = isoDate(sinceFriday);
+  const commits = gitLogSince(sinceIso);
+
+  const outDir = join(ROOT, "docs/weekly-updates");
+  await mkdir(outDir, { recursive: true });
+
+  const outPath = join(outDir, `${dateIso}-whatsapp.md`);
+
+  // If file already exists with curated content, don't overwrite — just report.
+  try {
+    const { readFile } = await import("node:fs/promises");
+    const existing = await readFile(outPath, "utf8");
+    if (existing.includes("Copy-paste ready") && !process.env.WEEKLY_FORCE) {
+      console.log(`Weekly update already exists: ${outPath}`);
+      console.log(`Commits since ${sinceIso}: ${commits.length}`);
+      return;
+    }
+  } catch {
+    /* file missing — generate stub */
+  }
+
+  const body = buildWhatsAppMessage({ dateIso, displayDate, commitCount: commits.length, sinceIso });
+  const md = `# Weekly WhatsApp Update — ${displayDate}
+
+Copy-paste ready message below.
+
+---
+
+${body}
+
+---
+
+*Generated by scripts/generate-weekly-whatsapp.mjs — ${displayDate}, 12:00 UTC*
+*Commits since ${sinceIso}: ${commits.length}*
+`;
+
+  await writeFile(outPath, md, "utf8");
+  console.log(`Wrote ${outPath} (${commits.length} commits since ${sinceIso})`);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

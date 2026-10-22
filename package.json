@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "security:scan": "node scripts/security-scan.mjs",
     "test:capacity": "node scripts/capacity-test-2000.mjs",
+    "weekly:whatsapp": "node scripts/generate-weekly-whatsapp.mjs",
     "assets:brand-icons": "node scripts/generate-brand-icons.mjs",
     "assets:process-logo": "node scripts/process-new-logo.mjs",
     "assets:on-dark-logo": "node scripts/generate-on-dark-logo.mjs",
