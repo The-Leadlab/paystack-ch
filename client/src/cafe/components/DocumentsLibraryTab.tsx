@@ -29,10 +29,13 @@ import { hydrateProcessedDocumentLineItems } from "../lib/financialDataFirestore
 import { documentTableDisplayAmount } from "../services/swissPayrollService";
 import { evaluateVatReview } from "../lib/vatReview";
 import { VerificationHub } from "./DocumentProcessor";
+import { StockConfirmPanel } from "./StockConfirmPanel";
+import { useInventoryAllowed } from "../hooks/useInventoryAllowed";
+import { isStockDocument } from "@shared/inventoryStock";
 import type { FinancialData, ProcessedDocument } from "../types";
 import "../businessApp.css";
 
-type DocFilter = "all" | "suppliers" | "employees" | "pos";
+type DocFilter = "all" | "suppliers" | "employees" | "pos" | "stocks";
 type BrowseMode = "library" | "groups";
 type ViewMode = "grid" | "list";
 type SortMode = "newest" | "oldest" | "amount" | "name";
@@ -73,6 +76,7 @@ export function DocumentsLibraryTab({
   const moneyLocale = moneyLocaleForFiscal(fiscalLocale);
   const posReportsLabel = t("docPosReports");
   const { documents, updateDocumentData } = useDocuments();
+  const showStocksFilter = useInventoryAllowed();
   const [filter, setFilter] = useState<DocFilter>("all");
   const [browseMode, setBrowseMode] = useState<BrowseMode>("library");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -93,6 +97,12 @@ export function DocumentsLibraryTab({
       setSelectedEntity(null);
     }
   }, [initialSelectedDocument?.id]);
+
+  React.useEffect(() => {
+    if (!showStocksFilter && filter === "stocks") {
+      setFilter("all");
+    }
+  }, [showStocksFilter, filter]);
 
   const selectedDocument = useMemo(() => {
     if (!selectedDocumentId) return null;
@@ -137,6 +147,7 @@ export function DocumentsLibraryTab({
     const suppliers: Record<string, ProcessedDocument[]> = {};
     const employees: Record<string, ProcessedDocument[]> = {};
     const posReports: ProcessedDocument[] = [];
+    const stocks: ProcessedDocument[] = [];
     const other: ProcessedDocument[] = [];
 
     documents.forEach((doc) => {
@@ -156,6 +167,9 @@ export function DocumentsLibraryTab({
       ) {
         posReports.push(doc);
       } else {
+        if (isStockDocument(doc.data)) {
+          stocks.push(doc);
+        }
         const keys = supplierGroupKeysForDocument(doc);
         for (const key of keys) {
           const supplierName = normalizeEntityKey(key) || "Unknown Supplier";
@@ -167,7 +181,7 @@ export function DocumentsLibraryTab({
       }
     });
 
-    return { suppliers, employees, posReports, other };
+    return { suppliers, employees, posReports, stocks, other };
   }, [documents, t]);
 
   const otherDocsLabel = t("docOtherDocuments") || "Other documents";
@@ -176,6 +190,10 @@ export function DocumentsLibraryTab({
     if (filter === "suppliers") return Object.entries(groupedDocs.suppliers);
     if (filter === "employees") return Object.entries(groupedDocs.employees);
     if (filter === "pos") return [[posReportsLabel, groupedDocs.posReports]];
+    if (filter === "stocks") {
+      const stocksLabel = t("docFilterStocks");
+      return groupedDocs.stocks.length > 0 ? [[stocksLabel, groupedDocs.stocks]] : [];
+    }
     return [
       ...Object.entries(groupedDocs.suppliers),
       ...Object.entries(groupedDocs.employees),
@@ -186,11 +204,12 @@ export function DocumentsLibraryTab({
         ? ([[otherDocsLabel, groupedDocs.other]] as Array<[string, ProcessedDocument[]]>)
         : []),
     ];
-  }, [filter, groupedDocs, posReportsLabel, otherDocsLabel]);
+  }, [filter, groupedDocs, posReportsLabel, otherDocsLabel, t]);
 
   const resolveEntityDocs = (entityName: string): ProcessedDocument[] => {
     if (entityName === posReportsLabel || filter === "pos") return groupedDocs.posReports;
     if (entityName === otherDocsLabel) return groupedDocs.other;
+    if (filter === "stocks") return groupedDocs.stocks;
     if (filter === "employees") return groupedDocs.employees[entityName] || [];
     if (filter === "suppliers") return groupedDocs.suppliers[entityName] || [];
     return (
@@ -216,6 +235,8 @@ export function DocumentsLibraryTab({
       pool = Object.values(groupedDocs.employees).flat();
     } else if (filter === "pos") {
       pool = groupedDocs.posReports;
+    } else if (filter === "stocks") {
+      pool = groupedDocs.stocks;
     } else {
       const seen = new Set<string>();
       for (const d of documents) {
@@ -454,6 +475,15 @@ export function DocumentsLibraryTab({
           ) : null}
         </div>
         {selectedDocument.data ? (
+          <>
+          {showStocksFilter ? (
+            <StockConfirmPanel
+              doc={selectedDocument}
+              onUpdate={(newData) => {
+                void updateDocumentData(recordId, { data: newData });
+              }}
+            />
+          ) : null}
           <VerificationHub
             doc={selectedDocument}
             onUpdate={(newData) => {
@@ -475,6 +505,7 @@ export function DocumentsLibraryTab({
               closeDocument();
             }}
           />
+          </>
         ) : (
           <div className="ba-panel text-center py-12">
             <FileText className="w-12 h-12 text-cdlp-muted mx-auto mb-3 opacity-40" />
@@ -642,6 +673,15 @@ export function DocumentsLibraryTab({
           >
             {t("docPosCount").replace("{n}", String(groupedDocs.posReports.length))}
           </button>
+          {showStocksFilter ? (
+            <button
+              type="button"
+              onClick={() => setFilter("stocks")}
+              className={`ba-filter-chip ${filter === "stocks" ? "ba-filter-chip--active" : ""}`}
+            >
+              {t("docStocksCount").replace("{n}", String(groupedDocs.stocks.length))}
+            </button>
+          ) : null}
         </div>
 
         <div className="ba-doc-toolbar__meta">

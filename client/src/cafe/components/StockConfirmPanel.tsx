@@ -1,0 +1,164 @@
+import React, { useMemo, useState } from "react";
+import { Check, Construction, Package } from "lucide-react";
+import { useInventoryOptional } from "../context/InventoryContext";
+import { useLanguage } from "../context/LanguageContext";
+import { collectProductLinesFromDocument } from "../lib/documentProductLines";
+import { isStockDocument, suggestStockInFromLines } from "@shared/inventoryStock";
+import type { FinancialData, ProcessedDocument } from "../types";
+
+export function StockConfirmPanel({
+  doc,
+  onUpdate,
+}: {
+  doc: ProcessedDocument;
+  onUpdate?: (data: FinancialData) => void;
+}) {
+  const { t } = useLanguage();
+  const inventory = useInventoryOptional();
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [rows, setRows] = useState(() =>
+    suggestStockInFromLines(
+      collectProductLinesFromDocument(doc).map((line) => ({
+        description: line.description,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        amount: line.amount,
+      })),
+      inventory?.products ?? []
+    )
+  );
+
+  const alreadyApplied = useMemo(
+    () => (inventory?.movements || []).some((m) => m.documentId === doc.id && m.type === "stock_in"),
+    [inventory?.movements, doc.id]
+  );
+
+  if (!inventory) return null;
+  const data = doc.data;
+  if (!data) return null;
+
+  const tagged = isStockDocument(data);
+
+  const applyStock = async () => {
+    const ready = rows.filter((r) => r.productId && r.quantity > 0);
+    if (ready.length === 0) {
+      setMessage(t("invStockNeedProduct") || "Link each line to a product, then confirm.");
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      await inventory.deleteMovementsByDocument(doc.id);
+      const date = data.date || new Date().toISOString().slice(0, 10);
+      await inventory.addMovementsBatch(
+        ready.map((r) => ({
+          productId: r.productId!,
+          productName: r.productName || r.description,
+          type: "stock_in" as const,
+          quantity: r.quantity,
+          unitCost: r.unitCostCents,
+          totalCost: r.unitCostCents * r.quantity,
+          documentId: doc.id,
+          date,
+          note: r.description,
+        }))
+      );
+      onUpdate?.({ ...data, stockDocument: true });
+      setMessage(t("invStockApplied") || "Stock increased from this supplier invoice.");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="ba-panel space-y-3 mb-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 text-sm font-semibold text-cdlp-white">
+          <Package className="w-4 h-4" />
+          {t("invStockConfirmTitle") || "Apply to stock"}
+        </div>
+        {alreadyApplied ? (
+          <span className="text-[10px] uppercase tracking-wide text-green-400">{t("invStockAlreadyApplied") || "Already applied"}</span>
+        ) : null}
+      </div>
+      <p className="text-xs text-cdlp-muted">
+        {t("invStockConfirmHint") ||
+          "Confirm the supplier invoice lines below to increase on-hand quantity. Unmatched lines stay skipped."}
+      </p>
+
+      <label className="flex items-center gap-2 text-xs text-cdlp-white">
+        <input
+          type="checkbox"
+          checked={tagged}
+          onChange={(e) => onUpdate?.({ ...data, stockDocument: e.target.checked })}
+        />
+        {t("invMarkStockDocument") || "This is a stock / supplier inventory invoice"}
+      </label>
+
+      {rows.length === 0 ? (
+        <div className="flex items-center gap-2 text-xs text-cdlp-muted">
+          <Construction className="w-3.5 h-3.5" />
+          {t("invStockNoLines") || "No quantity line items found — add qty on the invoice lines, or record a movement manually."}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((row, idx) => (
+            <div key={`${row.description}-${idx}`} className="grid grid-cols-12 gap-2 items-center text-xs">
+              <div className="col-span-12 sm:col-span-4 text-cdlp-white truncate" title={row.description}>
+                {row.description} × {row.quantity}
+              </div>
+              <div className="col-span-12 sm:col-span-5">
+                <select
+                  className="ba-verify-field text-xs"
+                  value={row.productId || ""}
+                  onChange={(e) => {
+                    const product = inventory.products.find((p) => p.id === e.target.value);
+                    setRows((prev) =>
+                      prev.map((r, i) =>
+                        i === idx
+                          ? { ...r, productId: product?.id, productName: product?.name }
+                          : r
+                      )
+                    );
+                  }}
+                >
+                  <option value="">{t("invStockSkipLine") || "Skip — no product"}</option>
+                  {inventory.products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                      {p.sku ? ` (${p.sku})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-span-12 sm:col-span-3 text-cdlp-muted">
+                {(row.unitCostCents / 100).toFixed(2)} / {t("invColUnit") || "unit"}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={busy || inventory.products.length === 0}
+          onClick={() => void applyStock()}
+          className="ba-btn-approve flex items-center gap-1.5 text-xs !h-8"
+        >
+          <Check className="w-3.5 h-3.5" />
+          {busy ? t("invSaving") : t("invStockConfirmCta")}
+        </button>
+        {inventory.products.length === 0 ? (
+          <span className="text-[11px] text-amber-400">
+            {t("invStockAddProductsFirst") || "Add products in the Inventory tab first."}
+          </span>
+        ) : null}
+      </div>
+      {message ? <p className="text-xs text-cdlp-gold">{message}</p> : null}
+    </div>
+  );
+}

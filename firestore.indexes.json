@@ -82,6 +82,22 @@
         { "fieldPath": "restaurantId", "order": "ASCENDING" },
         { "fieldPath": "importedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "inventory_products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "restaurantId", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "inventory_movements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "restaurantId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

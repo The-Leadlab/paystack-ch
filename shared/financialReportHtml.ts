@@ -21,6 +21,8 @@ export type FinancialReportInput = {
   labelCategory?: (category: string) => string;
   labelIncomeType?: (type: string) => string;
   includeLedger?: boolean;
+  inventoryValuation?: number;
+  currency?: string;
 };
 
 export function buildFinancialReportHtml(data: FinancialReportInput): string {
@@ -33,6 +35,8 @@ export function buildFinancialReportHtml(data: FinancialReportInput): string {
     dateTo,
     sessionName,
     includeLedger = false,
+    inventoryValuation,
+    currency,
   } = data;
   const locale = data.locale ?? "en";
   const L = getReportExportLabels(locale);
@@ -76,6 +80,7 @@ export function buildFinancialReportHtml(data: FinancialReportInput): string {
     {} as Record<string, number>
   );
 
+  const moneySuffix = (currency || "CHF").trim() || "CHF";
   const formatCHF = (num: number) =>
     num.toLocaleString(chfLoc, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -201,6 +206,19 @@ export function buildFinancialReportHtml(data: FinancialReportInput): string {
       </div>
     </div>
   </div>
+  ${
+    typeof inventoryValuation === "number"
+      ? `
+  <div class="expense-breakdown">
+    <div class="section-title">${L.stockAsset1200}</div>
+    <p style="font-size:11px;color:#666;margin-bottom:12px;">${L.stockAssetHint}</p>
+    <div class="summary-item" style="text-align:left">
+      <div class="summary-value neutral">${formatCHF(inventoryValuation)} ${moneySuffix}</div>
+    </div>
+  </div>
+  `
+      : ""
+  }
 
   <div class="expense-breakdown">
     <div class="section-title">${L.expenseBreakdown}</div>

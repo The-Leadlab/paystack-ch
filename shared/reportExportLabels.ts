@@ -92,6 +92,8 @@ export type ReportExportLabels = {
   unitPrice: string;
   lineAmount: string;
   sourceFile: string;
+  stockAsset1200: string;
+  stockAssetHint: string;
 };
 
 const en: ReportExportLabels = {
@@ -186,6 +188,8 @@ const en: ReportExportLabels = {
   unitPrice: "Unit price",
   lineAmount: "Line amount",
   sourceFile: "Source file",
+  stockAsset1200: "1200 Inventories (FIFO)",
+  stockAssetHint: "Balance-sheet stock asset. Does not change the VAT statement.",
 };
 
 const fr: ReportExportLabels = {
@@ -281,6 +285,8 @@ const fr: ReportExportLabels = {
   unitPrice: "Prix unit.",
   lineAmount: "Montant ligne",
   sourceFile: "Fichier source",
+  stockAsset1200: "1200 Marchandises (FIFO)",
+  stockAssetHint: "Actif de bilan. N’affecte pas la déclaration TVA.",
 };
 
 export function getReportExportLabels(locale: ReportExportLocale = "en"): ReportExportLabels {

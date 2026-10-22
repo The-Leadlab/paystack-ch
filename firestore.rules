@@ -121,6 +121,22 @@ service cloud.firestore {
       allow create: if createOwnedByUser();
     }
 
+    /** Inventory / stock catalog (hidden tab; same ownership as expenses). */
+    match /inventory_products/{id} {
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
+      allow create: if createOwnedByUser();
+    }
+    match /inventory_movements/{id} {
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
+      allow create: if createOwnedByUser();
+    }
+
     /** Ali feature lab — pre-production competitor features (promote to /app when ready). */
     match /ali_lab_budgets/{id} {
       allow read: if resourceOwnedByUser();

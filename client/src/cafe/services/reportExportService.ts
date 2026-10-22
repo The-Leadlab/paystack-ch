@@ -85,6 +85,8 @@ export interface ReportData {
   currency?: string;
   /** Completed documents — used to build the Invoice items sheet (qty, products, etc.). */
   documents?: ProcessedDocument[];
+  /** FIFO inventory valuation in reporting currency (konto 1200). Omitted when the inventory tab is hidden. */
+  inventoryValuation?: number;
 }
 
 export type SwissVatPeriodMode = 'month' | 'semester' | 'year' | 'allYears';
@@ -284,6 +286,13 @@ export const exportFinancialReportExcel = (data: ReportData) => {
     [L.vatReceived, round2(vatReceived), currency, L.fromCustomers],
     [L.vatPaid, round2(vatPaid), currency, L.onExpenses],
     [L.vatBalance, round2(vatBalance), currency, vatBalance >= 0 ? L.toPay : L.refund],
+    ...(typeof data.inventoryValuation === 'number'
+      ? [
+          [],
+          [L.stockAsset1200, round2(data.inventoryValuation), currency],
+          [L.stockAssetHint],
+        ]
+      : []),
   ];
 
   const monthlyRows: Array<Array<string | number>> = [
@@ -466,6 +475,8 @@ export const exportToPDF = async (data: ReportData) => {
     labelCategory: data.labelCategory,
     labelIncomeType: data.labelIncomeType,
     includeLedger: data.includeLedger,
+    inventoryValuation: data.inventoryValuation,
+    currency: data.currency,
   });
 
   const printWindow = window.open('', '_blank');

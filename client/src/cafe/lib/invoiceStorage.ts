@@ -34,3 +34,16 @@ export function upsertInvoice(userId: string | undefined, invoice: InvoiceData):
   persistInvoices(userId, saved);
   return saved;
 }
+
+export function findSavedInvoice(
+  userId: string | undefined,
+  invoiceNumber: string
+): InvoiceData | undefined {
+  return loadSavedInvoices(userId).find((inv) => inv.invoiceNumber === invoiceNumber);
+}
+
+export function deleteSavedInvoice(userId: string | undefined, invoiceNumber: string): InvoiceData[] {
+  const next = loadSavedInvoices(userId).filter((inv) => inv.invoiceNumber !== invoiceNumber);
+  persistInvoices(userId, next);
+  return next;
+}

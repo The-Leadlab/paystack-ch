@@ -1,10 +1,12 @@
-export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue';
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
 
 export interface InvoiceItem {
   id: string;
   description: string;
   quantity: number;
   unitPrice: number;
+  /** Linked inventory product — stock-out on save, restore on cancel/delete. */
+  productId?: string;
   /** Per-line discount (subtracted before VAT). */
   discountAmount: number;
   /** Per-line VAT rate (%). */

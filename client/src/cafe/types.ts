@@ -242,7 +242,9 @@ export interface FinancialData {
   /** Original upload filename — used to detect facture fournisseur vs vente. */
   sourceFileName?: string;
   /** Where the file was uploaded from, when known. */
-  uploadIntent?: 'revenue' | 'expense';
+  uploadIntent?: 'revenue' | 'expense' | 'stock';
+  /** User tagged this supplier invoice as a stock / inventory receipt. */
+  stockDocument?: boolean;
   /** Bill-to / recipient printed on the invoice (customer vs ourselves). */
   recipient?: string;
   /** Gemini seller-vs-buyer hint (INCOME = we issued it, EXPENSE = we were billed). */

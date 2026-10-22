@@ -6,6 +6,7 @@ import { EmployeeProvider } from "@/cafe/context/EmployeeContext";
 import { FinanceProvider } from "@/cafe/context/FinanceContext";
 import { DocumentProvider } from "@/cafe/context/DocumentContext";
 import { POSProvider } from "@/cafe/context/POSContext";
+import { InventoryProvider } from "@/cafe/context/InventoryContext";
 import { FirebaseMissing } from "@/cafe/components/FirebaseMissing";
 import { EmailVerificationGate } from "@/cafe/components/EmailVerificationGate";
 import { DashboardLoadingShell } from "@/cafe/components/DashboardLoadingShell";
@@ -223,9 +224,11 @@ function BusinessDashboardShell() {
           <FinanceProvider>
             <POSProvider>
               <DocumentProvider>
-                <Suspense fallback={<DashboardLoadingShell />}>
-                  <RestaurantDashboard />
-                </Suspense>
+                <InventoryProvider>
+                  <Suspense fallback={<DashboardLoadingShell />}>
+                    <RestaurantDashboard />
+                  </Suspense>
+                </InventoryProvider>
               </DocumentProvider>
             </POSProvider>
           </FinanceProvider>

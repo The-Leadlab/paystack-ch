@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'wouter';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, CreditCard, Lock, Settings, Wallet, FilePenLine, Mail, Shield, ArrowDownCircle, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, CreditCard, Lock, Settings, Wallet, FilePenLine, Mail, Shield, ArrowDownCircle, PanelLeftClose, PanelLeftOpen, Package } from 'lucide-react';
 import { BillingPlanPanel } from './BillingPlanPanel';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
@@ -39,6 +39,10 @@ import {
 import { POSManager } from './POSManager';
 import { ExpensesManager } from './ExpensesManager';
 import { InvoiceMakerPanel } from './InvoiceMakerPanel';
+import { InventoryPanel } from './InventoryPanel';
+import { useInventoryAllowed } from '../hooks/useInventoryAllowed';
+import { useInventoryOptional } from '../context/InventoryContext';
+import { valuationInCurrency } from '@shared/inventoryFifo';
 import type { ProcessedDocument, POSReading } from '../types';
 import { DocumentType } from '../types';
 import { brandLockupSrc, brandMarkSrc, BRAND_LOGO_SIZE, BRAND_LOCKUP_HEIGHT } from '@/const/branding';
@@ -111,6 +115,7 @@ const BUSINESS_NAV_ITEMS: { id: Tab; labelKey: string; icon: typeof LayoutDashbo
   { id: 'revenue', labelKey: 'revenue', icon: Receipt },
   { id: 'expenses', labelKey: 'expenses', icon: ArrowDownCircle },
   { id: 'invoices', labelKey: 'invoiceMakerTab', icon: FilePenLine },
+  { id: 'inventory', labelKey: 'inventoryTab', icon: Package },
   { id: 'reports', labelKey: 'reports', icon: BarChart3 },
   { id: 'documents', labelKey: 'documents', icon: FileText },
   { id: 'billing', labelKey: 'billingTab', icon: Settings },
@@ -169,7 +174,7 @@ export function RestaurantDashboard() {
   const { theme } = useTheme();
   const brandMobileSrc = brandLockupSrc(theme);
   const chfLocale = useChfLocale();
-  const { currencySuffix, ukUatActive, fiscalLocale } = useUkUat();
+  const { currencySuffix, fiscalLocale } = useUkUat();
   const moneyLocale = moneyLocaleForFiscal(fiscalLocale);
   const errMsg = (error: unknown) => (error instanceof Error ? error.message : t('errorUnknown'));
   const [profileBusinessNames, setProfileBusinessNames] = useState<string[]>([]);
@@ -207,11 +212,12 @@ export function RestaurantDashboard() {
     // Land on the billing tab when returning from the Google Drive OAuth redirect
     if (params.has('googleDrive')) return 'billing';
     const tab = params.get('tab');
-    const allowed: Tab[] = ['dashboard', 'revenue', 'expenses', 'invoices', 'reports', 'documents', 'billing'];
+    const allowed: Tab[] = ['dashboard', 'revenue', 'expenses', 'invoices', 'inventory', 'reports', 'documents', 'billing'];
     if (tab && (allowed as string[]).includes(tab)) return tab as Tab;
     return 'dashboard';
   });
   const showRevenueTab = !enforcementEnabled || entitlements.basicReportsAndExports;
+  const showInventoryTab = useInventoryAllowed();
   const showAllSessionsView = !enforcementEnabled || entitlements.allCoreModules;
   const canAddSession =
     !enforcementEnabled || entitlements.maxSessions == null || sessions.length < entitlements.maxSessions;
@@ -233,6 +239,12 @@ export function RestaurantDashboard() {
       setActiveTab('dashboard');
     }
   }, [showRevenueTab, activeTab]);
+
+  useEffect(() => {
+    if (!showInventoryTab && activeTab === 'inventory') {
+      setActiveTab('dashboard');
+    }
+  }, [showInventoryTab, activeTab]);
 
   useEffect(() => {
     if (!showAllSessionsView && isAllSessionsView) {
@@ -1091,6 +1103,7 @@ export function RestaurantDashboard() {
             activeTab={activeTab}
             onTabChange={switchTab}
             showRevenueTab={showRevenueTab}
+            showInventoryTab={showInventoryTab}
             items={sidebarNavItems}
             collapsed={sidebarCollapsed}
           />
@@ -1156,6 +1169,7 @@ export function RestaurantDashboard() {
             activeTab={activeTab}
             onTabChange={switchTab}
             showRevenueTab={showRevenueTab}
+            showInventoryTab={showInventoryTab}
             items={sidebarNavItems}
           />
           <button
@@ -1396,6 +1410,7 @@ export function RestaurantDashboard() {
               onDeleteDocument={handleDeleteDocument}
               onNavigateToDocument={handleNavigateToDocument}
               onNavigateTab={switchTab}
+              showInventoryTab={showInventoryTab}
               openVerificationDocId={openVerificationDocId}
               onOpenVerificationHandled={() => setOpenVerificationDocId(null)}
               onShowEmployeePanel={() => setShowEmployeePanel(true)}
@@ -1418,9 +1433,17 @@ export function RestaurantDashboard() {
               <InvoiceMakerPanel />
             </div>
           )}
+          {activeTab === 'inventory' && showInventoryTab ? (
+            <div data-tour="biz-inventory-panel">
+              <InventoryPanel />
+            </div>
+          ) : null}
           {activeTab === 'reports' && (
             <div data-tour="biz-reports-panel">
-              <ReportsPlaceholder onNavigateToDocument={handleNavigateToDocument} />
+              <ReportsPlaceholder
+                onNavigateToDocument={handleNavigateToDocument}
+                showInventoryTab={showInventoryTab}
+              />
             </div>
           )}
           {activeTab === 'documents' && (
@@ -1498,6 +1521,18 @@ export function RestaurantDashboard() {
             <FilePenLine className="w-5 h-5 shrink-0" aria-hidden />
             <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('invoiceMakerTab')}</span>
           </button>
+          {showInventoryTab ? (
+            <button
+              type="button"
+              onClick={() => switchTab('inventory')}
+              className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
+                activeTab === 'inventory' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
+              }`}
+            >
+              <Package className="w-5 h-5 shrink-0" aria-hidden />
+              <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('inventoryTab')}</span>
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setActiveTab('reports')}
@@ -2177,12 +2212,14 @@ function useLiveClock(): string {
   return clock;
 }
 
-function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, onResyncLedger, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument, onNavigateTab, openVerificationDocId, onOpenVerificationHandled }: any) {
+function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExpenses, totalPayroll, balance, vatReceived, vatPaid, vatBalance, filteredIncome, filteredExpenses, onAddIncome, onAddExpense, onDocumentQueued, onDocumentData, onDocumentUpdated, onResyncLedger, language, documents, updateDocument, deleteIncome, deleteExpense, updateIncome, updateExpense, addIncome, addExpense, onDeleteDocument, t, user, onNavigateToDocument, onNavigateTab, openVerificationDocId, onOpenVerificationHandled, showInventoryTab }: any) {
   const liveClock = useLiveClock();
-  const { fiscalLocale } = useUkUat();
+  const { fiscalLocale, currencySuffix } = useUkUat();
   const moneyLocale = moneyLocaleForFiscal(fiscalLocale);
   const vatFlowBase = Math.max(vatReceived, vatPaid, Math.abs(vatBalance), 1);
   const documentsCount = Array.isArray(documents) ? documents.length : 0;
+  const inventory = useInventoryOptional();
+  const showInventory = Boolean(showInventoryTab);
 
   const resolveLinkedDocument = (item: any) => {
     if (item?.document_id) {
@@ -2306,6 +2343,24 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                 onClick={() => onNavigateTab?.('documents')}
               />
             </div>
+            {showInventory && inventory ? (
+              <button
+                type="button"
+                onClick={() => onNavigateTab?.('inventory')}
+                className="ba-panel flex items-center justify-between gap-3 text-left"
+              >
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-cdlp-muted">
+                    {t('invDashStockAsset') || 'Stock asset (FIFO · 1200)'}
+                  </div>
+                  <div className="text-lg font-semibold text-cdlp-white tabular-nums">
+                    {fmtKpi(valuationInCurrency(inventory.totalValuation))}
+                    {currencySuffix ? ` ${currencySuffix.trim()}` : ''}
+                  </div>
+                </div>
+                <span className="text-[10px] uppercase text-cdlp-gold font-bold">{t('inventoryTab')}</span>
+              </button>
+            ) : null}
           </>
         );
       })()}
@@ -2487,16 +2542,21 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
 // Reports Tab Component - Full Implementation
 function ReportsPlaceholder({
   onNavigateToDocument,
+  showInventoryTab = false,
 }: {
   onNavigateToDocument?: (doc: ProcessedDocument) => void;
+  showInventoryTab?: boolean;
 }) {
   const { income, expenses } = useFinance();
   const { documents } = useDocuments();
+  const inventory = useInventoryOptional();
+  const stockValue = inventory ? valuationInCurrency(inventory.totalValuation) : 0;
+  const showInventoryAsset = Boolean(showInventoryTab && inventory);
   const { currentSession, isAllSessionsView, sessions } = useSession();
   const { enforcementEnabled, entitlements } = useSubscription();
   const { t, language } = useLanguage();
   const chfLocale = useChfLocale();
-  const { currencySuffix, ukUatActive, fiscalLocale } = useUkUat();
+  const { currencySuffix, fiscalLocale } = useUkUat();
   const moneyLocale = moneyLocaleForFiscal(fiscalLocale);
   const isUkFiscal = fiscalLocale === 'uk';
   const advancedReports = !enforcementEnabled || entitlements.advancedAnalyticsAndReports;
@@ -2745,6 +2805,7 @@ function ReportsPlaceholder({
     includeLedger: true,
     currency: (currencySuffix || '').trim() || (isUkFiscal ? 'GBP' : 'CHF'),
     documents: reportDocuments,
+    inventoryValuation: showInventoryAsset ? stockValue : undefined,
   });
 
   const handleExport = (format: 'csv' | 'pdf') => {
@@ -2927,6 +2988,25 @@ function ReportsPlaceholder({
           </div>
         )}
       </div>
+
+      {showInventoryAsset ? (
+        <div className="ba-panel">
+          <h3 className="text-sm font-bold text-cdlp-gold uppercase mb-1">
+            {t('invBalanceSheetTitle') || 'Balance sheet — stock asset'}
+          </h3>
+          <p className="text-xs text-cdlp-muted mb-3">
+            {t('invBalanceSheetHint') ||
+              'FIFO inventory value is reported as konto 1200 (Inventories of commercial products). VAT statement is unchanged.'}
+          </p>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-xs uppercase text-cdlp-muted">1200 · {t('invStockAssetLine') || 'Inventories'}</span>
+            <span className="text-lg font-semibold tabular-nums text-cdlp-white">
+              {stockValue.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {currencySuffix}
+            </span>
+          </div>
+        </div>
+      ) : null}
 
       {/* Download Section */}
       <div className="ba-panel">

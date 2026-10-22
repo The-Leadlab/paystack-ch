@@ -17,7 +17,10 @@ import { useAuth } from '../context/AuthContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useUkUat } from '../context/UkUatContext';
 import { useDocuments } from '../context/DocumentContext';
-import { loadSavedInvoices, upsertInvoice } from '../lib/invoiceStorage';
+import { deleteSavedInvoice, findSavedInvoice, loadSavedInvoices, upsertInvoice } from '../lib/invoiceStorage';
+import { useInventoryOptional } from '../context/InventoryContext';
+import { useInventoryAllowed } from '../hooks/useInventoryAllowed';
+import { invoiceStockDelta, valuationInCurrency } from '@shared/inventoryFifo';
 import { applyInvoiceTotals, normalizeInvoice } from '../lib/invoiceTotals';
 import { downloadInvoicePdf } from '../lib/invoicePdf';
 import type { InvoiceData, InvoiceItem, InvoiceStatus } from '../types/invoice';
@@ -85,12 +88,14 @@ function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
     sent: 'ba-status-pill ba-status-pill--verify',
     paid: 'ba-status-pill ba-status-pill--completed',
     overdue: 'ba-status-pill ba-status-pill--error',
+    cancelled: 'ba-status-pill ba-status-pill--error',
   };
   const labelKey: Record<InvoiceStatus, string> = {
     draft: 'invStatusDraft',
     sent: 'invStatusSent',
     paid: 'invStatusPaid',
     overdue: 'invStatusOverdue',
+    cancelled: 'invStatusCancelled',
   };
   return <span className={map[status]}>{t(labelKey[status])}</span>;
 }
@@ -140,6 +145,8 @@ export function InvoiceMakerPanel() {
   const { ukUatActive, currency: reportingCurrency, fiscalLocale } = useUkUat();
   const { user } = useAuth();
   const { documents } = useDocuments();
+  const inventory = useInventoryOptional();
+  const showInventory = useInventoryAllowed();
   const { taxConfig, loading: taxRegionLoading } = useTaxRegionConfig();
   const [invoiceData, setInvoiceData] = useState<InvoiceData>(() =>
     createInitialInvoice(t, {
@@ -243,6 +250,57 @@ export function InvoiceMakerPanel() {
     }));
   };
 
+  const stockLinesFromInvoice = (invoice: InvoiceData) =>
+    invoice.items
+      .filter((item) => item.productId && item.quantity > 0)
+      .map((item) => ({
+        productId: item.productId as string,
+        productName: item.description || item.productId || '',
+        quantity: Number(item.quantity) || 0,
+        unitCost: Math.round((Number(item.unitPrice) || 0) * 100),
+      }));
+
+  const syncStockForInvoice = async (previous: InvoiceData | undefined, nextInvoice: InvoiceData, deleted = false) => {
+    if (!showInventory || !inventory) return;
+    const { outs, restores } = invoiceStockDelta(
+      previous ? stockLinesFromInvoice(previous) : [],
+      deleted ? [] : stockLinesFromInvoice(nextInvoice),
+      {
+        previousCancelled: previous?.status === 'cancelled',
+        nextCancelled: deleted || nextInvoice.status === 'cancelled',
+      }
+    );
+    const date = nextInvoice.date || new Date().toISOString().slice(0, 10);
+    const invoiceId = nextInvoice.invoiceNumber;
+    if (restores.length > 0) {
+      await inventory.addMovementsBatch(
+        restores.map((line) => ({
+          productId: line.productId,
+          productName: line.productName,
+          type: 'stock_restore' as const,
+          quantity: line.quantity,
+          unitCost: line.unitCost,
+          invoiceId,
+          date,
+          note: `Invoice ${invoiceId}`,
+        }))
+      );
+    }
+    if (outs.length > 0) {
+      await inventory.addMovementsBatch(
+        outs.map((line) => ({
+          productId: line.productId,
+          productName: line.productName,
+          type: 'stock_out' as const,
+          quantity: line.quantity,
+          invoiceId,
+          date,
+          note: `Invoice ${invoiceId}`,
+        }))
+      );
+    }
+  };
+
   const saveInvoice = (): boolean => {
     if (!invoiceData.clientName || !invoiceData.companyName) {
       alert(t('invValidationRequired'));
@@ -252,10 +310,32 @@ export function InvoiceMakerPanel() {
       alert(t('invValidationItems'));
       return false;
     }
-    const next = upsertInvoice(user?.uid, applyInvoiceTotals(invoiceData));
+    const previous = findSavedInvoice(user?.uid, invoiceData.invoiceNumber);
+    const computed = applyInvoiceTotals(invoiceData);
+    const next = upsertInvoice(user?.uid, computed);
     setSavedInvoices(next);
+    void syncStockForInvoice(previous, computed);
     alert(t('invSavedSuccess'));
     return true;
+  };
+
+  const removeSavedInvoice = (invoiceNumber: string) => {
+    const previous = findSavedInvoice(user?.uid, invoiceNumber);
+    if (!previous) return;
+    if (!confirm(t('invDeleteConfirm').replace('{n}', invoiceNumber))) return;
+    const next = deleteSavedInvoice(user?.uid, invoiceNumber);
+    setSavedInvoices(next);
+    void syncStockForInvoice(previous, previous, true);
+    if (invoiceData.invoiceNumber === invoiceNumber) {
+      setInvoiceData(
+        createInitialInvoice(t, {
+          taxRate: taxConfig.defaultRate,
+          currency: reportingCurrencyForLocale(),
+          currencySymbol: currencySymbolForLocale(),
+          companyAddress: ukUatActive ? 'United Kingdom' : 'Switzerland',
+        })
+      );
+    }
   };
 
   const invoicePdfLabels = useMemo(
@@ -330,10 +410,12 @@ export function InvoiceMakerPanel() {
       `${t('invEmailBodyIntro')}\n\n${displayInvoice.invoiceNumber}\n${t('invTotalTtc')}: ${displayInvoice.currencySymbol} ${displayInvoice.total.toFixed(2)}\n${t('invDueDate')}: ${displayInvoice.dueDate}`
     );
     window.open(`mailto:${invoiceData.clientEmail}?subject=${subject}&body=${body}`, '_blank');
+    const previous = findSavedInvoice(user?.uid, invoiceData.invoiceNumber);
     const sent = applyInvoiceTotals({ ...invoiceData, status: 'sent' });
     setInvoiceData(sent);
     upsertInvoice(user?.uid, sent);
     setSavedInvoices(loadSavedInvoices(user?.uid));
+    void syncStockForInvoice(previous, sent);
 
     void (async () => {
       const { backupInvoiceToGoogleDrive } = await import('../lib/invoiceDriveBackup');
@@ -664,6 +746,7 @@ export function InvoiceMakerPanel() {
                   <option value="sent">{t('invStatusSent')}</option>
                   <option value="paid">{t('invStatusPaid')}</option>
                   <option value="overdue">{t('invStatusOverdue')}</option>
+                  <option value="cancelled">{t('invStatusCancelled')}</option>
                 </select>
               </div>
               <div>
@@ -752,6 +835,36 @@ export function InvoiceMakerPanel() {
                   <div className="col-span-12 md:col-span-4">
                     <FieldLabel>{t('invColDescription')}</FieldLabel>
                     <input className="ba-verify-field" value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder={t('invItemDescPlaceholder')} />
+                    {showInventory && inventory && inventory.products.length > 0 ? (
+                      <select
+                        className="ba-verify-field mt-1 text-xs"
+                        value={item.productId || ''}
+                        onChange={(e) => {
+                          const product = inventory.products.find((p) => p.id === e.target.value);
+                          setInvoiceData((prev) => ({
+                            ...prev,
+                            items: prev.items.map((row) => {
+                              if (row.id !== item.id) return row;
+                              if (!product) return { ...row, productId: undefined };
+                              return {
+                                ...row,
+                                productId: product.id,
+                                description: row.description || product.name,
+                                unitPrice: row.unitPrice || valuationInCurrency(product.avgUnitCost),
+                              };
+                            }),
+                          }));
+                        }}
+                      >
+                        <option value="">{t('invLinkProduct') || 'Link inventory product (optional)'}</option>
+                        {inventory.products.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                            {p.sku ? ` (${p.sku})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
                   </div>
                   <div className="col-span-3 md:col-span-1">
                     <FieldLabel>{t('invColQty')}</FieldLabel>
@@ -984,6 +1097,13 @@ export function InvoiceMakerPanel() {
                           }}
                         >
                           {t('invView')}
+                        </button>
+                        <button
+                          type="button"
+                          className="ba-filter-chip !py-1 text-red-400"
+                          onClick={() => removeSavedInvoice(invoice.invoiceNumber)}
+                        >
+                          {t('invDelete') || t('delete') || 'Delete'}
                         </button>
                       </div>
                     </td>

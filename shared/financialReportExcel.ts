@@ -23,6 +23,7 @@ export type ServerExcelReportInput = {
   sessionName: string;
   locale: ReportExportLocale;
   currency?: string;
+  inventoryValuation?: number;
 };
 
 function money(n: unknown): number {
@@ -100,6 +101,13 @@ export function buildFinancialReportExcelBuffer(input: ServerExcelReportInput): 
     [L.vatReceived, round2(vatReceived), currency, L.fromCustomers],
     [L.vatPaid, round2(vatPaid), currency, L.onExpenses],
     [L.vatBalance, round2(vatBalance), currency, vatBalance >= 0 ? L.toPay : L.refund],
+    ...(typeof input.inventoryValuation === "number"
+      ? [
+          [],
+          [L.stockAsset1200, round2(input.inventoryValuation), currency],
+          [L.stockAssetHint],
+        ]
+      : []),
   ];
 
   const monthlyRows: Array<Array<string | number>> = [
