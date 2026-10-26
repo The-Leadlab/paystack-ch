@@ -102,6 +102,17 @@ export async function runGeminiGenerateFromStorage(
   } catch (error) {
     const err = error as { status?: number; message?: string };
     const status = typeof err.status === "number" ? err.status : 502;
-    return { status, json: { error: err.message || "Storage-backed AI request failed" } };
+    const msg = err.message || "Storage-backed AI request failed";
+    if (status === 402 || /\b402\b|payment required/i.test(msg)) {
+      return {
+        status: 402,
+        json: {
+          error:
+            "Gemini API billing / quota exhausted (HTTP 402). Enable billing on the Google Cloud project for GEMINI_API_KEY, or replace the key. " +
+            msg,
+        },
+      };
+    }
+    return { status, json: { error: msg } };
   }
 }
