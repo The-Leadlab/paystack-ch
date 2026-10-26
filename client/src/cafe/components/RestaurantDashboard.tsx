@@ -42,7 +42,11 @@ import { InvoiceMakerPanel } from './InvoiceMakerPanel';
 import { InventoryPanel } from './InventoryPanel';
 import { useInventoryAllowed } from '../hooks/useInventoryAllowed';
 import { useInventoryOptional } from '../context/InventoryContext';
-import { valuationInCurrency } from '@shared/inventoryFifo';
+import {
+  foodCostPercent,
+  periodFifoCogsCents,
+  valuationInCurrency,
+} from '@shared/inventoryFifo';
 import type { ProcessedDocument, POSReading } from '../types';
 import { DocumentType } from '../types';
 import { brandLockupSrc, brandMarkSrc, BRAND_LOGO_SIZE, BRAND_LOCKUP_HEIGHT } from '@/const/branding';
@@ -2343,24 +2347,67 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                 onClick={() => onNavigateTab?.('documents')}
               />
             </div>
-            {showInventory && inventory ? (
-              <button
-                type="button"
-                onClick={() => onNavigateTab?.('inventory')}
-                className="ba-panel flex items-center justify-between gap-3 text-left"
-              >
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-cdlp-muted">
-                    {t('invDashStockAsset') || 'Stock asset (FIFO · 1200)'}
-                  </div>
-                  <div className="text-lg font-semibold text-cdlp-white tabular-nums">
-                    {fmtKpi(valuationInCurrency(inventory.totalValuation))}
-                    {currencySuffix ? ` ${currencySuffix.trim()}` : ''}
-                  </div>
+            {showInventory && inventory ? (() => {
+              const lowStock = inventory.products.filter(
+                (p) =>
+                  !p.archived &&
+                  p.minStockLevel != null &&
+                  p.onHandQty <= p.minStockLevel
+              );
+              const cogsCents = periodFifoCogsCents(inventory.movements);
+              const foodPct = foodCostPercent(cogsCents, totalIncome);
+              return (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => onNavigateTab?.('inventory')}
+                    className="ba-panel w-full flex items-center justify-between gap-3 text-left hover:border-cdlp-gold/40 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-cdlp-muted">
+                        {t('invDashStockAsset') || 'Stock asset (FIFO · 1200)'}
+                      </div>
+                      <div className="text-lg font-semibold text-cdlp-white tabular-nums">
+                        {fmtKpi(valuationInCurrency(inventory.totalValuation))}
+                        {currencySuffix ? ` ${currencySuffix.trim()}` : ''}
+                      </div>
+                      {foodPct != null ? (
+                        <div className="text-[11px] text-cdlp-muted mt-0.5">
+                          {(t('invDashFoodCost') || 'Food cost (FIFO outs / income)')}:{' '}
+                          <span className="text-cdlp-white tabular-nums font-medium">
+                            {foodPct.toFixed(1)}%
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                    <span className="text-[10px] uppercase text-cdlp-gold font-bold shrink-0">
+                      {t('inventoryTab')} →
+                    </span>
+                  </button>
+                  {lowStock.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => onNavigateTab?.('inventory')}
+                      className="ba-panel w-full text-left border-amber-500/40 bg-amber-500/5"
+                    >
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                        {(t('invDashLowStock') || 'Low stock ({n})').replace(
+                          '{n}',
+                          String(lowStock.length)
+                        )}
+                      </div>
+                      <p className="text-xs text-cdlp-muted mt-1 truncate">
+                        {lowStock
+                          .slice(0, 4)
+                          .map((p) => `${p.name} (${p.onHandQty})`)
+                          .join(' · ')}
+                        {lowStock.length > 4 ? '…' : ''}
+                      </p>
+                    </button>
+                  ) : null}
                 </div>
-                <span className="text-[10px] uppercase text-cdlp-gold font-bold">{t('inventoryTab')}</span>
-              </button>
-            ) : null}
+              );
+            })() : null}
           </>
         );
       })()}

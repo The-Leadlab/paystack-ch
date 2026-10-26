@@ -7,9 +7,11 @@ import {
   Grid3X3,
   List,
   MoreVertical,
+  Package,
   Search,
   Upload,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useDocuments } from "../context/DocumentContext";
 import { useChfLocale, useLanguage } from "../context/LanguageContext";
 import { useUkUat } from "../context/UkUatContext";
@@ -361,6 +363,14 @@ export function DocumentsLibraryTab({
       lines > 0
         ? (t("docLinesCount") || "{n} lines").replace("{n}", String(lines))
         : null;
+    const taggedStock = Boolean(doc.data && isStockDocument(doc.data));
+    const canTagStock =
+      showStocksFilter &&
+      doc.data &&
+      doc.data.documentType !== "Pay Slip" &&
+      doc.data.documentType !== "Ticket/Receipt" &&
+      doc.data.documentType !== "Z2 Multi-Ticket Sheet" &&
+      doc.data.documentType !== "Bank Deposit";
 
     return (
       <article
@@ -375,17 +385,49 @@ export function DocumentsLibraryTab({
               <FileText className="w-4 h-4" />
             )}
           </span>
-          <button
-            type="button"
-            className="ba-doc-card__menu"
-            title={t("dpColActions")}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (actionable) openDocument(doc);
-            }}
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1 ml-auto">
+            {canTagStock ? (
+              <button
+                type="button"
+                className={`ba-doc-card__menu ${taggedStock ? "text-cdlp-gold" : ""}`}
+                title={
+                  taggedStock
+                    ? t("invUntagStockDoc") || "Remove stock tag"
+                    : t("invTagStockDoc") || "Tag as stock / supplier inventory"
+                }
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!doc.data) return;
+                  const recordId = doc.persistedDocumentId || doc.id;
+                  const next = { ...doc.data, stockDocument: !taggedStock };
+                  void updateDocumentData(recordId, { data: next })
+                    .then(() => {
+                      toast.success(
+                        next.stockDocument
+                          ? t("invTaggedStockToast") || "Tagged as stock document"
+                          : t("invUntaggedStockToast") || "Stock tag removed"
+                      );
+                    })
+                    .catch((err) =>
+                      toast.error(err instanceof Error ? err.message : String(err))
+                    );
+                }}
+              >
+                <Package className="w-4 h-4" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="ba-doc-card__menu"
+              title={t("dpColActions")}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (actionable) openDocument(doc);
+              }}
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         <button type="button" className="ba-doc-card__body" onClick={() => openDocument(doc)}>
@@ -478,6 +520,7 @@ export function DocumentsLibraryTab({
           <>
           {showStocksFilter ? (
             <StockConfirmPanel
+              key={selectedDocument.id}
               doc={selectedDocument}
               onUpdate={(newData) => {
                 void updateDocumentData(recordId, { data: newData });

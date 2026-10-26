@@ -2,6 +2,8 @@
 
 For Ali to send Damien ahead of the 28 Oct presentation. Testable from 26 Oct behind a feature gate. Not shown to normal `/app` users.
 
+**Living super prompt:** [INVENTORY_SWISS_SUPER_PROMPT.md](./INVENTORY_SWISS_SUPER_PROMPT.md) — Phase 1 Swiss sync + manager controls; Phase 2 POS auto stock-out.
+
 ## What this is
 
 A first slice of inventory for Swiss restaurant books (and the same flag on UK UAT for Louise). Products, quantities in/out/on hand, FIFO cost, sales-invoice stock-out, supplier-invoice stock-in with a manual confirm step, and a balance-sheet stock asset on konto **1200**. VAT flows are unchanged.

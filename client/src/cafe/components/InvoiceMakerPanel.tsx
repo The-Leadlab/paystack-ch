@@ -33,6 +33,7 @@ import {
 } from '../lib/fiscalLocale';
 import { BRAND_LOGO_SRC } from '@/const/branding';
 import { useTaxRegionConfig } from '../hooks/useTaxRegion';
+import { toast } from 'sonner';
 
 function generateInvoiceNumber(): string {
   const now = new Date();
@@ -270,34 +271,44 @@ export function InvoiceMakerPanel() {
         nextCancelled: deleted || nextInvoice.status === 'cancelled',
       }
     );
+    if (outs.length === 0 && restores.length === 0) return;
     const date = nextInvoice.date || new Date().toISOString().slice(0, 10);
     const invoiceId = nextInvoice.invoiceNumber;
-    if (restores.length > 0) {
-      await inventory.addMovementsBatch(
-        restores.map((line) => ({
-          productId: line.productId,
-          productName: line.productName,
-          type: 'stock_restore' as const,
-          quantity: line.quantity,
-          unitCost: line.unitCost,
-          invoiceId,
-          date,
-          note: `Invoice ${invoiceId}`,
-        }))
+    try {
+      if (restores.length > 0) {
+        await inventory.addMovementsBatch(
+          restores.map((line) => ({
+            productId: line.productId,
+            productName: line.productName,
+            type: 'stock_restore' as const,
+            quantity: line.quantity,
+            unitCost: line.unitCost,
+            invoiceId,
+            date,
+            note: `Invoice ${invoiceId}`,
+          }))
+        );
+      }
+      if (outs.length > 0) {
+        await inventory.addMovementsBatch(
+          outs.map((line) => ({
+            productId: line.productId,
+            productName: line.productName,
+            type: 'stock_out' as const,
+            quantity: line.quantity,
+            invoiceId,
+            date,
+            note: `Invoice ${invoiceId}`,
+          }))
+        );
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : t('invStockSyncFailed') || 'Invoice saved, but stock sync failed'
       );
-    }
-    if (outs.length > 0) {
-      await inventory.addMovementsBatch(
-        outs.map((line) => ({
-          productId: line.productId,
-          productName: line.productName,
-          type: 'stock_out' as const,
-          quantity: line.quantity,
-          invoiceId,
-          date,
-          note: `Invoice ${invoiceId}`,
-        }))
-      );
+      throw err;
     }
   };
 
@@ -314,7 +325,9 @@ export function InvoiceMakerPanel() {
     const computed = applyInvoiceTotals(invoiceData);
     const next = upsertInvoice(user?.uid, computed);
     setSavedInvoices(next);
-    void syncStockForInvoice(previous, computed);
+    void syncStockForInvoice(previous, computed).catch(() => {
+      /* toast already shown */
+    });
     alert(t('invSavedSuccess'));
     return true;
   };
@@ -415,7 +428,9 @@ export function InvoiceMakerPanel() {
     setInvoiceData(sent);
     upsertInvoice(user?.uid, sent);
     setSavedInvoices(loadSavedInvoices(user?.uid));
-    void syncStockForInvoice(previous, sent);
+    void syncStockForInvoice(previous, sent).catch(() => {
+      /* toast already shown in syncStockForInvoice */
+    });
 
     void (async () => {
       const { backupInvoiceToGoogleDrive } = await import('../lib/invoiceDriveBackup');

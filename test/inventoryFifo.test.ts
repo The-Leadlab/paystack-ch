@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   computeFifo,
   decrementForInvoiceLines,
+  foodCostPercent,
   invoiceStockDelta,
+  periodFifoCogsCents,
   restoreForInvoiceLines,
   totalInventoryValuation,
   valuationInCurrency,
@@ -145,6 +147,20 @@ describe("valuation helpers", () => {
     ]);
     expect(totalInventoryValuation(map)).toBe(250);
     expect(valuationInCurrency(250)).toBe(2.5);
+  });
+
+  it("periodFifoCogsCents respects date window and foodCostPercent", () => {
+    const movements: FifoMovement[] = [
+      mv({ id: "in-1", type: "stock_in", quantity: 10, unitCost: 100, date: "2026-01-01" }),
+      mv({ id: "out-1", type: "stock_out", quantity: 4, date: "2026-01-15" }),
+      mv({ id: "out-2", type: "stock_out", quantity: 2, date: "2026-02-01" }),
+    ];
+    expect(periodFifoCogsCents(movements)).toBe(600);
+    expect(periodFifoCogsCents(movements, { fromDate: "2026-01-01", toDate: "2026-01-31" })).toBe(
+      400
+    );
+    expect(foodCostPercent(400, 20)).toBeCloseTo(20);
+    expect(foodCostPercent(400, 0)).toBeNull();
   });
 });
 

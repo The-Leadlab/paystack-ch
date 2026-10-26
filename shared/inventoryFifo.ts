@@ -117,6 +117,27 @@ export function totalInventoryValuation(
   return total;
 }
 
+/** Sum FIFO COGS for stock_out (+ negative adjustments) in an optional date window. */
+export function periodFifoCogsCents(
+  movements: FifoMovement[],
+  opts?: { fromDate?: string; toDate?: string }
+): number {
+  const from = opts?.fromDate;
+  const to = opts?.toDate;
+  const filtered = movements.filter((m) => {
+    if (from && m.date < from) return false;
+    if (to && m.date > to) return false;
+    return true;
+  });
+  return computeFifo(filtered).totalCogs;
+}
+
+/** Food-cost style ratio: COGS / revenue (0–100+). Returns null if revenue ≤ 0. */
+export function foodCostPercent(cogsCents: number, revenueAmount: number): number | null {
+  if (!(revenueAmount > 0)) return null;
+  return (cogsCents / 100 / revenueAmount) * 100;
+}
+
 /**
  * Decrement stock for a list of invoice line items.
  * Returns the movements to persist.

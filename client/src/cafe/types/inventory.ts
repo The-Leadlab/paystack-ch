@@ -24,7 +24,11 @@ export const PRODUCT_CATEGORY_PRESETS: Record<string, ProductCategory[]> = {
   ],
   restaurant: [
     { id: 'food', name: 'Food', subcategories: ['Meat', 'Fish', 'Dairy', 'Vegetables', 'Dry goods'] },
-    { id: 'beverages', name: 'Beverages', subcategories: ['Soft drinks', 'Wine', 'Beer', 'Spirits'] },
+    {
+      id: 'beverages',
+      name: 'Beverages',
+      subcategories: ['Soft drinks', 'Wine', 'Beer', 'Spirits', 'Coffee & tea'],
+    },
     { id: 'supplies', name: 'Supplies', subcategories: ['Cleaning', 'Packaging', 'Disposables'] },
   ],
   retail: [
@@ -37,6 +41,57 @@ export const PRODUCT_CATEGORY_PRESETS: Record<string, ProductCategory[]> = {
     { id: 'consumables', name: 'Consumables' },
   ],
 };
+
+/** One-click café / kitchen starter catalog (Phase 1 empty-state seed). */
+export const RESTAURANT_CAFE_SEED_PRODUCTS: Array<{
+  name: string;
+  sku: string;
+  unit: UnitOfMeasure;
+  category: string;
+  subcategory?: string;
+  minStockLevel: number;
+}> = [
+  {
+    name: 'Coffee beans',
+    sku: 'COF-BEANS',
+    unit: 'kg',
+    category: 'Beverages',
+    subcategory: 'Coffee & tea',
+    minStockLevel: 2,
+  },
+  {
+    name: 'Whole milk',
+    sku: 'DAI-MILK',
+    unit: 'l',
+    category: 'Food',
+    subcategory: 'Dairy',
+    minStockLevel: 5,
+  },
+  {
+    name: 'Soft drinks (cans)',
+    sku: 'BEV-SOFT',
+    unit: 'pcs',
+    category: 'Beverages',
+    subcategory: 'Soft drinks',
+    minStockLevel: 24,
+  },
+  {
+    name: 'Cooking oil',
+    sku: 'FOOD-OIL',
+    unit: 'l',
+    category: 'Food',
+    subcategory: 'Dry goods',
+    minStockLevel: 2,
+  },
+  {
+    name: 'Napkins / packaging',
+    sku: 'SUP-PACK',
+    unit: 'pack',
+    category: 'Supplies',
+    subcategory: 'Packaging',
+    minStockLevel: 5,
+  },
+];
 
 export interface InventoryProduct {
   id: string;

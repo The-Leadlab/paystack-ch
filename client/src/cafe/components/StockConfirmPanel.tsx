@@ -1,10 +1,23 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Check, Construction, Package } from "lucide-react";
+import { toast } from "sonner";
 import { useInventoryOptional } from "../context/InventoryContext";
 import { useLanguage } from "../context/LanguageContext";
 import { collectProductLinesFromDocument } from "../lib/documentProductLines";
 import { isStockDocument, suggestStockInFromLines } from "@shared/inventoryStock";
 import type { FinancialData, ProcessedDocument } from "../types";
+
+function buildRows(doc: ProcessedDocument, products: { id: string; name: string; sku?: string }[]) {
+  return suggestStockInFromLines(
+    collectProductLinesFromDocument(doc).map((line) => ({
+      description: line.description,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+      amount: line.amount,
+    })),
+    products
+  );
+}
 
 export function StockConfirmPanel({
   doc,
@@ -17,17 +30,14 @@ export function StockConfirmPanel({
   const inventory = useInventoryOptional();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [rows, setRows] = useState(() =>
-    suggestStockInFromLines(
-      collectProductLinesFromDocument(doc).map((line) => ({
-        description: line.description,
-        quantity: line.quantity,
-        unitPrice: line.unitPrice,
-        amount: line.amount,
-      })),
-      inventory?.products ?? []
-    )
-  );
+  const products = inventory?.products ?? [];
+  const [rows, setRows] = useState(() => buildRows(doc, products));
+
+  // Remount-safe: rebuild suggestions when document or catalog changes.
+  useEffect(() => {
+    setRows(buildRows(doc, products));
+    setMessage(null);
+  }, [doc.id, products.length, doc.data?.lineItems?.length, doc.data?.subDocuments?.length]);
 
   const alreadyApplied = useMemo(
     () => (inventory?.movements || []).some((m) => m.documentId === doc.id && m.type === "stock_in"),
@@ -43,7 +53,9 @@ export function StockConfirmPanel({
   const applyStock = async () => {
     const ready = rows.filter((r) => r.productId && r.quantity > 0);
     if (ready.length === 0) {
-      setMessage(t("invStockNeedProduct") || "Link each line to a product, then confirm.");
+      const msg = t("invStockNeedProduct") || "Link each line to a product, then confirm.";
+      setMessage(msg);
+      toast.error(msg);
       return;
     }
     setBusy(true);
@@ -65,9 +77,13 @@ export function StockConfirmPanel({
         }))
       );
       onUpdate?.({ ...data, stockDocument: true });
-      setMessage(t("invStockApplied") || "Stock increased from this supplier invoice.");
+      const ok = t("invStockApplied") || "Stock increased from this supplier invoice.";
+      setMessage(ok);
+      toast.success(ok);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      setMessage(msg);
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
@@ -81,7 +97,9 @@ export function StockConfirmPanel({
           {t("invStockConfirmTitle") || "Apply to stock"}
         </div>
         {alreadyApplied ? (
-          <span className="text-[10px] uppercase tracking-wide text-green-400">{t("invStockAlreadyApplied") || "Already applied"}</span>
+          <span className="text-[10px] uppercase tracking-wide text-green-400">
+            {t("invStockAlreadyApplied") || "Already applied"}
+          </span>
         ) : null}
       </div>
       <p className="text-xs text-cdlp-muted">
@@ -98,10 +116,18 @@ export function StockConfirmPanel({
         {t("invMarkStockDocument") || "This is a stock / supplier inventory invoice"}
       </label>
 
+      {!tagged ? (
+        <p className="text-[11px] text-amber-400/90">
+          {t("invTagStockHint") ||
+            "Tick the box above so this document appears under Documents → Stocks and counts as a purchase for konto 1200."}
+        </p>
+      ) : null}
+
       {rows.length === 0 ? (
         <div className="flex items-center gap-2 text-xs text-cdlp-muted">
           <Construction className="w-3.5 h-3.5" />
-          {t("invStockNoLines") || "No quantity line items found — add qty on the invoice lines, or record a movement manually."}
+          {t("invStockNoLines") ||
+            "No quantity line items found — add qty on the invoice lines, or record a movement manually."}
         </div>
       ) : (
         <div className="space-y-2">
@@ -126,12 +152,14 @@ export function StockConfirmPanel({
                   }}
                 >
                   <option value="">{t("invStockSkipLine") || "Skip — no product"}</option>
-                  {inventory.products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                      {p.sku ? ` (${p.sku})` : ""}
-                    </option>
-                  ))}
+                  {inventory.products
+                    .filter((p) => !p.archived)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                        {p.sku ? ` (${p.sku})` : ""}
+                      </option>
+                    ))}
                 </select>
               </div>
               <div className="col-span-12 sm:col-span-3 text-cdlp-muted">
@@ -145,14 +173,14 @@ export function StockConfirmPanel({
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          disabled={busy || inventory.products.length === 0}
+          disabled={busy || inventory.products.filter((p) => !p.archived).length === 0}
           onClick={() => void applyStock()}
           className="ba-btn-approve flex items-center gap-1.5 text-xs !h-8"
         >
           <Check className="w-3.5 h-3.5" />
           {busy ? t("invSaving") : t("invStockConfirmCta")}
         </button>
-        {inventory.products.length === 0 ? (
+        {inventory.products.filter((p) => !p.archived).length === 0 ? (
           <span className="text-[11px] text-amber-400">
             {t("invStockAddProductsFirst") || "Add products in the Inventory tab first."}
           </span>

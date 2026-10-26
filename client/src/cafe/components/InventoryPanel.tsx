@@ -3,7 +3,6 @@ import {
   Package,
   Plus,
   ArrowUpCircle,
-  ArrowDownCircle,
   Pencil,
   Trash2,
   Search,
@@ -11,8 +10,12 @@ import {
   ChevronDown,
   ChevronUp,
   X,
-  Construction,
+  Archive,
+  ArchiveRestore,
+  BookOpen,
+  Sparkles,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useInventory } from '../context/InventoryContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useUkUat } from '../context/UkUatContext';
@@ -21,7 +24,7 @@ import type {
   UnitOfMeasure,
   MovementType,
 } from '../types/inventory';
-import { PRODUCT_CATEGORY_PRESETS } from '../types/inventory';
+import { PRODUCT_CATEGORY_PRESETS, RESTAURANT_CAFE_SEED_PRODUCTS } from '../types/inventory';
 
 const UNIT_OPTIONS: { value: UnitOfMeasure; label: string }[] = [
   { value: 'pcs', label: 'Pieces' },
@@ -34,15 +37,6 @@ const UNIT_OPTIONS: { value: UnitOfMeasure; label: string }[] = [
   { value: 'other', label: 'Other' },
 ];
 
-function ComingSoonBadge({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-      <Construction className="w-3 h-3" />
-      {label}
-    </span>
-  );
-}
-
 export function InventoryPanel() {
   const { products, movements, loading, addProduct, updateProduct, deleteProduct, addMovement, totalValuation } = useInventory();
   const { t } = useLanguage();
@@ -54,10 +48,12 @@ export function InventoryPanel() {
   const [editProduct, setEditProduct] = useState<InventoryProductSummary | null>(null);
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [businessType, setBusinessType] = useState<string>('general');
+  const [businessType, setBusinessType] = useState<string>('restaurant');
+  const [showArchived, setShowArchived] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   const filteredProducts = useMemo(() => {
-    let result = products.filter((p) => !p.archived);
+    let result = products.filter((p) => (showArchived ? Boolean(p.archived) : !p.archived));
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -71,7 +67,36 @@ export function InventoryPanel() {
       result = result.filter((p) => p.category === categoryFilter);
     }
     return result;
-  }, [products, searchQuery, categoryFilter]);
+  }, [products, searchQuery, categoryFilter, showArchived]);
+
+  const seedCafeCatalog = useCallback(async () => {
+    setSeeding(true);
+    try {
+      const existingSkus = new Set(products.map((p) => (p.sku || '').toLowerCase()).filter(Boolean));
+      let added = 0;
+      for (const seed of RESTAURANT_CAFE_SEED_PRODUCTS) {
+        if (existingSkus.has(seed.sku.toLowerCase())) continue;
+        await addProduct({
+          name: seed.name,
+          sku: seed.sku,
+          unit: seed.unit,
+          category: seed.category,
+          subcategory: seed.subcategory,
+          minStockLevel: seed.minStockLevel,
+        });
+        added += 1;
+      }
+      toast.success(
+        added > 0
+          ? (t('invSeedSuccess') || 'Added {n} starter products').replace('{n}', String(added))
+          : t('invSeedAlready') || 'Starter products already in catalog'
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSeeding(false);
+    }
+  }, [addProduct, products, t]);
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -120,11 +145,20 @@ export function InventoryPanel() {
             {t('invPanelSubtitle')}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="text-right mr-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="text-right mr-1 sm:mr-3">
             <div className="text-xs text-cdlp-muted">{t('invTotalStockValue')}</div>
             <div className="text-sm font-semibold text-cdlp-white">{fmtMoney(totalValuation)}</div>
+            <div className="text-[10px] text-cdlp-muted">1200 · {t('invStockAssetLine') || 'Inventories'}</div>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowArchived((v) => !v)}
+            className={`ba-btn text-sm flex items-center gap-1.5 ${showArchived ? 'border-cdlp-gold text-cdlp-gold' : ''}`}
+          >
+            {showArchived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+            {showArchived ? t('invShowActive') || 'Active' : t('invShowArchived') || 'Archived'}
+          </button>
           <button
             type="button"
             onClick={() => { setShowAddProduct(true); setEditProduct(null); }}
@@ -180,9 +214,26 @@ export function InventoryPanel() {
 
       {/* Product table */}
       {filteredProducts.length === 0 ? (
-        <div className="text-center py-12 text-cdlp-muted">
+        <div className="text-center py-12 text-cdlp-muted space-y-4">
           <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
-          <p className="text-sm">{products.length === 0 ? t('invNoProductsYet') : t('invNoProductsMatch')}</p>
+          <p className="text-sm">
+            {showArchived
+              ? t('invNoArchived') || 'No archived products.'
+              : products.filter((p) => !p.archived).length === 0
+                ? t('invNoProductsYet')
+                : t('invNoProductsMatch')}
+          </p>
+          {!showArchived && products.filter((p) => !p.archived).length === 0 ? (
+            <button
+              type="button"
+              disabled={seeding}
+              onClick={() => void seedCafeCatalog()}
+              className="ba-btn ba-btn-primary inline-flex items-center gap-1.5 text-sm"
+            >
+              <Sparkles className="w-4 h-4" />
+              {seeding ? t('invSaving') : t('invSeedCafe') || 'Add café / kitchen starters'}
+            </button>
+          ) : null}
         </div>
       ) : (
         <div className="border border-cdlp-border rounded-lg overflow-hidden">
@@ -250,11 +301,32 @@ export function InventoryPanel() {
                         </button>
                         <button
                           type="button"
+                          title={p.archived ? t('invRestoreProduct') || 'Restore' : t('invArchiveProduct') || 'Archive'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void updateProduct(p.id, { archived: !p.archived })
+                              .then(() =>
+                                toast.success(
+                                  p.archived
+                                    ? t('invRestoredToast') || 'Product restored'
+                                    : t('invArchivedToast') || 'Product archived'
+                                )
+                              )
+                              .catch((err) => toast.error(err instanceof Error ? err.message : String(err)));
+                          }}
+                          className="p-1 rounded hover:bg-cdlp-card text-cdlp-muted hover:text-cdlp-gold transition-colors"
+                        >
+                          {p.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+                        </button>
+                        <button
+                          type="button"
                           title={t('invDeleteProduct')}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (confirm(t('invDeleteProductConfirm').replace('{name}', p.name))) {
-                              void deleteProduct(p.id);
+                              void deleteProduct(p.id)
+                                .then(() => toast.success(t('invDeletedToast') || 'Product deleted'))
+                                .catch((err) => toast.error(err instanceof Error ? err.message : String(err)));
                             }
                           }}
                           className="p-1 rounded hover:bg-cdlp-card text-cdlp-muted hover:text-red-400 transition-colors"
@@ -282,25 +354,22 @@ export function InventoryPanel() {
         </div>
       )}
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div className="rounded-lg border border-cdlp-border bg-cdlp-card/30 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-cdlp-white">{t('invComingSoonPos')}</h3>
-            <ComingSoonBadge label={t('comingSoon')} />
-          </div>
-          <p className="text-xs text-cdlp-muted">
-            {t('invComingSoonPosHint')}
-          </p>
+      <div className="rounded-lg border border-cdlp-border bg-cdlp-card/30 p-4 space-y-2">
+        <div className="flex items-center gap-2 text-sm font-medium text-cdlp-white">
+          <BookOpen className="w-4 h-4 text-cdlp-gold" />
+          {t('invSwissWorkflowTitle') || 'Swiss stock workflow (konto 1200)'}
         </div>
-        <div className="rounded-lg border border-cdlp-border bg-cdlp-card/30 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-cdlp-white">{t('invComingSoonBarcode')}</h3>
-            <ComingSoonBadge label={t('comingSoon')} />
-          </div>
-          <p className="text-xs text-cdlp-muted">
-            {t('invComingSoonBarcodeHint')}
-          </p>
-        </div>
+        <ol className="text-xs text-cdlp-muted space-y-1.5 list-decimal pl-4">
+          <li>{t('invSwissWorkflow1') || 'Add products (or seed café starters). Set a min stock for alerts.'}</li>
+          <li>{t('invSwissWorkflow2') || 'Documents → open a supplier invoice → mark as stock → Confirm stock in (HT cost).'}</li>
+          <li>{t('invSwissWorkflow3') || 'Factures → link a product on sales lines → save/send decrements stock; cancel restores.'}</li>
+          <li>{t('invSwissWorkflow4') || 'Manual stock out for waste / staff meals; adjustment for physical count (can go negative).'}</li>
+          <li>{t('invSwissWorkflow5') || 'Dashboard & Reports show FIFO value as asset 1200 — VAT statement unchanged.'}</li>
+        </ol>
+        <p className="text-[11px] text-cdlp-muted border-t border-cdlp-border/60 pt-2">
+          {t('invPhase2Note') ||
+            'Phase 2: POS / Z-reading auto stock-out and barcodes. Until then use invoices + manual movements.'}
+        </p>
       </div>
 
       {/* Add/Edit Product Dialog */}
@@ -310,13 +379,20 @@ export function InventoryPanel() {
           businessType={businessType}
           onBusinessTypeChange={setBusinessType}
           onSave={async (data) => {
-            if (editProduct) {
-              await updateProduct(editProduct.id, data);
-            } else {
-              await addProduct(data);
+            try {
+              if (editProduct) {
+                await updateProduct(editProduct.id, data);
+                toast.success(t('invSavedToast') || 'Product saved');
+              } else {
+                await addProduct(data);
+                toast.success(t('invAddedToast') || 'Product added');
+              }
+              setShowAddProduct(false);
+              setEditProduct(null);
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : String(err));
+              throw err;
             }
-            setShowAddProduct(false);
-            setEditProduct(null);
           }}
           onClose={() => { setShowAddProduct(false); setEditProduct(null); }}
         />
@@ -328,8 +404,14 @@ export function InventoryPanel() {
           productId={showAddMovement}
           productName={products.find((p) => p.id === showAddMovement)?.name || ''}
           onSave={async (data) => {
-            await addMovement(data);
-            setShowAddMovement(null);
+            try {
+              await addMovement(data);
+              toast.success(t('invMovementToast') || 'Movement recorded');
+              setShowAddMovement(null);
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : String(err));
+              throw err;
+            }
           }}
           onClose={() => setShowAddMovement(null)}
         />
@@ -518,9 +600,14 @@ function MovementFormDialog({
   const [saving, setSaving] = useState(false);
   const { t } = useLanguage();
 
+  const [adjustDown, setAdjustDown] = useState(false);
+
   const handleSubmit = async () => {
-    const qty = Number(quantity);
-    if (!qty || qty <= 0) return;
+    const absQty = Math.abs(Number(quantity));
+    if (!absQty || absQty <= 0) return;
+    // FIFO: negative adjustment = physical shortfall; stock_in/out stay positive.
+    const signedQty =
+      type === 'adjustment' && adjustDown ? -absQty : absQty;
     setSaving(true);
     try {
       const costCents = unitCost ? Math.round(Number(unitCost) * 100) : undefined;
@@ -528,9 +615,9 @@ function MovementFormDialog({
         productId,
         productName,
         type,
-        quantity: qty,
+        quantity: signedQty,
         unitCost: costCents,
-        totalCost: costCents != null ? costCents * qty : undefined,
+        totalCost: costCents != null ? costCents * absQty : undefined,
         date,
         note: note.trim() || undefined,
       });
@@ -538,6 +625,8 @@ function MovementFormDialog({
       setSaving(false);
     }
   };
+
+  const qtyValid = Math.abs(Number(quantity)) > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
@@ -556,6 +645,13 @@ function MovementFormDialog({
               <option value="adjustment">{t('invAdjustment')}</option>
             </select>
           </div>
+
+          {type === 'adjustment' ? (
+            <label className="flex items-center gap-2 text-xs text-cdlp-white">
+              <input type="checkbox" checked={adjustDown} onChange={(e) => setAdjustDown(e.target.checked)} />
+              {t('invAdjustDown') || 'Count shortfall (reduce on-hand)'}
+            </label>
+          ) : null}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -581,7 +677,7 @@ function MovementFormDialog({
 
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="ba-btn text-sm">{t('invCancel')}</button>
-          <button type="button" onClick={handleSubmit} disabled={!quantity || Number(quantity) <= 0 || saving} className="ba-btn ba-btn-primary text-sm">
+          <button type="button" onClick={handleSubmit} disabled={!qtyValid || saving} className="ba-btn ba-btn-primary text-sm">
             {saving ? t('invSaving') : t('invRecordMovement')}
           </button>
         </div>
