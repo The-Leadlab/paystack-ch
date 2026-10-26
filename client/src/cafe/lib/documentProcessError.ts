@@ -7,6 +7,7 @@ export type DocumentProcessErrorCode =
   | "network"
   | "timeout"
   | "quota"
+  | "billing"
   | "save"
   | "ai"
   | "page_limit";
@@ -16,6 +17,7 @@ export const DOCUMENT_PROCESS_ERROR_I18N: Record<DocumentProcessErrorCode, strin
   network: "dpErrNetwork",
   timeout: "dpErrTimeout",
   quota: "dpErrQuota",
+  billing: "dpErrBilling",
   save: "dpErrSave",
   ai: "dpErrAi",
   page_limit: "dpErrPageLimit",
@@ -48,9 +50,21 @@ export function classifyDocumentProcessError(raw: unknown): DocumentProcessError
   ) {
     return "save";
   }
+  // Google 402 (payment required) / billing — before generic "quota" matching.
   if (
-    /quota|rate limited|\b429\b|resource.?exhausted|too many ai requests|trop de requêtes/i.test(msg)
+    /\b402\b|payment required|billing \/ quota|billing\/quota|enable billing|gemini api billing/i.test(
+      msg
+    )
   ) {
+    return "billing";
+  }
+  if (
+    /rate limited|\b429\b|resource.?exhausted|too many ai requests|trop de requêtes/i.test(msg)
+  ) {
+    return "quota";
+  }
+  // Free-tier "exceeded your current quota" without 402 still maps to wait/retry.
+  if (/\bquota\b/i.test(msg)) {
     return "quota";
   }
   if (

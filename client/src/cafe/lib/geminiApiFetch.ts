@@ -34,6 +34,12 @@ export function mapGeminiHttpError(status: number, message: string): string {
   if (status === 429) {
     return message || "Too many AI requests. Please wait a minute and try again.";
   }
+  if (status === 402) {
+    return (
+      message ||
+      "Gemini API billing / quota exhausted (402). Enable billing on the Google Cloud project for GEMINI_API_KEY, or replace the key."
+    );
+  }
   return message || `AI request failed (HTTP ${status})`;
 }
 

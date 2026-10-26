@@ -872,6 +872,8 @@ export const dashboardEn: Record<string, string> = {
   dpErrNetwork: 'Cannot reach the AI server. Check your connection, then retry.',
   dpErrTimeout: 'This document took too long. Retry once, or split a very large PDF.',
   dpErrQuota: 'Too many AI requests right now. Wait a minute, then retry.',
+  dpErrBilling:
+    'AI billing / quota is exhausted (Google Gemini 402). Enable billing on the GEMINI_API_KEY project in Google AI Studio, or replace the key on Vercel, then retry.',
   dpErrSave: 'The document was read but could not be saved. Retry; stay signed in.',
   dpErrAi: 'AI could not finish this document. Retry, or re-attach a clearer file.',
   dpErrPageLimit:
@@ -2095,6 +2097,8 @@ export const dashboardFr: Record<string, string> = {
   dpErrNetwork: 'Impossible de joindre le serveur IA. Vérifiez la connexion, puis réessayez.',
   dpErrTimeout: 'Ce document a pris trop de temps. Réessayez une fois, ou découpez un PDF très volumineux.',
   dpErrQuota: 'Trop de requêtes IA pour le moment. Attendez une minute, puis réessayez.',
+  dpErrBilling:
+    'Facturation / quota IA épuisé (Google Gemini 402). Activez la facturation du projet GEMINI_API_KEY dans Google AI Studio, ou remplacez la clé sur Vercel, puis réessayez.',
   dpErrSave: 'Le document a été lu mais n’a pas pu être enregistré. Réessayez ; restez connecté.',
   dpErrAi: 'L’IA n’a pas pu terminer ce document. Réessayez, ou réattachez un fichier plus lisible.',
   dpErrPageLimit:

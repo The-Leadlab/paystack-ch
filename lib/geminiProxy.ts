@@ -88,6 +88,20 @@ function toClientError(error: unknown): GeminiProxyResult {
   }
 
   const status = typeof err?.status === "number" && err.status >= 400 && err.status < 500 ? err.status : 502;
+
+  // Google returns 402 when the API key's Cloud project needs billing / has exhausted free quota.
+  if (status === 402 || /\b402\b|payment required|billing|exceeded.*quota/i.test(`${rawMsg} ${googleMsg}`)) {
+    return {
+      status: 402,
+      json: {
+        error:
+          "Gemini API billing / quota exhausted (HTTP 402). Enable billing on the Google Cloud project for GEMINI_API_KEY " +
+          "(https://aistudio.google.com/apikey → project billing), or replace the key, then redeploy. " +
+          `Google said: ${googleMsg || rawMsg}`,
+      },
+    };
+  }
+
   return {
     status,
     json: {

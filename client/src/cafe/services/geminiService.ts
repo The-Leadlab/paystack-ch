@@ -117,6 +117,12 @@ function toReadableGeminiError(error: unknown): Error {
   if (httpStatus === 429) {
     return new Error(`Gemini quota / rate limited (429). Wait and retry, or raise quota. Details: ${apiMessage}`);
   }
+  if (httpStatus === 402) {
+    return new Error(
+      `Gemini API billing / quota exhausted (402). Enable billing on the Google Cloud project for GEMINI_API_KEY ` +
+        `(https://aistudio.google.com/apikey), or create a new key on a billed project and update Vercel. Details: ${apiMessage}`
+    );
+  }
 
   return error instanceof Error ? error : new Error(String(error));
 }
