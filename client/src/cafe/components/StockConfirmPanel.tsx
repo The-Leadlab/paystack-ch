@@ -5,6 +5,7 @@ import { useInventoryOptional } from "../context/InventoryContext";
 import { useLanguage } from "../context/LanguageContext";
 import { collectProductLinesFromDocument } from "../lib/documentProductLines";
 import { isStockDocument, suggestStockInFromLines } from "@shared/inventoryStock";
+import type { SuggestedStockInLine } from "@shared/inventoryStock";
 import type { FinancialData, ProcessedDocument } from "../types";
 
 function buildRows(doc: ProcessedDocument, products: { id: string; name: string; sku?: string }[]) {
@@ -19,6 +20,11 @@ function buildRows(doc: ProcessedDocument, products: { id: string; name: string;
   );
 }
 
+function parsePositiveNumber(raw: string): number {
+  const n = Number(String(raw).replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function StockConfirmPanel({
   doc,
   onUpdate,
@@ -31,7 +37,7 @@ export function StockConfirmPanel({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const products = inventory?.products ?? [];
-  const [rows, setRows] = useState(() => buildRows(doc, products));
+  const [rows, setRows] = useState<SuggestedStockInLine[]>(() => buildRows(doc, products));
 
   // Remount-safe: rebuild suggestions when document or catalog changes.
   useEffect(() => {
@@ -43,6 +49,10 @@ export function StockConfirmPanel({
     () => (inventory?.movements || []).some((m) => m.documentId === doc.id && m.type === "stock_in"),
     [inventory?.movements, doc.id]
   );
+
+  const patchRow = (idx: number, patch: Partial<SuggestedStockInLine>) => {
+    setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  };
 
   if (!inventory) return null;
   const data = doc.data;
@@ -106,6 +116,10 @@ export function StockConfirmPanel({
         {t("invStockConfirmHint") ||
           "Confirm the supplier invoice lines below to increase on-hand quantity. Unmatched lines stay skipped."}
       </p>
+      <p className="text-[11px] text-cdlp-muted">
+        {t("invStockEditHint") ||
+          "AI suggested these values — edit any line, then confirm, or leave without applying."}
+      </p>
 
       <label className="flex items-center gap-2 text-xs text-cdlp-white">
         <input
@@ -131,24 +145,60 @@ export function StockConfirmPanel({
         </div>
       ) : (
         <div className="space-y-2">
+          <div className="hidden sm:grid grid-cols-12 gap-2 text-[10px] uppercase tracking-wide text-cdlp-muted px-0.5">
+            <div className="col-span-4">{t("invColProduct") || "Description"}</div>
+            <div className="col-span-2">{t("invColQty") || "Qty"}</div>
+            <div className="col-span-2">{t("invColUnitCost") || "Unit cost"}</div>
+            <div className="col-span-4">{t("invColLinkProduct") || "Product"}</div>
+          </div>
           {rows.map((row, idx) => (
-            <div key={`${row.description}-${idx}`} className="grid grid-cols-12 gap-2 items-center text-xs">
-              <div className="col-span-12 sm:col-span-4 text-cdlp-white truncate" title={row.description}>
-                {row.description} × {row.quantity}
+            <div key={`stock-in-${idx}`} className="grid grid-cols-12 gap-2 items-center text-xs">
+              <div className="col-span-12 sm:col-span-4">
+                <input
+                  type="text"
+                  className="ba-verify-field text-xs w-full"
+                  value={row.description}
+                  onChange={(e) => patchRow(idx, { description: e.target.value })}
+                  aria-label={t("invColProduct") || "Description"}
+                />
               </div>
-              <div className="col-span-12 sm:col-span-5">
+              <div className="col-span-6 sm:col-span-2">
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  className="ba-verify-field text-xs w-full"
+                  value={row.quantity || ""}
+                  onChange={(e) => patchRow(idx, { quantity: parsePositiveNumber(e.target.value) })}
+                  aria-label={t("invColQty") || "Qty"}
+                />
+              </div>
+              <div className="col-span-6 sm:col-span-2">
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  className="ba-verify-field text-xs w-full"
+                  value={
+                    Number.isFinite(row.unitCostCents) ? (row.unitCostCents / 100).toFixed(2) : ""
+                  }
+                  onChange={(e) => {
+                    const units = parsePositiveNumber(e.target.value);
+                    patchRow(idx, { unitCostCents: Math.round(units * 100) });
+                  }}
+                  aria-label={t("invColUnitCost") || "Unit cost"}
+                />
+              </div>
+              <div className="col-span-12 sm:col-span-4">
                 <select
-                  className="ba-verify-field text-xs"
+                  className="ba-verify-field text-xs w-full"
                   value={row.productId || ""}
                   onChange={(e) => {
                     const product = inventory.products.find((p) => p.id === e.target.value);
-                    setRows((prev) =>
-                      prev.map((r, i) =>
-                        i === idx
-                          ? { ...r, productId: product?.id, productName: product?.name }
-                          : r
-                      )
-                    );
+                    patchRow(idx, {
+                      productId: product?.id,
+                      productName: product?.name,
+                    });
                   }}
                 >
                   <option value="">{t("invStockSkipLine") || "Skip — no product"}</option>
@@ -161,9 +211,6 @@ export function StockConfirmPanel({
                       </option>
                     ))}
                 </select>
-              </div>
-              <div className="col-span-12 sm:col-span-3 text-cdlp-muted">
-                {(row.unitCostCents / 100).toFixed(2)} / {t("invColUnit") || "unit"}
               </div>
             </div>
           ))}

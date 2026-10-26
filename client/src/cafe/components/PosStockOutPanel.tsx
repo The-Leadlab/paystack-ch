@@ -8,6 +8,7 @@ import {
   aggregateStockOutByProduct,
   isPosSalesDocument,
   suggestStockOutFromPosLines,
+  type SuggestedStockOutLine,
 } from "@shared/inventoryPosStock";
 import type { ProcessedDocument } from "../types";
 
@@ -28,6 +29,11 @@ function buildRows(
   );
 }
 
+function parsePositiveNumber(raw: string): number {
+  const n = Number(String(raw).replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function PosStockOutPanel({ doc }: { doc: ProcessedDocument }) {
   const { t } = useLanguage();
   const inventory = useInventoryOptional();
@@ -35,7 +41,9 @@ export function PosStockOutPanel({ doc }: { doc: ProcessedDocument }) {
   const [message, setMessage] = useState<string | null>(null);
   const products = inventory?.products ?? [];
   const recipes = inventory?.recipes ?? [];
-  const [rows, setRows] = useState(() => buildRows(doc, products, recipes));
+  const [rows, setRows] = useState<SuggestedStockOutLine[]>(() =>
+    buildRows(doc, products, recipes)
+  );
 
   useEffect(() => {
     setRows(buildRows(doc, products, recipes));
@@ -55,6 +63,10 @@ export function PosStockOutPanel({ doc }: { doc: ProcessedDocument }) {
       ),
     [inventory?.movements, doc.id]
   );
+
+  const patchRow = (idx: number, patch: Partial<SuggestedStockOutLine>) => {
+    setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  };
 
   if (!inventory || !isPosSalesDocument(doc.data)) return null;
 
@@ -116,6 +128,10 @@ export function PosStockOutPanel({ doc }: { doc: ProcessedDocument }) {
         {t("invPosStockOutHint") ||
           "Confirm sold lines to decrease on-hand (FIFO). Map till names in Stock → POS recipes for coffee beans, milk, etc. Payment lines are skipped."}
       </p>
+      <p className="text-[11px] text-cdlp-muted">
+        {t("invPosStockEditHint") ||
+          "AI suggested these values — edit any line, then confirm, or leave without applying."}
+      </p>
 
       {rows.length === 0 ? (
         <p className="text-xs text-cdlp-muted">
@@ -124,25 +140,63 @@ export function PosStockOutPanel({ doc }: { doc: ProcessedDocument }) {
         </p>
       ) : (
         <div className="space-y-2">
+          <div className="hidden sm:grid grid-cols-12 gap-2 text-[10px] uppercase tracking-wide text-cdlp-muted px-0.5">
+            <div className="col-span-3">{t("invColProduct") || "Description"}</div>
+            <div className="col-span-2">{t("invPosSoldQty") || "Sold qty"}</div>
+            <div className="col-span-3">{t("invPosInvQty") || "Stock out qty"}</div>
+            <div className="col-span-4">{t("invColLinkProduct") || "Product"}</div>
+          </div>
           {rows.map((row, idx) => (
             <div
-              key={`${row.description}-${idx}`}
+              key={`stock-out-${idx}`}
               className="grid grid-cols-12 gap-2 items-center text-xs"
             >
-              <div
-                className="col-span-12 sm:col-span-4 text-cdlp-white truncate"
-                title={row.description}
-              >
-                {row.description} × {row.soldQty}
+              <div className="col-span-12 sm:col-span-3">
+                <input
+                  type="text"
+                  className="ba-verify-field text-xs w-full"
+                  value={row.description}
+                  onChange={(e) => patchRow(idx, { description: e.target.value })}
+                  aria-label={t("invColProduct") || "Description"}
+                />
                 {row.matchedVia === "recipe" ? (
-                  <span className="text-cdlp-gold ml-1">
+                  <span className="text-[10px] text-cdlp-gold">
                     ({t("invPosViaRecipe") || "recipe"})
                   </span>
                 ) : null}
               </div>
-              <div className="col-span-12 sm:col-span-5">
+              <div className="col-span-6 sm:col-span-2">
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  className="ba-verify-field text-xs w-full"
+                  value={row.soldQty || ""}
+                  onChange={(e) => {
+                    const soldQty = parsePositiveNumber(e.target.value);
+                    // Keep inventory qty in sync only when still at recipe/default ratio
+                    // would be ambiguous — just update soldQty; user edits stock-out qty separately.
+                    patchRow(idx, { soldQty });
+                  }}
+                  aria-label={t("invPosSoldQty") || "Sold qty"}
+                />
+              </div>
+              <div className="col-span-6 sm:col-span-3">
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  className="ba-verify-field text-xs w-full"
+                  value={row.quantity || ""}
+                  onChange={(e) =>
+                    patchRow(idx, { quantity: parsePositiveNumber(e.target.value) })
+                  }
+                  aria-label={t("invPosInvQty") || "Stock out qty"}
+                />
+              </div>
+              <div className="col-span-12 sm:col-span-4">
                 <select
-                  className="ba-verify-field text-xs"
+                  className="ba-verify-field text-xs w-full"
                   value={row.productId || ""}
                   onChange={(e) => {
                     const product = inventory.products.find(
@@ -163,23 +217,17 @@ export function PosStockOutPanel({ doc }: { doc: ProcessedDocument }) {
                       : undefined;
                     const qtyPer =
                       recipe && recipe.qtyPerUnit > 0 ? recipe.qtyPerUnit : 1;
-                    setRows((prev) =>
-                      prev.map((r, i) =>
-                        i === idx
-                          ? {
-                              ...r,
-                              productId: product?.id,
-                              productName: product?.name,
-                              matchedVia: recipe
-                                ? "recipe"
-                                : product
-                                  ? "name"
-                                  : "none",
-                              quantity: product ? r.soldQty * qtyPer : r.soldQty,
-                            }
-                          : r
-                      )
-                    );
+                    patchRow(idx, {
+                      productId: product?.id,
+                      productName: product?.name,
+                      matchedVia: recipe
+                        ? "recipe"
+                        : product
+                          ? "name"
+                          : "none",
+                      // Remap inventory qty from sold qty via recipe; user can override after.
+                      quantity: product ? row.soldQty * qtyPer : row.soldQty,
+                    });
                   }}
                 >
                   <option value="">
@@ -194,10 +242,6 @@ export function PosStockOutPanel({ doc }: { doc: ProcessedDocument }) {
                       </option>
                     ))}
                 </select>
-              </div>
-              <div className="col-span-12 sm:col-span-3 text-cdlp-muted">
-                → {row.quantity.toLocaleString(undefined, { maximumFractionDigits: 3 })}{" "}
-                {t("invColUnit") || "units"}
               </div>
             </div>
           ))}

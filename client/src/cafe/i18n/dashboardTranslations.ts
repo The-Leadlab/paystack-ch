@@ -624,6 +624,9 @@ export const dashboardEn: Record<string, string> = {
   invStockConfirmTitle: 'Apply to stock',
   invStockConfirmHint:
     'Confirm the supplier invoice lines below to increase on-hand quantity. Unmatched lines stay skipped.',
+  invStockEditHint:
+    'AI suggested these values — edit any line, then confirm, or leave without applying.',
+  invColLinkProduct: 'Product',
   invStockAlreadyApplied: 'Already applied',
   invMarkStockDocument: 'This is a stock / supplier inventory invoice',
   invStockNeedProduct: 'Link each line to a product, then confirm.',
@@ -677,6 +680,10 @@ export const dashboardEn: Record<string, string> = {
   invPosStockOutTitle: 'Apply POS stock-out',
   invPosStockOutHint:
     'Confirm sold lines to decrease on-hand (FIFO). Map till names in Stock → POS recipes for coffee beans, milk, etc. Payment lines are skipped.',
+  invPosStockEditHint:
+    'AI suggested these values — edit any line, then confirm, or leave without applying.',
+  invPosSoldQty: 'Sold qty',
+  invPosInvQty: 'Stock out qty',
   invPosAlreadyApplied: 'Stock-out already applied',
   invPosNeedProduct: 'Link sold lines to products (or add POS recipes), then confirm.',
   invPosStockApplied: 'Stock decreased from this till ticket / Z2 sheet.',
@@ -1839,6 +1846,9 @@ export const dashboardFr: Record<string, string> = {
   invStockConfirmTitle: 'Appliquer au stock',
   invStockConfirmHint:
     'Confirmez les lignes de la facture fournisseur ci-dessous pour augmenter la quantité en stock. Les lignes non liées sont ignorées.',
+  invStockEditHint:
+    'Valeurs suggérées par l’IA — modifiez chaque ligne, puis confirmez, ou laissez sans appliquer.',
+  invColLinkProduct: 'Produit',
   invStockAlreadyApplied: 'Déjà appliqué',
   invMarkStockDocument: 'Ceci est une facture de stock / fournisseur',
   invStockNeedProduct: 'Liez chaque ligne à un produit, puis confirmez.',
@@ -1893,6 +1903,10 @@ export const dashboardFr: Record<string, string> = {
   invPosStockOutTitle: 'Appliquer la sortie POS',
   invPosStockOutHint:
     'Confirmez les lignes vendues pour diminuer le stock (FIFO). Mappez les noms caisse dans Stock → recettes POS. Les lignes de paiement sont ignorées.',
+  invPosStockEditHint:
+    'Valeurs suggérées par l’IA — modifiez chaque ligne, puis confirmez, ou laissez sans appliquer.',
+  invPosSoldQty: 'Qté vendue',
+  invPosInvQty: 'Qté sortie stock',
   invPosAlreadyApplied: 'Sortie déjà appliquée',
   invPosNeedProduct: 'Liez les lignes vendues à des produits (ou ajoutez des recettes POS), puis confirmez.',
   invPosStockApplied: 'Le stock a été diminué à partir de ce ticket / feuille Z2.',
