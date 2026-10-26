@@ -48,6 +48,7 @@ export function InventoryPanel() {
     updateProduct,
     deleteProduct,
     addMovement,
+    addMovementsBatch,
     addRecipe,
     deleteRecipe,
     totalValuation,
@@ -92,7 +93,16 @@ export function InventoryPanel() {
       );
       const today = new Date().toISOString().slice(0, 10);
       let productsAdded = 0;
-      let stockFilled = 0;
+      const openingMoves: Array<{
+        productId: string;
+        productName: string;
+        type: 'stock_in';
+        quantity: number;
+        unitCost: number;
+        totalCost: number;
+        date: string;
+        note: string;
+      }> = [];
 
       for (const seed of RESTAURANT_CAFE_SEED_PRODUCTS) {
         const skuKey = seed.sku.toLowerCase();
@@ -127,10 +137,11 @@ export function InventoryPanel() {
           bySku.set(skuKey, product);
         }
 
-        // Opening stock: only if still empty (seed creates catalog-only rows otherwise).
-        if (product.onHandQty <= 0 && seed.initialQty > 0) {
+        // Opening stock: only if still empty (treat missing/NaN as 0).
+        const onHand = Number(product.onHandQty);
+        if ((!(onHand > 0) || Number.isNaN(onHand)) && seed.initialQty > 0) {
           const unitCostCents = Math.round(seed.initialUnitCost * 100);
-          await addMovement({
+          openingMoves.push({
             productId: product.id,
             productName: product.name,
             type: 'stock_in',
@@ -140,10 +151,14 @@ export function InventoryPanel() {
             date: today,
             note: t('invSeedOpeningNote') || 'Opening stock (café starters)',
           });
-          stockFilled += 1;
         }
       }
 
+      if (openingMoves.length > 0) {
+        await addMovementsBatch(openingMoves);
+      }
+
+      const stockFilled = openingMoves.length;
       if (productsAdded === 0 && stockFilled === 0) {
         toast.success(t('invSeedAlready') || 'Starter products already in catalog');
       } else {
@@ -154,11 +169,12 @@ export function InventoryPanel() {
         );
       }
     } catch (err) {
+      console.error('[inventory] seed / opening stock failed', err);
       toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setSeeding(false);
     }
-  }, [addProduct, addMovement, products, t]);
+  }, [addProduct, addMovementsBatch, products, t]);
 
   const needsOpeningStock = useMemo(
     () =>
@@ -166,7 +182,9 @@ export function InventoryPanel() {
         const p = products.find(
           (x) => (x.sku || '').toLowerCase() === seed.sku.toLowerCase() && !x.archived
         );
-        return p != null && p.onHandQty <= 0;
+        if (p == null) return false;
+        const onHand = Number(p.onHandQty);
+        return Number.isNaN(onHand) || !(onHand > 0);
       }),
     [products],
   );
