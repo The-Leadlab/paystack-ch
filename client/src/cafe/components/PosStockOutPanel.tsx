@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, PackageMinus } from "lucide-react";
 import { toast } from "sonner";
 import { useInventoryOptional } from "../context/InventoryContext";
@@ -10,6 +10,7 @@ import {
   suggestStockOutFromPosLines,
   type SuggestedStockOutLine,
 } from "@shared/inventoryPosStock";
+import { matchInventoryProduct, normalizeMatchText } from "@shared/inventoryStock";
 import type { ProcessedDocument } from "../types";
 
 function buildRows(
@@ -45,16 +46,101 @@ export function PosStockOutPanel({ doc }: { doc: ProcessedDocument }) {
   const [rows, setRows] = useState<SuggestedStockOutLine[]>(() =>
     buildRows(doc, products, recipes)
   );
+  /** Avoid re-creating catalog rows for the same document in one mount. */
+  const autoLinkedDocRef = useRef<string | null>(null);
 
   useEffect(() => {
     setRows(buildRows(doc, products, recipes));
     setMessage(null);
   }, [
     doc.id,
-    products.length,
-    recipes.length,
+    products,
+    recipes,
     doc.data?.lineItems?.length,
     doc.data?.subDocuments?.length,
+  ]);
+
+  // Auto-link: create a 1:1 stock product (+ POS recipe) for till names that
+  // don't match the café seed catalog (Sangria, Planche, …).
+  useEffect(() => {
+    if (!inventory || !isPosSalesDocument(doc.data)) return;
+    if (inventory.loading) return;
+    if (autoLinkedDocRef.current === doc.id) return;
+
+    const activeProducts = inventory.products.filter((p) => !p.archived);
+    const suggested = buildRows(doc, activeProducts, inventory.recipes);
+    const unmatched = [
+      ...new Set(
+        suggested
+          .filter((r) => !r.productId)
+          .map((r) => r.description.trim())
+          .filter(Boolean)
+      ),
+    ];
+    if (unmatched.length === 0) {
+      autoLinkedDocRef.current = doc.id;
+      return;
+    }
+
+    // Lock this doc before awaits so product snapshots mid-create don't re-enter.
+    autoLinkedDocRef.current = doc.id;
+    const addProduct = inventory.addProduct;
+    const addRecipe = inventory.addRecipe;
+    const existingRecipes = inventory.recipes;
+
+    void (async () => {
+      let linked = 0;
+      const knownNorm = new Map(
+        activeProducts.map((p) => [normalizeMatchText(p.name), p.id] as const)
+      );
+      for (const posName of unmatched) {
+        const norm = normalizeMatchText(posName);
+        let productId =
+          matchInventoryProduct(posName, activeProducts)?.id || knownNorm.get(norm);
+        if (!productId) {
+          productId = await addProduct({
+            name: posName,
+            unit: "pcs",
+            category: "POS / Menu",
+            subcategory: "Auto from till",
+          });
+          knownNorm.set(norm, productId);
+        }
+        const alreadyRecipe = existingRecipes.some(
+          (r) =>
+            normalizeMatchText(r.posName) === norm && r.productId === productId
+        );
+        if (!alreadyRecipe) {
+          await addRecipe({
+            posName,
+            productId,
+            qtyPerUnit: 1,
+          });
+        }
+        linked += 1;
+      }
+      if (linked > 0) {
+        toast.success(
+          (t("invPosAutoLinked") || "Linked {n} till lines to stock products").replace(
+            "{n}",
+            String(linked)
+          )
+        );
+      }
+    })().catch((err) => {
+      // Allow retry on next mount if create failed mid-way.
+      autoLinkedDocRef.current = null;
+      console.error("[inventory] auto-link POS products failed", err);
+    });
+  }, [
+    doc.id,
+    doc.data,
+    inventory?.loading,
+    inventory?.products,
+    inventory?.recipes,
+    inventory?.addProduct,
+    inventory?.addRecipe,
+    t,
   ]);
 
   const alreadyApplied = useMemo(

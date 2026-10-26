@@ -182,9 +182,13 @@ describe("stock documents", () => {
     const products = [
       { id: "1", name: "Winter tyre", sku: "WT-01" },
       { id: "2", name: "Brake pads" },
+      { id: "3", name: "Sangria maison" },
+      { id: "4", name: "Patatas bravas" },
     ];
     expect(matchInventoryProduct("WT-01 winter", products)?.id).toBe("1");
     expect(matchInventoryProduct("Brake pads", products)?.id).toBe("2");
+    expect(matchInventoryProduct("Sangria maison (verre)", products)?.id).toBe("3");
+    expect(matchInventoryProduct("Patatas bravas XL", products)?.id).toBe("4");
     expect(matchInventoryProduct("Unknown", products)).toBeNull();
   });
 

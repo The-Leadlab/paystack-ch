@@ -696,6 +696,7 @@ export const dashboardEn: Record<string, string> = {
   invPosViaRecipe: 'recipe',
   invPosStockOutCta: 'Confirm stock out',
   invPosAddRecipesHint: 'Tip: add POS recipes under Stock for accurate ingredient qty.',
+  invPosAutoLinked: 'Linked {n} till lines to stock products',
   invPosRecipesTitle: 'POS recipes (auto stock-out)',
   invPosRecipesHint:
     'Map till / ticket names to inventory products. Example: Espresso → Coffee beans × 0.018 kg.',
@@ -1925,6 +1926,7 @@ export const dashboardFr: Record<string, string> = {
   invPosViaRecipe: 'recette',
   invPosStockOutCta: 'Confirmer la sortie',
   invPosAddRecipesHint: 'Astuce : ajoutez des recettes POS sous Stock pour les quantités ingrédients.',
+  invPosAutoLinked: '{n} lignes caisse liées aux produits stock',
   invPosRecipesTitle: 'Recettes POS (sortie auto)',
   invPosRecipesHint:
     'Mappez les noms caisse / ticket vers les produits stock. Ex. : Espresso → Grains de café × 0,018 kg.',

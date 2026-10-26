@@ -3,7 +3,11 @@
  * Recipes: POS line name → productId × qtyPerUnit (inventory units per 1 sold unit).
  */
 
-import { matchInventoryProduct, type MatchableProduct } from "./inventoryStock";
+import {
+  matchInventoryProduct,
+  normalizeMatchText,
+  type MatchableProduct,
+} from "./inventoryStock";
 
 export type PosRecipe = {
   id?: string;
@@ -46,13 +50,21 @@ function findRecipe(
   recipes: PosRecipe[]
 ): PosRecipe | null {
   const needle = description.trim().toLowerCase();
-  if (!needle || recipes.length === 0) return null;
+  const needleNorm = normalizeMatchText(description);
+  if (!needleNorm || recipes.length === 0) return null;
   const exact = recipes.find((r) => r.posName.trim().toLowerCase() === needle);
   if (exact) return exact;
+  const exactNorm = recipes.find(
+    (r) => normalizeMatchText(r.posName) === needleNorm
+  );
+  if (exactNorm) return exactNorm;
   return (
     recipes.find((r) => {
-      const name = r.posName.trim().toLowerCase();
-      return name.length >= 2 && (needle.includes(name) || name.includes(needle));
+      const nameNorm = normalizeMatchText(r.posName);
+      return (
+        nameNorm.length >= 2 &&
+        (needleNorm.includes(nameNorm) || nameNorm.includes(needleNorm))
+      );
     }) ?? null
   );
 }
