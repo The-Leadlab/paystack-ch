@@ -6,7 +6,7 @@
 
 ## Gaps today
 
-- Drive backup runs after AI when connected; no user setting for **also save to computer**.
+- Drive backup runs after AI when connected.
 - No explicit **Storage policy** panel (Firebase Storage retention vs Drive-only).
 - Legal pages may not state liability / data custody (verify site footer links).
 
@@ -17,11 +17,11 @@
 | Option | Behavior |
 |--------|----------|
 | Drive connected | Mirror to `Paystack Documents / Business|Personal / YYYY-MM-DD /` |
-| **Download after process** | Browser download of original (or processed JSON export) when AI completes |
-**Operator default (confirmed):** When Drive is connected → **Drive mirror + auto-download** a copy to the user’s computer after AI completes.
 | Firebase Storage | Short TTL for AI pipeline only (existing); optional “delete after Drive OK” |
 
-Store in `users/{uid}.storagePrefs`: `{ driveMirror: boolean, localDownload: boolean, deleteStorageAfterDrive: boolean }`.
+**Operator default:** Drive mirror when connected. **Do not** re-download the file to the laptop after upload — the user already has it locally from the file picker.
+
+Store in `users/{uid}.storagePrefs`: `{ driveMirror: boolean, localDownload: boolean, deleteStorageAfterDrive: boolean }`. (`localDownload` is legacy / unused; kept for schema compatibility.)
 
 ---
 

@@ -27,6 +27,10 @@ import type {
 } from '../types/inventory';
 import { PRODUCT_CATEGORY_PRESETS, RESTAURANT_CAFE_SEED_PRODUCTS } from '../types/inventory';
 
+const SEED_SKUS = new Set(
+  RESTAURANT_CAFE_SEED_PRODUCTS.map((s) => s.sku.toLowerCase()),
+);
+
 const UNIT_OPTIONS: { value: UnitOfMeasure; label: string }[] = [
   { value: 'pcs', label: 'Pieces' },
   { value: 'kg', label: 'Kilograms' },
@@ -366,6 +370,13 @@ export function InventoryPanel() {
         </div>
       </div>
 
+      {products.some((p) => !p.archived && p.sku && SEED_SKUS.has(p.sku.toLowerCase())) ? (
+        <div className="rounded-lg border border-cdlp-border/80 bg-cdlp-card/40 px-3 py-2.5 text-xs text-cdlp-muted leading-relaxed">
+          {t('invSeedNotFromUploads') ||
+            'These rows are café demo starters (Load opening stock), not products from your uploaded invoices.'}
+        </div>
+      ) : null}
+
       {/* Low stock alerts */}
       {lowStockProducts.length > 0 && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
@@ -481,9 +492,16 @@ export function InventoryPanel() {
                             }}
                             aria-label={t('invColProduct') || 'Product'}
                           />
-                          {p.minStockLevel != null && p.onHandQty <= p.minStockLevel && (
-                            <AlertTriangle className="w-3 h-3 text-amber-400 inline ml-1" />
-                          )}
+                          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                            {p.sku && SEED_SKUS.has(p.sku.toLowerCase()) ? (
+                              <span className="text-[9px] uppercase tracking-wide font-bold text-cdlp-gold/90 bg-cdlp-gold/10 rounded px-1.5 py-0.5">
+                                {t('invSeedDemoBadge') || 'Demo starter'}
+                              </span>
+                            ) : null}
+                            {p.minStockLevel != null && p.onHandQty <= p.minStockLevel && (
+                              <AlertTriangle className="w-3 h-3 text-amber-400" />
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>

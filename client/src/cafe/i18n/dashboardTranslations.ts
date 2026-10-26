@@ -731,6 +731,9 @@ export const dashboardEn: Record<string, string> = {
   invSeedAlready: 'Starter products already in catalog',
   invSeedOpeningStock: 'Load opening stock',
   invSeedOpeningNote: 'Opening stock (café starters)',
+  invSeedDemoBadge: 'Demo starter',
+  invSeedNotFromUploads:
+    'These rows are café demo starters (Load opening stock), not products from your uploaded invoices. Real stock comes from supplier invoices: mark as stock on Documents, then Confirm stock-in.',
   invoiceMakerTab: 'Invoices',
   invSubtitle: 'Create professional invoices for your clients',
   invNew: 'New invoice',
@@ -891,6 +894,8 @@ export const dashboardEn: Record<string, string> = {
   dpDeleteFailed: 'Could not delete the document record. Please try again.',
   dpDeleteLinkedFailed: 'Could not delete linked income/expenses for this document.',
   dpRetryAiTitle: 'Run AI extraction again on this file',
+  dpReanalyseConfirm:
+    'Run AI again on this file? Extracted amounts and line items will be replaced.',
   dpErrSourceMissing:
     'The file is no longer available in this browser. Use Re-attach and select the PDF or image again.',
   dpErrNetwork: 'Cannot reach the AI server. Check your connection, then retry.',
@@ -1980,6 +1985,9 @@ export const dashboardFr: Record<string, string> = {
   invSeedAlready: 'Les produits de démarrage sont déjà dans le catalogue',
   invSeedOpeningStock: 'Charger le stock d’ouverture',
   invSeedOpeningNote: 'Stock d’ouverture (démarrages café)',
+  invSeedDemoBadge: 'Démo',
+  invSeedNotFromUploads:
+    'Ces lignes sont des démarrages café de démo (Charger le stock d’ouverture), pas les produits de vos factures. Le vrai stock vient des factures fournisseurs : marquez « stock » dans Documents, puis Confirmez l’entrée en stock.',
   invoiceMakerTab: 'Factures',
   invSubtitle: 'Créez des factures professionnelles pour vos clients',
   invNew: 'Nouvelle facture',
@@ -2140,6 +2148,8 @@ export const dashboardFr: Record<string, string> = {
   dpDeleteFailed: 'Impossible de supprimer l’enregistrement du document. Réessayez.',
   dpDeleteLinkedFailed: 'Impossible de supprimer les revenus/dépenses liés à ce document.',
   dpRetryAiTitle: 'Relancer l’extraction IA sur ce fichier',
+  dpReanalyseConfirm:
+    'Relancer l’IA sur ce fichier ? Les montants et lignes extraits seront remplacés.',
   dpErrSourceMissing:
     'Le fichier n’est plus disponible dans ce navigateur. Utilisez Rattacher et sélectionnez à nouveau le PDF ou l’image.',
   dpErrNetwork: 'Impossible de joindre le serveur IA. Vérifiez la connexion, puis réessayez.',

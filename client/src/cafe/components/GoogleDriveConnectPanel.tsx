@@ -224,23 +224,6 @@ export function GoogleDriveConnectPanel({
                 <span className="block mt-0.5 leading-relaxed">{t('driveStorageMirrorHint')}</span>
               </span>
             </label>
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={storagePrefs.localDownload}
-                disabled={busy}
-                onChange={(e) =>
-                  void persistStoragePrefs({ ...storagePrefs, localDownload: e.target.checked })
-                }
-              />
-              <span>
-                <span className="font-semibold text-white/90">{t('driveStorageLocalDownload')}</span>
-                <span className="block mt-0.5 leading-relaxed">
-                  {t('driveStorageLocalDownloadHint')}
-                </span>
-              </span>
-            </label>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
           {onDriveSync ? (
@@ -280,25 +263,6 @@ export function GoogleDriveConnectPanel({
             <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-cdlp-gold/80" aria-hidden />
             <span>{t('driveUnverifiedWarning')}</span>
           </p>
-          ) : null}
-          {user?.uid ? (
-            <label className="flex items-start gap-2 text-[11px] text-cdlp-muted cursor-pointer px-1">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={storagePrefs.localDownload}
-                disabled={busy}
-                onChange={(e) =>
-                  void persistStoragePrefs({ ...storagePrefs, localDownload: e.target.checked })
-                }
-              />
-              <span>
-                <span className="font-semibold text-white/90">{t('driveStorageLocalDownload')}</span>
-                <span className="block mt-0.5 leading-relaxed">
-                  {t('driveStorageLocalDownloadHint')}
-                </span>
-              </span>
-            </label>
           ) : null}
           <button
             type="button"

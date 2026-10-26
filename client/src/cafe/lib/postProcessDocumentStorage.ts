@@ -1,8 +1,11 @@
 import { fetchGoogleDriveStatus } from './googleDriveClient';
 import { guessMimeType } from './documentStorageForAi';
 import { loadStoragePrefs } from './storagePrefs';
-import { downloadDocumentLocally } from './localDocumentDownload';
 
+/**
+ * After AI processing: optional Google Drive mirror only.
+ * Local re-download is intentionally not done — the file was already chosen from the user's machine.
+ */
 export async function postProcessDocumentStorage(opts: {
   uid: string;
   fileName: string;
@@ -41,18 +44,6 @@ export async function postProcessDocumentStorage(opts: {
       });
     } catch (driveErr) {
       console.warn('Google Drive backup skipped:', driveErr);
-    }
-  }
-
-  if (prefs.localDownload && (opts.fileRaw || opts.fileUrl)) {
-    try {
-      await downloadDocumentLocally({
-        fileName: opts.fileName,
-        fileUrl: opts.fileUrl,
-        fileRaw: opts.fileRaw,
-      });
-    } catch (downloadErr) {
-      console.warn('Local document download skipped:', downloadErr);
     }
   }
 }

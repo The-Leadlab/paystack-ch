@@ -4445,6 +4445,54 @@ export const DocumentProcessor: React.FC<{
                               </button>
                             )}
 
+                            {(doc.status === 'completed' || doc.status === 'needs_review') && (
+                              <>
+                                {docHasLocalBytes(doc) || doc.fileUrl ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (
+                                        !confirm(
+                                          t('dpReanalyseConfirm') ||
+                                            'Run AI again on this file? Extracted amounts and line items will be replaced.',
+                                        )
+                                      ) {
+                                        return;
+                                      }
+                                      void retryDocument(
+                                        doc as ProcessedDocument & { source?: 'firestore' | 'local' },
+                                      );
+                                    }}
+                                    disabled={Boolean(retryingDocId) || isProcessing}
+                                    className="px-2 py-1 bg-cdlp-gold/20 hover:bg-cdlp-gold/30 disabled:opacity-50 text-cdlp-gold text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
+                                    title={t('dpRetryAiTitle')}
+                                  >
+                                    {retryingDocId === doc.id ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <RefreshCcw className="w-3 h-3" />
+                                    )}
+                                    <span className="hidden lg:inline">{t('dpProcessAgain')}</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      startReattach(doc.id);
+                                    }}
+                                    disabled={Boolean(retryingDocId) || isProcessing}
+                                    className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/30 disabled:opacity-50 text-blue-400 text-[9px] font-bold uppercase rounded transition-colors flex items-center gap-1"
+                                    title={t('dpReattachProcess')}
+                                  >
+                                    <Upload className="w-3 h-3" />
+                                    <span className="hidden lg:inline">{t('dpReattachProcess')}</span>
+                                  </button>
+                                )}
+                              </>
+                            )}
+
                             {doc.status === 'processing' && (doc as any).source !== 'firestore' && (
                               <button
                                 onClick={(e) => {

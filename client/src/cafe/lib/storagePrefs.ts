@@ -9,7 +9,8 @@ export type StoragePrefs = {
 
 export const DEFAULT_STORAGE_PREFS: StoragePrefs = {
   driveMirror: true,
-  localDownload: true,
+  /** Off by default — the file is already on the user's machine from the upload picker. */
+  localDownload: false,
   deleteStorageAfterDrive: false,
 };
 
@@ -18,7 +19,8 @@ function normalizeStoragePrefs(raw: unknown): StoragePrefs {
   const rec = raw as Record<string, unknown>;
   return {
     driveMirror: rec.driveMirror !== false,
-    localDownload: rec.localDownload !== false,
+    // Opt-in only (legacy docs often had true / missing → treat missing as off).
+    localDownload: rec.localDownload === true,
     deleteStorageAfterDrive: rec.deleteStorageAfterDrive === true,
   };
 }

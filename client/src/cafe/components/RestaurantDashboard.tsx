@@ -686,7 +686,7 @@ export function RestaurantDashboard() {
     }
 
     // AI processing has now concluded successfully and the document's own date is known —
-    // mirror to Google Drive and optionally download locally per storagePrefs.
+    // optional Google Drive mirror per storagePrefs (no local re-download after upload).
     const docForDrive = documents.find((d) => d.id === documentId);
     if (docForDrive?.storagePath && docForDrive?.fileUrl && user?.uid) {
       void (async () => {
