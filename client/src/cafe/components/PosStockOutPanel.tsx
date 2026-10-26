@@ -148,6 +148,21 @@ export function PosStockOutPanel({ doc }: { doc: ProcessedDocument }) {
                     const product = inventory.products.find(
                       (p) => p.id === e.target.value
                     );
+                    const recipe = product
+                      ? inventory.recipes.find((rec) => {
+                          if (rec.productId !== product.id) return false;
+                          const pos = rec.posName.trim().toLowerCase();
+                          const desc = row.description.trim().toLowerCase();
+                          return (
+                            pos === desc ||
+                            (pos.length >= 2 &&
+                              (desc.includes(pos) || pos.includes(desc)))
+                          );
+                        }) ||
+                        inventory.recipes.find((rec) => rec.productId === product.id)
+                      : undefined;
+                    const qtyPer =
+                      recipe && recipe.qtyPerUnit > 0 ? recipe.qtyPerUnit : 1;
                     setRows((prev) =>
                       prev.map((r, i) =>
                         i === idx
@@ -155,8 +170,12 @@ export function PosStockOutPanel({ doc }: { doc: ProcessedDocument }) {
                               ...r,
                               productId: product?.id,
                               productName: product?.name,
-                              matchedVia: product ? "name" : "none",
-                              quantity: r.soldQty,
+                              matchedVia: recipe
+                                ? "recipe"
+                                : product
+                                  ? "name"
+                                  : "none",
+                              quantity: product ? r.soldQty * qtyPer : r.soldQty,
                             }
                           : r
                       )

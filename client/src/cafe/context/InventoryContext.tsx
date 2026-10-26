@@ -66,6 +66,17 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       collection(db, 'inventory_products'),
       where('restaurantId', '==', dataOwnerUid),
     );
+    const onPermError = (err: unknown) => {
+      const code = (err as { code?: string })?.code || '';
+      if (code === 'permission-denied') {
+        console.error(
+          '[inventory] Firestore permission-denied — deploy firestore.rules for inventory_* collections',
+          err,
+        );
+      }
+      checkDone();
+    };
+
     const unsub1 = onSnapshot(
       pQ,
       (snap) => {
@@ -74,7 +85,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         setProducts(rows);
         checkDone();
       },
-      () => checkDone(),
+      onPermError,
     );
 
     const mQ = query(
@@ -89,7 +100,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         setMovements(rows);
         checkDone();
       },
-      () => checkDone(),
+      onPermError,
     );
 
     const rQ = query(
@@ -104,7 +115,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         setRecipes(rows);
         checkDone();
       },
-      () => checkDone(),
+      onPermError,
     );
 
     return () => {
