@@ -50,6 +50,10 @@ export const RESTAURANT_CAFE_SEED_PRODUCTS: Array<{
   category: string;
   subcategory?: string;
   minStockLevel: number;
+  /** Opening qty for first stock_in (FIFO layer). */
+  initialQty: number;
+  /** Opening unit cost in reporting currency (CHF/GBP), not cents. */
+  initialUnitCost: number;
 }> = [
   {
     name: 'Coffee beans',
@@ -58,6 +62,8 @@ export const RESTAURANT_CAFE_SEED_PRODUCTS: Array<{
     category: 'Beverages',
     subcategory: 'Coffee & tea',
     minStockLevel: 2,
+    initialQty: 5,
+    initialUnitCost: 28,
   },
   {
     name: 'Whole milk',
@@ -66,6 +72,8 @@ export const RESTAURANT_CAFE_SEED_PRODUCTS: Array<{
     category: 'Food',
     subcategory: 'Dairy',
     minStockLevel: 5,
+    initialQty: 20,
+    initialUnitCost: 1.6,
   },
   {
     name: 'Soft drinks (cans)',
@@ -74,6 +82,8 @@ export const RESTAURANT_CAFE_SEED_PRODUCTS: Array<{
     category: 'Beverages',
     subcategory: 'Soft drinks',
     minStockLevel: 24,
+    initialQty: 48,
+    initialUnitCost: 0.85,
   },
   {
     name: 'Cooking oil',
@@ -82,6 +92,8 @@ export const RESTAURANT_CAFE_SEED_PRODUCTS: Array<{
     category: 'Food',
     subcategory: 'Dry goods',
     minStockLevel: 2,
+    initialQty: 10,
+    initialUnitCost: 4.5,
   },
   {
     name: 'Napkins / packaging',
@@ -90,6 +102,8 @@ export const RESTAURANT_CAFE_SEED_PRODUCTS: Array<{
     category: 'Supplies',
     subcategory: 'Packaging',
     minStockLevel: 5,
+    initialQty: 12,
+    initialUnitCost: 8,
   },
 ];
 

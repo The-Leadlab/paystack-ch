@@ -85,31 +85,91 @@ export function InventoryPanel() {
   const seedCafeCatalog = useCallback(async () => {
     setSeeding(true);
     try {
-      const existingSkus = new Set(products.map((p) => (p.sku || '').toLowerCase()).filter(Boolean));
-      let added = 0;
-      for (const seed of RESTAURANT_CAFE_SEED_PRODUCTS) {
-        if (existingSkus.has(seed.sku.toLowerCase())) continue;
-        await addProduct({
-          name: seed.name,
-          sku: seed.sku,
-          unit: seed.unit,
-          category: seed.category,
-          subcategory: seed.subcategory,
-          minStockLevel: seed.minStockLevel,
-        });
-        added += 1;
-      }
-      toast.success(
-        added > 0
-          ? (t('invSeedSuccess') || 'Added {n} starter products').replace('{n}', String(added))
-          : t('invSeedAlready') || 'Starter products already in catalog'
+      const bySku = new Map(
+        products
+          .filter((p) => p.sku)
+          .map((p) => [p.sku!.toLowerCase(), p] as const),
       );
+      const today = new Date().toISOString().slice(0, 10);
+      let productsAdded = 0;
+      let stockFilled = 0;
+
+      for (const seed of RESTAURANT_CAFE_SEED_PRODUCTS) {
+        const skuKey = seed.sku.toLowerCase();
+        let product = bySku.get(skuKey);
+        if (!product) {
+          const id = await addProduct({
+            name: seed.name,
+            sku: seed.sku,
+            unit: seed.unit,
+            category: seed.category,
+            subcategory: seed.subcategory,
+            minStockLevel: seed.minStockLevel,
+          });
+          productsAdded += 1;
+          product = {
+            id,
+            restaurantId: '',
+            name: seed.name,
+            sku: seed.sku,
+            unit: seed.unit,
+            category: seed.category,
+            subcategory: seed.subcategory,
+            minStockLevel: seed.minStockLevel,
+            onHandQty: 0,
+            valuationAmount: 0,
+            avgUnitCost: 0,
+            totalIn: 0,
+            totalOut: 0,
+            createdAt: '',
+            updatedAt: '',
+          };
+          bySku.set(skuKey, product);
+        }
+
+        // Opening stock: only if still empty (seed creates catalog-only rows otherwise).
+        if (product.onHandQty <= 0 && seed.initialQty > 0) {
+          const unitCostCents = Math.round(seed.initialUnitCost * 100);
+          await addMovement({
+            productId: product.id,
+            productName: product.name,
+            type: 'stock_in',
+            quantity: seed.initialQty,
+            unitCost: unitCostCents,
+            totalCost: unitCostCents * seed.initialQty,
+            date: today,
+            note: t('invSeedOpeningNote') || 'Opening stock (café starters)',
+          });
+          stockFilled += 1;
+        }
+      }
+
+      if (productsAdded === 0 && stockFilled === 0) {
+        toast.success(t('invSeedAlready') || 'Starter products already in catalog');
+      } else {
+        toast.success(
+          (t('invSeedSuccessStock') || 'Added {p} products · opening stock on {s}')
+            .replace('{p}', String(productsAdded))
+            .replace('{s}', String(stockFilled))
+        );
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setSeeding(false);
     }
-  }, [addProduct, products, t]);
+  }, [addProduct, addMovement, products, t]);
+
+  const needsOpeningStock = useMemo(
+    () =>
+      RESTAURANT_CAFE_SEED_PRODUCTS.some((seed) => {
+        const p = products.find(
+          (x) => (x.sku || '').toLowerCase() === seed.sku.toLowerCase() && !x.archived
+        );
+        return p != null && p.onHandQty <= 0;
+      }),
+    [products],
+  );
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -164,6 +224,19 @@ export function InventoryPanel() {
             <div className="text-sm font-semibold text-cdlp-white">{fmtMoney(totalValuation)}</div>
             <div className="text-[10px] text-cdlp-muted">1200 · {t('invStockAssetLine') || 'Inventories'}</div>
           </div>
+          {needsOpeningStock ? (
+            <button
+              type="button"
+              disabled={seeding}
+              onClick={() => void seedCafeCatalog()}
+              className="ba-btn ba-btn-primary flex items-center gap-1.5 text-sm"
+            >
+              <Sparkles className="w-4 h-4" />
+              {seeding
+                ? t('invSaving')
+                : t('invSeedOpeningStock') || 'Load opening stock'}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setShowArchived((v) => !v)}
