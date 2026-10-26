@@ -25,23 +25,24 @@ Do not hardcode Louise’s email in the repo — use env, Firestore beta, admin 
 
 ## Data model (Firestore)
 
-Collections live next to expenses, scoped by `restaurantId` (workspace owner uid). Same ownership rules as other restaurant collections. UK UAT uses the isolated `admin-uk-uat` database.
+Collections live next to expenses, scoped by `restaurantId` (workspace owner uid) **and `sessionId`** (current session). Each session has its own catalog, movements, and POS recipes — New Session starts empty. Legacy rows without `sessionId` are hidden. Master Reset and session delete wipe inventory collections. UK UAT uses the isolated `admin-uk-uat` database.
 
 ### `inventory_products/{id}`
 
 | Field | Meaning |
 | --- | --- |
 | restaurantId | Workspace owner |
+| sessionId | Session this product belongs to (required on new writes) |
 | name, sku, unit | Catalog |
 | category, subcategory | Optional; presets by business type (restaurant, garage, retail, general) |
 | minStockLevel | Optional low-stock alert |
 | archived | Soft hide |
 
-On-hand qty and valuation are **derived from movements** (FIFO), not trusted as source of truth on the product doc.
+On-hand qty and valuation are **derived from movements** (FIFO), not trusted as source of truth on the product doc. The stock table allows inline edit of name / SKU / min stock and on-hand (on-hand posts an `adjustment` movement).
 
 ### `inventory_movements/{id}`
 
-Append-only log:
+Session-scoped log (also stamped with `sessionId`):
 
 | type | Effect |
 | --- | --- |
@@ -50,9 +51,11 @@ Append-only log:
 | `stock_restore` | Reverse a cancelled / deleted sales invoice |
 | `adjustment` | Correction (positive adds a layer; negative consumes FIFO) |
 
-Costs are stored in **cents**. FIFO consumes oldest `stock_in` / `stock_restore` layers first. Reporting currency (CHF or GBP) is `valuationCents / 100`.
+Costs are stored in **cents**. FIFO consumes oldest `stock_in` / `stock_restore` layers first. Reporting currency (CHF or GBP) is `valuationCents / 100`. Single movements can be deleted from the product history row.
 
-Indexes: `restaurantId` + `name` (products), `restaurantId` + `date` (movements). Queries currently filter by `restaurantId` only and sort in the client so missing indexes do not break the tab.
+Indexes: `restaurantId` + `name` / `sessionId` (products), `restaurantId` + `date` / `sessionId` (movements). Client filters by session so missing composite indexes do not break the tab.
+
+Dashboard: Income | Expenses | Inventory product-card column (when inventory gate is on). Reports show session stock asset (1200) plus period FIFO COGS / food-cost %.
 
 ## Flows
 

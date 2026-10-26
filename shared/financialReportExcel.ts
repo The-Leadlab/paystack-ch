@@ -24,6 +24,8 @@ export type ServerExcelReportInput = {
   locale: ReportExportLocale;
   currency?: string;
   inventoryValuation?: number;
+  inventoryCogs?: number;
+  inventoryFoodCostPercent?: number;
 };
 
 function money(n: unknown): number {
@@ -106,6 +108,12 @@ export function buildFinancialReportExcelBuffer(input: ServerExcelReportInput): 
           [],
           [L.stockAsset1200, round2(input.inventoryValuation), currency],
           [L.stockAssetHint],
+          ...(typeof input.inventoryCogs === "number"
+            ? [["Period COGS (FIFO)", round2(input.inventoryCogs), currency]]
+            : []),
+          ...(typeof input.inventoryFoodCostPercent === "number"
+            ? [["Food cost %", round2(input.inventoryFoodCostPercent), "%"]]
+            : []),
         ]
       : []),
   ];

@@ -87,6 +87,10 @@ export interface ReportData {
   documents?: ProcessedDocument[];
   /** FIFO inventory valuation in reporting currency (konto 1200). Omitted when the inventory tab is hidden. */
   inventoryValuation?: number;
+  /** Period FIFO cost of goods sold in reporting currency. */
+  inventoryCogs?: number;
+  /** Food-cost % for the filtered period (COGS / income). */
+  inventoryFoodCostPercent?: number;
 }
 
 export type SwissVatPeriodMode = 'month' | 'semester' | 'year' | 'allYears';
@@ -291,6 +295,12 @@ export const exportFinancialReportExcel = (data: ReportData) => {
           [],
           [L.stockAsset1200, round2(data.inventoryValuation), currency],
           [L.stockAssetHint],
+          ...(typeof data.inventoryCogs === 'number'
+            ? [['Period COGS (FIFO)', round2(data.inventoryCogs), currency]]
+            : []),
+          ...(typeof data.inventoryFoodCostPercent === 'number'
+            ? [['Food cost %', round2(data.inventoryFoodCostPercent), '%']]
+            : []),
         ]
       : []),
   ];
@@ -476,6 +486,8 @@ export const exportToPDF = async (data: ReportData) => {
     labelIncomeType: data.labelIncomeType,
     includeLedger: data.includeLedger,
     inventoryValuation: data.inventoryValuation,
+    inventoryCogs: data.inventoryCogs,
+    inventoryFoodCostPercent: data.inventoryFoodCostPercent,
     currency: data.currency,
   });
 

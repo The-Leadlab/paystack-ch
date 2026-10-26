@@ -49,6 +49,7 @@ export function InventoryPanel() {
     deleteProduct,
     addMovement,
     addMovementsBatch,
+    deleteMovement,
     addRecipe,
     deleteRecipe,
     totalValuation,
@@ -65,6 +66,97 @@ export function InventoryPanel() {
   const [businessType, setBusinessType] = useState<string>('restaurant');
   const [showArchived, setShowArchived] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  /** Inline cell drafts: productId → field → raw string */
+  const [inlineDrafts, setInlineDrafts] = useState<
+    Record<string, Partial<{ name: string; sku: string; minStock: string; onHand: string }>>
+  >({});
+
+  const patchInline = (productId: string, field: 'name' | 'sku' | 'minStock' | 'onHand', value: string) => {
+    setInlineDrafts((prev) => ({
+      ...prev,
+      [productId]: { ...prev[productId], [field]: value },
+    }));
+  };
+
+  const clearInlineField = (productId: string, field: 'name' | 'sku' | 'minStock' | 'onHand') => {
+    setInlineDrafts((prev) => {
+      const next = { ...prev[productId] };
+      delete next[field];
+      const rest = { ...prev };
+      if (Object.keys(next).length === 0) delete rest[productId];
+      else rest[productId] = next;
+      return rest;
+    });
+  };
+
+  const commitNameSkuMin = async (
+    p: InventoryProductSummary,
+    field: 'name' | 'sku' | 'minStock',
+  ) => {
+    const draft = inlineDrafts[p.id]?.[field];
+    if (draft === undefined) return;
+    try {
+      if (field === 'name') {
+        const name = draft.trim();
+        if (!name || name === p.name) {
+          clearInlineField(p.id, field);
+          return;
+        }
+        await updateProduct(p.id, { name });
+      } else if (field === 'sku') {
+        const sku = draft.trim();
+        if ((sku || undefined) === (p.sku || undefined)) {
+          clearInlineField(p.id, field);
+          return;
+        }
+        await updateProduct(p.id, { sku: sku || undefined });
+      } else {
+        const n = draft.trim() === '' ? undefined : Number(draft.replace(',', '.'));
+        if (n !== undefined && !Number.isFinite(n)) {
+          toast.error(t('invOnHandInvalid') || 'Enter a valid number');
+          return;
+        }
+        if (n === p.minStockLevel || (n == null && p.minStockLevel == null)) {
+          clearInlineField(p.id, field);
+          return;
+        }
+        await updateProduct(p.id, { minStockLevel: n });
+      }
+      clearInlineField(p.id, field);
+      toast.success(t('invInlineSaved') || 'Saved');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const commitOnHand = async (p: InventoryProductSummary) => {
+    const draft = inlineDrafts[p.id]?.onHand;
+    if (draft === undefined) return;
+    const target = Number(String(draft).replace(',', '.'));
+    if (!Number.isFinite(target) || target < 0) {
+      toast.error(t('invOnHandInvalid') || 'Enter a valid non-negative quantity');
+      return;
+    }
+    const delta = target - p.onHandQty;
+    if (Math.abs(delta) < 1e-9) {
+      clearInlineField(p.id, 'onHand');
+      return;
+    }
+    try {
+      await addMovement({
+        productId: p.id,
+        productName: p.name,
+        type: 'adjustment',
+        quantity: delta,
+        date: new Date().toISOString().slice(0, 10),
+        note: t('invOnHandAdjustNote') || 'On-hand edit from stock table',
+      });
+      clearInlineField(p.id, 'onHand');
+      toast.success(t('invInlineSaved') || 'Saved');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  };
 
   const filteredProducts = useMemo(() => {
     let result = products.filter((p) => (showArchived ? Boolean(p.archived) : !p.archived));
@@ -120,6 +212,7 @@ export function InventoryPanel() {
           product = {
             id,
             restaurantId: '',
+            sessionId: '',
             name: seed.name,
             sku: seed.sku,
             unit: seed.unit,
@@ -345,6 +438,8 @@ export function InventoryPanel() {
             <thead>
               <tr className="border-b border-cdlp-border bg-cdlp-card/50">
                 <th className="text-left px-3 py-2 text-cdlp-muted font-medium">{t('invColProduct')}</th>
+                <th className="text-right px-3 py-2 text-cdlp-muted font-medium hidden md:table-cell">{t('invColSku') || 'SKU'}</th>
+                <th className="text-right px-3 py-2 text-cdlp-muted font-medium hidden lg:table-cell">{t('invColMinStock') || 'Min'}</th>
                 <th className="text-right px-3 py-2 text-cdlp-muted font-medium hidden sm:table-cell">{t('invColCategory')}</th>
                 <th className="text-right px-3 py-2 text-cdlp-muted font-medium">{t('invColQtyIn')}</th>
                 <th className="text-right px-3 py-2 text-cdlp-muted font-medium">{t('invColQtyOut')}</th>
@@ -358,30 +453,91 @@ export function InventoryPanel() {
               {filteredProducts.map((p) => (
                 <React.Fragment key={p.id}>
                   <tr
-                    className="border-b border-cdlp-border/50 hover:bg-cdlp-card/30 cursor-pointer"
-                    onClick={() => setExpandedProduct(expandedProduct === p.id ? null : p.id)}
+                    className="border-b border-cdlp-border/50 hover:bg-cdlp-card/30"
                   >
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
-                        {expandedProduct === p.id ? (
-                          <ChevronUp className="w-3.5 h-3.5 text-cdlp-muted shrink-0" />
-                        ) : (
-                          <ChevronDown className="w-3.5 h-3.5 text-cdlp-muted shrink-0" />
-                        )}
-                        <div>
-                          <span className="text-cdlp-white font-medium">{p.name}</span>
-                          {p.sku && <span className="text-cdlp-muted text-xs ml-1.5">({p.sku})</span>}
+                        <button
+                          type="button"
+                          className="shrink-0 text-cdlp-muted"
+                          onClick={() => setExpandedProduct(expandedProduct === p.id ? null : p.id)}
+                          aria-label={t('invMovementHistory') || 'History'}
+                        >
+                          {expandedProduct === p.id ? (
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          ) : (
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <input
+                            type="text"
+                            className="ba-verify-field text-xs w-full font-medium"
+                            value={inlineDrafts[p.id]?.name ?? p.name}
+                            onChange={(e) => patchInline(p.id, 'name', e.target.value)}
+                            onBlur={() => void commitNameSkuMin(p, 'name')}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                            }}
+                            aria-label={t('invColProduct') || 'Product'}
+                          />
                           {p.minStockLevel != null && p.onHandQty <= p.minStockLevel && (
                             <AlertTriangle className="w-3 h-3 text-amber-400 inline ml-1" />
                           )}
                         </div>
                       </div>
                     </td>
+                    <td className="text-right px-3 py-2 hidden md:table-cell">
+                      <input
+                        type="text"
+                        className="ba-verify-field text-xs w-full text-right"
+                        value={inlineDrafts[p.id]?.sku ?? p.sku ?? ''}
+                        placeholder="—"
+                        onChange={(e) => patchInline(p.id, 'sku', e.target.value)}
+                        onBlur={() => void commitNameSkuMin(p, 'sku')}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                        }}
+                        aria-label={t('invColSku') || 'SKU'}
+                      />
+                    </td>
+                    <td className="text-right px-3 py-2 hidden lg:table-cell">
+                      <input
+                        type="number"
+                        className="ba-verify-field text-xs w-16 ml-auto text-right"
+                        value={
+                          inlineDrafts[p.id]?.minStock ??
+                          (p.minStockLevel != null ? String(p.minStockLevel) : '')
+                        }
+                        onChange={(e) => patchInline(p.id, 'minStock', e.target.value)}
+                        onBlur={() => void commitNameSkuMin(p, 'minStock')}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                        }}
+                        aria-label={t('invColMinStock') || 'Min stock'}
+                      />
+                    </td>
                     <td className="text-right px-3 py-2 text-cdlp-muted hidden sm:table-cell">{p.category || '—'}</td>
                     <td className="text-right px-3 py-2 text-green-400">{p.totalIn}</td>
                     <td className="text-right px-3 py-2 text-red-400">{p.totalOut}</td>
                     <td className="text-right px-3 py-2 text-cdlp-white font-semibold">
-                      {p.onHandQty} <span className="text-cdlp-muted text-xs">{p.unit}</span>
+                      <div className="inline-flex items-center gap-1 justify-end">
+                        <input
+                          type="number"
+                          step="any"
+                          min={0}
+                          className="ba-verify-field text-xs w-20 text-right font-semibold"
+                          value={inlineDrafts[p.id]?.onHand ?? String(p.onHandQty)}
+                          onChange={(e) => patchInline(p.id, 'onHand', e.target.value)}
+                          onBlur={() => void commitOnHand(p)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                          }}
+                          title={t('invOnHandEditHint') || 'Edit on-hand — posts an adjustment movement'}
+                          aria-label={t('invColOnHand') || 'On hand'}
+                        />
+                        <span className="text-cdlp-muted text-xs">{p.unit}</span>
+                      </div>
                     </td>
                     <td className="text-right px-3 py-2 text-cdlp-muted hidden sm:table-cell">{fmtMoney(Math.round(p.avgUnitCost))}</td>
                     <td className="text-right px-3 py-2 text-cdlp-white">{fmtMoney(Math.round(p.valuationAmount))}</td>
@@ -442,11 +598,20 @@ export function InventoryPanel() {
                   </tr>
                   {expandedProduct === p.id && (
                     <tr>
-                      <td colSpan={8} className="bg-cdlp-card/20 px-4 py-3">
+                      <td colSpan={10} className="bg-cdlp-card/20 px-4 py-3">
                         <ProductMovementHistory
                           productId={p.id}
                           movements={movements}
                           fmtMoney={fmtMoney}
+                          onDeleteMovement={async (id) => {
+                            if (!confirm(t('invDeleteMovementConfirm') || 'Delete this movement?')) return;
+                            try {
+                              await deleteMovement(id);
+                              toast.success(t('invMovementDeleted') || 'Movement deleted');
+                            } catch (err) {
+                              toast.error(err instanceof Error ? err.message : String(err));
+                            }
+                          }}
                         />
                       </td>
                     </tr>
@@ -545,7 +710,9 @@ function PosRecipesSection({
 }: {
   products: InventoryProductSummary[];
   recipes: InventoryPosRecipe[];
-  onAdd: (r: Omit<InventoryPosRecipe, 'id' | 'restaurantId' | 'createdAt' | 'updatedAt'>) => Promise<string>;
+  onAdd: (
+    r: Omit<InventoryPosRecipe, 'id' | 'restaurantId' | 'sessionId' | 'createdAt' | 'updatedAt'>,
+  ) => Promise<string>;
   onDelete: (id: string) => Promise<void>;
 }) {
   const { t } = useLanguage();
@@ -683,10 +850,12 @@ function ProductMovementHistory({
   productId,
   movements,
   fmtMoney,
+  onDeleteMovement,
 }: {
   productId: string;
   movements: { id: string; productId: string; type: MovementType; quantity: number; unitCost?: number; totalCost?: number; date: string; note?: string; invoiceId?: string; documentId?: string }[];
   fmtMoney: (cents: number) => string;
+  onDeleteMovement?: (id: string) => void | Promise<void>;
 }) {
   const { t } = useLanguage();
   const pMovs = movements.filter((m) => m.productId === productId).sort((a, b) => b.date.localeCompare(a.date));
@@ -709,6 +878,16 @@ function ProductMovementHistory({
           {m.note && <span className="text-cdlp-muted truncate">{m.note}</span>}
           {m.invoiceId && <span className="text-blue-400 text-[10px]">Invoice</span>}
           {m.documentId && <span className="text-blue-400 text-[10px]">Document</span>}
+          {onDeleteMovement ? (
+            <button
+              type="button"
+              className="ml-auto text-red-400 hover:text-red-300 shrink-0"
+              title={t('invDeleteMovement') || 'Delete movement'}
+              onClick={() => void onDeleteMovement(m.id)}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          ) : null}
         </div>
       ))}
     </div>

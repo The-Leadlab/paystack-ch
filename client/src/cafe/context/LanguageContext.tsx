@@ -1230,13 +1230,13 @@ const translations = {
     alertDocumentDeleteFailed:
       'Could not fully delete this document. Linked income/expense rows may still exist — please refresh and try again.',
     alertMasterResetConfirm:
-      'MASTER RESET\n\nThis will permanently delete EVERYTHING:\n• All sessions\n• All income & expenses\n• All POS readings\n• All documents\n• All employees\n\nThis cannot be undone!\n\nAre you absolutely sure?',
+      'MASTER RESET\n\nThis will permanently delete EVERYTHING:\n• All sessions\n• All income & expenses\n• All POS readings\n• All documents\n• All employees\n• All inventory / stock (products, movements, POS recipes)\n\nThis cannot be undone!\n\nAre you absolutely sure?',
     alertMasterResetFinal:
       'FINAL WARNING\n\nYou are about to delete ALL data from the entire system.\n\nProceed only if you are certain.',
     alertMasterResetComplete: 'Master reset complete.\n\nDeleted {count} records.\n\nThe page will now reload.',
     alertMasterResetError: 'Error during master reset: {msg}',
     alertDeleteSessionConfirm:
-      'Delete this session and all its data (income, expenses, documents, POS readings)?',
+      'Delete this session and all its data (income, expenses, documents, POS readings, inventory)?',
     alertDeleteSessionError: 'Could not delete this session: {msg}',
     alertSelectSessionFirst: 'Please select a session first',
     alertDuplicateDocument:
@@ -2501,14 +2501,14 @@ const translations = {
     alertDocumentDeleteFailed:
       'Impossible de supprimer entièrement ce document. Des lignes revenus/dépenses liées peuvent subsister — actualisez et réessayez.',
     alertMasterResetConfirm:
-      'RÉINITIALISATION TOTALE\n\nCela supprimera DÉFINITIVEMENT TOUT :\n• Toutes les sessions\n• Tous les revenus et dépenses\n• Toutes les lectures POS\n• Tous les documents\n• Tous les employés\n\nAction irréversible !\n\nÊtes-vous absolument sûr ?',
+      'RÉINITIALISATION TOTALE\n\nCela supprimera DÉFINITIVEMENT TOUT :\n• Toutes les sessions\n• Tous les revenus et dépenses\n• Toutes les lectures POS\n• Tous les documents\n• Tous les employés\n• Tout le stock / inventaire (produits, mouvements, recettes POS)\n\nAction irréversible !\n\nÊtes-vous absolument sûr ?',
     alertMasterResetFinal:
       'DERNIER AVERTISSEMENT\n\nVous allez supprimer TOUTES les données du système.\n\nContinuez seulement si vous êtes certain.',
     alertMasterResetComplete:
       'Réinitialisation terminée.\n\n{count} enregistrements supprimés.\n\nLa page va se recharger.',
     alertMasterResetError: 'Erreur lors de la réinitialisation : {msg}',
     alertDeleteSessionConfirm:
-      'Supprimer cette session et toutes ses données (revenus, dépenses, documents, lectures POS) ?',
+      'Supprimer cette session et toutes ses données (revenus, dépenses, documents, lectures POS, inventaire) ?',
     alertDeleteSessionError: 'Impossible de supprimer cette session : {msg}',
     alertSelectSessionFirst: "Veuillez d'abord sélectionner une session",
     alertDuplicateDocument:

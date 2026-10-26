@@ -22,6 +22,8 @@ export type FinancialReportInput = {
   labelIncomeType?: (type: string) => string;
   includeLedger?: boolean;
   inventoryValuation?: number;
+  inventoryCogs?: number;
+  inventoryFoodCostPercent?: number;
   currency?: string;
 };
 
@@ -36,6 +38,8 @@ export function buildFinancialReportHtml(data: FinancialReportInput): string {
     sessionName,
     includeLedger = false,
     inventoryValuation,
+    inventoryCogs,
+    inventoryFoodCostPercent,
     currency,
   } = data;
   const locale = data.locale ?? "en";
@@ -215,6 +219,16 @@ export function buildFinancialReportHtml(data: FinancialReportInput): string {
     <div class="summary-item" style="text-align:left">
       <div class="summary-value neutral">${formatCHF(inventoryValuation)} ${moneySuffix}</div>
     </div>
+    ${
+      typeof inventoryCogs === "number"
+        ? `<p style="font-size:12px;margin-top:10px;">Period COGS (FIFO): <strong>${formatCHF(inventoryCogs)} ${moneySuffix}</strong></p>`
+        : ""
+    }
+    ${
+      typeof inventoryFoodCostPercent === "number"
+        ? `<p style="font-size:12px;margin-top:4px;">Food cost %: <strong>${inventoryFoodCostPercent.toFixed(1)}%</strong></p>`
+        : ""
+    }
   </div>
   `
       : ""

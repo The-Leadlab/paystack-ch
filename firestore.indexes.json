@@ -92,6 +92,14 @@
       ]
     },
     {
+      "collectionGroup": "inventory_products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "restaurantId", "order": "ASCENDING" },
+        { "fieldPath": "sessionId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "inventory_movements",
       "queryScope": "COLLECTION",
       "fields": [
@@ -100,11 +108,27 @@
       ]
     },
     {
+      "collectionGroup": "inventory_movements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "restaurantId", "order": "ASCENDING" },
+        { "fieldPath": "sessionId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "inventory_pos_recipes",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "restaurantId", "order": "ASCENDING" },
         { "fieldPath": "posName", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "inventory_pos_recipes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "restaurantId", "order": "ASCENDING" },
+        { "fieldPath": "sessionId", "order": "ASCENDING" }
       ]
     }
   ],

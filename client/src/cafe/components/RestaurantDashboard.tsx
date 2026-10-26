@@ -430,6 +430,18 @@ export function RestaurantDashboard() {
         await getDocs(query(c(db, 'documents'), w('restaurantId', '==', uid))),
         await getDocs(query(c(db, 'documents'), w('restaurant_id', '==', uid)))
       );
+      const invProductRefs = dedupeSnapshots(
+        await getDocs(query(c(db, 'inventory_products'), w('restaurantId', '==', uid))),
+        await getDocs(query(c(db, 'inventory_products'), w('restaurant_id', '==', uid)))
+      );
+      const invMovementRefs = dedupeSnapshots(
+        await getDocs(query(c(db, 'inventory_movements'), w('restaurantId', '==', uid))),
+        await getDocs(query(c(db, 'inventory_movements'), w('restaurant_id', '==', uid)))
+      );
+      const invRecipeRefs = dedupeSnapshots(
+        await getDocs(query(c(db, 'inventory_pos_recipes'), w('restaurantId', '==', uid))),
+        await getDocs(query(c(db, 'inventory_pos_recipes'), w('restaurant_id', '==', uid)))
+      );
 
       const allRefs = [
         ...sessionsRefs,
@@ -438,6 +450,9 @@ export function RestaurantDashboard() {
         ...expenseRefs,
         ...posRefs,
         ...docsRefs,
+        ...invProductRefs,
+        ...invMovementRefs,
+        ...invRecipeRefs,
       ];
 
       const deleteCount = await commitDeletesInChunks(db, allRefs);
@@ -1628,6 +1643,10 @@ export function RestaurantDashboard() {
                   <X className="w-4 h-4 text-red-500" />
                   <span>{t('dashAllEmployeesCount').replace('{n}', String(employees.length))}</span>
                 </li>
+                <li className="flex items-center gap-2">
+                  <X className="w-4 h-4 text-red-500" />
+                  <span>{t('dashAllInventory')}</span>
+                </li>
               </ul>
               <div className="bg-red-600/10 border border-red-600/30 rounded p-3 mt-4">
                 <p className="text-xs text-red-400 font-bold">{t('resetCannotUndo')}</p>
@@ -1788,6 +1807,132 @@ export function RestaurantDashboard() {
           </div>
         </>
       )}
+      </div>
+    </div>
+  );
+}
+
+/** Dashboard third column: session-scoped product cards (name, on-hand, value). */
+function InventoryDashboardSection({
+  onNavigateInventory,
+  t,
+}: {
+  onNavigateInventory?: () => void;
+  t: (key: string) => string;
+}) {
+  const inventory = useInventoryOptional();
+  const formatChf = useFormatChf();
+  const { currentSession } = useSession();
+  const [adding, setAdding] = React.useState(false);
+  const [newName, setNewName] = React.useState('');
+
+  if (!inventory) return null;
+
+  const products = inventory.products.filter((p) => !p.archived);
+
+  const handleAdd = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    if (!currentSession) {
+      alert(t('alertSelectSessionFirst'));
+      return;
+    }
+    setAdding(true);
+    try {
+      await inventory.addProduct({
+        name,
+        unit: 'pcs',
+        category: 'POS / Menu',
+      });
+      setNewName('');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  return (
+    <div className="ba-panel border-2 border-cdlp-border">
+      <div className="flex items-center justify-between mb-3 gap-2">
+        <h2 className="ba-section-title">{t('inventoryTab') || 'Inventory'}</h2>
+        <button
+          type="button"
+          onClick={() => void handleAdd()}
+          disabled={adding || !currentSession || !newName.trim()}
+          className="ba-section-add-btn ba-section-add-btn--income"
+        >
+          {t('invDashColAdd') || '+ ADD'}
+        </button>
+      </div>
+      <div className="mb-3 flex gap-2">
+        <input
+          type="text"
+          className="ba-verify-field text-xs flex-1"
+          placeholder={t('invDashColAddPlaceholder') || 'New product name…'}
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void handleAdd();
+          }}
+          disabled={!currentSession}
+        />
+      </div>
+      {products.length === 0 ? (
+        <p className="text-xs text-cdlp-muted py-4">
+          {t('invDashColEmpty') ||
+            'No stock in this session — Add above or Load opening stock on the Inventory tab.'}
+        </p>
+      ) : (
+        <div className="space-y-2 max-h-[28rem] overflow-y-auto pr-1">
+          {products.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-start justify-between gap-2 rounded-md border border-cdlp-border/80 bg-cdlp-bg/40 px-2.5 py-2"
+            >
+              <button
+                type="button"
+                className="min-w-0 flex-1 text-left"
+                onClick={() => onNavigateInventory?.()}
+              >
+                <div className="text-xs font-semibold text-cdlp-white truncate">{p.name}</div>
+                <div className="text-[10px] text-cdlp-muted mt-0.5">
+                  {(t('invDashColOnHand') || 'On hand')}:{' '}
+                  <span className="text-cdlp-white tabular-nums">
+                    {p.onHandQty.toLocaleString(undefined, { maximumFractionDigits: 3 })} {p.unit}
+                  </span>
+                </div>
+                <div className="text-[10px] text-cdlp-gold tabular-nums mt-0.5">
+                  {formatChf(valuationInCurrency(p.valuationAmount))}
+                </div>
+              </button>
+              <button
+                type="button"
+                className="text-[10px] uppercase text-red-400 hover:text-red-300 shrink-0"
+                onClick={() => {
+                  if (
+                    confirm(
+                      (t('invDashColDeleteConfirm') || 'Delete product “{name}” and its movements?').replace(
+                        '{name}',
+                        p.name
+                      )
+                    )
+                  ) {
+                    void inventory.deleteProduct(p.id);
+                  }
+                }}
+              >
+                {t('delete') || 'Delete'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="mt-3 pt-2 border-t border-cdlp-border/60 flex justify-between items-center text-[10px] uppercase tracking-wide text-cdlp-muted">
+        <span>{t('invDashStockAsset') || 'Stock asset (FIFO · 1200)'}</span>
+        <span className="text-cdlp-white tabular-nums font-semibold">
+          {formatChf(valuationInCurrency(inventory.totalValuation))}
+        </span>
       </div>
     </div>
   );
@@ -2450,8 +2595,12 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
 
       </div>
 
-      {/* Income & Expense Sections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+      {/* Income, Expense & Inventory Sections */}
+      <div
+        className={`grid grid-cols-1 gap-3 md:gap-4 ${
+          showInventory ? 'md:grid-cols-3' : 'md:grid-cols-2'
+        }`}
+      >
         {/* Income Section */}
         <IncomeExpenseSection
           title={t('income')}
@@ -2584,6 +2733,13 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
           }}
           t={t}
         />
+
+        {showInventory ? (
+          <InventoryDashboardSection
+            onNavigateInventory={() => onNavigateTab?.('inventory')}
+            t={t}
+          />
+        ) : null}
       </div>
     </>
   );
@@ -2696,6 +2852,16 @@ function ReportsPlaceholder({
       (e) => canonicalizeSupplierName(e.description, t('repUnknown')) === supplierFilter
     );
   }
+
+  const periodCogsCents = showInventoryAsset && inventory
+    ? periodFifoCogsCents(inventory.movements, {
+        fromDate: dateFrom || undefined,
+        toDate: dateTo || undefined,
+      })
+    : 0;
+  const periodCogsCurrency = valuationInCurrency(periodCogsCents);
+  const periodIncomeSum = dateFilteredIncome.reduce((s, i) => s + (i.amount || 0), 0);
+  const periodFoodCostPct = foodCostPercent(periodCogsCents, periodIncomeSum);
 
   // Group by month — balance matches dashboard KPI (income − all expense categories)
   const monthlyData = React.useMemo(() => {
@@ -2857,6 +3023,8 @@ function ReportsPlaceholder({
     currency: (currencySuffix || '').trim() || (isUkFiscal ? 'GBP' : 'CHF'),
     documents: reportDocuments,
     inventoryValuation: showInventoryAsset ? stockValue : undefined,
+    inventoryCogs: showInventoryAsset ? periodCogsCurrency : undefined,
+    inventoryFoodCostPercent: showInventoryAsset ? periodFoodCostPct ?? undefined : undefined,
   });
 
   const handleExport = (format: 'csv' | 'pdf') => {
@@ -3041,20 +3209,44 @@ function ReportsPlaceholder({
       </div>
 
       {showInventoryAsset ? (
-        <div className="ba-panel">
-          <h3 className="text-sm font-bold text-cdlp-gold uppercase mb-1">
-            {t('invBalanceSheetTitle') || 'Balance sheet — stock asset'}
-          </h3>
-          <p className="text-xs text-cdlp-muted mb-3">
-            {t('invBalanceSheetHint') ||
-              'FIFO inventory value is reported as konto 1200 (Inventories of commercial products). VAT statement is unchanged.'}
-          </p>
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="text-xs uppercase text-cdlp-muted">1200 · {t('invStockAssetLine') || 'Inventories'}</span>
-            <span className="text-lg font-semibold tabular-nums text-cdlp-white">
-              {stockValue.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              {currencySuffix}
-            </span>
+        <div className="ba-panel space-y-3">
+          <div>
+            <h3 className="text-sm font-bold text-cdlp-gold uppercase mb-1">
+              {t('invBalanceSheetTitle') || 'Balance sheet — stock asset'}
+            </h3>
+            <p className="text-xs text-cdlp-muted mb-3">
+              {t('invBalanceSheetHint') ||
+                'FIFO inventory value is reported as konto 1200 (Inventories of commercial products). VAT statement is unchanged.'}
+            </p>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-xs uppercase text-cdlp-muted">1200 · {t('invStockAssetLine') || 'Inventories'}</span>
+              <span className="text-lg font-semibold tabular-nums text-cdlp-white">
+                {stockValue.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {currencySuffix}
+              </span>
+            </div>
+          </div>
+          <div className="border-t border-cdlp-border/60 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <p className="text-[10px] uppercase text-cdlp-muted mb-1">
+                {t('invRepPeriodCogs') || 'Period COGS (FIFO)'}
+              </p>
+              <p className="text-base font-semibold tabular-nums text-cdlp-white">
+                {periodCogsCurrency.toLocaleString(moneyLocale, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+                {currencySuffix}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase text-cdlp-muted mb-1">
+                {t('invDashFoodCost') || 'Food cost (FIFO outs / income)'}
+              </p>
+              <p className="text-base font-semibold tabular-nums text-cdlp-white">
+                {periodFoodCostPct != null ? `${periodFoodCostPct.toFixed(1)}%` : '—'}
+              </p>
+            </div>
           </div>
         </div>
       ) : null}
@@ -3347,7 +3539,7 @@ function ReportsPlaceholder({
                       {data.balance.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{currencySuffix}
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 gap-4 text-xs">
+                  <div className={`grid gap-4 text-xs ${showInventoryAsset ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`}>
                     <div>
                       <p className="text-cdlp-muted uppercase mb-1">{t('repIncome')}</p>
                       <p className="font-bold text-emerald-500">{data.income.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
@@ -3362,10 +3554,33 @@ function ReportsPlaceholder({
                         {data.balance.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
+                    {showInventoryAsset ? (
+                      <div>
+                        <p className="text-cdlp-muted uppercase mb-1">{t('inventoryTab') || 'Inventory'}</p>
+                        <p className="font-bold text-cdlp-gold tabular-nums">
+                          {stockValue.toLocaleString(chfLocale, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               );
             })}
+            {showInventoryAsset ? (
+              <p className="text-[11px] text-cdlp-muted pt-1">
+                {(t('invRepMonthlyStockNote') ||
+                  'Stock asset (session): {stock}. Period COGS: {cogs}.').replace(
+                  '{stock}',
+                  `${stockValue.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${currencySuffix}`
+                ).replace(
+                  '{cogs}',
+                  `${periodCogsCurrency.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${currencySuffix}`
+                )}
+              </p>
+            ) : null}
           </div>
         )}
       </div>

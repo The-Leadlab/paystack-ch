@@ -22,7 +22,15 @@ const SESSIONS_COLLECTION = 'sessions';
 const LAST_SESSION_KEY = 'cdlp_last_session_id';
 const OWNER_FIELDS = ['restaurantId', 'restaurant_id'] as const;
 const SESSION_FIELDS = ['sessionId', 'session_id'] as const;
-const SESSION_CHILD_COLLECTIONS = ['income', 'expenses', 'pos_readings', 'documents'] as const;
+const SESSION_CHILD_COLLECTIONS = [
+  'income',
+  'expenses',
+  'pos_readings',
+  'documents',
+  'inventory_products',
+  'inventory_movements',
+  'inventory_pos_recipes',
+] as const;
 
 function docBelongsToUser(data: Record<string, unknown>, uid: string): boolean {
   return OWNER_FIELDS.some((field) => data[field] === uid);

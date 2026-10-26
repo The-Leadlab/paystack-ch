@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useWorkspace } from './WorkspaceContext';
+import { useSession } from './SessionContext';
 import type {
   InventoryProduct,
   InventoryMovement,
@@ -20,20 +21,55 @@ import type {
 } from '../types/inventory';
 import { computeFifo, type FifoMovement } from '@shared/inventoryFifo';
 
+function rowSessionId(data: { sessionId?: string; session_id?: string } | null | undefined): string {
+  return String(data?.sessionId || data?.session_id || '').trim();
+}
+
+function belongsToSession(
+  data: { sessionId?: string; session_id?: string } | null | undefined,
+  sessionId: string,
+): boolean {
+  const sid = rowSessionId(data);
+  // Legacy rows without sessionId are hidden from every session.
+  return Boolean(sid) && sid === sessionId;
+}
+
 interface InventoryContextValue {
   products: InventoryProductSummary[];
   movements: InventoryMovement[];
   recipes: InventoryPosRecipe[];
   loading: boolean;
-  addProduct: (p: Omit<InventoryProduct, 'id' | 'restaurantId' | 'onHandQty' | 'valuationAmount' | 'avgUnitCost' | 'createdAt' | 'updatedAt'>) => Promise<string>;
+  addProduct: (
+    p: Omit<
+      InventoryProduct,
+      | 'id'
+      | 'restaurantId'
+      | 'sessionId'
+      | 'onHandQty'
+      | 'valuationAmount'
+      | 'avgUnitCost'
+      | 'createdAt'
+      | 'updatedAt'
+    >,
+  ) => Promise<string>;
   updateProduct: (id: string, updates: Partial<InventoryProduct>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
-  addMovement: (m: Omit<InventoryMovement, 'id' | 'restaurantId' | 'createdAt'>) => Promise<string>;
-  addMovementsBatch: (ms: Omit<InventoryMovement, 'id' | 'restaurantId' | 'createdAt'>[]) => Promise<void>;
+  addMovement: (
+    m: Omit<InventoryMovement, 'id' | 'restaurantId' | 'sessionId' | 'createdAt'>,
+  ) => Promise<string>;
+  addMovementsBatch: (
+    ms: Omit<InventoryMovement, 'id' | 'restaurantId' | 'sessionId' | 'createdAt'>[],
+  ) => Promise<void>;
+  deleteMovement: (id: string) => Promise<void>;
   deleteMovementsByInvoice: (invoiceId: string) => Promise<number>;
   deleteMovementsByDocument: (documentId: string) => Promise<number>;
-  addRecipe: (r: Omit<InventoryPosRecipe, 'id' | 'restaurantId' | 'createdAt' | 'updatedAt'>) => Promise<string>;
-  updateRecipe: (id: string, updates: Partial<Pick<InventoryPosRecipe, 'posName' | 'productId' | 'qtyPerUnit'>>) => Promise<void>;
+  addRecipe: (
+    r: Omit<InventoryPosRecipe, 'id' | 'restaurantId' | 'sessionId' | 'createdAt' | 'updatedAt'>,
+  ) => Promise<string>;
+  updateRecipe: (
+    id: string,
+    updates: Partial<Pick<InventoryPosRecipe, 'posName' | 'productId' | 'qtyPerUnit'>>,
+  ) => Promise<void>;
   deleteRecipe: (id: string) => Promise<void>;
   totalValuation: number;
 }
@@ -42,13 +78,15 @@ const InventoryContext = createContext<InventoryContextValue | null>(null);
 
 export function InventoryProvider({ children }: { children: React.ReactNode }) {
   const { dataOwnerUid } = useWorkspace();
+  const { currentSession } = useSession();
+  const sessionId = currentSession?.id ?? null;
   const [products, setProducts] = useState<InventoryProduct[]>([]);
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [recipes, setRecipes] = useState<InventoryPosRecipe[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!db || !dataOwnerUid) {
+    if (!db || !dataOwnerUid || !sessionId) {
       setProducts([]);
       setMovements([]);
       setRecipes([]);
@@ -61,11 +99,9 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       loadCount++;
       if (loadCount >= 3) setLoading(false);
     };
+    setLoading(true);
+    loadCount = 0;
 
-    const pQ = query(
-      collection(db, 'inventory_products'),
-      where('restaurantId', '==', dataOwnerUid),
-    );
     const onPermError = (err: unknown) => {
       const code = (err as { code?: string })?.code || '';
       if (code === 'permission-denied') {
@@ -77,45 +113,48 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       checkDone();
     };
 
-    const unsub1 = onSnapshot(
-      pQ,
-      (snap) => {
-        const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() } as InventoryProduct));
-        rows.sort((a, b) => a.name.localeCompare(b.name));
-        setProducts(rows);
-        checkDone();
-      },
-      onPermError,
-    );
+    // Prefer restaurantId + sessionId; fall back to restaurantId-only + client filter
+    // when the composite index is not yet deployed.
+    const subscribeCollection = <T extends InventoryProduct | InventoryMovement | InventoryPosRecipe>(
+      collectionName: string,
+      setRows: (rows: T[]) => void,
+      sortFn: (a: T, b: T) => number,
+    ) => {
+      const restaurantQ = query(
+        collection(db!, collectionName),
+        where('restaurantId', '==', dataOwnerUid),
+      );
 
-    const mQ = query(
-      collection(db, 'inventory_movements'),
-      where('restaurantId', '==', dataOwnerUid),
-    );
-    const unsub2 = onSnapshot(
-      mQ,
-      (snap) => {
-        const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() } as InventoryMovement));
-        rows.sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
-        setMovements(rows);
-        checkDone();
-      },
-      onPermError,
-    );
+      // Client-filter by sessionId so legacy unscoped rows stay hidden and
+      // missing composite indexes do not break the tab.
+      return onSnapshot(
+        restaurantQ,
+        (snap) => {
+          const rows = snap.docs
+            .map((d) => ({ id: d.id, ...d.data() } as T))
+            .filter((row) => belongsToSession(row as { sessionId?: string }, sessionId));
+          rows.sort(sortFn);
+          setRows(rows);
+          checkDone();
+        },
+        onPermError,
+      );
+    };
 
-    const rQ = query(
-      collection(db, 'inventory_pos_recipes'),
-      where('restaurantId', '==', dataOwnerUid),
+    const unsub1 = subscribeCollection<InventoryProduct>(
+      'inventory_products',
+      setProducts,
+      (a, b) => a.name.localeCompare(b.name),
     );
-    const unsub3 = onSnapshot(
-      rQ,
-      (snap) => {
-        const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() } as InventoryPosRecipe));
-        rows.sort((a, b) => a.posName.localeCompare(b.posName));
-        setRecipes(rows);
-        checkDone();
-      },
-      onPermError,
+    const unsub2 = subscribeCollection<InventoryMovement>(
+      'inventory_movements',
+      setMovements,
+      (a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt),
+    );
+    const unsub3 = subscribeCollection<InventoryPosRecipe>(
+      'inventory_pos_recipes',
+      setRecipes,
+      (a, b) => a.posName.localeCompare(b.posName),
     );
 
     return () => {
@@ -123,7 +162,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       unsub2();
       unsub3();
     };
-  }, [dataOwnerUid]);
+  }, [dataOwnerUid, sessionId]);
 
   const productSummaries = useMemo((): InventoryProductSummary[] => {
     const movsByProduct = new Map<string, InventoryMovement[]>();
@@ -166,18 +205,32 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     [productSummaries],
   );
 
+  const requireSession = useCallback(() => {
+    if (!db || !dataOwnerUid) throw new Error('Not authenticated');
+    if (!sessionId) throw new Error('No active session — create or select a session first');
+    return { sessionId, dataOwnerUid };
+  }, [dataOwnerUid, sessionId]);
+
   const addProduct = useCallback(
     async (
       p: Omit<
         InventoryProduct,
-        'id' | 'restaurantId' | 'onHandQty' | 'valuationAmount' | 'avgUnitCost' | 'createdAt' | 'updatedAt'
+        | 'id'
+        | 'restaurantId'
+        | 'sessionId'
+        | 'onHandQty'
+        | 'valuationAmount'
+        | 'avgUnitCost'
+        | 'createdAt'
+        | 'updatedAt'
       >,
     ) => {
-      if (!db || !dataOwnerUid) throw new Error('Not authenticated');
+      const { sessionId: sid, dataOwnerUid: uid } = requireSession();
       const now = new Date().toISOString();
-      const ref = await addDoc(collection(db, 'inventory_products'), {
+      const ref = await addDoc(collection(db!, 'inventory_products'), {
         ...p,
-        restaurantId: dataOwnerUid,
+        restaurantId: uid,
+        sessionId: sid,
         onHandQty: 0,
         valuationAmount: 0,
         avgUnitCost: 0,
@@ -186,13 +239,14 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       });
       return ref.id;
     },
-    [dataOwnerUid],
+    [requireSession],
   );
 
   const updateProduct = useCallback(async (id: string, updates: Partial<InventoryProduct>) => {
     if (!db) return;
+    const { id: _id, restaurantId: _r, sessionId: _s, ...safe } = updates as InventoryProduct;
     await updateDoc(doc(db, 'inventory_products', id), {
-      ...updates,
+      ...safe,
       updatedAt: new Date().toISOString(),
     });
   }, []);
@@ -216,31 +270,38 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addMovement = useCallback(
-    async (m: Omit<InventoryMovement, 'id' | 'restaurantId' | 'createdAt'>) => {
-      if (!db || !dataOwnerUid) throw new Error('Not authenticated');
-      const ref = await addDoc(collection(db, 'inventory_movements'), {
+    async (m: Omit<InventoryMovement, 'id' | 'restaurantId' | 'sessionId' | 'createdAt'>) => {
+      const { sessionId: sid, dataOwnerUid: uid } = requireSession();
+      const ref = await addDoc(collection(db!, 'inventory_movements'), {
         ...m,
-        restaurantId: dataOwnerUid,
+        restaurantId: uid,
+        sessionId: sid,
         createdAt: new Date().toISOString(),
       });
       return ref.id;
     },
-    [dataOwnerUid],
+    [requireSession],
   );
 
   const addMovementsBatch = useCallback(
-    async (ms: Omit<InventoryMovement, 'id' | 'restaurantId' | 'createdAt'>[]) => {
-      if (!db || !dataOwnerUid || ms.length === 0) return;
-      const batch = writeBatch(db);
+    async (ms: Omit<InventoryMovement, 'id' | 'restaurantId' | 'sessionId' | 'createdAt'>[]) => {
+      if (ms.length === 0) return;
+      const { sessionId: sid, dataOwnerUid: uid } = requireSession();
+      const batch = writeBatch(db!);
       const now = new Date().toISOString();
       for (const m of ms) {
-        const ref = doc(collection(db, 'inventory_movements'));
-        batch.set(ref, { ...m, restaurantId: dataOwnerUid, createdAt: now });
+        const ref = doc(collection(db!, 'inventory_movements'));
+        batch.set(ref, { ...m, restaurantId: uid, sessionId: sid, createdAt: now });
       }
       await batch.commit();
     },
-    [dataOwnerUid],
+    [requireSession],
   );
+
+  const deleteMovement = useCallback(async (id: string) => {
+    if (!db) return;
+    await deleteDoc(doc(db, 'inventory_movements', id));
+  }, []);
 
   const deleteMovementsByInvoice = useCallback(
     async (invoiceId: string) => {
@@ -273,20 +334,23 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addRecipe = useCallback(
-    async (r: Omit<InventoryPosRecipe, 'id' | 'restaurantId' | 'createdAt' | 'updatedAt'>) => {
-      if (!db || !dataOwnerUid) throw new Error('Not authenticated');
+    async (
+      r: Omit<InventoryPosRecipe, 'id' | 'restaurantId' | 'sessionId' | 'createdAt' | 'updatedAt'>,
+    ) => {
+      const { sessionId: sid, dataOwnerUid: uid } = requireSession();
       const now = new Date().toISOString();
-      const ref = await addDoc(collection(db, 'inventory_pos_recipes'), {
+      const ref = await addDoc(collection(db!, 'inventory_pos_recipes'), {
         posName: r.posName.trim(),
         productId: r.productId,
         qtyPerUnit: r.qtyPerUnit > 0 ? r.qtyPerUnit : 1,
-        restaurantId: dataOwnerUid,
+        restaurantId: uid,
+        sessionId: sid,
         createdAt: now,
         updatedAt: now,
       });
       return ref.id;
     },
-    [dataOwnerUid],
+    [requireSession],
   );
 
   const updateRecipe = useCallback(
@@ -299,7 +363,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       if (updates.posName != null) payload.posName = updates.posName.trim();
       if (updates.productId != null) payload.productId = updates.productId;
       if (updates.qtyPerUnit != null) payload.qtyPerUnit = updates.qtyPerUnit > 0 ? updates.qtyPerUnit : 1;
-      await updateDoc(doc(db, 'inventory_pos_recipes', id), payload);
+      await updateDoc(doc(db, 'inventory_pos_recipes', id), payload as Record<string, string | number>);
     },
     [],
   );
@@ -321,6 +385,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         deleteProduct,
         addMovement,
         addMovementsBatch,
+        deleteMovement,
         deleteMovementsByInvoice,
         deleteMovementsByDocument,
         addRecipe,

@@ -110,6 +110,8 @@ export const RESTAURANT_CAFE_SEED_PRODUCTS: Array<{
 export interface InventoryProduct {
   id: string;
   restaurantId: string;
+  /** Session this catalog row belongs to (required for new writes). */
+  sessionId: string;
   sku?: string;
   name: string;
   description?: string;
@@ -134,6 +136,8 @@ export type MovementType = 'stock_in' | 'stock_out' | 'adjustment' | 'stock_rest
 export interface InventoryMovement {
   id: string;
   restaurantId: string;
+  /** Session this movement belongs to (required for new writes). */
+  sessionId: string;
   productId: string;
   productName: string;
   type: MovementType;
@@ -155,6 +159,8 @@ export interface InventoryMovement {
 export interface InventoryPosRecipe {
   id: string;
   restaurantId: string;
+  /** Session this recipe belongs to (required for new writes). */
+  sessionId: string;
   /** Text as printed on the till / ticket (e.g. "Espresso"). */
   posName: string;
   productId: string;
