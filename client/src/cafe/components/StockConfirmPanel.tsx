@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Check, Construction, Package } from "lucide-react";
+import { Check, ChevronDown, Construction, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useInventoryOptional } from "../context/InventoryContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -36,6 +36,7 @@ export function StockConfirmPanel({
   const inventory = useInventoryOptional();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const products = inventory?.products ?? [];
   const [rows, setRows] = useState<SuggestedStockInLine[]>(() => buildRows(doc, products));
 
@@ -99,19 +100,44 @@ export function StockConfirmPanel({
     }
   };
 
+  const linkedCount = rows.filter((r) => r.productId).length;
+
   return (
     <div className="ba-panel space-y-3 mb-4">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2 text-sm font-semibold text-cdlp-white">
-          <Package className="w-4 h-4" />
-          {t("invStockConfirmTitle") || "Apply to stock"}
-        </div>
-        {alreadyApplied ? (
-          <span className="text-[10px] uppercase tracking-wide text-green-400">
-            {t("invStockAlreadyApplied") || "Already applied"}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 text-left"
+        aria-expanded={expanded}
+      >
+        <div className="flex items-center gap-2 text-sm font-semibold text-cdlp-white min-w-0">
+          <Package className="w-4 h-4 shrink-0" />
+          <span className="truncate">{t("invStockConfirmTitle") || "Apply to stock"}</span>
+          <span className="text-[10px] font-normal text-cdlp-muted shrink-0">
+            ({rows.length} {t("invStockLinesShort") || "lines"}
+            {linkedCount > 0 ? ` · ${linkedCount} ${t("invStockLinkedShort") || "linked"}` : ""})
           </span>
-        ) : null}
-      </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {alreadyApplied ? (
+            <span className="text-[10px] uppercase tracking-wide text-green-400">
+              {t("invStockAlreadyApplied") || "Already applied"}
+            </span>
+          ) : null}
+          <ChevronDown
+            className={`w-4 h-4 text-cdlp-muted transition-transform ${expanded ? "rotate-180" : ""}`}
+          />
+        </div>
+      </button>
+
+      {!expanded ? (
+        <p className="text-[11px] text-cdlp-muted">
+          {t("invStockCollapsedHint") || "Open to review AI stock lines, edit, then confirm — or leave as-is."}
+        </p>
+      ) : null}
+
+      {expanded ? (
+      <>
       <p className="text-xs text-cdlp-muted">
         {t("invStockConfirmHint") ||
           "Confirm the supplier invoice lines below to increase on-hand quantity. Unmatched lines stay skipped."}
@@ -234,6 +260,8 @@ export function StockConfirmPanel({
         ) : null}
       </div>
       {message ? <p className="text-xs text-cdlp-gold">{message}</p> : null}
+      </>
+      ) : null}
     </div>
   );
 }

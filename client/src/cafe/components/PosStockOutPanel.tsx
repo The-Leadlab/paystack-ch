@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Check, PackageMinus } from "lucide-react";
+import { Check, ChevronDown, PackageMinus } from "lucide-react";
 import { toast } from "sonner";
 import { useInventoryOptional } from "../context/InventoryContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -39,6 +39,7 @@ export function PosStockOutPanel({ doc }: { doc: ProcessedDocument }) {
   const inventory = useInventoryOptional();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const products = inventory?.products ?? [];
   const recipes = inventory?.recipes ?? [];
   const [rows, setRows] = useState<SuggestedStockOutLine[]>(() =>
@@ -111,19 +112,44 @@ export function PosStockOutPanel({ doc }: { doc: ProcessedDocument }) {
     }
   };
 
+  const linkedCount = rows.filter((r) => r.productId).length;
+
   return (
     <div className="ba-panel space-y-3 mb-4">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2 text-sm font-semibold text-cdlp-white">
-          <PackageMinus className="w-4 h-4" />
-          {t("invPosStockOutTitle") || "Apply POS stock-out"}
-        </div>
-        {alreadyApplied ? (
-          <span className="text-[10px] uppercase tracking-wide text-amber-400">
-            {t("invPosAlreadyApplied") || "Stock-out already applied"}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 text-left"
+        aria-expanded={expanded}
+      >
+        <div className="flex items-center gap-2 text-sm font-semibold text-cdlp-white min-w-0">
+          <PackageMinus className="w-4 h-4 shrink-0" />
+          <span className="truncate">{t("invPosStockOutTitle") || "Apply POS stock-out"}</span>
+          <span className="text-[10px] font-normal text-cdlp-muted shrink-0">
+            ({rows.length} {t("invStockLinesShort") || "lines"}
+            {linkedCount > 0 ? ` · ${linkedCount} ${t("invStockLinkedShort") || "linked"}` : ""})
           </span>
-        ) : null}
-      </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {alreadyApplied ? (
+            <span className="text-[10px] uppercase tracking-wide text-amber-400">
+              {t("invPosAlreadyApplied") || "Stock-out already applied"}
+            </span>
+          ) : null}
+          <ChevronDown
+            className={`w-4 h-4 text-cdlp-muted transition-transform ${expanded ? "rotate-180" : ""}`}
+          />
+        </div>
+      </button>
+
+      {!expanded ? (
+        <p className="text-[11px] text-cdlp-muted">
+          {t("invStockCollapsedHint") || "Open to review AI stock lines, edit, then confirm — or leave as-is."}
+        </p>
+      ) : null}
+
+      {expanded ? (
+      <>
       <p className="text-xs text-cdlp-muted">
         {t("invPosStockOutHint") ||
           "Confirm sold lines to decrease on-hand (FIFO). Map till names in Stock → POS recipes for coffee beans, milk, etc. Payment lines are skipped."}
@@ -266,6 +292,8 @@ export function PosStockOutPanel({ doc }: { doc: ProcessedDocument }) {
         ) : null}
       </div>
       {message ? <p className="text-xs text-cdlp-gold">{message}</p> : null}
+      </>
+      ) : null}
     </div>
   );
 }

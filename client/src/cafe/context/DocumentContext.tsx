@@ -29,6 +29,16 @@ function removeUndefinedDeep<T>(value: T): T {
   return value;
 }
 
+/** Prefer camelCase; accept legacy snake_case (same as income/expenses). */
+function resolveDocumentSessionId(data: Record<string, unknown> | null | undefined): string {
+  if (!data) return '';
+  const camel = data.sessionId;
+  const snake = data.session_id;
+  if (typeof camel === 'string' && camel) return camel;
+  if (typeof snake === 'string' && snake) return snake;
+  return '';
+}
+
 type DocumentContextValue = {
   documents: ProcessedDocument[];
   loading: boolean;
@@ -72,46 +82,55 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
       const docsRef = collection(db, 'documents');
       let snapshot;
 
-      if (isAllSessionsView) {
-        // Show all documents for this restaurant
-        console.log('Fetching ALL documents for restaurant');
-        try {
-          snapshot = await getDocs(query(docsRef, where('restaurantId', '==', uid), orderBy('created_at', 'desc')));
-        } catch (orderedErr: any) {
-          snapshot = await getDocs(query(docsRef, where('restaurantId', '==', uid)));
-          console.warn('Documents ordered query failed, using fallback query:', orderedErr?.code || orderedErr);
-        }
-      } else if (currentSession) {
-        // Show only documents for current session
-        console.log('Fetching documents for session:', currentSession.id);
-        try {
-          snapshot = await getDocs(
-            query(docsRef, where('restaurantId', '==', uid), where('session_id', '==', currentSession.id), orderBy('created_at', 'desc'))
-          );
-        } catch (orderedErr: any) {
-          snapshot = await getDocs(
-            query(docsRef, where('restaurantId', '==', uid), where('session_id', '==', currentSession.id))
-          );
-          console.warn('Session documents ordered query failed, using fallback query:', orderedErr?.code || orderedErr);
-        }
-      } else {
+      if (!isAllSessionsView && !currentSession) {
         console.log('No session selected, skipping fetch');
         setDocuments([]);
         setLoading(false);
         return;
       }
 
-      const rawDocs: ProcessedDocument[] = snapshot.docs.map((docSnap) => {
+      // Always load restaurant docs, then filter by session client-side.
+      // Avoids empty lists when Firestore only has `sessionId` (camelCase),
+      // composite indexes are missing, or team members hit query failures.
+      console.log(
+        isAllSessionsView
+          ? 'Fetching ALL documents for restaurant'
+          : `Fetching documents for session (client filter): ${currentSession!.id}`
+      );
+      try {
+        snapshot = await getDocs(query(docsRef, where('restaurantId', '==', uid), orderBy('created_at', 'desc')));
+      } catch (orderedErr: any) {
+        try {
+          snapshot = await getDocs(query(docsRef, where('restaurantId', '==', uid)));
+          console.warn('Documents ordered query failed, using fallback query:', orderedErr?.code || orderedErr);
+        } catch (fallbackErr: any) {
+          // Legacy docs may only have restaurant_id
+          snapshot = await getDocs(query(docsRef, where('restaurant_id', '==', uid)));
+          console.warn('Documents restaurantId query failed, trying restaurant_id:', fallbackErr?.code || fallbackErr);
+        }
+      }
+
+      let rawDocs: ProcessedDocument[] = snapshot.docs.map((docSnap) => {
         const data = docSnap.data() as Record<string, unknown>;
         const firestoreId = docSnap.id;
         const storedPersisted = data.persistedDocumentId;
+        const sessionResolved = resolveDocumentSessionId(data);
         return {
           ...data,
           id: firestoreId,
+          session_id: sessionResolved || (typeof data.session_id === 'string' ? data.session_id : undefined),
           persistedDocumentId:
             typeof storedPersisted === 'string' && storedPersisted.length > 0 ? storedPersisted : firestoreId,
         } as ProcessedDocument;
       });
+
+      if (!isAllSessionsView && currentSession) {
+        const sid = currentSession.id;
+        rawDocs = rawDocs.filter((d) => {
+          const docSid = resolveDocumentSessionId(d as unknown as Record<string, unknown>) || d.session_id || '';
+          return docSid === sid;
+        });
+      }
 
       const { keepers, duplicateIds } = dedupeProcessedDocuments(rawDocs);
       keepers.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
@@ -193,7 +212,9 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
           userId: uid,
           uid,
           // Prefer caller-supplied session (upload may finish after the user switched sessions).
+          // Write both field names so session filters work for members and legacy readers.
           session_id: (typeof document.session_id === 'string' && document.session_id) || sessionId,
+          sessionId: (typeof document.session_id === 'string' && document.session_id) || sessionId,
           created_at: new Date().toISOString(),
         };
 

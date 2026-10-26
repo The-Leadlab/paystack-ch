@@ -626,6 +626,10 @@ export const dashboardEn: Record<string, string> = {
     'Confirm the supplier invoice lines below to increase on-hand quantity. Unmatched lines stay skipped.',
   invStockEditHint:
     'AI suggested these values — edit any line, then confirm, or leave without applying.',
+  invStockCollapsedHint:
+    'Open to review AI stock lines, edit, then confirm — or leave as-is.',
+  invStockLinesShort: 'lines',
+  invStockLinkedShort: 'linked',
   invColLinkProduct: 'Product',
   invStockAlreadyApplied: 'Already applied',
   invMarkStockDocument: 'This is a stock / supplier inventory invoice',
@@ -1850,6 +1854,10 @@ export const dashboardFr: Record<string, string> = {
     'Confirmez les lignes de la facture fournisseur ci-dessous pour augmenter la quantité en stock. Les lignes non liées sont ignorées.',
   invStockEditHint:
     'Valeurs suggérées par l’IA — modifiez chaque ligne, puis confirmez, ou laissez sans appliquer.',
+  invStockCollapsedHint:
+    'Ouvrez pour revoir les lignes IA, modifier, puis confirmer — ou laissez tel quel.',
+  invStockLinesShort: 'lignes',
+  invStockLinkedShort: 'liées',
   invColLinkProduct: 'Produit',
   invStockAlreadyApplied: 'Déjà appliqué',
   invMarkStockDocument: 'Ceci est une facture de stock / fournisseur',
