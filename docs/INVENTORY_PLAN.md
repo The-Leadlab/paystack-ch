@@ -12,13 +12,14 @@ POS auto stock-out, barcode scanning, and multi-site warehouses are **Coming soo
 
 Hidden unless one of these is true:
 
-1. `VITE_INVENTORY_ENABLED=true` (master switch for demo week)
-2. Email on `VITE_INVENTORY_EMAILS` (comma-separated) or the built-in Ali allowlist (`ali@the-leadlab.com`)
-3. `users/{uid}.inventoryBeta === true`
-4. Admin app-access user
-5. UK UAT (`/admin-uk`) — Louise tests the same UI in GBP / UK VAT
+1. Built-in emails: `ali@the-leadlab.com`, `damien@the-leadlab.com` (Inventory sidebar tab in `/app`)
+2. `VITE_INVENTORY_ENABLED=true` (master switch for demo week)
+3. Email on `VITE_INVENTORY_EMAILS` (comma-separated extras)
+4. `users/{uid}.inventoryBeta === true`
+5. Admin app-access user
+6. UK UAT (`/admin-uk`) — Louise tests the same UI in GBP / UK VAT
 
-Do not hardcode Damien or Louise emails in the repo. Add them via env, the Firestore beta flag, admin access, or `/admin-uk`.
+Do not hardcode Louise’s email in the repo — use env, Firestore beta, admin access, or `/admin-uk`.
 
 ## Data model (Firestore)
 

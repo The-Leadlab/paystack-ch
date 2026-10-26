@@ -105,7 +105,7 @@ Competitor **bank synchronization / bLink / CSV import** is **out of scope** (`A
 | Item | Phase | Status |
 |------|-------|--------|
 | **Create your own invoice** (templates, numbering, recurring) | Phase 3 | **In progress — next** |
-| Inventory (FIFO/LIFO) | Phase 2 | **Pending** |
+| Inventory (FIFO/LIFO) | Phase 2 | **In progress** — gated tab on `/app` for Ali + Damien (`cursor/inventory-stock-feature-cc28` merged); not public |
 | Employee management (full) | Phase 2 | **Pending** |
 | Supplier management | Phase 2 | **Pending** |
 | Client & project management | Phase 3 | **Pending** |

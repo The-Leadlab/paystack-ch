@@ -7,11 +7,18 @@
  *   3. users/{uid}.inventoryBeta === true
  *   4. Admin app-access user
  *   5. UK UAT (`/admin-uk`) — Louise tests the same flag there
+ *
+ * Built-in tab access: Ali + Damien (sidebar Inventory tab in /app).
  */
 
 import { PERSONAL_DEV_ADMIN_EMAIL } from "./personalProductAccess.js";
 
-const BUILT_IN_INVENTORY_EMAILS = [PERSONAL_DEV_ADMIN_EMAIL];
+export const INVENTORY_DEV_EMAILS = [
+  PERSONAL_DEV_ADMIN_EMAIL,
+  "damien@the-leadlab.com",
+] as const;
+
+const BUILT_IN_INVENTORY_EMAILS = [...INVENTORY_DEV_EMAILS];
 
 export type InventoryAccessOpts = {
   inventoryBeta?: boolean;
