@@ -136,6 +136,14 @@ service cloud.firestore {
       );
       allow create: if createOwnedByUser();
     }
+    /** POS line → inventory product recipes (Phase 2 auto stock-out). */
+    match /inventory_pos_recipes/{id} {
+      allow read: if resourceOwnedByUser();
+      allow update, delete: if resourceOwnedByUser() && (
+        canWriteOwner(resource.data.restaurantId) || canWriteOwner(resource.data.restaurant_id)
+      );
+      allow create: if createOwnedByUser();
+    }
 
     /** Ali feature lab — pre-production competitor features (promote to /app when ready). */
     match /ali_lab_budgets/{id} {

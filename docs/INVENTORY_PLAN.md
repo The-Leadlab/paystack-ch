@@ -2,13 +2,13 @@
 
 For Ali to send Damien ahead of the 28 Oct presentation. Testable from 26 Oct behind a feature gate. Not shown to normal `/app` users.
 
-**Living super prompt:** [INVENTORY_SWISS_SUPER_PROMPT.md](./INVENTORY_SWISS_SUPER_PROMPT.md) — Phase 1 Swiss sync + manager controls; Phase 2 POS auto stock-out.
+**Living super prompt:** [INVENTORY_SWISS_SUPER_PROMPT.md](./INVENTORY_SWISS_SUPER_PROMPT.md) — Phase 1 Swiss sync + manager controls; Phase 2 POS ticket/Z2 stock-out + recipes (shipped).
 
 ## What this is
 
 A first slice of inventory for Swiss restaurant books (and the same flag on UK UAT for Louise). Products, quantities in/out/on hand, FIFO cost, sales-invoice stock-out, supplier-invoice stock-in with a manual confirm step, and a balance-sheet stock asset on konto **1200**. VAT flows are unchanged.
 
-POS auto stock-out, barcode scanning, and multi-site warehouses are **Coming soon** — they render as labelled placeholders, not broken screens.
+POS stock-out from itemized Ticket/Receipt / Z2 sheets + POS recipes is live (confirm panel). Aggregate Z-reading totals without articles still cannot auto-decrement. Barcode scanning and multi-site warehouses remain later.
 
 ## Who can see it
 

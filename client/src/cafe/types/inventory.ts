@@ -130,11 +130,24 @@ export interface InventoryMovement {
   totalCost?: number;
   /** Reference to a sales invoice id (stock_out from invoice). */
   invoiceId?: string;
-  /** Reference to a supplier document id (stock_in from document). */
+  /** Reference to a supplier or POS document id (stock_in / POS stock_out). */
   documentId?: string;
   note?: string;
   date: string;
   createdAt: string;
+}
+
+/** POS sold-item → inventory product recipe (Phase 2). */
+export interface InventoryPosRecipe {
+  id: string;
+  restaurantId: string;
+  /** Text as printed on the till / ticket (e.g. "Espresso"). */
+  posName: string;
+  productId: string;
+  /** Inventory units consumed per 1 sold unit. */
+  qtyPerUnit: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**

@@ -24,9 +24,16 @@ Visible when any of: `ali@the-leadlab.com`, `damien@the-leadlab.com`, `VITE_INVE
 - Dashboard KPI 1200 click-through, low-stock strip, food-cost %
 - Swiss workflow guide in UI (POS auto = Phase 2)
 
-## Phase 2 (later)
+## Phase 2 (shipped)
 
-- POS / Z-reading automatic `stock_out` (recipe → product qty)
+- POS Ticket/Receipt + Z2 itemized lines → Confirm stock-out (`PosStockOutPanel`)
+- Recipes: `inventory_pos_recipes` (till name → productId × qtyPerUnit)
+- Name/SKU fallback when no recipe; payment/till-total lines skipped
+- Document delete clears linked stock movements
+- Aggregate `pos_readings` Z-totals (no articles) still cannot auto-decrement alone
+
+## Later
+
 - Barcode, multi-site warehouses
 
 ## Key files
@@ -34,7 +41,8 @@ Visible when any of: `ali@the-leadlab.com`, `damien@the-leadlab.com`, `VITE_INVE
 - Gate: `shared/inventoryAccess.ts`, `client/src/cafe/hooks/useInventoryAllowed.ts`
 - FIFO: `shared/inventoryFifo.ts`
 - Stock docs: `shared/inventoryStock.ts`
-- UI: `InventoryPanel`, `StockConfirmPanel`, `InvoiceMakerPanel`, `RestaurantDashboard`
+- POS out: `shared/inventoryPosStock.ts`, `PosStockOutPanel`, `inventory_pos_recipes`
+- UI: `InventoryPanel`, `StockConfirmPanel`, `PosStockOutPanel`, `InvoiceMakerPanel`, `RestaurantDashboard`
 - Context: `InventoryContext.tsx`
 - Rules/indexes: `firestore.rules`, `firestore.indexes.json`
 - Tests: `test/inventoryFifo.test.ts`, `test/inventoryAccess.test.ts`

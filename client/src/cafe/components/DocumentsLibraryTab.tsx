@@ -32,8 +32,10 @@ import { documentTableDisplayAmount } from "../services/swissPayrollService";
 import { evaluateVatReview } from "../lib/vatReview";
 import { VerificationHub } from "./DocumentProcessor";
 import { StockConfirmPanel } from "./StockConfirmPanel";
+import { PosStockOutPanel } from "./PosStockOutPanel";
 import { useInventoryAllowed } from "../hooks/useInventoryAllowed";
 import { isStockDocument } from "@shared/inventoryStock";
+import { isPosSalesDocument } from "@shared/inventoryPosStock";
 import type { FinancialData, ProcessedDocument } from "../types";
 import "../businessApp.css";
 
@@ -518,7 +520,10 @@ export function DocumentsLibraryTab({
         </div>
         {selectedDocument.data ? (
           <>
-          {showStocksFilter ? (
+          {showStocksFilter && isPosSalesDocument(selectedDocument.data) ? (
+            <PosStockOutPanel key={`pos-${selectedDocument.id}`} doc={selectedDocument} />
+          ) : null}
+          {showStocksFilter && !isPosSalesDocument(selectedDocument.data) ? (
             <StockConfirmPanel
               key={selectedDocument.id}
               doc={selectedDocument}

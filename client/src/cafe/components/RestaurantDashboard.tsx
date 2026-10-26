@@ -172,6 +172,7 @@ export function RestaurantDashboard() {
   } = useFinance();
   const { sessions, currentSession, addSession, deleteSession, renameSession, setCurrentSession, isAllSessionsView, setAllSessionsView } = useSession();
   const { documents, addDocument, updateDocumentData, deleteDocument: deleteDocumentFromContext } = useDocuments();
+  const inventoryApi = useInventoryOptional();
   const { signOut, user } = useAuth();
   const { enforcementEnabled, entitlements, incrementDocumentUsage, documentsUsedThisMonth, loading: subscriptionLoading, isPlanTestUser, billing } = useSubscription();
   const { language, setLanguage, t } = useLanguage();
@@ -348,9 +349,12 @@ export function RestaurantDashboard() {
   const handleDeleteDocument = async (documentId: string) => {
     try {
       const removed = await deleteFinancesByDocumentId(documentId);
+      if (inventoryApi) {
+        await inventoryApi.deleteMovementsByDocument(documentId);
+      }
       await deleteDocumentFromContext(documentId);
       console.log(
-        `ðŸ—‘ï¸ Document ${documentId} deleted with ${removed.income} income and ${removed.expenses} expense row(s)`
+        `Document ${documentId} deleted with ${removed.income} income and ${removed.expenses} expense row(s)`
       );
     } catch (err) {
       console.error('Failed to delete document and linked finances:', err);

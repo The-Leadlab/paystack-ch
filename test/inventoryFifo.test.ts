@@ -15,6 +15,12 @@ import {
   matchInventoryProduct,
   suggestStockInFromLines,
 } from "../shared/inventoryStock";
+import {
+  aggregateStockOutByProduct,
+  isNonProductPosLine,
+  isPosSalesDocument,
+  suggestStockOutFromPosLines,
+} from "../shared/inventoryPosStock";
 import { isInventoryAllowedForUser } from "../shared/inventoryAccess";
 
 function mv(
@@ -196,6 +202,71 @@ describe("stock documents", () => {
         productName: "Brake pads",
       },
     ]);
+  });
+});
+
+describe("POS stock-out suggestions", () => {
+  it("skips payment and till-total lines", () => {
+    expect(isNonProductPosLine("Cash")).toBe(true);
+    expect(isNonProductPosLine("TWINT")).toBe(true);
+    expect(isNonProductPosLine("Espresso")).toBe(false);
+  });
+
+  it("detects POS sales document types", () => {
+    expect(isPosSalesDocument({ documentType: "Ticket/Receipt" })).toBe(true);
+    expect(isPosSalesDocument({ documentType: "Z2 Multi-Ticket Sheet" })).toBe(true);
+    expect(isPosSalesDocument({ documentType: "Invoice" })).toBe(false);
+  });
+
+  it("applies recipe qtyPerUnit and falls back to name match", () => {
+    const products = [
+      { id: "beans", name: "Coffee beans", sku: "COF-BEANS" },
+      { id: "cola", name: "Soft drinks (cans)" },
+    ];
+    const recipes = [{ posName: "Espresso", productId: "beans", qtyPerUnit: 0.018 }];
+    const rows = suggestStockOutFromPosLines(
+      [
+        { description: "Espresso", quantity: 2 },
+        { description: "Soft drinks (cans)", quantity: 3 },
+        { description: "Card", quantity: 1, amount: 40 },
+      ],
+      products,
+      recipes
+    );
+    expect(rows.find((r) => r.description === "Espresso")).toMatchObject({
+      productId: "beans",
+      quantity: 0.036,
+      matchedVia: "recipe",
+    });
+    expect(rows.find((r) => r.description === "Soft drinks (cans)")).toMatchObject({
+      productId: "cola",
+      quantity: 3,
+      matchedVia: "name",
+    });
+    expect(rows.some((r) => r.description === "Card")).toBe(false);
+  });
+
+  it("aggregates outs by product", () => {
+    const aggregated = aggregateStockOutByProduct([
+      {
+        description: "Espresso",
+        soldQty: 1,
+        quantity: 0.018,
+        productId: "beans",
+        productName: "Coffee beans",
+        matchedVia: "recipe",
+      },
+      {
+        description: "Cappuccino",
+        soldQty: 1,
+        quantity: 0.02,
+        productId: "beans",
+        productName: "Coffee beans",
+        matchedVia: "recipe",
+      },
+    ]);
+    expect(aggregated).toHaveLength(1);
+    expect(aggregated[0].quantity).toBeCloseTo(0.038);
   });
 });
 

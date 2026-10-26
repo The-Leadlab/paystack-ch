@@ -20,6 +20,7 @@ import { useInventory } from '../context/InventoryContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useUkUat } from '../context/UkUatContext';
 import type {
+  InventoryPosRecipe,
   InventoryProductSummary,
   UnitOfMeasure,
   MovementType,
@@ -38,7 +39,19 @@ const UNIT_OPTIONS: { value: UnitOfMeasure; label: string }[] = [
 ];
 
 export function InventoryPanel() {
-  const { products, movements, loading, addProduct, updateProduct, deleteProduct, addMovement, totalValuation } = useInventory();
+  const {
+    products,
+    movements,
+    recipes,
+    loading,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+    addMovement,
+    addRecipe,
+    deleteRecipe,
+    totalValuation,
+  } = useInventory();
   const { t } = useLanguage();
   const { fiscalLocale, currencySuffix } = useUkUat();
 
@@ -354,6 +367,13 @@ export function InventoryPanel() {
         </div>
       )}
 
+      <PosRecipesSection
+        products={products.filter((p) => !p.archived)}
+        recipes={recipes}
+        onAdd={addRecipe}
+        onDelete={deleteRecipe}
+      />
+
       <div className="rounded-lg border border-cdlp-border bg-cdlp-card/30 p-4 space-y-2">
         <div className="flex items-center gap-2 text-sm font-medium text-cdlp-white">
           <BookOpen className="w-4 h-4 text-cdlp-gold" />
@@ -363,12 +383,16 @@ export function InventoryPanel() {
           <li>{t('invSwissWorkflow1') || 'Add products (or seed café starters). Set a min stock for alerts.'}</li>
           <li>{t('invSwissWorkflow2') || 'Documents → open a supplier invoice → mark as stock → Confirm stock in (HT cost).'}</li>
           <li>{t('invSwissWorkflow3') || 'Factures → link a product on sales lines → save/send decrements stock; cancel restores.'}</li>
+          <li>
+            {t('invSwissWorkflowPos') ||
+              'Documents → Ticket/Receipt or Z2 → Confirm POS stock-out (recipes map till names → ingredients).'}
+          </li>
           <li>{t('invSwissWorkflow4') || 'Manual stock out for waste / staff meals; adjustment for physical count (can go negative).'}</li>
           <li>{t('invSwissWorkflow5') || 'Dashboard & Reports show FIFO value as asset 1200 — VAT statement unchanged.'}</li>
         </ol>
         <p className="text-[11px] text-cdlp-muted border-t border-cdlp-border/60 pt-2">
-          {t('invPhase2Note') ||
-            'Phase 2: POS / Z-reading auto stock-out and barcodes. Until then use invoices + manual movements.'}
+          {t('invPhase2LiveNote') ||
+            'POS stock-out is live for itemized tickets / Z2 sheets. Aggregate Z-totals without articles still need recipes + itemized docs. Barcodes / multi-site later.'}
         </p>
       </div>
 
@@ -421,6 +445,148 @@ export function InventoryPanel() {
 }
 
 /* ---------- Sub-components ---------- */
+
+function PosRecipesSection({
+  products,
+  recipes,
+  onAdd,
+  onDelete,
+}: {
+  products: InventoryProductSummary[];
+  recipes: InventoryPosRecipe[];
+  onAdd: (r: Omit<InventoryPosRecipe, 'id' | 'restaurantId' | 'createdAt' | 'updatedAt'>) => Promise<string>;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const { t } = useLanguage();
+  const [posName, setPosName] = useState('');
+  const [productId, setProductId] = useState('');
+  const [qtyPerUnit, setQtyPerUnit] = useState('1');
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!posName.trim() || !productId) {
+      toast.error(t('invPosRecipeValidation') || 'POS name and product are required');
+      return;
+    }
+    const qty = Number(qtyPerUnit);
+    if (!(qty > 0)) {
+      toast.error(t('invPosRecipeQtyInvalid') || 'Qty per unit must be > 0');
+      return;
+    }
+    setSaving(true);
+    try {
+      await onAdd({ posName: posName.trim(), productId, qtyPerUnit: qty });
+      toast.success(t('invPosRecipeAdded') || 'POS recipe saved');
+      setPosName('');
+      setQtyPerUnit('1');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-cdlp-border bg-cdlp-card/30 p-4 space-y-3">
+      <div>
+        <div className="text-sm font-medium text-cdlp-white">
+          {t('invPosRecipesTitle') || 'POS recipes (auto stock-out)'}
+        </div>
+        <p className="text-xs text-cdlp-muted mt-0.5">
+          {t('invPosRecipesHint') ||
+            'Map till / ticket names to inventory products. Example: Espresso → Coffee beans × 0.018 kg.'}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+        <div>
+          <label className="text-[10px] uppercase text-cdlp-muted block mb-1">
+            {t('invPosRecipeName') || 'Till / ticket name'}
+          </label>
+          <input
+            value={posName}
+            onChange={(e) => setPosName(e.target.value)}
+            className="w-full bg-cdlp-black border border-cdlp-border rounded px-2.5 py-1.5 text-sm text-cdlp-white"
+            placeholder="Espresso"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] uppercase text-cdlp-muted block mb-1">
+            {t('invColProduct')}
+          </label>
+          <select
+            value={productId}
+            onChange={(e) => setProductId(e.target.value)}
+            className="w-full bg-cdlp-black border border-cdlp-border rounded px-2.5 py-1.5 text-sm text-cdlp-white"
+          >
+            <option value="">{t('invNone')}</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-[10px] uppercase text-cdlp-muted block mb-1">
+            {t('invPosRecipeQty') || 'Qty per sold unit'}
+          </label>
+          <input
+            type="number"
+            min="0.0001"
+            step="any"
+            value={qtyPerUnit}
+            onChange={(e) => setQtyPerUnit(e.target.value)}
+            className="w-full bg-cdlp-black border border-cdlp-border rounded px-2.5 py-1.5 text-sm text-cdlp-white"
+          />
+        </div>
+        <button
+          type="button"
+          disabled={saving || products.length === 0}
+          onClick={() => void submit()}
+          className="ba-btn ba-btn-primary text-sm h-[34px]"
+        >
+          {saving ? t('invSaving') : t('invPosRecipeAdd') || 'Add recipe'}
+        </button>
+      </div>
+
+      {recipes.length === 0 ? (
+        <p className="text-xs text-cdlp-muted italic">
+          {t('invPosRecipesEmpty') || 'No recipes yet — stock-out can still match by product name.'}
+        </p>
+      ) : (
+        <ul className="space-y-1.5">
+          {recipes.map((r) => {
+            const product = products.find((p) => p.id === r.productId);
+            return (
+              <li
+                key={r.id}
+                className="flex flex-wrap items-center gap-2 text-xs border border-cdlp-border/50 rounded px-2 py-1.5"
+              >
+                <span className="text-cdlp-white font-medium">{r.posName}</span>
+                <span className="text-cdlp-muted">→</span>
+                <span className="text-cdlp-gold">{product?.name || r.productId}</span>
+                <span className="text-cdlp-muted tabular-nums">× {r.qtyPerUnit}</span>
+                <button
+                  type="button"
+                  className="ml-auto text-cdlp-muted hover:text-red-400"
+                  title={t('invDeleteProduct')}
+                  onClick={() => {
+                    void onDelete(r.id)
+                      .then(() => toast.success(t('invPosRecipeDeleted') || 'Recipe deleted'))
+                      .catch((err) => toast.error(err instanceof Error ? err.message : String(err)));
+                  }}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 function ProductMovementHistory({
   productId,
