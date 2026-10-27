@@ -40,6 +40,7 @@ import { POSManager } from './POSManager';
 import { ExpensesManager } from './ExpensesManager';
 import { InvoiceMakerPanel } from './InvoiceMakerPanel';
 import { InventoryPanel } from './InventoryPanel';
+import { InventoryComingSoonPanel } from './InventoryComingSoonPanel';
 import { useInventoryAllowed } from '../hooks/useInventoryAllowed';
 import { useInventoryOptional } from '../context/InventoryContext';
 import {
@@ -222,7 +223,9 @@ export function RestaurantDashboard() {
     return 'dashboard';
   });
   const showRevenueTab = !enforcementEnabled || entitlements.basicReportsAndExports;
-  const showInventoryTab = useInventoryAllowed();
+  /** Full stock unlock (testers). Nav tab is always visible; locked users see Coming Soon. */
+  const inventoryUnlocked = useInventoryAllowed();
+  const showInventoryTab = true;
   const showAllSessionsView = !enforcementEnabled || entitlements.allCoreModules;
   const canAddSession =
     !enforcementEnabled || entitlements.maxSessions == null || sessions.length < entitlements.maxSessions;
@@ -244,12 +247,6 @@ export function RestaurantDashboard() {
       setActiveTab('dashboard');
     }
   }, [showRevenueTab, activeTab]);
-
-  useEffect(() => {
-    if (!showInventoryTab && activeTab === 'inventory') {
-      setActiveTab('dashboard');
-    }
-  }, [showInventoryTab, activeTab]);
 
   useEffect(() => {
     if (!showAllSessionsView && isAllSessionsView) {
@@ -1127,6 +1124,8 @@ export function RestaurantDashboard() {
             onTabChange={switchTab}
             showRevenueTab={showRevenueTab}
             showInventoryTab={showInventoryTab}
+            inventoryLocked={!inventoryUnlocked}
+            inventorySoonLabel={t('invNavSoonBadge') || 'Soon'}
             items={sidebarNavItems}
             collapsed={sidebarCollapsed}
           />
@@ -1193,6 +1192,8 @@ export function RestaurantDashboard() {
             onTabChange={switchTab}
             showRevenueTab={showRevenueTab}
             showInventoryTab={showInventoryTab}
+            inventoryLocked={!inventoryUnlocked}
+            inventorySoonLabel={t('invNavSoonBadge') || 'Soon'}
             items={sidebarNavItems}
           />
           <button
@@ -1433,7 +1434,7 @@ export function RestaurantDashboard() {
               onDeleteDocument={handleDeleteDocument}
               onNavigateToDocument={handleNavigateToDocument}
               onNavigateTab={switchTab}
-              showInventoryTab={showInventoryTab}
+              showInventoryTab={inventoryUnlocked}
               openVerificationDocId={openVerificationDocId}
               onOpenVerificationHandled={() => setOpenVerificationDocId(null)}
               onShowEmployeePanel={() => setShowEmployeePanel(true)}
@@ -1456,16 +1457,16 @@ export function RestaurantDashboard() {
               <InvoiceMakerPanel />
             </div>
           )}
-          {activeTab === 'inventory' && showInventoryTab ? (
+          {activeTab === 'inventory' ? (
             <div data-tour="biz-inventory-panel">
-              <InventoryPanel />
+              {inventoryUnlocked ? <InventoryPanel /> : <InventoryComingSoonPanel />}
             </div>
           ) : null}
           {activeTab === 'reports' && (
             <div data-tour="biz-reports-panel">
               <ReportsPlaceholder
                 onNavigateToDocument={handleNavigateToDocument}
-                showInventoryTab={showInventoryTab}
+                showInventoryTab={inventoryUnlocked}
               />
             </div>
           )}
@@ -1544,18 +1545,23 @@ export function RestaurantDashboard() {
             <FilePenLine className="w-5 h-5 shrink-0" aria-hidden />
             <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('invoiceMakerTab')}</span>
           </button>
-          {showInventoryTab ? (
-            <button
-              type="button"
-              onClick={() => switchTab('inventory')}
-              className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
-                activeTab === 'inventory' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
-              }`}
-            >
-              <Package className="w-5 h-5 shrink-0" aria-hidden />
-              <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('inventoryTab')}</span>
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={() => switchTab('inventory')}
+            className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
+              activeTab === 'inventory' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
+            }`}
+          >
+            <Package className="w-5 h-5 shrink-0" aria-hidden />
+            <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">
+              {t('inventoryTab')}
+            </span>
+            {!inventoryUnlocked ? (
+              <span className="absolute top-1 right-1 text-[7px] font-black uppercase tracking-tight text-cdlp-gold bg-cdlp-gold/15 rounded px-1 leading-tight">
+                {t('invNavSoonBadge') || 'Soon'}
+              </span>
+            ) : null}
+          </button>
           <button
             type="button"
             onClick={() => setActiveTab('reports')}

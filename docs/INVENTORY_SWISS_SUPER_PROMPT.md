@@ -4,7 +4,8 @@ Use this when working on the Stock tab (`/app?tab=inventory`) for Ali + Damien g
 
 ## Gate
 
-Visible when any of: `ali@the-leadlab.com`, `damien@the-leadlab.com`, `VITE_INVENTORY_ENABLED`, `VITE_INVENTORY_EMAILS`, `users/{uid}.inventoryBeta`, admin app-access, or `/admin-uk`.
+- Tab visible to everyone (Coming Soon teaser when locked).
+- Full unlock: `ali@the-leadlab.com` + `damien@the-leadlab.com` only.
 
 ## Swiss advisor rules
 

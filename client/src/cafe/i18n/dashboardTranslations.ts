@@ -551,6 +551,12 @@ export const dashboardEn: Record<string, string> = {
 
   inventoryTab: 'Inventory',
   comingSoon: 'Coming soon',
+  invComingSoonTitle: 'Coming soon',
+  invComingSoonBody:
+    'Stock & inventory is in final testing. Full access rolls out in the next few days.',
+  invComingSoonTesting: 'Available for testers only right now',
+  invComingSoonCta: 'Coming soon',
+  invNavSoonBadge: 'Soon',
   invDashStockAsset: 'Stock asset (FIFO · 1200)',
   invDashColAdd: '+ ADD',
   invDashColAddPlaceholder: 'New product name…',
@@ -1804,6 +1810,12 @@ export const dashboardFr: Record<string, string> = {
 
   inventoryTab: 'Stock',
   comingSoon: 'Bientôt disponible',
+  invComingSoonTitle: 'Bientôt disponible',
+  invComingSoonBody:
+    'Le stock et l’inventaire sont en phase de test finale. L’accès complet arrive dans les prochains jours.',
+  invComingSoonTesting: 'Réservé aux testeurs pour le moment',
+  invComingSoonCta: 'Bientôt disponible',
+  invNavSoonBadge: 'Bientôt',
   invDashStockAsset: 'Actif stock (FIFO · 1200)',
   invDashColAdd: '+ AJOUTER',
   invDashColAddPlaceholder: 'Nom du nouveau produit…',

@@ -279,14 +279,12 @@ describe("inventory access gate", () => {
     expect(isInventoryAllowedForUser("owner@cafe.ch")).toBe(false);
   });
 
-  it("opens for allowlisted, admin, UK UAT, beta, or master flag", () => {
+  it("opens only for Ali and Damien", () => {
     expect(isInventoryAllowedForUser("ali@the-leadlab.com")).toBe(true);
-    expect(isInventoryAllowedForUser("louise@test.com", { ukUatActive: true })).toBe(true);
-    expect(isInventoryAllowedForUser("damien@test.com", { adminAppAccess: true })).toBe(true);
-    expect(isInventoryAllowedForUser("beta@test.com", { inventoryBeta: true })).toBe(true);
-    expect(isInventoryAllowedForUser("anyone@test.com", { envEnabled: true })).toBe(true);
-    expect(
-      isInventoryAllowedForUser("louise@paystack.ch", { extraEmails: ["louise@paystack.ch"] })
-    ).toBe(true);
+    expect(isInventoryAllowedForUser("damien@the-leadlab.com")).toBe(true);
+    expect(isInventoryAllowedForUser("louise@test.com", { ukUatActive: true })).toBe(false);
+    expect(isInventoryAllowedForUser("damien@test.com", { adminAppAccess: true })).toBe(false);
+    expect(isInventoryAllowedForUser("beta@test.com", { inventoryBeta: true })).toBe(false);
+    expect(isInventoryAllowedForUser("anyone@test.com", { envEnabled: true })).toBe(false);
   });
 });

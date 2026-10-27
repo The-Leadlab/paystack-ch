@@ -1,14 +1,8 @@
 /**
- * Inventory feature gate.
+ * Inventory feature unlock (full interactive stock).
  *
- * Hidden from normal users until promoted. Access is granted when any of:
- *   1. VITE_INVENTORY_ENABLED=true (master switch for Damien's demo week)
- *   2. Email is on the built-in / VITE_INVENTORY_EMAILS allowlist
- *   3. users/{uid}.inventoryBeta === true
- *   4. Admin app-access user
- *   5. UK UAT (`/admin-uk`) — Louise tests the same flag there
- *
- * Built-in tab access: Ali + Damien (sidebar Inventory tab in /app).
+ * The Inventory nav tab is visible to everyone with a Coming Soon / blurred
+ * teaser. Full read/write unlock is **Ali + Damien only** for now.
  */
 
 import { PERSONAL_DEV_ADMIN_EMAIL } from "./personalProductAccess.js";
@@ -18,8 +12,7 @@ export const INVENTORY_DEV_EMAILS = [
   "damien@the-leadlab.com",
 ] as const;
 
-const BUILT_IN_INVENTORY_EMAILS = [...INVENTORY_DEV_EMAILS];
-
+/** @deprecated Kept for call-site compatibility; unlock ignores these opts. */
 export type InventoryAccessOpts = {
   inventoryBeta?: boolean;
   ukUatActive?: boolean;
@@ -28,43 +21,11 @@ export type InventoryAccessOpts = {
   extraEmails?: string[];
 };
 
-function readViteEnv(name: string): string {
-  try {
-    const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
-    return String(env?.[name] ?? "");
-  } catch {
-    return "";
-  }
-}
-
-export function readInventoryEnv(): { enabled: boolean; extraEmails: string[] } {
-  const flag = readViteEnv("VITE_INVENTORY_ENABLED").toLowerCase();
-  const extraEmails = readViteEnv("VITE_INVENTORY_EMAILS")
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-  return { enabled: flag === "true" || flag === "1", extraEmails };
-}
-
-export function isInventoryEnabled(envEnabled?: boolean): boolean {
-  if (typeof envEnabled === "boolean") return envEnabled;
-  return readInventoryEnv().enabled;
-}
-
 export function isInventoryAllowedForUser(
   email: string | null | undefined,
-  opts: InventoryAccessOpts = {}
+  _opts: InventoryAccessOpts = {},
 ): boolean {
-  if (opts.ukUatActive) return true;
-  if (opts.inventoryBeta) return true;
-  if (opts.adminAppAccess) return true;
-  if (isInventoryEnabled(opts.envEnabled)) return true;
-
   const lower = email?.toLowerCase().trim();
   if (!lower) return false;
-
-  if (BUILT_IN_INVENTORY_EMAILS.some((e) => e.toLowerCase() === lower)) return true;
-
-  const extras = opts.extraEmails ?? readInventoryEnv().extraEmails;
-  return extras.includes(lower);
+  return INVENTORY_DEV_EMAILS.some((e) => e.toLowerCase() === lower);
 }

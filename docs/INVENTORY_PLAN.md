@@ -1,6 +1,6 @@
-# Inventory / stock plan (hidden tab)
+# Inventory / stock plan
 
-For Ali to send Damien ahead of the 28 Oct presentation. Testable from 26 Oct behind a feature gate. Not shown to normal `/app` users.
+For Ali to send Damien ahead of the 28 Oct presentation. Tab visible to all with Coming Soon; full unlock Ali + Damien only.
 
 **Living super prompt:** [INVENTORY_SWISS_SUPER_PROMPT.md](./INVENTORY_SWISS_SUPER_PROMPT.md) — Phase 1 Swiss sync + manager controls; Phase 2 POS ticket/Z2 stock-out + recipes (shipped).
 
@@ -10,18 +10,10 @@ A first slice of inventory for Swiss restaurant books (and the same flag on UK U
 
 POS stock-out from itemized Ticket/Receipt / Z2 sheets + POS recipes is live (confirm panel). Aggregate Z-reading totals without articles still cannot auto-decrement. Barcode scanning and multi-site warehouses remain later.
 
-## Who can see it
+## Who can use it
 
-Hidden unless one of these is true:
-
-1. Built-in emails: `ali@the-leadlab.com`, `damien@the-leadlab.com` (Inventory sidebar tab in `/app`)
-2. `VITE_INVENTORY_ENABLED=true` (master switch for demo week)
-3. Email on `VITE_INVENTORY_EMAILS` (comma-separated extras)
-4. `users/{uid}.inventoryBeta === true`
-5. Admin app-access user
-6. UK UAT (`/admin-uk`) — Louise tests the same UI in GBP / UK VAT
-
-Do not hardcode Louise’s email in the repo — use env, Firestore beta, admin access, or `/admin-uk`.
+- **Nav tab:** visible to all `/app` users (Coming Soon / blurred teaser if locked).
+- **Full unlock (interactive stock):** only `ali@the-leadlab.com` and `damien@the-leadlab.com` for now.
 
 ## Data model (Firestore)
 
