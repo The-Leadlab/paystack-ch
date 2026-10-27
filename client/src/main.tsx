@@ -1,7 +1,11 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { scheduleDeferredThirdParty } from "./lib/deferredThirdParty";
+import { installViteChunkLoadRecovery } from "./lib/chunkLoadRecovery";
 import "./index.css";
+
+// Before React mounts — recover stale lazy chunks after a deploy.
+installViteChunkLoadRecovery();
 
 const rootEl = document.getElementById("root");
 if (rootEl) {

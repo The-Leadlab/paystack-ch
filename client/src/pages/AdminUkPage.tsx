@@ -6,8 +6,9 @@ import { UkUatProvider } from "@/cafe/context/UkUatContext";
 import { DashboardLoadingShell } from "@/cafe/components/DashboardLoadingShell";
 import { Button } from "@/components/ui/button";
 import { Flag, LogOut } from "lucide-react";
+import { retryingImport } from "@/lib/chunkLoadRecovery";
 
-const PlatformPage = lazy(() => import("./PlatformPage"));
+const PlatformPage = lazy(retryingImport(() => import("./PlatformPage")));
 
 function useAdminUkGate(): { allowed: boolean; checking: boolean } {
   const [checking, setChecking] = useState(true);

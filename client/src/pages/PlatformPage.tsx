@@ -36,14 +36,17 @@ import {
   personalAppHomePath,
 } from "@/ali-lab/personal-plan/personalPlanNav";
 import type { User } from "firebase/auth";
+import { retryingImport } from "@/lib/chunkLoadRecovery";
 
 export { useCanOpenBusinessDashboard } from "@/cafe/hooks/useProductLineAccess";
 
-const RestaurantDashboard = lazy(() =>
-  import("@/cafe/components/RestaurantDashboard").then((m) => ({ default: m.RestaurantDashboard }))
+const RestaurantDashboard = lazy(
+  retryingImport(() =>
+    import("@/cafe/components/RestaurantDashboard").then((m) => ({ default: m.RestaurantDashboard }))
+  )
 );
 
-const PersonalAppPage = lazy(() => import("./PersonalAppPage"));
+const PersonalAppPage = lazy(retryingImport(() => import("./PersonalAppPage")));
 
 function canAccessPersonalWorkspace(
   user: User | null | undefined,

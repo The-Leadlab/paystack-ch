@@ -22,8 +22,9 @@ import AdminUkPage from "./pages/AdminUkPage";
 import LegalDocumentPage from "./pages/legal/LegalDocumentPage";
 import { DashboardLoadingShell } from "./cafe/components/DashboardLoadingShell";
 import { SeoHead } from "./components/SeoHead";
+import { retryingImport } from "./lib/chunkLoadRecovery";
 
-const PlatformPage = lazy(() => import("./pages/PlatformPage"));
+const PlatformPage = lazy(retryingImport(() => import("./pages/PlatformPage")));
 
 /** Applies café dashboard colour tokens (.cafe-shell) from restored index.css */
 function CafeShellRoute() {
