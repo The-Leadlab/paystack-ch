@@ -1,11 +1,23 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ProcessedDocument } from '../types';
-import { useAuth } from './AuthContext';
 import { useWorkspace } from './WorkspaceContext';
 import { useDataWriteAccess } from '../hooks/useDataWriteAccess';
 import { useSession } from './SessionContext';
 import { db } from '../lib/firebase';
-import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, orderBy, deleteField } from 'firebase/firestore';
+import {
+  collection,
+  addDoc,
+  query,
+  where,
+  onSnapshot,
+  updateDoc,
+  deleteDoc,
+  doc,
+  deleteField,
+  type Unsubscribe,
+  type QuerySnapshot,
+  type DocumentData,
+} from 'firebase/firestore';
 import { dedupeProcessedDocuments } from '../lib/dedupeProcessedDocuments';
 import { packDocumentUpdatesForFirestore } from '../lib/financialDataFirestorePayload';
 import {
@@ -30,13 +42,58 @@ function removeUndefinedDeep<T>(value: T): T {
 }
 
 /** Prefer camelCase; accept legacy snake_case (same as income/expenses). */
-function resolveDocumentSessionId(data: Record<string, unknown> | null | undefined): string {
+export function resolveDocumentSessionId(data: Record<string, unknown> | null | undefined): string {
   if (!data) return '';
   const camel = data.sessionId;
   const snake = data.session_id;
-  if (typeof camel === 'string' && camel) return camel;
-  if (typeof snake === 'string' && snake) return snake;
+  if (typeof camel === 'string' && camel.trim()) return camel.trim();
+  if (typeof snake === 'string' && snake.trim()) return snake.trim();
   return '';
+}
+
+function resolveCreatedAt(data: Record<string, unknown>): string {
+  const snake = data.created_at;
+  const camel = data.createdAt;
+  if (typeof snake === 'string' && snake) return snake;
+  if (typeof camel === 'string' && camel) return camel;
+  return '';
+}
+
+function mapSnapshotDocs(snapshot: QuerySnapshot<DocumentData>): ProcessedDocument[] {
+  return snapshot.docs.map((docSnap) => {
+    const data = docSnap.data() as Record<string, unknown>;
+    const firestoreId = docSnap.id;
+    const storedPersisted = data.persistedDocumentId;
+    const sessionResolved = resolveDocumentSessionId(data);
+    const created = resolveCreatedAt(data);
+    return {
+      ...data,
+      id: firestoreId,
+      session_id: sessionResolved || undefined,
+      sessionId: sessionResolved || undefined,
+      created_at: created || (typeof data.created_at === 'string' ? data.created_at : undefined),
+      persistedDocumentId:
+        typeof storedPersisted === 'string' && storedPersisted.length > 0 ? storedPersisted : firestoreId,
+    } as ProcessedDocument;
+  });
+}
+
+/**
+ * Session filter for Documents library:
+ * - matching session id
+ * - unscoped / legacy rows (missing session) → visible in every session so uploads are not “lost”
+ */
+export function documentBelongsToSessionView(
+  docRow: ProcessedDocument | Record<string, unknown>,
+  sessionId: string,
+): boolean {
+  const docSid =
+    resolveDocumentSessionId(docRow as Record<string, unknown>) ||
+    (typeof (docRow as ProcessedDocument).session_id === 'string'
+      ? (docRow as ProcessedDocument).session_id!
+      : '');
+  if (!docSid) return true;
+  return docSid === sessionId;
 }
 
 type DocumentContextValue = {
@@ -52,93 +109,37 @@ type DocumentContextValue = {
 const DocumentContext = createContext<DocumentContextValue | null>(null);
 
 export function DocumentProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
   const { dataOwnerUid } = useWorkspace();
   const canWrite = useDataWriteAccess();
-  const { currentSession, isAllSessionsView } = useSession();
+  const { currentSession, isAllSessionsView, sessions } = useSession();
   const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const restaurantDocsRef = useRef<ProcessedDocument[]>([]);
+  const unsubRef = useRef<Unsubscribe | null>(null);
+  const sessionIds = useRef<Set<string>>(new Set());
 
-  const fetchDocuments = useCallback(async () => {
-    const uid = dataOwnerUid;
-    
-    console.log('=== FETCH DOCUMENTS DEBUG ===');
-    console.log('User ID:', uid);
-    console.log('Current Session:', currentSession);
-    console.log('Is All Sessions View:', isAllSessionsView);
-    
-    if (!uid || !db) {
-      console.log('No user or db, skipping fetch');
-      setDocuments([]);
-      setLoading(false);
-      return;
-    }
+  useEffect(() => {
+    sessionIds.current = new Set(sessions.map((s) => s.id));
+  }, [sessions]);
 
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const docsRef = collection(db, 'documents');
-      let snapshot;
-
-      if (!isAllSessionsView && !currentSession) {
-        console.log('No session selected, skipping fetch');
-        setDocuments([]);
-        setLoading(false);
-        return;
-      }
-
-      // Always load restaurant docs, then filter by session client-side.
-      // Avoids empty lists when Firestore only has `sessionId` (camelCase),
-      // composite indexes are missing, or team members hit query failures.
-      console.log(
-        isAllSessionsView
-          ? 'Fetching ALL documents for restaurant'
-          : `Fetching documents for session (client filter): ${currentSession!.id}`
-      );
-      try {
-        snapshot = await getDocs(query(docsRef, where('restaurantId', '==', uid), orderBy('created_at', 'desc')));
-      } catch (orderedErr: any) {
-        try {
-          snapshot = await getDocs(query(docsRef, where('restaurantId', '==', uid)));
-          console.warn('Documents ordered query failed, using fallback query:', orderedErr?.code || orderedErr);
-        } catch (fallbackErr: any) {
-          // Legacy docs may only have restaurant_id
-          snapshot = await getDocs(query(docsRef, where('restaurant_id', '==', uid)));
-          console.warn('Documents restaurantId query failed, trying restaurant_id:', fallbackErr?.code || fallbackErr);
-        }
-      }
-
-      let rawDocs: ProcessedDocument[] = snapshot.docs.map((docSnap) => {
-        const data = docSnap.data() as Record<string, unknown>;
-        const firestoreId = docSnap.id;
-        const storedPersisted = data.persistedDocumentId;
-        const sessionResolved = resolveDocumentSessionId(data);
-        return {
-          ...data,
-          id: firestoreId,
-          session_id: sessionResolved || (typeof data.session_id === 'string' ? data.session_id : undefined),
-          persistedDocumentId:
-            typeof storedPersisted === 'string' && storedPersisted.length > 0 ? storedPersisted : firestoreId,
-        } as ProcessedDocument;
-      });
-
+  const applyDocs = useCallback(
+    (raw: ProcessedDocument[]) => {
+      restaurantDocsRef.current = raw;
+      let filtered = raw;
       if (!isAllSessionsView && currentSession) {
         const sid = currentSession.id;
-        rawDocs = rawDocs.filter((d) => {
-          const docSid = resolveDocumentSessionId(d as unknown as Record<string, unknown>) || d.session_id || '';
-          return docSid === sid;
+        const knownSessions = sessionIds.current;
+        filtered = raw.filter((d) => {
+          if (documentBelongsToSessionView(d, sid)) return true;
+          // Orphaned: session was deleted — still show under the active session so files are recoverable
+          const docSid = resolveDocumentSessionId(d as unknown as Record<string, unknown>);
+          return Boolean(docSid) && knownSessions.size > 0 && !knownSessions.has(docSid);
         });
       }
 
-      const { keepers, duplicateIds } = dedupeProcessedDocuments(rawDocs);
+      const { keepers, duplicateIds } = dedupeProcessedDocuments(filtered);
       keepers.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
-
-      console.log('Fetched documents:', keepers.length, duplicateIds.length ? `(removed ${duplicateIds.length} duplicates)` : '');
-      if (keepers.length > 0) {
-        console.log('Sample document:', keepers[0]);
-      }
 
       const repairedKeepers = keepers.map((d) => {
         if (!d.data) return d;
@@ -168,7 +169,6 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
         })();
       }
 
-      // Best-effort cleanup of orphan pending twins left by Drive re-import / double-queue
       if (duplicateIds.length > 0 && db && canWrite) {
         const database = db;
         void (async () => {
@@ -181,44 +181,117 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
           }
         })();
       }
-    } catch (err) {
-      console.error('Error fetching documents:', err);
-      setError(err instanceof Error ? err.message : String(err));
-      setDocuments([]);
-    } finally {
-      setLoading(false);
+    },
+    [canWrite, currentSession, dataOwnerUid, isAllSessionsView],
+  );
+
+  const subscribeDocuments = useCallback(() => {
+    const uid = dataOwnerUid;
+    if (unsubRef.current) {
+      unsubRef.current();
+      unsubRef.current = null;
     }
-  }, [dataOwnerUid, canWrite, currentSession?.id, isAllSessionsView]);
+
+    if (!uid || !db) {
+      setDocuments([]);
+      restaurantDocsRef.current = [];
+      setLoading(false);
+      return;
+    }
+
+    if (!isAllSessionsView && !currentSession) {
+      setDocuments([]);
+      restaurantDocsRef.current = [];
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const docsRef = collection(db, 'documents');
+    // Do NOT orderBy created_at — Firestore omits docs missing that field, which hid tickets/PDFs.
+    // Sort client-side after mapping (supports created_at + createdAt).
+    const qPrimary = query(docsRef, where('restaurantId', '==', uid));
+    const qLegacy = query(docsRef, where('restaurant_id', '==', uid));
+
+    let usingLegacy = false;
+
+    const handleSnap = (snapshot: QuerySnapshot<DocumentData>) => {
+      const mapped = mapSnapshotDocs(snapshot);
+      applyDocs(mapped);
+      setLoading(false);
+    };
+
+    const handleErr = (err: Error) => {
+      if (!usingLegacy) {
+        usingLegacy = true;
+        console.warn('Documents restaurantId listen failed, trying restaurant_id:', err);
+        if (unsubRef.current) {
+          unsubRef.current();
+          unsubRef.current = null;
+        }
+        unsubRef.current = onSnapshot(qLegacy, handleSnap, (err2) => {
+          console.error('Error listening to documents:', err2);
+          setError(err2.message || String(err2));
+          setDocuments([]);
+          setLoading(false);
+        });
+        return;
+      }
+      console.error('Error listening to documents:', err);
+      setError(err.message || String(err));
+      setDocuments([]);
+      setLoading(false);
+    };
+
+    unsubRef.current = onSnapshot(qPrimary, handleSnap, handleErr);
+  }, [applyDocs, currentSession, dataOwnerUid, isAllSessionsView]);
 
   useEffect(() => {
-    fetchDocuments();
-  }, [fetchDocuments]);
+    subscribeDocuments();
+    return () => {
+      if (unsubRef.current) {
+        unsubRef.current();
+        unsubRef.current = null;
+      }
+    };
+  }, [subscribeDocuments]);
+
+  // Re-filter cached restaurant docs when session list finishes loading (orphan recovery).
+  useEffect(() => {
+    if (restaurantDocsRef.current.length === 0) return;
+    applyDocs(restaurantDocsRef.current);
+  }, [applyDocs, sessions]);
 
   const addDocument = useCallback(
     async (document: ProcessedDocument): Promise<ProcessedDocument> => {
       const uid = dataOwnerUid;
       const sessionId = currentSession?.id;
-      
+
       if (!uid || !canWrite || !sessionId || !db) {
         throw new Error('User or session not found');
       }
 
       try {
         const { id: _clientId, ...documentFields } = document;
+        const stampedSession =
+          (typeof document.session_id === 'string' && document.session_id) ||
+          (typeof (document as { sessionId?: string }).sessionId === 'string' &&
+            (document as { sessionId?: string }).sessionId) ||
+          sessionId;
         const rawDocData = {
           ...documentFields,
           restaurantId: uid,
           restaurant_id: uid,
           userId: uid,
           uid,
-          // Prefer caller-supplied session (upload may finish after the user switched sessions).
-          // Write both field names so session filters work for members and legacy readers.
-          session_id: (typeof document.session_id === 'string' && document.session_id) || sessionId,
-          sessionId: (typeof document.session_id === 'string' && document.session_id) || sessionId,
+          session_id: stampedSession,
+          sessionId: stampedSession,
           created_at: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
         };
 
-        // Temporary id for Storage sidecar path when lineItems are huge (CSV bank imports).
         const stagingId =
           typeof document.persistedDocumentId === 'string' && document.persistedDocumentId
             ? document.persistedDocumentId
@@ -232,9 +305,14 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
           ...packed.forLocal,
           id: firestoreId,
           persistedDocumentId: firestoreId,
+          session_id: stampedSession,
+          sessionId: stampedSession,
         }) as ProcessedDocument;
         const newDoc = { ...localFields, id: firestoreId, persistedDocumentId: firestoreId };
-        setDocuments((prev) => [newDoc, ...prev]);
+        setDocuments((prev) => {
+          if (prev.some((d) => d.id === firestoreId)) return prev;
+          return [newDoc, ...prev];
+        });
         return newDoc;
       } catch (err) {
         console.error('Error adding document:', err);
@@ -249,12 +327,24 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
     async (documentId: string, updates: Partial<ProcessedDocument>) => {
       if (!db || !canWrite) return;
       const uid = dataOwnerUid || '';
-      
+
       try {
         const packed = await packDocumentUpdatesForFirestore(documentId, uid, updates);
         const docRef = doc(db, 'documents', documentId);
         const cleanedUpdates = removeUndefinedDeep(packed.forFirestore) as Record<string, unknown>;
         const existing = documents.find((d) => d.id === documentId);
+
+        // Keep session stamps dual-written when we know the session
+        const sid =
+          resolveDocumentSessionId(updates as Record<string, unknown>) ||
+          resolveDocumentSessionId(existing as unknown as Record<string, unknown>) ||
+          currentSession?.id ||
+          '';
+        if (sid) {
+          if (cleanedUpdates.session_id == null) cleanedUpdates.session_id = sid;
+          if (cleanedUpdates.sessionId == null) cleanedUpdates.sessionId = sid;
+        }
+
         const clearingError =
           Object.prototype.hasOwnProperty.call(updates, 'error') && !updates.error;
         const resolving =
@@ -274,7 +364,15 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
         }
         await updateDoc(docRef, cleanedUpdates as any);
         setDocuments((prev) =>
-          prev.map((d) => (d.id === documentId ? { ...d, ...packed.forLocal } : d))
+          prev.map((d) =>
+            d.id === documentId
+              ? {
+                  ...d,
+                  ...packed.forLocal,
+                  ...(sid ? { session_id: sid, sessionId: sid } : {}),
+                }
+              : d
+          )
         );
       } catch (err) {
         console.error('Error updating document:', err);
@@ -282,12 +380,12 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [canWrite, dataOwnerUid, documents]
+    [canWrite, currentSession?.id, dataOwnerUid, documents]
   );
 
   const deleteDocument = useCallback(async (documentId: string) => {
     if (!db || !canWrite) return;
-    
+
     try {
       const docRef = doc(db, 'documents', documentId);
       await deleteDoc(docRef);
@@ -306,7 +404,9 @@ export function DocumentProvider({ children }: { children: React.ReactNode }) {
     addDocument,
     updateDocumentData,
     deleteDocument,
-    refreshDocuments: fetchDocuments,
+    refreshDocuments: async () => {
+      subscribeDocuments();
+    },
   };
 
   return <DocumentContext.Provider value={value}>{children}</DocumentContext.Provider>;

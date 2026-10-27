@@ -544,6 +544,7 @@ export function RestaurantDashboard() {
         id: Math.random().toString(36).substr(2, 9),
         fileName,
         status: 'pending',
+        session_id: currentSession.id,
         ...(fileHash ? { fileHash } : {}),
       });
       const createdId = newDoc.id;

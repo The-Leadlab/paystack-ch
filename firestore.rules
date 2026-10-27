@@ -50,23 +50,39 @@ service cloud.firestore {
       );
     }
 
+    function resourceSessionId() {
+      return resource.data.keys().has('session_id') && resource.data.session_id is string
+        ? resource.data.session_id
+        : (resource.data.keys().has('sessionId') && resource.data.sessionId is string
+            ? resource.data.sessionId
+            : null);
+    }
+
+    function createSessionId() {
+      return request.resource.data.keys().has('session_id') && request.resource.data.session_id is string
+        ? request.resource.data.session_id
+        : (request.resource.data.keys().has('sessionId') && request.resource.data.sessionId is string
+            ? request.resource.data.sessionId
+            : null);
+    }
+
     function resourceSessionOwnedByUser() {
       return signedIn() &&
-        resource.data.session_id is string &&
-        exists(/databases/$(database)/documents/sessions/$(resource.data.session_id)) &&
+        resourceSessionId() != null &&
+        exists(/databases/$(database)/documents/sessions/$(resourceSessionId())) &&
         (
-          canAccessOwner(get(/databases/$(database)/documents/sessions/$(resource.data.session_id)).data.restaurantId) ||
-          canAccessOwner(get(/databases/$(database)/documents/sessions/$(resource.data.session_id)).data.restaurant_id)
+          canAccessOwner(get(/databases/$(database)/documents/sessions/$(resourceSessionId())).data.restaurantId) ||
+          canAccessOwner(get(/databases/$(database)/documents/sessions/$(resourceSessionId())).data.restaurant_id)
         );
     }
 
     function createSessionOwnedByUser() {
       return signedIn() &&
-        request.resource.data.session_id is string &&
-        exists(/databases/$(database)/documents/sessions/$(request.resource.data.session_id)) &&
+        createSessionId() != null &&
+        exists(/databases/$(database)/documents/sessions/$(createSessionId())) &&
         (
-          canWriteOwner(get(/databases/$(database)/documents/sessions/$(request.resource.data.session_id)).data.restaurantId) ||
-          canWriteOwner(get(/databases/$(database)/documents/sessions/$(request.resource.data.session_id)).data.restaurant_id)
+          canWriteOwner(get(/databases/$(database)/documents/sessions/$(createSessionId())).data.restaurantId) ||
+          canWriteOwner(get(/databases/$(database)/documents/sessions/$(createSessionId())).data.restaurant_id)
         );
     }
 
