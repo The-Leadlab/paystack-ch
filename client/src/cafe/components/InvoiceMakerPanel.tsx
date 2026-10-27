@@ -46,6 +46,16 @@ function generateInvoiceNumber(): string {
   return `INV-${y}${m}${d}-${rand}`;
 }
 
+function invoiceSortStamp(invoice: InvoiceData): string {
+  return invoice.updatedAt || invoice.createdAt || invoice.date || '';
+}
+
+/** Most recently saved/updated invoice first. */
+function pickLatestSavedInvoice(invoices: InvoiceData[]): InvoiceData | undefined {
+  if (invoices.length === 0) return undefined;
+  return [...invoices].sort((a, b) => invoiceSortStamp(b).localeCompare(invoiceSortStamp(a)))[0];
+}
+
 function createInitialInvoice(
   t: (k: string) => string,
   opts?: { taxRate?: number; currency?: 'CHF' | 'GBP'; currencySymbol?: string; companyAddress?: string }
@@ -160,12 +170,44 @@ export function InvoiceMakerPanel() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [savedInvoices, setSavedInvoices] = useState<InvoiceData[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState('');
+  const [hydratedFromStorage, setHydratedFromStorage] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
+  const editorTopRef = useRef<HTMLDivElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setSavedInvoices(loadSavedInvoices(user?.uid).map(normalizeInvoice));
+    const saved = loadSavedInvoices(user?.uid).map(normalizeInvoice);
+    setSavedInvoices(saved);
+    const latest = pickLatestSavedInvoice(saved);
+    if (latest) {
+      // Open the last saved invoice — blank draft only via "New invoice".
+      setInvoiceData(latest);
+    }
+    setHydratedFromStorage(true);
   }, [user?.uid]);
+
+  const openSavedInvoice = (invoice: InvoiceData, preview = false) => {
+    setInvoiceData(normalizeInvoice(invoice));
+    setIsPreviewMode(preview);
+    requestAnimationFrame(() => {
+      editorTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  const startNewInvoice = () => {
+    setIsPreviewMode(false);
+    setInvoiceData(
+      createInitialInvoice(t, {
+        taxRate: taxConfig.defaultRate,
+        currency: reportingCurrencyForLocale(),
+        currencySymbol: currencySymbolForLocale(),
+        companyAddress: getActiveFiscalLocale() === 'uk' ? 'United Kingdom' : 'Switzerland',
+      })
+    );
+    requestAnimationFrame(() => {
+      editorTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
 
   useEffect(() => {
     if (taxRegionLoading) return;
@@ -340,14 +382,12 @@ export function InvoiceMakerPanel() {
     setSavedInvoices(next);
     void syncStockForInvoice(previous, previous, true);
     if (invoiceData.invoiceNumber === invoiceNumber) {
-      setInvoiceData(
-        createInitialInvoice(t, {
-          taxRate: taxConfig.defaultRate,
-          currency: reportingCurrencyForLocale(),
-          currencySymbol: currencySymbolForLocale(),
-          companyAddress: ukUatActive ? 'United Kingdom' : 'Switzerland',
-        })
-      );
+      const fallback = pickLatestSavedInvoice(next);
+      if (fallback) {
+        setInvoiceData(normalizeInvoice(fallback));
+      } else {
+        startNewInvoice();
+      }
     }
   };
 
@@ -612,27 +652,20 @@ export function InvoiceMakerPanel() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={editorTopRef}>
       <div className="ba-page-header flex-col items-start !mb-4 gap-3 sm:flex-row sm:items-center">
         <div>
           <h1>{t('invoiceMakerTab')}</h1>
           <p className="text-xs text-cdlp-muted mt-1 font-normal normal-case tracking-normal">{t('invSubtitle')}</p>
+          {hydratedFromStorage &&
+          savedInvoices.some((inv) => inv.invoiceNumber === invoiceData.invoiceNumber) ? (
+            <p className="text-xs text-cdlp-gold mt-1 font-normal normal-case tracking-normal">
+              {invoiceData.invoiceNumber}
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() =>
-              setInvoiceData(
-                createInitialInvoice(t, {
-                  taxRate: taxConfig.defaultRate,
-                  currency: reportingCurrencyForLocale(),
-                  currencySymbol: currencySymbolForLocale(),
-                  companyAddress: ukUatActive ? 'United Kingdom' : 'Switzerland',
-                })
-              )
-            }
-            className="ba-filter-chip flex items-center gap-2"
-          >
+          <button type="button" onClick={startNewInvoice} className="ba-filter-chip flex items-center gap-2">
             <Plus className="w-4 h-4" /> {t('invNew')}
           </button>
           <button type="button" onClick={() => saveInvoice()} className="ba-filter-chip flex items-center gap-2">
@@ -1086,9 +1119,21 @@ export function InvoiceMakerPanel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-cdlp-border">
-                {savedInvoices.map((invoice) => (
-                  <tr key={invoice.invoiceNumber}>
-                    <td className="px-4 py-3 font-bold">{invoice.invoiceNumber}</td>
+                {savedInvoices.map((invoice) => {
+                  const isActive = invoice.invoiceNumber === invoiceData.invoiceNumber;
+                  return (
+                  <tr
+                    key={invoice.invoiceNumber}
+                    className={isActive ? 'bg-cdlp-gold/5' : undefined}
+                  >
+                    <td className="px-4 py-3 font-bold">
+                      {invoice.invoiceNumber}
+                      {isActive ? (
+                        <span className="ml-2 text-[10px] uppercase text-cdlp-gold">
+                          {t('invEdit')}
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-3">{invoice.clientName || '—'}</td>
                     <td className="px-4 py-3">{invoice.clientCompany || '—'}</td>
                     <td className="px-4 py-3 text-right tabular-nums">
@@ -1100,16 +1145,17 @@ export function InvoiceMakerPanel() {
                     <td className="px-4 py-3 ba-table-muted">{new Date(invoice.date).toLocaleDateString(chfLocale)}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
-                        <button type="button" className="ba-filter-chip !py-1" onClick={() => setInvoiceData(normalizeInvoice(invoice))}>
+                        <button
+                          type="button"
+                          className="ba-filter-chip !py-1"
+                          onClick={() => openSavedInvoice(invoice, false)}
+                        >
                           {t('invEdit')}
                         </button>
                         <button
                           type="button"
                           className="ba-filter-chip !py-1"
-                          onClick={() => {
-                            setInvoiceData(normalizeInvoice(invoice));
-                            setIsPreviewMode(true);
-                          }}
+                          onClick={() => openSavedInvoice(invoice, true)}
                         >
                           {t('invView')}
                         </button>
@@ -1123,7 +1169,8 @@ export function InvoiceMakerPanel() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
