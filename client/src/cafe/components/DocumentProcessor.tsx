@@ -1631,6 +1631,11 @@ export const VerificationHub: React.FC<{
                    {t('dpVerificationCenter')}
                  </h4>
                  <p className="text-[10px] text-cdlp-muted mt-1 truncate max-w-md">{doc.fileName}</p>
+                 {doc.sourceOrigin === 'invoice_maker' ? (
+                   <p className="mt-2 inline-flex items-center rounded border border-cdlp-gold/40 bg-cdlp-gold/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-cdlp-gold">
+                     {t('invFromInvoiceTab')}
+                   </p>
+                 ) : null}
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
                  {(doc.fileUrl || doc.fileDataUrl || doc.fileRaw) && (
@@ -4260,6 +4265,13 @@ export const DocumentProcessor: React.FC<{
                             )}
                             <span className="ba-doc-filename truncate max-w-[200px]">{doc.fileName}</span>
                           </div>
+                          {doc.sourceOrigin === 'invoice_maker' && (
+                            <div className="ml-5 mt-1">
+                              <span className="px-2 py-0.5 border border-cdlp-gold/40 bg-cdlp-gold/10 text-cdlp-gold text-[9px] font-bold uppercase rounded">
+                                {t('invFromInvoiceTab')}
+                              </span>
+                            </div>
+                          )}
                           {doc.data?.issuer && (
                             <div className="ml-5 mt-1">
                               <span className="px-2 py-0.5 bg-cdlp-gold/20 text-cdlp-gold text-[9px] font-bold uppercase rounded">{doc.data.issuer}</span>

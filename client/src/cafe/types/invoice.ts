@@ -1,5 +1,8 @@
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
 
+/** outgoing = we bill a client (income); incoming = supplier/client bills us (expense). */
+export type InvoiceLedgerDirection = 'outgoing' | 'incoming';
+
 export interface InvoiceItem {
   id: string;
   description: string;
@@ -26,6 +29,10 @@ export interface InvoiceData {
   date: string;
   dueDate: string;
   status: InvoiceStatus;
+  /** Cash-flow direction for dashboard sync. Defaults to outgoing (sales invoice). */
+  direction?: InvoiceLedgerDirection;
+  /** Firestore documents/{id} created when this invoice was synced to Documents + ledger. */
+  linkedDocumentId?: string;
   companyName: string;
   companyAddress: string;
   companyPhone: string;

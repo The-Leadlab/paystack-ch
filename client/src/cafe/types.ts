@@ -282,6 +282,8 @@ export interface ProcessedDocument {
   lineItemsStoragePath?: string;
   lineItemsUrl?: string;
   lineItemsCount?: number;
+  /** Origin when the row was created from Invoice Maker (not an uploaded file). */
+  sourceOrigin?: 'invoice_maker' | string;
 }
 
 export interface BankStatementAnalysis {

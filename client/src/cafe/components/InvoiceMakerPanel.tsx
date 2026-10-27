@@ -20,9 +20,14 @@ import { useDocuments } from '../context/DocumentContext';
 import { deleteSavedInvoice, findSavedInvoice, loadSavedInvoices, upsertInvoice } from '../lib/invoiceStorage';
 import { useInventoryOptional } from '../context/InventoryContext';
 import { useInventoryAllowed } from '../hooks/useInventoryAllowed';
+import { useSession } from '../context/SessionContext';
+import { useFinance } from '../context/FinanceContext';
 import { invoiceStockDelta, valuationInCurrency } from '@shared/inventoryFifo';
 import { applyInvoiceTotals, normalizeInvoice } from '../lib/invoiceTotals';
 import { downloadInvoicePdf } from '../lib/invoicePdf';
+import { invoiceFileName, invoiceToFinancialData } from '../lib/invoiceToFinancialData';
+import { postLedgerFromFinancialData } from '../lib/postLedgerFromFinancialData';
+import { resolveOwnBusinessNames } from '../lib/ownBusinessIdentity';
 import type { InvoiceData, InvoiceItem, InvoiceStatus } from '../types/invoice';
 import { INVOICE_CURRENCY_SYMBOLS } from '../types/invoice';
 import { DEFAULT_SWISS_VAT_RATE } from '@shared/swissVatRates';
@@ -68,6 +73,7 @@ function createInitialInvoice(
     date: today,
     dueDate: due,
     status: 'draft',
+    direction: 'outgoing',
     companyName: 'Paystack.ch',
     companyAddress: opts?.companyAddress ?? 'Switzerland',
     companyPhone: '',
@@ -155,7 +161,9 @@ export function InvoiceMakerPanel() {
   const chfLocale = useChfLocale();
   const { ukUatActive, currency: reportingCurrency, fiscalLocale } = useUkUat();
   const { user } = useAuth();
-  const { documents } = useDocuments();
+  const { documents, addDocument, updateDocumentData, deleteDocument } = useDocuments();
+  const { currentSession } = useSession();
+  const { addIncome, addExpense, addLedgerEntriesBatch, deleteFinancesByDocumentId } = useFinance();
   const inventory = useInventoryOptional();
   const showInventory = useInventoryAllowed();
   const { taxConfig, loading: taxRegionLoading } = useTaxRegionConfig();
@@ -166,6 +174,13 @@ export function InvoiceMakerPanel() {
       currencySymbol: currencySymbolForLocale(),
       companyAddress: getActiveFiscalLocale() === 'uk' ? 'United Kingdom' : 'Switzerland',
     })
+  );
+  const ownBusinessNames = useMemo(
+    () =>
+      resolveOwnBusinessNames(user?.uid, user?.displayName, [
+        invoiceData.companyName,
+      ].filter(Boolean)),
+    [user?.uid, user?.displayName, invoiceData.companyName]
   );
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [savedInvoices, setSavedInvoices] = useState<InvoiceData[]>([]);
@@ -354,7 +369,64 @@ export function InvoiceMakerPanel() {
     }
   };
 
-  const saveInvoice = (): boolean => {
+  const syncInvoiceToDashboard = async (invoice: InvoiceData): Promise<string | undefined> => {
+    if (!currentSession?.id) {
+      toast.error(t('alertSelectSessionFirst') || 'Select a session first.');
+      return invoice.linkedDocumentId;
+    }
+
+    const financial = invoiceToFinancialData(invoice, {
+      sourceNotice: t('invSourceNotice') || 'Created from the Invoice tab.',
+    });
+    const fileName = invoiceFileName(invoice);
+    const writers = { addIncome, addExpense, addLedgerEntriesBatch };
+    let documentId = invoice.linkedDocumentId;
+
+    try {
+      if (documentId && documents.some((d) => d.id === documentId || d.persistedDocumentId === documentId)) {
+        await updateDocumentData(documentId, {
+          fileName,
+          status: invoice.status === 'cancelled' ? 'skipped' : 'completed',
+          data: financial,
+          sourceOrigin: 'invoice_maker',
+          session_id: currentSession.id,
+        });
+      } else {
+        const created = await addDocument({
+          id: Math.random().toString(36).slice(2, 11),
+          fileName,
+          status: invoice.status === 'cancelled' ? 'skipped' : 'completed',
+          data: financial,
+          session_id: currentSession.id,
+          sourceOrigin: 'invoice_maker',
+        });
+        documentId = created.id;
+      }
+
+      await deleteFinancesByDocumentId(documentId);
+      if (invoice.status !== 'cancelled') {
+        await postLedgerFromFinancialData(
+          writers,
+          financial,
+          fileName,
+          currentSession.id,
+          documentId,
+          { ownBusinessNames }
+        );
+      }
+      return documentId;
+    } catch (err) {
+      console.error('Invoice → dashboard sync failed:', err);
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : t('invSyncFailed') || 'Invoice saved locally, but dashboard sync failed.'
+      );
+      return documentId;
+    }
+  };
+
+  const saveInvoice = async (): Promise<boolean> => {
     if (!invoiceData.clientName || !invoiceData.companyName) {
       alert(t('invValidationRequired'));
       return false;
@@ -363,21 +435,39 @@ export function InvoiceMakerPanel() {
       alert(t('invValidationItems'));
       return false;
     }
+    if (!currentSession?.id) {
+      alert(t('alertSelectSessionFirst') || 'Select a session first.');
+      return false;
+    }
     const previous = findSavedInvoice(user?.uid, invoiceData.invoiceNumber);
-    const computed = applyInvoiceTotals(invoiceData);
-    const next = upsertInvoice(user?.uid, computed);
+    const computed = applyInvoiceTotals({
+      ...invoiceData,
+      direction: invoiceData.direction === 'incoming' ? 'incoming' : 'outgoing',
+    });
+    const linkedDocumentId = await syncInvoiceToDashboard(computed);
+    const stamped = { ...computed, linkedDocumentId: linkedDocumentId || computed.linkedDocumentId };
+    const next = upsertInvoice(user?.uid, stamped);
     setSavedInvoices(next);
-    void syncStockForInvoice(previous, computed).catch(() => {
+    setInvoiceData(stamped);
+    void syncStockForInvoice(previous, stamped).catch(() => {
       /* toast already shown */
     });
-    alert(t('invSavedSuccess'));
+    toast.success(t('invSavedSynced') || t('invSavedSuccess'));
     return true;
   };
 
-  const removeSavedInvoice = (invoiceNumber: string) => {
+  const removeSavedInvoice = async (invoiceNumber: string) => {
     const previous = findSavedInvoice(user?.uid, invoiceNumber);
     if (!previous) return;
     if (!confirm(t('invDeleteConfirm').replace('{n}', invoiceNumber))) return;
+    if (previous.linkedDocumentId) {
+      try {
+        await deleteFinancesByDocumentId(previous.linkedDocumentId);
+        await deleteDocument(previous.linkedDocumentId);
+      } catch (err) {
+        console.warn('Could not remove linked document for invoice:', err);
+      }
+    }
     const next = deleteSavedInvoice(user?.uid, invoiceNumber);
     setSavedInvoices(next);
     void syncStockForInvoice(previous, previous, true);
@@ -463,16 +553,17 @@ export function InvoiceMakerPanel() {
       `${t('invEmailBodyIntro')}\n\n${displayInvoice.invoiceNumber}\n${t('invTotalTtc')}: ${displayInvoice.currencySymbol} ${displayInvoice.total.toFixed(2)}\n${t('invDueDate')}: ${displayInvoice.dueDate}`
     );
     window.open(`mailto:${invoiceData.clientEmail}?subject=${subject}&body=${body}`, '_blank');
-    const previous = findSavedInvoice(user?.uid, invoiceData.invoiceNumber);
-    const sent = applyInvoiceTotals({ ...invoiceData, status: 'sent' });
-    setInvoiceData(sent);
-    upsertInvoice(user?.uid, sent);
-    setSavedInvoices(loadSavedInvoices(user?.uid));
-    void syncStockForInvoice(previous, sent).catch(() => {
-      /* toast already shown in syncStockForInvoice */
-    });
-
     void (async () => {
+      const previous = findSavedInvoice(user?.uid, invoiceData.invoiceNumber);
+      const sentBase = applyInvoiceTotals({ ...invoiceData, status: 'sent' });
+      const linkedDocumentId = await syncInvoiceToDashboard(sentBase);
+      const sent = { ...sentBase, linkedDocumentId: linkedDocumentId || sentBase.linkedDocumentId };
+      setInvoiceData(sent);
+      upsertInvoice(user?.uid, sent);
+      setSavedInvoices(loadSavedInvoices(user?.uid));
+      void syncStockForInvoice(previous, sent).catch(() => {
+        /* toast already shown in syncStockForInvoice */
+      });
       const { backupInvoiceToGoogleDrive } = await import('../lib/invoiceDriveBackup');
       await backupInvoiceToGoogleDrive(sent, invoicePdfLabels, chfLocale, user?.uid);
     })();
@@ -812,6 +903,28 @@ export function InvoiceMakerPanel() {
                   <option value="Due on Receipt">{t('invDueOnReceipt')}</option>
                 </select>
               </div>
+            </div>
+            <div>
+              <FieldLabel htmlFor="inv-direction">{t('invDirection')}</FieldLabel>
+              <select
+                id="inv-direction"
+                className="ba-verify-field"
+                value={invoiceData.direction === 'incoming' ? 'incoming' : 'outgoing'}
+                onChange={(e) =>
+                  setInvoiceData((p) => ({
+                    ...p,
+                    direction: e.target.value === 'incoming' ? 'incoming' : 'outgoing',
+                  }))
+                }
+              >
+                <option value="outgoing">{t('invDirectionOutgoing')}</option>
+                <option value="incoming">{t('invDirectionIncoming')}</option>
+              </select>
+              <p className="text-[10px] text-cdlp-muted mt-1.5 normal-case tracking-normal font-normal">
+                {invoiceData.direction === 'incoming'
+                  ? t('invDirectionIncomingHint')
+                  : t('invDirectionOutgoingHint')}
+              </p>
             </div>
           </div>
 

@@ -436,6 +436,11 @@ export function DocumentsLibraryTab({
           <h3 className="ba-doc-card__title" title={doc.fileName}>
             {documentDisplayName(doc.fileName, doc.fileName || "Document")}
           </h3>
+          {doc.sourceOrigin === "invoice_maker" ? (
+            <p className="mb-1 inline-flex items-center rounded border border-cdlp-gold/40 bg-cdlp-gold/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-cdlp-gold">
+              {t("invFromInvoiceTab")}
+            </p>
+          ) : null}
           <p className="ba-doc-card__issuer">{issuer}</p>
           <ul className="ba-doc-card__meta">
             <li>
