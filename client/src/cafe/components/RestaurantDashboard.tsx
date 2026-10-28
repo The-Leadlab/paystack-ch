@@ -44,11 +44,11 @@ import { InventoryComingSoonPanel } from './InventoryComingSoonPanel';
 import { useInventoryAllowed } from '../hooks/useInventoryAllowed';
 import { useInventoryOptional } from '../context/InventoryContext';
 import { isCafeDemoSeedSku } from '../types/inventory';
+import { valuationInCurrency } from '@shared/inventoryFifo';
 import {
-  foodCostPercent,
-  periodFifoCogsCents,
-  valuationInCurrency,
-} from '@shared/inventoryFifo';
+  buildSessionInventorySnapshot,
+  monthlyInventorySeries,
+} from '@shared/inventoryReportSnapshot';
 import type { ProcessedDocument, POSReading } from '../types';
 import { DocumentType } from '../types';
 import { brandLockupSrc, brandMarkSrc, BRAND_LOGO_SIZE, BRAND_LOCKUP_HEIGHT } from '@/const/branding';
@@ -1902,11 +1902,14 @@ function InventoryDashboardSection({
 
   if (!inventory) return null;
 
-  // Real stock on this column = products tied to an uploaded document, never demo seeds.
+  // Rows = upload-derived (document-linked) products; footer 1200 = full session FIFO (same as KPI).
   const products = inventory.products.filter(
     (p) => !p.archived && !isCafeDemoSeedSku(p.sku) && linkedProductIds.has(p.id),
   );
-  const displayValuation = products.reduce((sum, p) => sum + (p.valuationAmount || 0), 0);
+  const sessionSnap = buildSessionInventorySnapshot({
+    products: inventory.products,
+    movements: inventory.movements,
+  });
 
   const handleAdd = async () => {
     const name = newName.trim();
@@ -2009,7 +2012,7 @@ function InventoryDashboardSection({
       <div className="mt-3 pt-2 border-t border-cdlp-border/60 flex justify-between items-center text-[10px] uppercase tracking-wide text-cdlp-muted">
         <span>{t('invDashStockAsset') || 'Stock asset (FIFO · 1200)'}</span>
         <span className="text-cdlp-white tabular-nums font-semibold">
-          {formatChf(valuationInCurrency(displayValuation))}
+          {formatChf(sessionSnap.valuation)}
         </span>
       </div>
     </div>
@@ -2581,8 +2584,12 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                   p.minStockLevel != null &&
                   p.onHandQty <= p.minStockLevel
               );
-              const cogsCents = periodFifoCogsCents(inventory.movements);
-              const foodPct = foodCostPercent(cogsCents, totalIncome);
+              const dashSnap = buildSessionInventorySnapshot({
+                products: inventory.products,
+                movements: inventory.movements,
+                revenueAmount: totalIncome,
+              });
+              const foodPct = dashSnap.foodCostPercent;
               return (
                 <div className="space-y-2">
                   <button
@@ -2595,7 +2602,7 @@ function DashboardTab({ currentSession, isAllSessionsView, totalIncome, totalExp
                         {t('invDashStockAsset') || 'Stock asset (FIFO · 1200)'}
                       </div>
                       <div className="text-lg font-semibold text-cdlp-white tabular-nums">
-                        {fmtKpi(valuationInCurrency(inventory.totalValuation))}
+                        {fmtKpi(dashSnap.valuation)}
                         {currencySuffix ? ` ${currencySuffix.trim()}` : ''}
                       </div>
                       {foodPct != null ? (
@@ -2835,7 +2842,6 @@ function ReportsPlaceholder({
   const { income, expenses } = useFinance();
   const { documents } = useDocuments();
   const inventory = useInventoryOptional();
-  const stockValue = inventory ? valuationInCurrency(inventory.totalValuation) : 0;
   const showInventoryAsset = Boolean(showInventoryTab && inventory);
   const { currentSession, isAllSessionsView, sessions } = useSession();
   const { enforcementEnabled, entitlements } = useSubscription();
@@ -2931,15 +2937,20 @@ function ReportsPlaceholder({
     );
   }
 
-  const periodCogsCents = showInventoryAsset && inventory
-    ? periodFifoCogsCents(inventory.movements, {
-        fromDate: dateFrom || undefined,
-        toDate: dateTo || undefined,
-      })
-    : 0;
-  const periodCogsCurrency = valuationInCurrency(periodCogsCents);
   const periodIncomeSum = dateFilteredIncome.reduce((s, i) => s + (i.amount || 0), 0);
-  const periodFoodCostPct = foodCostPercent(periodCogsCents, periodIncomeSum);
+  const inventorySnap = React.useMemo(() => {
+    if (!showInventoryAsset || !inventory) return null;
+    return buildSessionInventorySnapshot({
+      products: inventory.products,
+      movements: inventory.movements,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+      revenueAmount: periodIncomeSum,
+    });
+  }, [showInventoryAsset, inventory, dateFrom, dateTo, periodIncomeSum]);
+  const stockValue = inventorySnap?.valuation ?? 0;
+  const periodCogsCurrency = inventorySnap?.periodCogs ?? 0;
+  const periodFoodCostPct = inventorySnap?.foodCostPercent ?? null;
 
   // Group by month — balance matches dashboard KPI (income − all expense categories)
   const monthlyData = React.useMemo(() => {
@@ -2973,6 +2984,15 @@ function ReportsPlaceholder({
     
     return Object.entries(months).sort((a, b) => b[0].localeCompare(a[0]));
   }, [dateFilteredIncome, dateFilteredExpenses]);
+
+  const monthlyStockSeries = React.useMemo(() => {
+    if (!showInventoryAsset || !inventory) return new Map<string, { valuation: number; cogs: number }>();
+    return monthlyInventorySeries({
+      products: inventory.products,
+      movements: inventory.movements,
+      months: monthlyData.map(([m]) => m),
+    });
+  }, [showInventoryAsset, inventory, monthlyData]);
 
   // Group expenses by supplier (canonical names — no duplicate Taligro/REF variants)
   const supplierData = React.useMemo(() => {
@@ -3103,6 +3123,8 @@ function ReportsPlaceholder({
     inventoryValuation: showInventoryAsset ? stockValue : undefined,
     inventoryCogs: showInventoryAsset ? periodCogsCurrency : undefined,
     inventoryFoodCostPercent: showInventoryAsset ? periodFoodCostPct ?? undefined : undefined,
+    inventoryProducts: showInventoryAsset ? inventorySnap?.productRows : undefined,
+    inventoryMovements: showInventoryAsset ? inventorySnap?.movementRows : undefined,
   });
 
   const handleExport = (format: 'csv' | 'pdf') => {
@@ -3171,6 +3193,11 @@ function ReportsPlaceholder({
         includeLedger: payload.includeLedger,
         income: dateFilteredIncome,
         expenses: dateFilteredExpenses,
+        inventoryValuation: payload.inventoryValuation,
+        inventoryCogs: payload.inventoryCogs,
+        inventoryFoodCostPercent: payload.inventoryFoodCostPercent,
+        inventoryProducts: payload.inventoryProducts,
+        inventoryMovements: payload.inventoryMovements,
       });
       alert(t('repEmailSent').replace('{email}', sentTo));
     } catch (e) {
@@ -3636,7 +3663,14 @@ function ReportsPlaceholder({
                       <div>
                         <p className="text-cdlp-muted uppercase mb-1">{t('inventoryTab') || 'Inventory'}</p>
                         <p className="font-bold text-cdlp-gold tabular-nums">
-                          {stockValue.toLocaleString(chfLocale, {
+                          {(monthlyStockSeries.get(month)?.valuation ?? 0).toLocaleString(chfLocale, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </p>
+                        <p className="text-[10px] text-cdlp-muted mt-0.5 tabular-nums">
+                          {(t('invRepMonthCogs') || 'COGS')}:{' '}
+                          {(monthlyStockSeries.get(month)?.cogs ?? 0).toLocaleString(chfLocale, {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}
@@ -3650,7 +3684,7 @@ function ReportsPlaceholder({
             {showInventoryAsset ? (
               <p className="text-[11px] text-cdlp-muted pt-1">
                 {(t('invRepMonthlyStockNote') ||
-                  'Stock asset (session): {stock}. Period COGS: {cogs}.').replace(
+                  'Filtered stock asset: {stock}. Period COGS: {cogs}.').replace(
                   '{stock}',
                   `${stockValue.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${currencySuffix}`
                 ).replace(

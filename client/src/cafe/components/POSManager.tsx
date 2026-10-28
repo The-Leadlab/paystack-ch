@@ -40,6 +40,9 @@ import { useFinance } from '../context/FinanceContext';
 import { useSession } from '../context/SessionContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useUkUat } from '../context/UkUatContext';
+import { useInventoryOptional } from '../context/InventoryContext';
+import { useInventoryAllowed } from '../hooks/useInventoryAllowed';
+import { buildSessionInventorySnapshot } from '@shared/inventoryReportSnapshot';
 import {
   addCashDeposit,
   loadCashDeposits,
@@ -161,6 +164,8 @@ export function POSManager({
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
   const { currencySuffix } = useUkUat();
+  const inventoryAllowed = useInventoryAllowed();
+  const inventory = useInventoryOptional();
   const [editingReading, setEditingReading] = useState<POSReading | null>(null);
   const [activeSectors, setActiveSectors] = useState<string[]>(() => loadStoredSectors());
   const [showSectorPicker, setShowSectorPicker] = useState(false);
@@ -855,6 +860,45 @@ export function POSManager({
           <p className="text-2xl md:text-3xl font-bold text-emerald-400 tabular-nums">{fmtChf(revPeriod)}</p>
         </div>
       </div>
+
+      {inventoryAllowed && inventory ? (() => {
+        const snap = buildSessionInventorySnapshot({
+          products: inventory.products,
+          movements: inventory.movements,
+          revenueAmount: revPeriod,
+        });
+        const stockLabel = snap.valuation.toLocaleString(chfLocale, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }) + (currencySuffix || '');
+        const stripText =
+          snap.foodCostPercent != null
+            ? (t('invRevStockStrip') || 'Stock asset {stock} · Food cost {pct}')
+                .replace('{stock}', stockLabel)
+                .replace('{pct}', `${snap.foodCostPercent.toFixed(1)}%`)
+            : (t('invRevStockStripNoPct') || 'Stock asset {stock}').replace('{stock}', stockLabel);
+        return (
+          <div className="ba-panel !py-2.5 !px-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="text-cdlp-muted tabular-nums">{stripText}</span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="ba-revenue-link-btn"
+                onClick={() => onNavigateTab?.('inventory')}
+              >
+                {t('invRevOpenInventory') || 'Inventory'}
+              </button>
+              <button
+                type="button"
+                className="ba-revenue-link-btn"
+                onClick={() => onNavigateTab?.('documents')}
+              >
+                {t('invRevOpenStocks') || 'Documents · Stocks'}
+              </button>
+            </div>
+          </div>
+        );
+      })() : null}
 
       {!hasTransactions ? (
         <div className="ba-revenue-empty-banner">

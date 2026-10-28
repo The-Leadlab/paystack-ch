@@ -94,6 +94,20 @@ export type ReportExportLabels = {
   sourceFile: string;
   stockAsset1200: string;
   stockAssetHint: string;
+  inventorySheet: string;
+  inventoryMovementsSheet: string;
+  inventorySku: string;
+  inventoryOnHand: string;
+  inventoryUnit: string;
+  inventoryValuationCol: string;
+  inventoryCategory: string;
+  inventoryMovementType: string;
+  inventoryDocumentId: string;
+  inventoryProduct: string;
+  inventoryQty: string;
+  inventoryUnitCost: string;
+  periodCogsFifo: string;
+  foodCostPct: string;
 };
 
 const en: ReportExportLabels = {
@@ -190,6 +204,20 @@ const en: ReportExportLabels = {
   sourceFile: "Source file",
   stockAsset1200: "1200 Inventories (FIFO)",
   stockAssetHint: "Balance-sheet stock asset. Does not change the VAT statement.",
+  inventorySheet: "Inventory",
+  inventoryMovementsSheet: "Stock movements",
+  inventorySku: "SKU",
+  inventoryOnHand: "On hand",
+  inventoryUnit: "Unit",
+  inventoryValuationCol: "Valuation",
+  inventoryCategory: "Category",
+  inventoryMovementType: "Type",
+  inventoryDocumentId: "Document ID",
+  inventoryProduct: "Product",
+  inventoryQty: "Qty",
+  inventoryUnitCost: "Unit cost",
+  periodCogsFifo: "Period COGS (FIFO)",
+  foodCostPct: "Food cost %",
 };
 
 const fr: ReportExportLabels = {
@@ -287,6 +315,20 @@ const fr: ReportExportLabels = {
   sourceFile: "Fichier source",
   stockAsset1200: "1200 Marchandises (FIFO)",
   stockAssetHint: "Actif de bilan. N’affecte pas la déclaration TVA.",
+  inventorySheet: "Stock",
+  inventoryMovementsSheet: "Mouvements stock",
+  inventorySku: "SKU",
+  inventoryOnHand: "En stock",
+  inventoryUnit: "Unité",
+  inventoryValuationCol: "Valorisation",
+  inventoryCategory: "Catégorie",
+  inventoryMovementType: "Type",
+  inventoryDocumentId: "ID document",
+  inventoryProduct: "Produit",
+  inventoryQty: "Qté",
+  inventoryUnitCost: "Coût unit.",
+  periodCogsFifo: "CMV période (FIFO)",
+  foodCostPct: "Coût matière %",
 };
 
 export function getReportExportLabels(locale: ReportExportLocale = "en"): ReportExportLabels {

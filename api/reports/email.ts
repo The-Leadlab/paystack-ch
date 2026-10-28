@@ -7,6 +7,10 @@ import { buildFinancialReportExcelBuffer } from "../../shared/financialReportExc
 import { buildReportEmailHtml } from "../../lib/reportEmailTemplate.js";
 import { sendReportEmail } from "../../lib/resendReports.js";
 import { ensureFirebaseAdmin } from "../../lib/firebaseAdmin.js";
+import {
+  loadInventorySnapshotForReport,
+  snapshotToReportFields,
+} from "../../lib/loadInventorySnapshotForReport.js";
 import { getFirestore } from "firebase-admin/firestore";
 
 type IncomeRow = {
@@ -34,6 +38,26 @@ type Body = {
   includeLedger?: boolean;
   income?: IncomeRow[];
   expenses?: ExpenseRow[];
+  /** Client may pass a pre-built snapshot so email matches download export. */
+  inventoryValuation?: number;
+  inventoryCogs?: number;
+  inventoryFoodCostPercent?: number;
+  inventoryProducts?: Array<{
+    name: string;
+    sku: string;
+    unit: string;
+    category: string;
+    onHandQty: number;
+    valuation: number;
+  }>;
+  inventoryMovements?: Array<{
+    date: string;
+    type: string;
+    productName: string;
+    quantity: number;
+    unitCost: number;
+    documentId: string;
+  }>;
 };
 
 const CADENCES: ReportEmailCadence[] = ["weekly", "biweekly", "monthly", "annual"];
@@ -113,6 +137,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       })),
     };
 
+    let inventoryFields = snapshotToReportFields(null);
+    if (typeof body.inventoryValuation === "number") {
+      inventoryFields = {
+        inventoryValuation: body.inventoryValuation,
+        inventoryCogs: body.inventoryCogs,
+        inventoryFoodCostPercent: body.inventoryFoodCostPercent,
+        inventoryProducts: body.inventoryProducts,
+        inventoryMovements: body.inventoryMovements,
+      };
+    } else {
+      try {
+        const snap = await loadInventorySnapshotForReport({
+          uid: auth.uid,
+          dateFrom: period.from,
+          dateTo: period.to,
+          revenueAmount: totalIncome,
+        });
+        inventoryFields = snapshotToReportFields(snap);
+      } catch (invErr) {
+        console.warn("[api] reports/email inventory load skipped:", invErr);
+      }
+    }
+
     const reportHtml = buildServerFinancialReportHtml({
       ...reportRows,
       dateFrom: period.from,
@@ -120,6 +167,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       sessionName,
       locale,
       includeLedger,
+      inventoryValuation: inventoryFields.inventoryValuation,
+      inventoryCogs: inventoryFields.inventoryCogs,
+      inventoryFoodCostPercent: inventoryFields.inventoryFoodCostPercent,
+      inventoryProducts: inventoryFields.inventoryProducts,
     });
 
     const reportExcel = buildFinancialReportExcelBuffer({
@@ -129,6 +180,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       sessionName,
       locale,
       currency: "CHF",
+      ...inventoryFields,
     });
 
     const subject =

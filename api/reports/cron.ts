@@ -8,6 +8,10 @@ import { buildFinancialReportExcelBuffer } from "../../shared/financialReportExc
 import { buildReportEmailHtml } from "../../lib/reportEmailTemplate.js";
 import { sendReportEmail } from "../../lib/resendReports.js";
 import {
+  loadInventorySnapshotForReport,
+  snapshotToReportFields,
+} from "../../lib/loadInventorySnapshotForReport.js";
+import {
   isIsoDate,
   isScheduleDue,
   parseReportScheduleCadenceDays,
@@ -204,6 +208,18 @@ async function sendScheduledReport(
       account_code: valueAsString(row.accountCode),
     })),
   };
+  let inventoryFields = snapshotToReportFields(null);
+  try {
+    const snap = await loadInventorySnapshotForReport({
+      uid,
+      dateFrom: from,
+      dateTo: to,
+      revenueAmount: totalIncome,
+    });
+    inventoryFields = snapshotToReportFields(snap);
+  } catch (invErr) {
+    console.warn("[api] reports/cron inventory load skipped:", invErr);
+  }
   const reportHtml = buildServerFinancialReportHtml({
     ...reportRows,
     dateFrom: from,
@@ -211,6 +227,10 @@ async function sendScheduledReport(
     sessionName,
     locale,
     includeLedger,
+    inventoryValuation: inventoryFields.inventoryValuation,
+    inventoryCogs: inventoryFields.inventoryCogs,
+    inventoryFoodCostPercent: inventoryFields.inventoryFoodCostPercent,
+    inventoryProducts: inventoryFields.inventoryProducts,
   });
   const reportExcel = buildFinancialReportExcelBuffer({
     ...reportRows,
@@ -219,6 +239,7 @@ async function sendScheduledReport(
     sessionName,
     locale,
     currency: "CHF",
+    ...inventoryFields,
   });
   const html = buildReportEmailHtml({
     locale,

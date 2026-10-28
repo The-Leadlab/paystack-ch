@@ -26,6 +26,22 @@ export type ServerExcelReportInput = {
   inventoryValuation?: number;
   inventoryCogs?: number;
   inventoryFoodCostPercent?: number;
+  inventoryProducts?: Array<{
+    name: string;
+    sku: string;
+    unit: string;
+    category: string;
+    onHandQty: number;
+    valuation: number;
+  }>;
+  inventoryMovements?: Array<{
+    date: string;
+    type: string;
+    productName: string;
+    quantity: number;
+    unitCost: number;
+    documentId: string;
+  }>;
 };
 
 function money(n: unknown): number {
@@ -109,10 +125,10 @@ export function buildFinancialReportExcelBuffer(input: ServerExcelReportInput): 
           [L.stockAsset1200, round2(input.inventoryValuation), currency],
           [L.stockAssetHint],
           ...(typeof input.inventoryCogs === "number"
-            ? [["Period COGS (FIFO)", round2(input.inventoryCogs), currency]]
+            ? [[L.periodCogsFifo, round2(input.inventoryCogs), currency]]
             : []),
           ...(typeof input.inventoryFoodCostPercent === "number"
-            ? [["Food cost %", round2(input.inventoryFoodCostPercent), "%"]]
+            ? [[L.foodCostPct, round2(input.inventoryFoodCostPercent), "%"]]
             : []),
         ]
       : []),
@@ -217,6 +233,60 @@ export function buildFinancialReportExcelBuffer(input: ServerExcelReportInput): 
   const expenseSheet = XLSX.utils.aoa_to_sheet(expenseRows);
   autosizeSheet(expenseSheet, expenseRows);
   XLSX.utils.book_append_sheet(workbook, expenseSheet, L.expenseDetails.slice(0, 31));
+
+  const invProducts = Array.isArray(input.inventoryProducts) ? input.inventoryProducts : [];
+  if (invProducts.length > 0) {
+    const invRows: Array<Array<string | number>> = [
+      [
+        L.inventoryProduct,
+        L.inventorySku,
+        L.inventoryOnHand,
+        L.inventoryUnit,
+        L.inventoryValuationCol,
+        L.inventoryCategory,
+      ],
+    ];
+    for (const p of invProducts) {
+      invRows.push([
+        p.name,
+        p.sku || "",
+        round2(money(p.onHandQty)),
+        p.unit || "",
+        round2(money(p.valuation)),
+        p.category || "",
+      ]);
+    }
+    const invSheet = XLSX.utils.aoa_to_sheet(invRows);
+    autosizeSheet(invSheet, invRows);
+    XLSX.utils.book_append_sheet(workbook, invSheet, L.inventorySheet.slice(0, 31));
+  }
+
+  const invMoves = Array.isArray(input.inventoryMovements) ? input.inventoryMovements : [];
+  if (invMoves.length > 0) {
+    const moveRows: Array<Array<string | number>> = [
+      [
+        L.date,
+        L.inventoryMovementType,
+        L.inventoryProduct,
+        L.inventoryQty,
+        L.inventoryUnitCost,
+        L.inventoryDocumentId,
+      ],
+    ];
+    for (const m of invMoves.slice(0, 500)) {
+      moveRows.push([
+        m.date,
+        m.type,
+        m.productName || "",
+        round2(money(m.quantity)),
+        round2(money(m.unitCost)),
+        m.documentId || "",
+      ]);
+    }
+    const moveSheet = XLSX.utils.aoa_to_sheet(moveRows);
+    autosizeSheet(moveSheet, moveRows);
+    XLSX.utils.book_append_sheet(workbook, moveSheet, L.inventoryMovementsSheet.slice(0, 31));
+  }
 
   const raw = XLSX.write(workbook, { type: "buffer", bookType: "xlsx", compression: true });
   return Buffer.from(raw);

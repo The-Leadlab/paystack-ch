@@ -27,9 +27,16 @@ import type {
 } from '../types/inventory';
 import {
   PRODUCT_CATEGORY_PRESETS,
-  RESTAURANT_CAFE_SEED_PRODUCTS,
   isCafeDemoSeedSku,
 } from '../types/inventory';
+import { useDocuments } from '../context/DocumentContext';
+import { collectProductLinesFromDocument } from '../lib/documentProductLines';
+import { applyDocumentStockIn } from '../lib/applyDocumentStockIn';
+import {
+  isStockInCandidateDocument,
+  normalizeLinesForStockInAnalyze,
+} from '@shared/inventoryStockAnalyze';
+import { suggestStockInFromLines } from '@shared/inventoryStock';
 
 const UNIT_OPTIONS: { value: UnitOfMeasure; label: string }[] = [
   { value: 'pcs', label: 'Pieces' },
@@ -54,10 +61,12 @@ export function InventoryPanel() {
     addMovement,
     addMovementsBatch,
     deleteMovement,
+    deleteMovementsByDocument,
     addRecipe,
     deleteRecipe,
     totalValuation,
   } = useInventory();
+  const { documents, updateDocumentData } = useDocuments();
   const { t } = useLanguage();
   const { fiscalLocale, currencySuffix } = useUkUat();
 
@@ -69,7 +78,7 @@ export function InventoryPanel() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [businessType, setBusinessType] = useState<string>('restaurant');
   const [showArchived, setShowArchived] = useState(false);
-  const [seeding, setSeeding] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   /** Inline cell drafts: productId → field → raw string */
   const [inlineDrafts, setInlineDrafts] = useState<
     Record<string, Partial<{ name: string; sku: string; minStock: string; onHand: string }>>
@@ -179,117 +188,101 @@ export function InventoryPanel() {
     return result;
   }, [products, searchQuery, categoryFilter, showArchived]);
 
-  const seedCafeCatalog = useCallback(async () => {
+  /** Scan all session documents / verification lines → create products + stock_in. */
+  const analyzeStockFromDocuments = useCallback(async () => {
+    setAnalyzing(true);
     try {
-      sessionStorage.setItem('paystack-keep-demo-seed', '1');
-    } catch {
-      /* ignore */
-    }
-    setSeeding(true);
-    try {
-      const bySku = new Map(
-        products
-          .filter((p) => p.sku)
-          .map((p) => [p.sku!.toLowerCase(), p] as const),
-      );
-      const today = new Date().toISOString().slice(0, 10);
-      let productsAdded = 0;
-      const openingMoves: Array<{
-        productId: string;
-        productName: string;
-        type: 'stock_in';
-        quantity: number;
-        unitCost: number;
-        totalCost: number;
-        date: string;
-        note: string;
-      }> = [];
+      const catalog = products
+        .filter((p) => !p.archived)
+        .map((p) => ({ id: p.id, name: p.name, sku: p.sku }));
+      let docsProcessed = 0;
+      let linesApplied = 0;
+      let productsCreated = 0;
+      let skippedNotStock = 0;
 
-      for (const seed of RESTAURANT_CAFE_SEED_PRODUCTS) {
-        const skuKey = seed.sku.toLowerCase();
-        let product = bySku.get(skuKey);
-        if (!product) {
-          const id = await addProduct({
-            name: seed.name,
-            sku: seed.sku,
-            unit: seed.unit,
-            category: seed.category,
-            subcategory: seed.subcategory,
-            minStockLevel: seed.minStockLevel,
-          });
-          productsAdded += 1;
-          product = {
-            id,
-            restaurantId: '',
-            sessionId: '',
-            name: seed.name,
-            sku: seed.sku,
-            unit: seed.unit,
-            category: seed.category,
-            subcategory: seed.subcategory,
-            minStockLevel: seed.minStockLevel,
-            onHandQty: 0,
-            valuationAmount: 0,
-            avgUnitCost: 0,
-            totalIn: 0,
-            totalOut: 0,
-            createdAt: '',
-            updatedAt: '',
-          };
-          bySku.set(skuKey, product);
+      const inventoryApi = {
+        get products() {
+          return catalog;
+        },
+        addProduct: async (p: {
+          name: string;
+          unit: 'pcs';
+          category: string;
+          subcategory?: string;
+        }) => {
+          const id = await addProduct(p);
+          catalog.push({ id, name: p.name });
+          return id;
+        },
+        deleteMovementsByDocument,
+        addMovementsBatch,
+      };
+
+      for (const doc of documents) {
+        if (!doc.data) continue;
+        const status = String(doc.status || '');
+        if (status === 'pending' || status === 'processing' || status === 'error') continue;
+
+        if (!isStockInCandidateDocument(doc.data)) {
+          skippedNotStock += 1;
+          continue;
         }
 
-        // Opening stock: only if still empty (treat missing/NaN as 0).
-        const onHand = Number(product.onHandQty);
-        if ((!(onHand > 0) || Number.isNaN(onHand)) && seed.initialQty > 0) {
-          const unitCostCents = Math.round(seed.initialUnitCost * 100);
-          openingMoves.push({
-            productId: product.id,
-            productName: product.name,
-            type: 'stock_in',
-            quantity: seed.initialQty,
-            unitCost: unitCostCents,
-            totalCost: unitCostCents * seed.initialQty,
-            date: today,
-            note: t('invSeedOpeningNote') || 'Opening stock (café starters)',
+        const normalized = normalizeLinesForStockInAnalyze(collectProductLinesFromDocument(doc));
+        const rows = suggestStockInFromLines(normalized, catalog);
+        if (rows.length === 0) continue;
+
+        const result = await applyDocumentStockIn({
+          documentId: doc.id,
+          data: doc.data,
+          rows,
+          inventory: inventoryApi,
+        });
+        if (result.linesApplied === 0) continue;
+
+        docsProcessed += 1;
+        linesApplied += result.linesApplied;
+        productsCreated += result.productsCreated;
+
+        if (!doc.data.stockDocument) {
+          await updateDocumentData(doc.id, {
+            data: { ...doc.data, stockDocument: true },
           });
         }
       }
 
-      if (openingMoves.length > 0) {
-        await addMovementsBatch(openingMoves);
-      }
-
-      const stockFilled = openingMoves.length;
-      if (productsAdded === 0 && stockFilled === 0) {
-        toast.success(t('invSeedAlready') || 'Starter products already in catalog');
+      if (docsProcessed === 0) {
+        toast.message(
+          (t('invAnalyzeStockNone') ||
+            'No stock items found in documents. Upload supplier invoices, verify line items, then try again.') +
+            (skippedNotStock > 0
+              ? ` (${skippedNotStock} ${t('invAnalyzeStockSkipped') || 'docs skipped as not stock'})`
+              : ''),
+        );
       } else {
         toast.success(
-          (t('invSeedSuccessStock') || 'Added {p} products · opening stock on {s}')
-            .replace('{p}', String(productsAdded))
-            .replace('{s}', String(stockFilled))
+          (t('invAnalyzeStockSuccess') ||
+            'Analyzed documents · {d} invoices · {l} lines · {p} new products')
+            .replace('{d}', String(docsProcessed))
+            .replace('{l}', String(linesApplied))
+            .replace('{p}', String(productsCreated)),
         );
       }
     } catch (err) {
-      console.error('[inventory] seed / opening stock failed', err);
+      console.error('[inventory] analyze stock from documents failed', err);
       toast.error(err instanceof Error ? err.message : String(err));
     } finally {
-      setSeeding(false);
+      setAnalyzing(false);
     }
-  }, [addProduct, addMovementsBatch, products, t]);
-
-  const needsOpeningStock = useMemo(
-    () =>
-      RESTAURANT_CAFE_SEED_PRODUCTS.some((seed) => {
-        const p = products.find(
-          (x) => (x.sku || '').toLowerCase() === seed.sku.toLowerCase() && !x.archived
-        );
-        if (p == null) return false;
-        const onHand = Number(p.onHandQty);
-        return Number.isNaN(onHand) || !(onHand > 0);
-      }),
-    [products],
-  );
+  }, [
+    addProduct,
+    addMovementsBatch,
+    deleteMovementsByDocument,
+    documents,
+    products,
+    t,
+    updateDocumentData,
+  ]);
 
   const demoSeedProducts = useMemo(
     () => products.filter((p) => !p.archived && isCafeDemoSeedSku(p.sku)),
@@ -384,19 +377,21 @@ export function InventoryPanel() {
             <div className="text-sm font-semibold text-cdlp-white">{fmtMoney(totalValuation)}</div>
             <div className="text-[10px] text-cdlp-muted">1200 · {t('invStockAssetLine') || 'Inventories'}</div>
           </div>
-          {needsOpeningStock ? (
-            <button
-              type="button"
-              disabled={seeding}
-              onClick={() => void seedCafeCatalog()}
-              className="ba-btn ba-btn-primary flex items-center gap-1.5 text-sm"
-            >
-              <Sparkles className="w-4 h-4" />
-              {seeding
-                ? t('invSaving')
-                : t('invSeedOpeningStock') || 'Load opening stock'}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            disabled={analyzing || documents.length === 0}
+            onClick={() => void analyzeStockFromDocuments()}
+            className="ba-btn ba-btn-primary flex items-center gap-1.5 text-sm"
+            title={
+              t('invAnalyzeStockHint') ||
+              'Scan verified document lines, keep stock purchases, skip sales tickets, and fill the catalog.'
+            }
+          >
+            <Sparkles className="w-4 h-4" />
+            {analyzing
+              ? t('invSaving')
+              : t('invAnalyzeStock') || 'Analyze items'}
+          </button>
           {demoSeedProducts.length > 0 ? (
             <button
               type="button"
@@ -494,21 +489,20 @@ export function InventoryPanel() {
           {!showArchived && products.filter((p) => !p.archived).length === 0 ? (
             <div className="flex flex-col items-center gap-3">
               <p className="text-xs text-cdlp-muted max-w-md mx-auto leading-relaxed">
-                {t('invEmptyUploadsHint') ||
-                  'Open Documents → supplier invoice → mark as stock → Confirm stock-in. Products are created from invoice lines.'}
+                {t('invEmptyAnalyzeHint') ||
+                  'Upload and verify supplier invoices in Documents, then Analyze items to fill stock from those lines.'}
               </p>
               <button
                 type="button"
-                disabled={seeding}
-                onClick={() => void seedCafeCatalog()}
+                disabled={analyzing || documents.length === 0}
+                onClick={() => void analyzeStockFromDocuments()}
                 className="ba-btn ba-btn-primary inline-flex items-center gap-1.5 text-sm"
               >
                 <Sparkles className="w-4 h-4" />
-                {seeding ? t('invSaving') : t('invSeedCafe') || 'Add café / kitchen starters'}
+                {analyzing
+                  ? t('invSaving')
+                  : t('invAnalyzeStock') || 'Analyze items'}
               </button>
-              <p className="text-[10px] text-cdlp-muted">
-                {t('invSeedOptionalHint') || 'Optional demo starters — not from your uploads.'}
-              </p>
             </div>
           ) : null}
         </div>

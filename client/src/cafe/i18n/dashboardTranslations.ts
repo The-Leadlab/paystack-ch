@@ -565,7 +565,14 @@ export const dashboardEn: Record<string, string> = {
   invDashColOnHand: 'On hand',
   invDashColDeleteConfirm: 'Delete product “{name}” and its movements?',
   invRepPeriodCogs: 'Period COGS (FIFO)',
-  invRepMonthlyStockNote: 'Stock asset (session): {stock}. Period COGS: {cogs}.',
+  invRepMonthlyStockNote: 'Filtered stock asset: {stock}. Period COGS: {cogs}.',
+  invRepMonthCogs: 'COGS',
+  invRevStockStrip: 'Stock asset {stock} · Food cost {pct}',
+  invRevStockStripNoPct: 'Stock asset {stock}',
+  invRevOpenInventory: 'Inventory',
+  invRevOpenStocks: 'Documents · Stocks',
+  invExpStockBadge: 'Stock',
+  invExpPendingStock: '{n} expense docs pending stock-in',
   invColSku: 'SKU',
   invColMinStock: 'Min',
   invInlineSaved: 'Saved',
@@ -670,9 +677,9 @@ export const dashboardEn: Record<string, string> = {
   invStockWillCreateProducts: 'Confirm will create catalog products from invoice lines.',
   invStockAddProductsFirst: 'Add products in the Inventory tab first.',
   invNoProductsYetUploads:
-    'No stock yet — mark supplier invoices as stock on Documents, then Confirm stock-in.',
+    'No stock yet — upload supplier invoices, then Analyze items on this tab.',
   invEmptyUploadsHint:
-    'Open Documents → supplier invoice → mark as stock → Confirm stock-in. Products are created from invoice lines.',
+    'Upload supplier invoices on Documents, verify lines, then Analyze items to fill stock.',
   invSeedOptionalHint: 'Optional demo starters — not from your uploads.',
   invRemoveDemo: 'Remove demo starters',
   invRemoveDemoConfirm:
@@ -685,6 +692,16 @@ export const dashboardEn: Record<string, string> = {
   invTaggedStockToast: 'Tagged as stock document',
   invUntaggedStockToast: 'Stock tag removed',
   invStockSyncFailed: 'Invoice saved, but stock sync failed',
+  invAnalyzeStock: 'Analyze items',
+  invAnalyzeStockHint:
+    'Scan verified document lines, keep stock purchases, skip sales tickets, and fill the catalog.',
+  invAnalyzeStockSuccess:
+    'Analyzed documents · {d} invoices · {l} lines · {p} new products',
+  invAnalyzeStockNone:
+    'No stock items found in documents. Upload supplier invoices, verify line items, then try again.',
+  invAnalyzeStockSkipped: 'docs skipped as not stock',
+  invEmptyAnalyzeHint:
+    'Upload and verify supplier invoices in Documents, then Analyze items to fill stock from those lines.',
   invSeedCafe: 'Add café / kitchen starters',
   invShowArchived: 'Archived',
   invShowActive: 'Active',
@@ -1847,7 +1864,14 @@ export const dashboardFr: Record<string, string> = {
   invDashColOnHand: 'En stock',
   invDashColDeleteConfirm: 'Supprimer le produit « {name} » et ses mouvements ?',
   invRepPeriodCogs: 'COGS de période (FIFO)',
-  invRepMonthlyStockNote: 'Actif stock (session) : {stock}. COGS de période : {cogs}.',
+  invRepMonthlyStockNote: 'Actif stock filtré : {stock}. COGS de période : {cogs}.',
+  invRepMonthCogs: 'COGS',
+  invRevStockStrip: 'Actif stock {stock} · Coût matière {pct}',
+  invRevStockStripNoPct: 'Actif stock {stock}',
+  invRevOpenInventory: 'Stock',
+  invRevOpenStocks: 'Documents · Stocks',
+  invExpStockBadge: 'Stock',
+  invExpPendingStock: '{n} docs dépenses en attente d’entrée en stock',
   invColSku: 'SKU',
   invColMinStock: 'Min',
   invInlineSaved: 'Enregistré',
@@ -1952,9 +1976,9 @@ export const dashboardFr: Record<string, string> = {
   invStockWillCreateProducts: 'Confirmer créera des produits catalogue depuis les lignes de facture.',
   invStockAddProductsFirst: 'Ajoutez d’abord des produits dans l’onglet Stock.',
   invNoProductsYetUploads:
-    'Pas encore de stock — marquez les factures fournisseurs comme stock dans Documents, puis Confirmez l’entrée en stock.',
+    'Pas encore de stock — téléversez des factures fournisseurs, puis Analyser les articles sur cet onglet.',
   invEmptyUploadsHint:
-    'Documents → facture fournisseur → marquer comme stock → Confirmer l’entrée. Les produits sont créés depuis les lignes.',
+    'Téléversez des factures fournisseurs dans Documents, vérifiez les lignes, puis Analyser les articles.',
   invSeedOptionalHint: 'Démarrages démo optionnels — pas issus de vos uploads.',
   invRemoveDemo: 'Retirer les démarrages démo',
   invRemoveDemoConfirm:
@@ -1967,6 +1991,16 @@ export const dashboardFr: Record<string, string> = {
   invTaggedStockToast: 'Document marqué comme stock',
   invUntaggedStockToast: 'Marquage stock retiré',
   invStockSyncFailed: 'Facture enregistrée, mais la sync stock a échoué',
+  invAnalyzeStock: 'Analyser les articles',
+  invAnalyzeStockHint:
+    'Parcourt les lignes vérifiées des documents, garde les achats stock, ignore les tickets de vente, et remplit le catalogue.',
+  invAnalyzeStockSuccess:
+    'Documents analysés · {d} factures · {l} lignes · {p} nouveaux produits',
+  invAnalyzeStockNone:
+    'Aucun article stock trouvé dans les documents. Téléversez des factures fournisseurs, vérifiez les lignes, puis réessayez.',
+  invAnalyzeStockSkipped: 'docs ignorés (pas du stock)',
+  invEmptyAnalyzeHint:
+    'Téléversez et vérifiez des factures fournisseurs dans Documents, puis Analyser les articles pour remplir le stock.',
   invSeedCafe: 'Ajouter les démarrages café / cuisine',
   invShowArchived: 'Archivés',
   invShowActive: 'Actifs',

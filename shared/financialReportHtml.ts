@@ -9,6 +9,14 @@ import {
   type ReportExportLocale,
 } from "./reportExportLabels.js";
 
+function escapeHtml(value: string): string {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export type FinancialReportInput = {
   income: ReportIncomeRow[];
   expenses: ReportExpenseRow[];
@@ -24,6 +32,14 @@ export type FinancialReportInput = {
   inventoryValuation?: number;
   inventoryCogs?: number;
   inventoryFoodCostPercent?: number;
+  inventoryProducts?: Array<{
+    name: string;
+    sku: string;
+    unit: string;
+    category: string;
+    onHandQty: number;
+    valuation: number;
+  }>;
   currency?: string;
 };
 
@@ -40,6 +56,7 @@ export function buildFinancialReportHtml(data: FinancialReportInput): string {
     inventoryValuation,
     inventoryCogs,
     inventoryFoodCostPercent,
+    inventoryProducts,
     currency,
   } = data;
   const locale = data.locale ?? "en";
@@ -221,12 +238,41 @@ export function buildFinancialReportHtml(data: FinancialReportInput): string {
     </div>
     ${
       typeof inventoryCogs === "number"
-        ? `<p style="font-size:12px;margin-top:10px;">Period COGS (FIFO): <strong>${formatCHF(inventoryCogs)} ${moneySuffix}</strong></p>`
+        ? `<p style="font-size:12px;margin-top:10px;">${L.periodCogsFifo}: <strong>${formatCHF(inventoryCogs)} ${moneySuffix}</strong></p>`
         : ""
     }
     ${
       typeof inventoryFoodCostPercent === "number"
-        ? `<p style="font-size:12px;margin-top:4px;">Food cost %: <strong>${inventoryFoodCostPercent.toFixed(1)}%</strong></p>`
+        ? `<p style="font-size:12px;margin-top:4px;">${L.foodCostPct}: <strong>${inventoryFoodCostPercent.toFixed(1)}%</strong></p>`
+        : ""
+    }
+    ${
+      Array.isArray(inventoryProducts) && inventoryProducts.length > 0
+        ? `
+    <table style="width:100%;border-collapse:collapse;margin-top:14px;font-size:11px;">
+      <thead>
+        <tr>
+          <th style="text-align:left;border-bottom:1px solid #ddd;padding:4px;">${L.inventoryProduct}</th>
+          <th style="text-align:left;border-bottom:1px solid #ddd;padding:4px;">${L.inventorySku}</th>
+          <th style="text-align:right;border-bottom:1px solid #ddd;padding:4px;">${L.inventoryOnHand}</th>
+          <th style="text-align:left;border-bottom:1px solid #ddd;padding:4px;">${L.inventoryUnit}</th>
+          <th style="text-align:right;border-bottom:1px solid #ddd;padding:4px;">${L.inventoryValuationCol}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${inventoryProducts
+          .map(
+            (p) => `<tr>
+          <td style="padding:4px;">${escapeHtml(p.name)}</td>
+          <td style="padding:4px;">${escapeHtml(p.sku || "")}</td>
+          <td style="padding:4px;text-align:right;">${formatCHF(p.onHandQty)}</td>
+          <td style="padding:4px;">${escapeHtml(p.unit || "")}</td>
+          <td style="padding:4px;text-align:right;">${formatCHF(p.valuation)} ${moneySuffix}</td>
+        </tr>`
+          )
+          .join("")}
+      </tbody>
+    </table>`
         : ""
     }
   </div>

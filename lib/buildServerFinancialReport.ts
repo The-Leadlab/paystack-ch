@@ -17,6 +17,17 @@ export type ServerReportInput = {
   sessionName: string;
   locale: ReportExportLocale;
   includeLedger?: boolean;
+  inventoryValuation?: number;
+  inventoryCogs?: number;
+  inventoryFoodCostPercent?: number;
+  inventoryProducts?: Array<{
+    name: string;
+    sku: string;
+    unit: string;
+    category: string;
+    onHandQty: number;
+    valuation: number;
+  }>;
 };
 
 export function buildServerFinancialReportHtml(input: ServerReportInput): string {
@@ -35,5 +46,9 @@ export function buildServerFinancialReportHtml(input: ServerReportInput): string
     labelCategory: (cat) => cat,
     labelIncomeType: (type) => type,
     includeLedger: input.includeLedger ?? false,
+    inventoryValuation: input.inventoryValuation,
+    inventoryCogs: input.inventoryCogs,
+    inventoryFoodCostPercent: input.inventoryFoodCostPercent,
+    inventoryProducts: input.inventoryProducts,
   });
 }

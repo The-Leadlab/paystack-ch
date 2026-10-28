@@ -9,6 +9,25 @@ export async function emailFinancialReport(opts: {
   includeLedger?: boolean;
   income: Income[];
   expenses: Expense[];
+  inventoryValuation?: number;
+  inventoryCogs?: number;
+  inventoryFoodCostPercent?: number;
+  inventoryProducts?: Array<{
+    name: string;
+    sku: string;
+    unit: string;
+    category: string;
+    onHandQty: number;
+    valuation: number;
+  }>;
+  inventoryMovements?: Array<{
+    date: string;
+    type: string;
+    productName: string;
+    quantity: number;
+    unitCost: number;
+    documentId: string;
+  }>;
 }): Promise<{ sentTo: string }> {
   const user = auth?.currentUser;
   if (!user) throw new Error("Sign in to email reports.");
@@ -41,6 +60,11 @@ export async function emailFinancialReport(opts: {
         category: e.category,
         account_code: e.account_code,
       })),
+      inventoryValuation: opts.inventoryValuation,
+      inventoryCogs: opts.inventoryCogs,
+      inventoryFoodCostPercent: opts.inventoryFoodCostPercent,
+      inventoryProducts: opts.inventoryProducts,
+      inventoryMovements: opts.inventoryMovements,
     }),
   });
 

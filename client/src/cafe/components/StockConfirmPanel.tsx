@@ -6,16 +6,14 @@ import { useLanguage } from "../context/LanguageContext";
 import { collectProductLinesFromDocument } from "../lib/documentProductLines";
 import {
   applyStockLinkSelect,
-  inventoryCategoryFromExpense,
   isStockDocument,
-  normalizeMatchText,
-  planStockInProduct,
   stockLinkSelectValue,
   suggestStockInFromLines,
   STOCK_LINK_CREATE,
   STOCK_LINK_SKIP,
 } from "@shared/inventoryStock";
 import type { SuggestedStockInLine } from "@shared/inventoryStock";
+import { applyDocumentStockIn } from "../lib/applyDocumentStockIn";
 import type { FinancialData, ProcessedDocument } from "../types";
 
 function buildRows(doc: ProcessedDocument, products: { id: string; name: string; sku?: string }[]) {
@@ -85,83 +83,23 @@ export function StockConfirmPanel({
     setBusy(true);
     setMessage(null);
     try {
-      const known = activeProducts.map((p) => ({ id: p.id, name: p.name, sku: p.sku }));
-      const knownNorm = new Map(known.map((p) => [normalizeMatchText(p.name), p.id] as const));
-      const resolved: Array<{
-        productId: string;
-        productName: string;
-        quantity: number;
-        unitCostCents: number;
-        description: string;
-      }> = [];
-      let createdCount = 0;
-
-      for (const row of candidates) {
-        const plan = planStockInProduct(row, known);
-        if (plan.action === "skip") continue;
-
-        let productId: string;
-        let productName: string;
-
-        if (plan.action === "use") {
-          productId = plan.productId;
-          productName = plan.productName;
-        } else {
-          const norm = normalizeMatchText(plan.name);
-          const existingId = knownNorm.get(norm);
-          if (existingId) {
-            productId = existingId;
-            productName = plan.name;
-          } else {
-            productId = await inventory.addProduct({
-              name: plan.name,
-              unit: "pcs",
-              category: inventoryCategoryFromExpense(data.expenseCategory),
-              subcategory: "From invoice",
-            });
-            known.push({ id: productId, name: plan.name });
-            knownNorm.set(norm, productId);
-            createdCount += 1;
-            productName = plan.name;
-          }
-        }
-
-        resolved.push({
-          productId,
-          productName,
-          quantity: row.quantity,
-          unitCostCents: row.unitCostCents,
-          description: row.description,
-        });
-      }
-
-      if (resolved.length === 0) {
+      const result = await applyDocumentStockIn({
+        documentId: doc.id,
+        data,
+        rows: candidates,
+        inventory,
+      });
+      if (result.linesApplied === 0) {
         const msg = t("invStockNeedProduct") || "No lines left to apply.";
         setMessage(msg);
         toast.error(msg);
         return;
       }
-
-      await inventory.deleteMovementsByDocument(doc.id);
-      const date = data.date || new Date().toISOString().slice(0, 10);
-      await inventory.addMovementsBatch(
-        resolved.map((r) => ({
-          productId: r.productId,
-          productName: r.productName,
-          type: "stock_in" as const,
-          quantity: r.quantity,
-          unitCost: r.unitCostCents,
-          totalCost: r.unitCostCents * r.quantity,
-          documentId: doc.id,
-          date,
-          note: r.description,
-        }))
-      );
       onUpdate?.({ ...data, stockDocument: true });
       const ok =
-        createdCount > 0
+        result.productsCreated > 0
           ? (t("invStockAppliedCreated") || "Stock updated · {n} new product(s) from this invoice.")
-              .replace("{n}", String(createdCount))
+              .replace("{n}", String(result.productsCreated))
           : t("invStockApplied") || "Stock increased from this supplier invoice.";
       setMessage(ok);
       toast.success(ok);

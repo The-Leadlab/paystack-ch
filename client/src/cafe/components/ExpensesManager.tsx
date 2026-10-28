@@ -29,6 +29,9 @@ import { useSession } from '../context/SessionContext';
 import { useDocuments } from '../context/DocumentContext';
 import { useChfLocale, useLanguage } from '../context/LanguageContext';
 import { useUkUat } from '../context/UkUatContext';
+import { useInventoryOptional } from '../context/InventoryContext';
+import { useInventoryAllowed } from '../hooks/useInventoryAllowed';
+import { isStockInCandidateDocument } from '@shared/inventoryStockAnalyze';
 import { filterBusinessExpenses } from '../lib/personalBleedFilter';
 import { formatInsightText, localizeLedgerDescription } from '../lib/localizeLedgerCopy';
 import { isNetPayrollCategory } from '../services/swissPayrollService';
@@ -80,6 +83,8 @@ export function ExpensesManager({
   const { t } = useLanguage();
   const chfLocale = useChfLocale();
   const { currencySuffix } = useUkUat();
+  const inventoryAllowed = useInventoryAllowed();
+  const inventory = useInventoryOptional();
 
   const [categoryFilter, setCategoryFilter] = useState<LedgerExpenseCategory | 'ALL'>('ALL');
   const [intervalId, setIntervalId] = useState<RevenueIntervalId>('all');
@@ -254,6 +259,33 @@ export function ExpensesManager({
   const docsWithFile = periodDocs.filter((d) => d.doc).length;
   const visibleDocs = periodDocs.slice(0, docVisible);
   const docsRemaining = Math.max(0, periodDocs.length - docVisible);
+
+  const stockInDocIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const m of inventory?.movements || []) {
+      if (m.type === 'stock_in' && m.documentId) ids.add(m.documentId);
+    }
+    return ids;
+  }, [inventory?.movements]);
+
+  const isExpenseStockLinked = (entry: { doc?: ProcessedDocument; expenseId?: string }) => {
+    if (!inventoryAllowed || !entry.doc) return false;
+    const docIds = [entry.doc.id, entry.doc.persistedDocumentId].filter(Boolean) as string[];
+    if (docIds.some((id) => stockInDocIds.has(id))) return true;
+    return isStockInCandidateDocument(entry.doc.data);
+  };
+
+  const pendingStockCount = useMemo(() => {
+    if (!inventoryAllowed) return 0;
+    let n = 0;
+    for (const entry of periodDocs) {
+      if (!entry.doc) continue;
+      if (!isStockInCandidateDocument(entry.doc.data)) continue;
+      const docIds = [entry.doc.id, entry.doc.persistedDocumentId].filter(Boolean) as string[];
+      if (!docIds.some((id) => stockInDocIds.has(id))) n += 1;
+    }
+    return n;
+  }, [inventoryAllowed, periodDocs, stockInDocIds]);
 
   const insights = buildExpenseInsights({
     spendPeriod,
@@ -467,6 +499,19 @@ export function ExpensesManager({
           <p className="text-2xl md:text-3xl font-bold text-red-400 tabular-nums">{fmtChf(spendPeriod)}</p>
         </div>
       </div>
+
+      {inventoryAllowed && pendingStockCount > 0 ? (
+        <button
+          type="button"
+          className="ba-panel !py-2.5 !px-3 w-full text-left text-xs text-amber-400 hover:border-cdlp-gold/40"
+          onClick={() => onNavigateTab?.('documents')}
+        >
+          {(t('invExpPendingStock') || '{n} expense docs pending stock-in').replace(
+            '{n}',
+            String(pendingStockCount)
+          )}
+        </button>
+      ) : null}
 
       {!hasTransactions ? (
         <div className="ba-revenue-empty-banner">
@@ -903,7 +948,16 @@ export function ExpensesManager({
                           className="max-w-[14rem] truncate"
                           title={localizeLedgerDescription(entry.description, t) || undefined}
                         >
-                          {localizeLedgerDescription(entry.description, t) || '—'}
+                          <span className="inline-flex items-center gap-1.5 min-w-0">
+                            {isExpenseStockLinked(entry) ? (
+                              <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-cdlp-gold/15 text-cdlp-gold">
+                                {t('invExpStockBadge') || 'Stock'}
+                              </span>
+                            ) : null}
+                            <span className="truncate">
+                              {localizeLedgerDescription(entry.description, t) || '—'}
+                            </span>
+                          </span>
                         </td>
                         <td className="text-right tabular-nums font-bold text-red-400">
                           {fmtChf(entry.amount)}
