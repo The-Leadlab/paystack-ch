@@ -34,6 +34,15 @@ function belongsToSession(
   return Boolean(sid) && sid === sessionId;
 }
 
+/** Firestore rejects `undefined` field values — omit them from writes. */
+function omitUndefined<T extends Record<string, unknown>>(obj: T): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) out[key] = value;
+  }
+  return out;
+}
+
 interface InventoryContextValue {
   products: InventoryProductSummary[];
   movements: InventoryMovement[];
@@ -227,16 +236,19 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     ) => {
       const { sessionId: sid, dataOwnerUid: uid } = requireSession();
       const now = new Date().toISOString();
-      const ref = await addDoc(collection(db!, 'inventory_products'), {
-        ...p,
-        restaurantId: uid,
-        sessionId: sid,
-        onHandQty: 0,
-        valuationAmount: 0,
-        avgUnitCost: 0,
-        createdAt: now,
-        updatedAt: now,
-      });
+      const ref = await addDoc(
+        collection(db!, 'inventory_products'),
+        omitUndefined({
+          ...p,
+          restaurantId: uid,
+          sessionId: sid,
+          onHandQty: 0,
+          valuationAmount: 0,
+          avgUnitCost: 0,
+          createdAt: now,
+          updatedAt: now,
+        }),
+      );
       return ref.id;
     },
     [requireSession],
@@ -245,10 +257,13 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   const updateProduct = useCallback(async (id: string, updates: Partial<InventoryProduct>) => {
     if (!db) return;
     const { id: _id, restaurantId: _r, sessionId: _s, ...safe } = updates as InventoryProduct;
-    await updateDoc(doc(db, 'inventory_products', id), {
-      ...safe,
-      updatedAt: new Date().toISOString(),
-    });
+    await updateDoc(
+      doc(db, 'inventory_products', id),
+      omitUndefined({
+        ...safe,
+        updatedAt: new Date().toISOString(),
+      }),
+    );
   }, []);
 
   const deleteProduct = useCallback(
@@ -272,12 +287,15 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   const addMovement = useCallback(
     async (m: Omit<InventoryMovement, 'id' | 'restaurantId' | 'sessionId' | 'createdAt'>) => {
       const { sessionId: sid, dataOwnerUid: uid } = requireSession();
-      const ref = await addDoc(collection(db!, 'inventory_movements'), {
-        ...m,
-        restaurantId: uid,
-        sessionId: sid,
-        createdAt: new Date().toISOString(),
-      });
+      const ref = await addDoc(
+        collection(db!, 'inventory_movements'),
+        omitUndefined({
+          ...m,
+          restaurantId: uid,
+          sessionId: sid,
+          createdAt: new Date().toISOString(),
+        }),
+      );
       return ref.id;
     },
     [requireSession],
@@ -291,7 +309,15 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       const now = new Date().toISOString();
       for (const m of ms) {
         const ref = doc(collection(db!, 'inventory_movements'));
-        batch.set(ref, { ...m, restaurantId: uid, sessionId: sid, createdAt: now });
+        batch.set(
+          ref,
+          omitUndefined({
+            ...m,
+            restaurantId: uid,
+            sessionId: sid,
+            createdAt: now,
+          }),
+        );
       }
       await batch.commit();
     },
