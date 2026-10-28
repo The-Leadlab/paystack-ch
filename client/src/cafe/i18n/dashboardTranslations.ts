@@ -657,13 +657,27 @@ export const dashboardEn: Record<string, string> = {
   invColLinkProduct: 'Product',
   invStockAlreadyApplied: 'Already applied',
   invMarkStockDocument: 'This is a stock / supplier inventory invoice',
-  invStockNeedProduct: 'Link each line to a product, then confirm.',
+  invStockNeedProduct: 'Set quantity on at least one line (or Create from line), then confirm.',
   invStockApplied: 'Stock increased from this supplier invoice.',
+  invStockAppliedCreated: 'Stock updated · {n} new product(s) from this invoice.',
   invStockNoLines:
     'No quantity line items found — add qty on the invoice lines, or record a movement manually.',
   invStockSkipLine: 'Skip — no product',
+  invStockCreateFromLine: 'Create new from this line',
   invStockConfirmCta: 'Confirm stock in',
+  invStockConfirmHintCreate:
+    'Confirm to increase on-hand qty. Unmatched lines create new catalog products from the invoice description.',
+  invStockWillCreateProducts: 'Confirm will create catalog products from invoice lines.',
   invStockAddProductsFirst: 'Add products in the Inventory tab first.',
+  invNoProductsYetUploads:
+    'No stock yet — mark supplier invoices as stock on Documents, then Confirm stock-in.',
+  invEmptyUploadsHint:
+    'Open Documents → supplier invoice → mark as stock → Confirm stock-in. Products are created from invoice lines.',
+  invSeedOptionalHint: 'Optional demo starters — not from your uploads.',
+  invRemoveDemo: 'Remove demo starters',
+  invRemoveDemoConfirm:
+    'Remove {n} café demo starter product(s)? Upload-derived products stay.',
+  invRemoveDemoSuccess: 'Removed {n} demo starter(s)',
   invTagStockHint:
     'Tick the box above so this document appears under Documents → Stocks and counts as a purchase for konto 1200.',
   invTagStockDoc: 'Tag as stock / supplier inventory',
@@ -1925,13 +1939,27 @@ export const dashboardFr: Record<string, string> = {
   invColLinkProduct: 'Produit',
   invStockAlreadyApplied: 'Déjà appliqué',
   invMarkStockDocument: 'Ceci est une facture de stock / fournisseur',
-  invStockNeedProduct: 'Liez chaque ligne à un produit, puis confirmez.',
+  invStockNeedProduct: 'Indiquez une quantité sur au moins une ligne (ou Créer depuis la ligne), puis confirmez.',
   invStockApplied: 'Le stock a été augmenté à partir de cette facture fournisseur.',
+  invStockAppliedCreated: 'Stock mis à jour · {n} nouveau(x) produit(s) depuis cette facture.',
   invStockNoLines:
     'Aucune ligne avec quantité — ajoutez des qté sur la facture, ou enregistrez un mouvement manuellement.',
   invStockSkipLine: 'Ignorer — aucun produit',
+  invStockCreateFromLine: 'Créer depuis cette ligne',
   invStockConfirmCta: 'Confirmer l’entrée en stock',
+  invStockConfirmHintCreate:
+    'Confirmez pour augmenter le stock. Les lignes sans correspondance créent de nouveaux produits catalogue depuis la description.',
+  invStockWillCreateProducts: 'Confirmer créera des produits catalogue depuis les lignes de facture.',
   invStockAddProductsFirst: 'Ajoutez d’abord des produits dans l’onglet Stock.',
+  invNoProductsYetUploads:
+    'Pas encore de stock — marquez les factures fournisseurs comme stock dans Documents, puis Confirmez l’entrée en stock.',
+  invEmptyUploadsHint:
+    'Documents → facture fournisseur → marquer comme stock → Confirmer l’entrée. Les produits sont créés depuis les lignes.',
+  invSeedOptionalHint: 'Démarrages démo optionnels — pas issus de vos uploads.',
+  invRemoveDemo: 'Retirer les démarrages démo',
+  invRemoveDemoConfirm:
+    'Retirer {n} produit(s) de démarrage café démo ? Les produits issus des uploads restent.',
+  invRemoveDemoSuccess: '{n} démarrage(s) démo retiré(s)',
   invTagStockHint:
     'Cochez la case ci-dessus pour que ce document apparaisse sous Documents → Stocks et compte comme un achat pour le compte 1200.',
   invTagStockDoc: 'Marquer comme stock / inventaire fournisseur',

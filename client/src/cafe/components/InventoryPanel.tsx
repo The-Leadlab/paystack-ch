@@ -286,6 +286,41 @@ export function InventoryPanel() {
     [products],
   );
 
+  const demoSeedProducts = useMemo(
+    () => products.filter((p) => !p.archived && p.sku && SEED_SKUS.has(p.sku.toLowerCase())),
+    [products],
+  );
+
+  const [removingDemo, setRemovingDemo] = useState(false);
+
+  const removeDemoStarters = useCallback(async () => {
+    if (demoSeedProducts.length === 0) return;
+    if (
+      !confirm(
+        (t('invRemoveDemoConfirm') ||
+          'Remove {n} café demo starter product(s)? Upload-derived products stay.')
+          .replace('{n}', String(demoSeedProducts.length)),
+      )
+    ) {
+      return;
+    }
+    setRemovingDemo(true);
+    try {
+      for (const p of demoSeedProducts) {
+        await deleteProduct(p.id);
+      }
+      toast.success(
+        (t('invRemoveDemoSuccess') || 'Removed {n} demo starter(s)')
+          .replace('{n}', String(demoSeedProducts.length)),
+      );
+    } catch (err) {
+      console.error('[inventory] remove demo starters failed', err);
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRemovingDemo(false);
+    }
+  }, [demoSeedProducts, deleteProduct, t]);
+
   const categories = useMemo(() => {
     const cats = new Set<string>();
     for (const p of products) {
@@ -352,6 +387,19 @@ export function InventoryPanel() {
                 : t('invSeedOpeningStock') || 'Load opening stock'}
             </button>
           ) : null}
+          {demoSeedProducts.length > 0 ? (
+            <button
+              type="button"
+              disabled={removingDemo}
+              onClick={() => void removeDemoStarters()}
+              className="ba-btn text-sm flex items-center gap-1.5 text-amber-300 border-amber-500/40"
+            >
+              <Trash2 className="w-4 h-4" />
+              {removingDemo
+                ? t('invSaving')
+                : t('invRemoveDemo') || 'Remove demo starters'}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setShowArchived((v) => !v)}
@@ -370,10 +418,10 @@ export function InventoryPanel() {
         </div>
       </div>
 
-      {products.some((p) => !p.archived && p.sku && SEED_SKUS.has(p.sku.toLowerCase())) ? (
+      {demoSeedProducts.length > 0 ? (
         <div className="rounded-lg border border-cdlp-border/80 bg-cdlp-card/40 px-3 py-2.5 text-xs text-cdlp-muted leading-relaxed">
           {t('invSeedNotFromUploads') ||
-            'These rows are café demo starters (Load opening stock), not products from your uploaded invoices.'}
+            'These rows are café demo starters (Load opening stock), not products from your uploaded invoices. Real stock comes from supplier invoices: mark as stock on Documents, then Confirm stock-in.'}
         </div>
       ) : null}
 
@@ -428,19 +476,30 @@ export function InventoryPanel() {
             {showArchived
               ? t('invNoArchived') || 'No archived products.'
               : products.filter((p) => !p.archived).length === 0
-                ? t('invNoProductsYet')
+                ? t('invNoProductsYetUploads') ||
+                  t('invNoProductsYet') ||
+                  'No stock yet — mark supplier invoices as stock on Documents, then Confirm stock-in.'
                 : t('invNoProductsMatch')}
           </p>
           {!showArchived && products.filter((p) => !p.archived).length === 0 ? (
-            <button
-              type="button"
-              disabled={seeding}
-              onClick={() => void seedCafeCatalog()}
-              className="ba-btn ba-btn-primary inline-flex items-center gap-1.5 text-sm"
-            >
-              <Sparkles className="w-4 h-4" />
-              {seeding ? t('invSaving') : t('invSeedCafe') || 'Add café / kitchen starters'}
-            </button>
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-xs text-cdlp-muted max-w-md mx-auto leading-relaxed">
+                {t('invEmptyUploadsHint') ||
+                  'Open Documents → supplier invoice → mark as stock → Confirm stock-in. Products are created from invoice lines.'}
+              </p>
+              <button
+                type="button"
+                disabled={seeding}
+                onClick={() => void seedCafeCatalog()}
+                className="ba-btn ba-btn-primary inline-flex items-center gap-1.5 text-sm"
+              >
+                <Sparkles className="w-4 h-4" />
+                {seeding ? t('invSaving') : t('invSeedCafe') || 'Add café / kitchen starters'}
+              </button>
+              <p className="text-[10px] text-cdlp-muted">
+                {t('invSeedOptionalHint') || 'Optional demo starters — not from your uploads.'}
+              </p>
+            </div>
           ) : null}
         </div>
       ) : (

@@ -117,7 +117,84 @@ export type SuggestedStockInLine = {
   unitCostCents: number;
   productId?: string;
   productName?: string;
+  /**
+   * Explicit skip — line is ignored on Confirm.
+   * When false/undefined and productId is empty → create a new product from the description.
+   */
+  skip?: boolean;
 };
+
+/** Select sentinel: create a catalog product from this invoice line on Confirm. */
+export const STOCK_LINK_CREATE = "__create__";
+/** Select sentinel: do not apply this line. */
+export const STOCK_LINK_SKIP = "__skip__";
+
+export function stockLinkSelectValue(row: SuggestedStockInLine): string {
+  if (row.skip) return STOCK_LINK_SKIP;
+  if (row.productId) return row.productId;
+  return STOCK_LINK_CREATE;
+}
+
+export function applyStockLinkSelect(
+  row: SuggestedStockInLine,
+  value: string,
+  products: MatchableProduct[]
+): SuggestedStockInLine {
+  if (value === STOCK_LINK_SKIP) {
+    return { ...row, skip: true, productId: undefined, productName: undefined };
+  }
+  if (value === STOCK_LINK_CREATE || !value) {
+    return { ...row, skip: false, productId: undefined, productName: undefined };
+  }
+  const product = products.find((p) => p.id === value);
+  return {
+    ...row,
+    skip: false,
+    productId: product?.id,
+    productName: product?.name,
+  };
+}
+
+/** Map supplier expense category → inventory product category. */
+export function inventoryCategoryFromExpense(expenseCategory?: string | null): string {
+  const cat = String(expenseCategory || "").toUpperCase();
+  if (cat.includes("BEVERAGE") || cat.includes("WINE") || cat.includes("ALCOHOL")) return "Beverages";
+  if (cat.includes("FOOD") || cat.includes("SUPPLIER")) return "Food";
+  if (cat.includes("PACKAG")) return "Packaging";
+  if (cat.includes("CLEAN") || cat.includes("RESTAURANT_SUPPL")) return "Supplies";
+  return "Suppliers";
+}
+
+export type ResolveStockInProductResult = {
+  productId: string;
+  productName: string;
+  created: boolean;
+};
+
+/**
+ * Resolve which catalog product a Confirm stock-in line should use.
+ * Prefer explicit productId → fuzzy match → caller must create (created hint).
+ */
+export function planStockInProduct(
+  row: SuggestedStockInLine,
+  products: MatchableProduct[]
+): { action: "skip" } | { action: "use"; productId: string; productName: string } | { action: "create"; name: string } {
+  if (row.skip || !(row.quantity > 0)) return { action: "skip" };
+  const name = String(row.description || "").trim() || "Line";
+  if (row.productId) {
+    const known = products.find((p) => p.id === row.productId);
+    return {
+      action: "use",
+      productId: row.productId,
+      productName: row.productName || known?.name || name,
+    };
+  }
+  const matched = matchInventoryProduct(name, products);
+  if (matched) {
+    return { action: "use", productId: matched.id, productName: matched.name };
+  }
+  return { action: "create", name };
+}
 
 export function suggestStockInFromLines(
   lines: Array<{
@@ -141,6 +218,7 @@ export function suggestStockInFromLines(
       unitCostCents: Math.round(unit * 100),
       productId: matched?.id,
       productName: matched?.name,
+      skip: false,
     });
   }
   return out;

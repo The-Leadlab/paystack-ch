@@ -11,8 +11,13 @@ import {
   type FifoMovement,
 } from "../shared/inventoryFifo";
 import {
+  applyStockLinkSelect,
+  inventoryCategoryFromExpense,
   isStockDocument,
   matchInventoryProduct,
+  planStockInProduct,
+  STOCK_LINK_CREATE,
+  STOCK_LINK_SKIP,
   suggestStockInFromLines,
 } from "../shared/inventoryStock";
 import {
@@ -204,8 +209,79 @@ describe("stock documents", () => {
         unitCostCents: 4000,
         productId: "2",
         productName: "Brake pads",
+        skip: false,
       },
     ]);
+  });
+
+  it("plans create for unmatched invoice lines and use for matches", () => {
+    const products = [{ id: "2", name: "Brake pads" }];
+    expect(
+      planStockInProduct(
+        { description: "Organic oat milk 1L", quantity: 6, unitCostCents: 250, skip: false },
+        products
+      )
+    ).toEqual({ action: "create", name: "Organic oat milk 1L" });
+    expect(
+      planStockInProduct(
+        {
+          description: "Brake pads",
+          quantity: 2,
+          unitCostCents: 4000,
+          productId: "2",
+          productName: "Brake pads",
+        },
+        products
+      )
+    ).toEqual({ action: "use", productId: "2", productName: "Brake pads" });
+    expect(
+      planStockInProduct(
+        { description: "Brake pads XL", quantity: 1, unitCostCents: 100, skip: false },
+        products
+      )
+    ).toEqual({ action: "use", productId: "2", productName: "Brake pads" });
+    expect(
+      planStockInProduct(
+        { description: "Something", quantity: 3, unitCostCents: 100, skip: true },
+        products
+      )
+    ).toEqual({ action: "skip" });
+    expect(
+      planStockInProduct(
+        { description: "Zero qty", quantity: 0, unitCostCents: 100 },
+        products
+      )
+    ).toEqual({ action: "skip" });
+  });
+
+  it("applyStockLinkSelect toggles create / skip / existing product", () => {
+    const row = {
+      description: "Oat milk",
+      quantity: 4,
+      unitCostCents: 300,
+      skip: false as boolean | undefined,
+    };
+    const products = [{ id: "p1", name: "Existing milk" }];
+    expect(applyStockLinkSelect(row, STOCK_LINK_CREATE, products)).toEqual({
+      ...row,
+      skip: false,
+      productId: undefined,
+      productName: undefined,
+    });
+    expect(applyStockLinkSelect(row, STOCK_LINK_SKIP, products).skip).toBe(true);
+    expect(applyStockLinkSelect(row, "p1", products)).toEqual({
+      ...row,
+      skip: false,
+      productId: "p1",
+      productName: "Existing milk",
+    });
+  });
+
+  it("maps expense categories to inventory categories for new products", () => {
+    expect(inventoryCategoryFromExpense("BEVERAGES")).toBe("Beverages");
+    expect(inventoryCategoryFromExpense("FOOD_SUPPLIES")).toBe("Food");
+    expect(inventoryCategoryFromExpense("PACKAGING")).toBe("Packaging");
+    expect(inventoryCategoryFromExpense(null)).toBe("Suppliers");
   });
 });
 
