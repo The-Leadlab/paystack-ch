@@ -561,7 +561,7 @@ export const dashboardEn: Record<string, string> = {
   invDashColAdd: '+ ADD',
   invDashColAddPlaceholder: 'New product name…',
   invDashColEmpty:
-    'No stock in this session — Add above or Load opening stock on the Inventory tab.',
+    'No stock from documents yet — mark a supplier invoice as stock, then Confirm stock-in.',
   invDashColOnHand: 'On hand',
   invDashColDeleteConfirm: 'Delete product “{name}” and its movements?',
   invRepPeriodCogs: 'Period COGS (FIFO)',
@@ -1843,7 +1843,7 @@ export const dashboardFr: Record<string, string> = {
   invDashColAdd: '+ AJOUTER',
   invDashColAddPlaceholder: 'Nom du nouveau produit…',
   invDashColEmpty:
-    'Aucun stock dans cette session — Ajoutez ci-dessus ou chargez le stock d’ouverture dans Stock.',
+    'Pas encore de stock depuis les documents — marquez une facture fournisseur comme stock, puis Confirmez l’entrée en stock.',
   invDashColOnHand: 'En stock',
   invDashColDeleteConfirm: 'Supprimer le produit « {name} » et ses mouvements ?',
   invRepPeriodCogs: 'COGS de période (FIFO)',

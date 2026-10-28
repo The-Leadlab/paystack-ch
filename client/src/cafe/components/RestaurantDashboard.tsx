@@ -43,6 +43,7 @@ import { InventoryPanel } from './InventoryPanel';
 import { InventoryComingSoonPanel } from './InventoryComingSoonPanel';
 import { useInventoryAllowed } from '../hooks/useInventoryAllowed';
 import { useInventoryOptional } from '../context/InventoryContext';
+import { isCafeDemoSeedSku } from '../types/inventory';
 import {
   foodCostPercent,
   periodFifoCogsCents,
@@ -1819,7 +1820,7 @@ export function RestaurantDashboard() {
   );
 }
 
-/** Dashboard third column: session-scoped product cards (name, on-hand, value). */
+/** Dashboard third column: stock from uploaded documents only (not café demo starters). */
 function InventoryDashboardSection({
   onNavigateInventory,
   t,
@@ -1828,14 +1829,84 @@ function InventoryDashboardSection({
   t: (key: string) => string;
 }) {
   const inventory = useInventoryOptional();
+  const { documents, loading: documentsLoading } = useDocuments();
   const formatChf = useFormatChf();
   const { currentSession } = useSession();
   const [adding, setAdding] = React.useState(false);
   const [newName, setNewName] = React.useState('');
+  const purgingDemoRef = React.useRef(false);
+
+  const sessionDocCount = React.useMemo(() => {
+    if (!currentSession?.id) return 0;
+    return documents.filter((d) => String(d.session_id || '').trim() === currentSession.id).length;
+  }, [documents, currentSession?.id]);
+
+  const seedProductIds = React.useMemo(
+    () =>
+      (inventory?.products || [])
+        .filter((p) => !p.archived && isCafeDemoSeedSku(p.sku))
+        .map((p) => p.id),
+    [inventory?.products],
+  );
+
+  // Café demo starters (Load opening stock) are not tied to uploads — they stay after a doc wipe
+  // and make Stock disagree with empty Revenus/Dépenses. Once docs have hydrated and the session
+  // still has none, delete those seed SKUs from Firestore.
+  React.useEffect(() => {
+    if (!inventory || inventory.loading || documentsLoading) return;
+    if (sessionDocCount > 0 || seedProductIds.length === 0) return;
+    if (purgingDemoRef.current) return;
+    // Skip briefly after an intentional "Load opening stock" click.
+    try {
+      if (sessionStorage.getItem('paystack-keep-demo-seed') === '1') return;
+    } catch {
+      /* ignore */
+    }
+    const ids = [...seedProductIds];
+    const timer = window.setTimeout(() => {
+      if (purgingDemoRef.current) return;
+      purgingDemoRef.current = true;
+      void (async () => {
+        try {
+          for (const id of ids) {
+            await inventory.deleteProduct(id);
+          }
+        } catch (err) {
+          console.error('[inventory] auto-purge demo starters failed', err);
+        } finally {
+          purgingDemoRef.current = false;
+        }
+      })();
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [inventory, sessionDocCount, seedProductIds, documentsLoading]);
+
+  // After the user uploads again, allow future empty-session purges.
+  React.useEffect(() => {
+    if (sessionDocCount > 0) {
+      try {
+        sessionStorage.removeItem('paystack-keep-demo-seed');
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [sessionDocCount]);
+
+  const linkedProductIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    for (const m of inventory?.movements || []) {
+      if (m.documentId) ids.add(m.productId);
+    }
+    return ids;
+  }, [inventory?.movements]);
 
   if (!inventory) return null;
 
-  const products = inventory.products.filter((p) => !p.archived);
+  // Real stock on this column = products tied to an uploaded document, never demo seeds.
+  const products = inventory.products.filter(
+    (p) => !p.archived && !isCafeDemoSeedSku(p.sku) && linkedProductIds.has(p.id),
+  );
+  const displayValuation = products.reduce((sum, p) => sum + (p.valuationAmount || 0), 0);
 
   const handleAdd = async () => {
     const name = newName.trim();
@@ -1888,7 +1959,7 @@ function InventoryDashboardSection({
       {products.length === 0 ? (
         <p className="text-xs text-cdlp-muted py-4">
           {t('invDashColEmpty') ||
-            'No stock in this session — Add above or Load opening stock on the Inventory tab.'}
+            'No stock from documents yet — mark a supplier invoice as stock, then Confirm stock-in.'}
         </p>
       ) : (
         <div className="space-y-2 max-h-[28rem] overflow-y-auto pr-1">
@@ -1938,7 +2009,7 @@ function InventoryDashboardSection({
       <div className="mt-3 pt-2 border-t border-cdlp-border/60 flex justify-between items-center text-[10px] uppercase tracking-wide text-cdlp-muted">
         <span>{t('invDashStockAsset') || 'Stock asset (FIFO · 1200)'}</span>
         <span className="text-cdlp-white tabular-nums font-semibold">
-          {formatChf(valuationInCurrency(inventory.totalValuation))}
+          {formatChf(valuationInCurrency(displayValuation))}
         </span>
       </div>
     </div>

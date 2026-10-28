@@ -107,6 +107,16 @@ export const RESTAURANT_CAFE_SEED_PRODUCTS: Array<{
   },
 ];
 
+/** SKUs written by "Load opening stock" — not from supplier uploads. */
+export const CAFE_DEMO_SEED_SKUS = new Set(
+  RESTAURANT_CAFE_SEED_PRODUCTS.map((s) => s.sku.toLowerCase()),
+);
+
+export function isCafeDemoSeedSku(sku?: string | null): boolean {
+  const s = String(sku || '').trim().toLowerCase();
+  return Boolean(s) && CAFE_DEMO_SEED_SKUS.has(s);
+}
+
 export interface InventoryProduct {
   id: string;
   restaurantId: string;

@@ -25,11 +25,11 @@ import type {
   UnitOfMeasure,
   MovementType,
 } from '../types/inventory';
-import { PRODUCT_CATEGORY_PRESETS, RESTAURANT_CAFE_SEED_PRODUCTS } from '../types/inventory';
-
-const SEED_SKUS = new Set(
-  RESTAURANT_CAFE_SEED_PRODUCTS.map((s) => s.sku.toLowerCase()),
-);
+import {
+  PRODUCT_CATEGORY_PRESETS,
+  RESTAURANT_CAFE_SEED_PRODUCTS,
+  isCafeDemoSeedSku,
+} from '../types/inventory';
 
 const UNIT_OPTIONS: { value: UnitOfMeasure; label: string }[] = [
   { value: 'pcs', label: 'Pieces' },
@@ -180,6 +180,11 @@ export function InventoryPanel() {
   }, [products, searchQuery, categoryFilter, showArchived]);
 
   const seedCafeCatalog = useCallback(async () => {
+    try {
+      sessionStorage.setItem('paystack-keep-demo-seed', '1');
+    } catch {
+      /* ignore */
+    }
     setSeeding(true);
     try {
       const bySku = new Map(
@@ -287,7 +292,7 @@ export function InventoryPanel() {
   );
 
   const demoSeedProducts = useMemo(
-    () => products.filter((p) => !p.archived && p.sku && SEED_SKUS.has(p.sku.toLowerCase())),
+    () => products.filter((p) => !p.archived && isCafeDemoSeedSku(p.sku)),
     [products],
   );
 
@@ -306,6 +311,11 @@ export function InventoryPanel() {
     }
     setRemovingDemo(true);
     try {
+      try {
+        sessionStorage.removeItem('paystack-keep-demo-seed');
+      } catch {
+        /* ignore */
+      }
       for (const p of demoSeedProducts) {
         await deleteProduct(p.id);
       }
@@ -552,7 +562,7 @@ export function InventoryPanel() {
                             aria-label={t('invColProduct') || 'Product'}
                           />
                           <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                            {p.sku && SEED_SKUS.has(p.sku.toLowerCase()) ? (
+                            {isCafeDemoSeedSku(p.sku) ? (
                               <span className="text-[9px] uppercase tracking-wide font-bold text-cdlp-gold/90 bg-cdlp-gold/10 rounded px-1.5 py-0.5">
                                 {t('invSeedDemoBadge') || 'Demo starter'}
                               </span>
