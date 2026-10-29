@@ -363,9 +363,53 @@ export function totalEmployerPayrollCost(data: FinancialData): number {
   return employeePayment + statePayment;
 }
 
+/**
+ * Payslips are outside Swiss TVA — Gemini often mislabels social charges / (gross−net)
+ * as vatAmount. Always clear VAT fields on payroll documents.
+ */
+export function clearPayslipVatFields(data: FinancialData): FinancialData {
+  const subs = Array.isArray(data.subDocuments)
+    ? data.subDocuments.map((sub) =>
+        sub?.paySlip || /pay\s*slip|salaire|paie/i.test(String(sub?.documentType || ""))
+          ? clearPayslipVatFields(sub)
+          : sub
+      )
+    : data.subDocuments;
+  return {
+    ...data,
+    vatAmount: 0,
+    vatRate: 0,
+    swissVatBreakdown: [],
+    swissVatReceiptTotals: undefined,
+    subDocuments: subs,
+  };
+}
+
+/** True when extracted data should be treated as payroll (no TVA, payslip settlement). */
+export function isPayslipFinancialData(data: FinancialData | null | undefined): boolean {
+  if (!data) return false;
+  const dt = String(data.documentType ?? "");
+  if (/pay\s*slip|payslip|bulletin\s+de\s+salaire|fiche\s+de\s+paie|lohnabrechnung|gehaltsabrechnung/i.test(dt)) {
+    return true;
+  }
+  if (dt === "Pay Slip") return true;
+  const ps = data.paySlip;
+  if (ps && typeof ps === "object" && (Boolean(ps.employee?.name) || Boolean(ps.employer?.name))) {
+    return true;
+  }
+  if (String(data.expenseCategory || "").toUpperCase() === "PAYROLL" && ps) return true;
+  return false;
+}
+
 /** Copy labeled Swiss/French totals off component rows, then sync payment fields. */
 export function applyPayrollPaymentFields(data: FinancialData): FinancialData {
-  if (!data.paySlip) return data;
+  if (!data.paySlip && !isPayslipFinancialData(data)) return data;
+  if (!data.paySlip) {
+    return clearPayslipVatFields({
+      ...data,
+      expenseCategory: data.expenseCategory || "PAYROLL",
+    });
+  }
   const components = data.paySlip.components ?? [];
   const labeledGross = firstComponentAmount(components, "gross_total");
   const labeledNet = firstComponentAmount(components, "net_total");
@@ -401,8 +445,9 @@ export function applyPayrollPaymentFields(data: FinancialData): FinancialData {
 
   const employeePayment = resolveEmployeePaymentAmount(withLabels);
   const gross = resolveGrossPayFromFinancialData(withLabels);
-  return {
+  return clearPayslipVatFields({
     ...withLabels,
+    expenseCategory: withLabels.expenseCategory || "PAYROLL",
     paySlip: {
       ...withLabels.paySlip!,
       paymentToEmployee:
@@ -413,5 +458,5 @@ export function applyPayrollPaymentFields(data: FinancialData): FinancialData {
     netAmount: employeePayment > 0 ? employeePayment : withLabels.netAmount,
     totalAmount: gross > 0 ? gross : withLabels.totalAmount,
     amountInCHF: gross > 0 ? gross : withLabels.amountInCHF,
-  };
+  });
 }

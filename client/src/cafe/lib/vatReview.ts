@@ -43,10 +43,24 @@ export function isAllowedVatRateForActiveLocale(rate: number): boolean {
   return isSwissVatRate(rate);
 }
 
+function isPayrollExemptFromVatReview(data: {
+  documentType?: string | null;
+  expenseCategory?: string | null;
+  paySlip?: unknown;
+}): boolean {
+  if (data.paySlip && typeof data.paySlip === 'object') return true;
+  const dt = String(data.documentType || '');
+  if (/pay\s*slip|payslip|salaire|bulletin\s+de\s+salaire|fiche\s+de\s+paie|lohn/i.test(dt)) {
+    return true;
+  }
+  return String(data.expenseCategory || '').toUpperCase() === 'PAYROLL';
+}
+
 /**
  * Documents need manual VAT confirmation when amount is missing/zero without confirmation,
  * or when any extracted rate is outside the active fiscal presets
  * (CH: 0 / 2.6 / 8.1 · UK UAT: 0 / 5 / 20).
+ * Payslips / salary are outside TVA — never flag them for VAT review.
  */
 export function evaluateVatReview(
   data:
@@ -54,6 +68,9 @@ export function evaluateVatReview(
         vatAmount?: number | null;
         vatRate?: number | null;
         vatConfirmed?: boolean | null;
+        documentType?: string | null;
+        expenseCategory?: string | null;
+        paySlip?: unknown;
         swissVatBreakdown?: Array<{ ratePercent?: number | null }> | null;
         subDocuments?: Array<{ vatRate?: number | null }> | null;
       }
@@ -61,6 +78,9 @@ export function evaluateVatReview(
     | undefined
 ): VatReviewResult {
   if (!data) return { needsAction: false, reasons: [], rates: [] };
+  if (isPayrollExemptFromVatReview(data)) {
+    return { needsAction: false, reasons: [], rates: [] };
+  }
   if (data.vatConfirmed) return { needsAction: false, reasons: [], rates: collectRates(data) };
 
   const reasons: VatReviewReason[] = [];

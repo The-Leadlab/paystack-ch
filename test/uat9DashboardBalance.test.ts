@@ -39,6 +39,19 @@ describe("computeDashboardTotals (UAT-9)", () => {
     );
     expect(totals.totalExpenses).toBeCloseTo(20, 2);
   });
+
+  it("ignores bogus TVA on payroll lines so salary deductions do not inflate TVA payée", () => {
+    const totals = computeDashboardTotals(
+      [{ amount: 10000, vat_amount: 800 }],
+      [
+        { amount: 2000, vat_amount: 160, category: "SUPPLIERS", description: "Aligro" },
+        { amount: 4356.11, vat_amount: 793.89, category: "PAYROLL", description: "Adrian" },
+        { amount: 793.89, vat_amount: 0, category: "PAYROLL_TAXES", description: "AVS" },
+      ]
+    );
+    expect(totals.vatPaid).toBeCloseTo(160, 2);
+    expect(totals.vatBalance).toBeCloseTo(800 - 160, 2);
+  });
 });
 
 describe("isInflatedMultiInvoiceLedger", () => {

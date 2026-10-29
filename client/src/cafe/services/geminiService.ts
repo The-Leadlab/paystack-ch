@@ -6,7 +6,11 @@ import {
   type DocumentStorageRef,
 } from "../lib/documentStorageForAi";
 import { MAX_GEMINI_ANALYSIS_BYTES, formatMegabytes } from "@shared/geminiLimits";
-import { applyPayrollPaymentFields } from "./swissPayrollService";
+import {
+  applyPayrollPaymentFields,
+  clearPayslipVatFields,
+  isPayslipFinancialData,
+} from "./swissPayrollService";
 import {
   DocumentType,
   FinancialData,
@@ -20,6 +24,8 @@ import { prepareDocumentForAi } from "../lib/prepareDocumentForAi";
 import {
   getPdfPageCount,
   looksLikeMultiTicketPdf,
+  looksLikePayslipName,
+  looksLikePayslipPdf,
   pdfPageLimitExceeded,
   pdfPageLimitMessage,
   renderPdfPagesToJpegFiles,
@@ -561,11 +567,8 @@ function syncGrandTotalsFromSubDocuments(data: FinancialData): FinancialData {
 
 /** True when this extraction should be treated as a Swiss payslip (never split like multi-invoice PDFs). */
 function isPaySlipFinancialData(data: FinancialData, file?: File): boolean {
-  const dt = String(data.documentType ?? "");
-  if (dt === DocumentType.PAY_SLIP) return true;
-  if (/pay\s*slip|payslip|bulletin\s+de\s+salaire|fiche\s+de\s+paie|lohnabrechnung|gehaltsabrechnung/i.test(dt)) return true;
-  const ps = data.paySlip;
-  if (ps && typeof ps === "object" && (Boolean(ps.employee?.name) || Boolean(ps.employer?.name))) return true;
+  if (isPayslipFinancialData(data)) return true;
+  if (file && looksLikePayslipPdf(file)) return true;
   const n = (file?.name || "").toLowerCase();
   if (/(salaire|bulletin|payslip|pay[\s_-]*slip|fiche[\s_-]*paie|lohn|gehalt)/i.test(n)) return true;
   return false;
@@ -589,10 +592,16 @@ function repairPaySlipMultiInvoiceBlocks(data: FinancialData, file?: File): Fina
   const subs = Array.isArray(data.subDocuments) ? data.subDocuments : [];
   const badIssuer = /\d+\s*invoices?\s*detected/i.test(String(data.issuer ?? ""));
   if (subs.length <= 1 && !badIssuer) {
-    if (badIssuer && ps?.employer?.name) {
-      return { ...data, issuer: sanitizeLooseText(ps.employer.name, 120) };
-    }
-    return data;
+    const single = applyPayrollPaymentFields({
+      ...data,
+      documentType: DocumentType.PAY_SLIP,
+      expenseCategory: "PAYROLL",
+      issuer:
+        badIssuer && ps?.employer?.name
+          ? sanitizeLooseText(ps.employer.name, 120)
+          : data.issuer,
+    });
+    return clearPayslipVatFields(single);
   }
 
   // Multi-employee binder: keep one subDocument per distinct employee payslip.
@@ -1177,6 +1186,9 @@ function sanitizeFinancialDataForUi(
       uploadIntent: lineCtx.uploadIntent,
     }
   );
+  if (isPayslipFinancialData(directed) || looksLikePayslipName(lineCtx.fileName || "")) {
+    return clearPayslipVatFields(directed);
+  }
   return directed;
 }
 
@@ -1562,6 +1574,10 @@ function mergeProductLineItemsIntoData(
 }
 
 function applySwissVatWarnings(data: FinancialData): FinancialData {
+  // Payslips are outside TVA — never invent VAT alerts or re-derive fake VAT lines.
+  if (isPayslipFinancialData(data)) {
+    return clearPayslipVatFields(data);
+  }
   let dataIn = { ...data };
   const lines = Array.isArray(dataIn.swissVatBreakdown) ? dataIn.swissVatBreakdown : [];
   const sumLineVat = lines.reduce((s, l) => s + roundSwiss2(toFiniteNumber(l.vatAmount, 0)), 0);
@@ -1736,15 +1752,14 @@ export const analyzeFinancialDocument = async (
       if (pdfPageLimitExceeded(pageCount)) {
         throw new Error(pdfPageLimitMessage(pageCount));
       }
+      const payslipNamed = looksLikePayslipPdf(file, userHint);
       const split =
-        shouldSplitPdfToPageImages(file, pageCount, userHint, options?.forcePdfPageSplit === true) &&
-        !/pay\s*slip|salary|lohn|bulletin\s*de\s*salaire/i.test(`${file.name} ${userHint || ""}`);
+        !payslipNamed &&
+        shouldSplitPdfToPageImages(file, pageCount, userHint, options?.forcePdfPageSplit === true);
       // forcePdfPageSplit from DocumentProcessor when name matched but page peek was flaky
       const doSplit =
-        split ||
-        (ticketLike &&
-          pageCount >= 2 &&
-          !/pay\s*slip|salary|lohn|bulletin\s*de\s*salaire/i.test(`${file.name} ${userHint || ""}`));
+        !payslipNamed &&
+        (split || (ticketLike && pageCount >= 2));
       if (doSplit) {
         console.log(`🧾 PDF page-split: ${file.name} → ${pageCount} page image(s)`);
         const images = await renderPdfPagesToJpegFiles(file, signal);
@@ -1770,11 +1785,17 @@ export const analyzeFinancialDocument = async (
           );
         });
         let merged = mergePdfPageAnalyses(pageResults, file.name);
+        // If a payslip slipped through page-split, collapse duplicate salary pages.
+        merged = repairPaySlipMultiInvoiceBlocks(merged, file);
+        merged = applyPayrollPaymentFields(merged);
         merged = sanitizeFinancialDataForUi(applySwissVatWarnings(merged), {
           ownBusinessNames: options?.ownBusinessNames,
           fileName: file.name,
           uploadIntent: options?.uploadIntent,
         });
+        if (isPaySlipFinancialData(merged, file)) {
+          merged = clearPayslipVatFields(merged);
+        }
         if (merged.totalAmount !== undefined) {
           merged = await applyLiveFxToFinancialData(merged, targetCurrency);
         }
@@ -2315,8 +2336,20 @@ Return JSON only.`;
 
     normalized = repairPaySlipMultiInvoiceBlocks(normalized, file);
     normalized = applyPayrollPaymentFields(normalized);
-    normalized = sanitizeFinancialDataForUi(syncGrandTotalsFromSubDocuments(normalized), directionCtx);
+    if (isPaySlipFinancialData(normalized, file)) {
+      // Do not re-sum fake VAT from sub-blocks onto payslips.
+      normalized = clearPayslipVatFields({
+        ...normalized,
+        documentType: DocumentType.PAY_SLIP,
+        expenseCategory: "PAYROLL",
+      });
+    } else {
+      normalized = sanitizeFinancialDataForUi(syncGrandTotalsFromSubDocuments(normalized), directionCtx);
+    }
     normalized = sanitizeFinancialDataForUi(applySwissVatWarnings(normalized), directionCtx);
+    if (isPaySlipFinancialData(normalized, file)) {
+      normalized = clearPayslipVatFields(normalized);
+    }
 
     normalized = {
       ...normalized,

@@ -10,6 +10,7 @@ import {
 } from '../i18n/reportExportTranslations';
 import { canonicalizeSupplierName } from '../lib/swissDocumentNormalize';
 import { collectProductLinesFromDocument } from '../lib/documentProductLines';
+import { isPayrollCostCategory } from './swissPayrollService';
 
 function money(n: unknown): number {
   const v = typeof n === 'number' ? n : Number(n);
@@ -210,8 +211,14 @@ function buildSwissVatStatement(
       };
     }
     buckets[key].purchases += money(e.amount);
-    buckets[key].vatPaid += money(e.vat_amount);
-    if (money(e.amount) > 0 && money(e.vat_amount) <= 0) {
+    if (!isPayrollCostCategory(String(e.category || ''))) {
+      buckets[key].vatPaid += money(e.vat_amount);
+    }
+    if (
+      money(e.amount) > 0 &&
+      money(e.vat_amount) <= 0 &&
+      !isPayrollCostCategory(String(e.category || ''))
+    ) {
       buckets[key].purchasesWithoutVatCount += 1;
     }
   }
@@ -290,7 +297,10 @@ export const exportFinancialReportExcel = (data: ReportData) => {
     .reduce((sum, e) => sum + money(e.amount), 0);
   const balance = totalIncome - totalExpenses - totalPayroll;
   const vatReceived = income.reduce((sum, i) => sum + money(i.vat_amount), 0);
-  const vatPaid = expenses.reduce((sum, e) => sum + money(e.vat_amount), 0);
+  const vatPaid = expenses.reduce((sum, e) => {
+    if (isPayrollCostCategory(String(e.category || ''))) return sum;
+    return sum + money(e.vat_amount);
+  }, 0);
   const vatBalance = vatReceived - vatPaid;
 
   const summaryRows: Array<Array<string | number>> = [

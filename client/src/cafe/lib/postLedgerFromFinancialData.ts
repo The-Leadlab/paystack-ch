@@ -3,6 +3,7 @@ import { DocumentType } from '../types';
 import { mapAiExpenseCategoryToLedger, resolveFineExpenseCategory } from './mapExpenseCategory';
 import {
   buildPayrollExpenseLines,
+  isPayslipFinancialData,
   resolvePayrollSettlementMode,
 } from '../services/swissPayrollService';
 import { suggestSwissAccountCode } from '@shared/suggestSwissAccountCode';
@@ -338,7 +339,7 @@ export async function postLedgerFromFinancialData(
     return { incomePosted: incomeDrafts.length, expensePosted: expenseDrafts.length };
   }
 
-  if (docType === 'Pay Slip') {
+  if (docType === 'Pay Slip' || isPayslipFinancialData(data)) {
     const date = resolveDocumentDate(data.date, data.paySlip?.periodEnd);
     const paySlipBlocks: FinancialData[] = [];
     const subs = Array.isArray(data.subDocuments) ? data.subDocuments.filter(Boolean) : [];
@@ -363,15 +364,26 @@ export async function postLedgerFromFinancialData(
         });
       }
     } else {
-      paySlipBlocks.push(data);
+      // Same employee duplicated across pages/blocks → post once (not N× salary).
+      paySlipBlocks.push({
+        ...data,
+        documentType: DocumentType.PAY_SLIP,
+        expenseCategory: 'PAYROLL',
+        vatAmount: 0,
+        subDocuments: [],
+      });
     }
 
+    const seenPayrollKeys = new Set<string>();
     for (const block of paySlipBlocks) {
       const employeeName = block.paySlip?.employee?.name || 'Unknown Employee';
       const settlement = resolvePayrollSettlementMode(block);
       const payrollLines = buildPayrollExpenseLines(block, employeeName, settlement);
       const lineDate = resolveDocumentDate(block.date, block.paySlip?.periodEnd, date);
       for (const line of payrollLines) {
+        const dedupeKey = `${lineDate}|${line.category}|${employeeName.trim().toLowerCase()}|${Math.round(line.amount * 100)}`;
+        if (seenPayrollKeys.has(dedupeKey)) continue;
+        seenPayrollKeys.add(dedupeKey);
         const code = suggestSwissAccountCode({
           kind: 'expense',
           category: line.category,
@@ -385,7 +397,7 @@ export async function postLedgerFromFinancialData(
           sessionId,
           undefined,
           documentId,
-          undefined,
+          0, // payslips never carry TVA
           code,
           line.category
         );
@@ -396,6 +408,26 @@ export async function postLedgerFromFinancialData(
   }
 
   const subs = Array.isArray(data.subDocuments) ? data.subDocuments.filter(Boolean) : [];
+  // Misclassified multi-page payslip binder: each page became a sub-invoice of the same salary.
+  if (
+    subs.length >= 2 &&
+    subs.every((s) => isPayslipFinancialData(s) || isPayslipFinancialData({ ...data, ...s, paySlip: s.paySlip ?? data.paySlip }))
+  ) {
+    return postLedgerFromFinancialData(
+      writers,
+      {
+        ...data,
+        documentType: DocumentType.PAY_SLIP,
+        expenseCategory: 'PAYROLL',
+        vatAmount: 0,
+        paySlip: data.paySlip ?? subs[0]?.paySlip,
+      },
+      fileName,
+      sessionId,
+      documentId,
+      options
+    );
+  }
   if (subs.length > 0) {
     for (const sub of subs) {
       const amounts = resolveSubInvoiceAmounts(sub, data);

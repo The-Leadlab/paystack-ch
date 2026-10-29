@@ -181,11 +181,13 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
           getPdfPageCount,
           shouldSplitPdfToPageImages,
           looksLikeMultiTicketPdf,
+          looksLikePayslipPdf,
         } = await import('../lib/pdfPagesToImages');
-        const ticketLike = looksLikeMultiTicketPdf(fileItem.file);
+        const payslipLike = looksLikePayslipPdf(fileItem.file);
+        const ticketLike = !payslipLike && looksLikeMultiTicketPdf(fileItem.file);
         try {
           pdfPageCount = await getPdfPageCount(fileItem.file);
-          pdfPageSplit = shouldSplitPdfToPageImages(fileItem.file, pdfPageCount);
+          pdfPageSplit = !payslipLike && shouldSplitPdfToPageImages(fileItem.file, pdfPageCount);
           const { pdfPageLimitExceeded, pdfPageLimitMessage } = await import('../lib/pdfPagesToImages');
           if (pdfPageLimitExceeded(pdfPageCount)) {
             throw new Error(pdfPageLimitMessage(pdfPageCount));
@@ -196,7 +198,8 @@ export function QuickDocumentUpload({ onDataExtracted, language }: QuickDocument
           pdfPageSplit = ticketLike;
           pdfPageCount = ticketLike ? 5 : 1;
         }
-        if (ticketLike && pdfPageCount >= 2) pdfPageSplit = true;
+        if (payslipLike) pdfPageSplit = false;
+        else if (ticketLike && pdfPageCount >= 2) pdfPageSplit = true;
       } catch {
         /* best-effort */
       }

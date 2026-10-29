@@ -3666,13 +3666,15 @@ export const DocumentProcessor: React.FC<{
           getPdfPageCount,
           shouldSplitPdfToPageImages,
           looksLikeMultiTicketPdf,
+          looksLikePayslipPdf,
         } = await import('../lib/pdfPagesToImages');
-        const ticketLike = looksLikeMultiTicketPdf(inputFile);
+        const payslipLike = looksLikePayslipPdf(inputFile);
+        const ticketLike = !payslipLike && looksLikeMultiTicketPdf(inputFile);
         let peekedPages = false;
         try {
           pdfPageCount = await getPdfPageCount(inputFile);
           peekedPages = true;
-          pdfPageSplit = shouldSplitPdfToPageImages(inputFile, pdfPageCount);
+          pdfPageSplit = !payslipLike && shouldSplitPdfToPageImages(inputFile, pdfPageCount);
           trackedPageCount = pdfPageCount;
           trackedPageSplit = pdfPageSplit;
           step(`pdf pages=${pdfPageCount} split=${pdfPageSplit}`);
@@ -3684,7 +3686,8 @@ export const DocumentProcessor: React.FC<{
           trackedPageSplit = pdfPageSplit;
           step(`pdf peek failed; ticketLike=${ticketLike} assumedPages=${pdfPageCount}`);
         }
-        if (ticketLike && pdfPageCount >= 2) pdfPageSplit = true;
+        if (payslipLike) pdfPageSplit = false;
+        else if (ticketLike && pdfPageCount >= 2) pdfPageSplit = true;
         trackedPageSplit = pdfPageSplit;
         if (peekedPages) {
           const { pdfPageLimitExceeded, pdfPageLimitMessage } = await import('../lib/pdfPagesToImages');
@@ -4221,18 +4224,24 @@ export const DocumentProcessor: React.FC<{
                   const fmtDocChf = (n: number) =>
                     `${n.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${reportingCurrency}`;
                   const isExpanded = expandedRows.has(doc.id);
-                  const vat = Number(doc.data?.vatAmount || 0);
-                  const swissLines = doc.data?.swissVatBreakdown;
+                  const flowType = doc.data
+                    ? classifyDocFlowType(doc.data, doc.fileName)
+                    : 'EXPENSE';
+                  const isSalaryRow = flowType === 'SALARY';
+                  const vat = isSalaryRow ? 0 : Number(doc.data?.vatAmount || 0);
+                  const swissLines = isSalaryRow ? undefined : doc.data?.swissVatBreakdown;
                   const subDocs = Array.isArray(doc.data?.subDocuments) ? doc.data?.subDocuments : [];
-                  const extractedRateValues = (
-                    swissLines && swissLines.length > 0
-                      ? swissLines.map((l) => Number(l.ratePercent || 0))
-                      : subDocs.length > 0
-                        ? subDocs.map((s) => Number(s.vatRate || 0))
-                        : [Number(doc.data?.vatRate || 0)]
-                  )
-                    .filter((r) => Number.isFinite(r) && r > 0)
-                    .map((r) => Math.round(r * 100) / 100);
+                  const extractedRateValues = isSalaryRow
+                    ? []
+                    : (
+                        swissLines && swissLines.length > 0
+                          ? swissLines.map((l) => Number(l.ratePercent || 0))
+                          : subDocs.length > 0
+                            ? subDocs.map((s) => Number(s.vatRate || 0))
+                            : [Number(doc.data?.vatRate || 0)]
+                      )
+                        .filter((r) => Number.isFinite(r) && r > 0)
+                        .map((r) => Math.round(r * 100) / 100);
                   const uniqueRateValues = Array.from(new Set(extractedRateValues));
                   const extractedRateLabel =
                     uniqueRateValues.length > 0
@@ -4240,7 +4249,8 @@ export const DocumentProcessor: React.FC<{
                       : '';
                   const vatReview = evaluateVatReview(doc.data);
                   const vatNeedsAttention =
-                    doc.status === 'needs_review' || vatReview.needsAction;
+                    !isSalaryRow &&
+                    (doc.status === 'needs_review' || vatReview.needsAction);
                   const isActionable =
                     doc.status === 'completed' || doc.status === 'needs_review';
                   const rowKey = doc.persistedDocumentId || doc.id;
@@ -4338,7 +4348,12 @@ export const DocumentProcessor: React.FC<{
                         </td>
                         <td className="px-4 py-3 text-right hidden md:table-cell align-top max-w-[240px]">
                           {doc.data ? (
-                            swissLines && swissLines.length > 0 ? (
+                            isSalaryRow ? (
+                              <div className="leading-tight">
+                                <p className="ba-doc-vat-main">—</p>
+                                <p className="text-[9px] text-cdlp-muted">{t('dpFlowSalary')}</p>
+                              </div>
+                            ) : swissLines && swissLines.length > 0 ? (
                               <div className="leading-snug space-y-0.5">
                                 <p className="ba-doc-vat-main">{fmtDocChf(vat)}</p>
                                 {swissLines.slice(0, 5).map((l, i) => (
@@ -4617,7 +4632,7 @@ export const DocumentProcessor: React.FC<{
                           </div>
                         </td>
                       </tr>
-                      {doc.data && swissLines && swissLines.length > 0 && (
+                      {doc.data && !isSalaryRow && swissLines && swissLines.length > 0 && (
                         <tr className="md:hidden">
                           <td colSpan={7} className="px-4 pb-3">
                             <div className="font-mono space-y-0.5 border border-cdlp-border rounded bg-cdlp-card/40 p-2">
@@ -4633,7 +4648,17 @@ export const DocumentProcessor: React.FC<{
                           </td>
                         </tr>
                       )}
-                      {doc.data && !swissLines?.length && (
+                      {doc.data && isSalaryRow && (
+                        <tr className="md:hidden">
+                          <td colSpan={7} className="px-4 pb-3">
+                            <div className="font-mono space-y-0.5 border border-cdlp-border rounded bg-cdlp-card/40 p-2">
+                              <p className="text-[10px] font-bold text-cdlp-muted">—</p>
+                              <p className="text-[8px] text-cdlp-muted">{t('dpFlowSalary')}</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      {doc.data && !isSalaryRow && !swissLines?.length && (
                         <tr className="md:hidden">
                           <td colSpan={7} className="px-4 pb-3">
                             <div className="font-mono space-y-0.5 border border-cdlp-border rounded bg-cdlp-card/40 p-2">

@@ -41,6 +41,18 @@ describe('evaluateVatReview', () => {
     expect(r.needsAction).toBe(true);
     expect(r.reasons).toContain('non_swiss_rate');
   });
+
+  it('never flags payslips / salary for VAT review', () => {
+    expect(
+      evaluateVatReview({
+        vatAmount: 793.89,
+        vatRate: 0,
+        documentType: 'Pay Slip',
+        expenseCategory: 'PAYROLL',
+        paySlip: { employee: { name: 'Adrian' } },
+      }).needsAction
+    ).toBe(false);
+  });
 });
 
 describe('personalBleedFilter', () => {

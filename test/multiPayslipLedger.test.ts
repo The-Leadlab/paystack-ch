@@ -107,4 +107,104 @@ describe("multi-employee payslip ledger", () => {
     expect(expenses.some((e) => /Alice/i.test(e.description))).toBe(true);
     expect(expenses.some((e) => /Bob/i.test(e.description))).toBe(true);
   });
+
+  it("posts a single salary when the same employee is duplicated across pages", async () => {
+    const expenses: Array<Pick<Expense, "amount" | "description" | "category" | "vat">> = [];
+    const writers = {
+      addIncome: async () => null as Income | null,
+      addExpense: async (
+        _date: string,
+        category: Expense["category"],
+        amount: number,
+        description: string,
+        _sessionId: string,
+        _employeeId?: string,
+        _documentId?: string,
+        vatAmount?: number
+      ) => {
+        expenses.push({ category, amount, description, vat: vatAmount });
+        return null;
+      },
+    };
+
+    const dup: FinancialData = {
+      documentType: DocumentType.PAY_SLIP,
+      date: "2026-02-28",
+      issuer: "Cafe de la Place",
+      documentNumber: "DUP",
+      totalAmount: 5150,
+      originalCurrency: "CHF",
+      vatAmount: 793.89,
+      netAmount: 4356.11,
+      expenseCategory: "PAYROLL",
+      amountInCHF: 5150,
+      conversionRateUsed: 1,
+      notes: "",
+      paySlip: {
+        employee: { name: "Adrian" },
+        employer: { name: "Cafe de la Place" },
+        grossPay: 5150,
+        netPay: 4356.11,
+        paymentToEmployee: 4356.11,
+        permitType: "B",
+        components: [],
+      },
+      subDocuments: [
+        {
+          documentType: DocumentType.PAY_SLIP,
+          date: "2026-02-28",
+          issuer: "Cafe de la Place",
+          documentNumber: "P1",
+          totalAmount: 5150,
+          originalCurrency: "CHF",
+          vatAmount: 793.89,
+          netAmount: 4356.11,
+          expenseCategory: "PAYROLL",
+          amountInCHF: 5150,
+          conversionRateUsed: 1,
+          notes: "",
+          paySlip: {
+            employee: { name: "Adrian" },
+            employer: { name: "Cafe de la Place" },
+            grossPay: 5150,
+            netPay: 4356.11,
+            paymentToEmployee: 4356.11,
+            permitType: "B",
+            components: [],
+          },
+        },
+        {
+          documentType: DocumentType.PAY_SLIP,
+          date: "2026-02-28",
+          issuer: "Cafe de la Place",
+          documentNumber: "P2",
+          totalAmount: 5150,
+          originalCurrency: "CHF",
+          vatAmount: 793.89,
+          netAmount: 4356.11,
+          expenseCategory: "PAYROLL",
+          amountInCHF: 5150,
+          conversionRateUsed: 1,
+          notes: "",
+          paySlip: {
+            employee: { name: "Adrian" },
+            employer: { name: "Cafe de la Place" },
+            grossPay: 5150,
+            netPay: 4356.11,
+            paymentToEmployee: 4356.11,
+            permitType: "B",
+            components: [],
+          },
+        },
+      ],
+    };
+
+    const result = await postLedgerFromFinancialData(writers, dup, "salaire.pdf", "session-1", "doc-dup");
+    // source_tax → employee payment + state payment once (not ×2 pages)
+    expect(result.expensePosted).toBe(2);
+    expect(expenses).toHaveLength(2);
+    expect(expenses.every((e) => e.vat === 0)).toBe(true);
+    const payroll = expenses.find((e) => e.category === "PAYROLL");
+    expect(payroll?.amount).toBe(4356.11);
+  });
 });

@@ -69,6 +69,23 @@ function collapseByKey(
   return { keepers: [...byKey.values(), ...passthrough], duplicateIds };
 }
 
+/** Same employee + period + gross in one session → one payslip row (not N duplicates). */
+function payslipSessionFingerprint(doc: ProcessedDocument): string | null {
+  const d = doc.data;
+  if (!d?.paySlip) return null;
+  if (!["completed", "needs_review"].includes(doc.status || "")) return null;
+  const emp = String(d.paySlip.employee?.name || "")
+    .trim()
+    .toLowerCase();
+  const date = String(d.date || d.paySlip.periodEnd || "").slice(0, 10);
+  const gross = Math.round(
+    (Number(d.paySlip.grossPay) || Number(d.amountInCHF) || Number(d.totalAmount) || 0) * 100
+  );
+  if (!emp || !date || gross <= 0) return null;
+  const session = String(doc.session_id || "nosession");
+  return `payslip:${session}|${emp}|${date}|${gross}`;
+}
+
 /**
  * Collapse duplicate Firestore document rows (same file uploaded twice, or
  * Drive re-import creating a pending twin of a completed doc).
@@ -91,11 +108,17 @@ export function dedupeProcessedDocuments(docs: ProcessedDocument[]): {
     },
     shouldCollapseNameTwins
   );
+  const byPayslip = collapseByKey(byName.keepers, payslipSessionFingerprint);
 
   const duplicateIds = [
-    ...new Set([...byHash.duplicateIds, ...byPath.duplicateIds, ...byName.duplicateIds]),
+    ...new Set([
+      ...byHash.duplicateIds,
+      ...byPath.duplicateIds,
+      ...byName.duplicateIds,
+      ...byPayslip.duplicateIds,
+    ]),
   ];
-  const keepers = byName.keepers
+  const keepers = byPayslip.keepers
     .filter((d) => !duplicateIds.includes(d.id))
     .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
 

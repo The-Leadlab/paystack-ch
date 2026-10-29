@@ -42,10 +42,24 @@ function ticketReceiptHaystack(file: File, userHint?: string): string {
   return `${file.name} ${userHint || ""}`.toLowerCase();
 }
 
+/** Name/hint looks like a Swiss/French/DE payslip — never page-split like POS binders. */
+export function looksLikePayslipName(fileName: string, userHint?: string): boolean {
+  const hay = `${fileName} ${userHint || ""}`.toLowerCase();
+  return /pay[\s_-]*slip|payslip|salaire|bulletin[\s_-]*de[\s_-]*salaire|fiche[\s_-]*paie|lohn(abrechnung)?|gehalt(sabrechnung)?|paie\b/.test(
+    hay
+  );
+}
+
+export function looksLikePayslipPdf(file: File, userHint?: string): boolean {
+  return looksLikePayslipName(file.name || "", userHint);
+}
+
 /** Name/hint looks like a multi-ticket / POS receipt binder (no page count needed). */
 export function looksLikeMultiTicketPdf(file: File, userHint?: string): boolean {
   if (!isPdfFile(file)) return false;
-  return /ticket|tickets|receipt|recipt|z2|caisse|till\b|pos|fevrier|février|multi[-\s]?ticket|bulk\s*ticket/.test(
+  // Payslips must never be treated as ticket binders (month names alone used to false-positive).
+  if (looksLikePayslipPdf(file, userHint)) return false;
+  return /ticket|tickets|receipt|recipt|z2|caisse|till\b|pos|multi[-\s]?ticket|bulk\s*ticket/.test(
     ticketReceiptHaystack(file, userHint)
   );
 }
@@ -129,6 +143,7 @@ export function shouldSplitPdfToPageImages(
   force = false
 ): boolean {
   if (!isPdfFile(file) || pageCount < 2) return false;
+  if (looksLikePayslipPdf(file, userHint)) return false;
   if (force) return true;
   return looksLikeMultiTicketPdf(file, userHint);
 }

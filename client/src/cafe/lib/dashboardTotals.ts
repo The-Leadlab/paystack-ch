@@ -1,5 +1,8 @@
 import type { Expense, Income } from "../types";
-import { isNetPayrollCategory } from "../services/swissPayrollService";
+import {
+  isNetPayrollCategory,
+  isPayrollCostCategory,
+} from "../services/swissPayrollService";
 import { filterBusinessExpenses } from "./personalBleedFilter";
 
 export type DashboardTotals = {
@@ -15,6 +18,7 @@ export type DashboardTotals = {
 /**
  * Single source of truth for Dashboard resume KPIs.
  * Balance = income − operating expenses − net payroll (UAT-9).
+ * Payroll lines never carry recoverable TVA — ignore any bogus vat_amount on them.
  */
 export function computeDashboardTotals(
   income: Array<Pick<Income, "amount" | "vat_amount">>,
@@ -29,7 +33,10 @@ export function computeDashboardTotals(
     .filter((e) => isNetPayrollCategory(String(e.category || "")))
     .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
   const vatReceived = income.reduce((sum, i) => sum + (Number(i.vat_amount) || 0), 0);
-  const vatPaid = businessExpenses.reduce((sum, e) => sum + (Number(e.vat_amount) || 0), 0);
+  const vatPaid = businessExpenses.reduce((sum, e) => {
+    if (isPayrollCostCategory(String(e.category || ""))) return sum;
+    return sum + (Number(e.vat_amount) || 0);
+  }, 0);
   return {
     totalIncome,
     totalExpenses,

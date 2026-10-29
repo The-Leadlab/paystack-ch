@@ -58,6 +58,7 @@ import { db } from '../lib/firebase';
 import {
   buildPayrollExpenseLines,
   isNetPayrollCategory,
+  isPayrollCostCategory,
   resolvePayrollSettlementMode,
 } from '../services/swissPayrollService';
 import { SwissAccountCodeBadge, SwissAccountCodeField } from './SwissAccountCodeField';
@@ -3032,7 +3033,10 @@ function ReportsPlaceholder({
 
   const reportInsights = React.useMemo(() => {
     const vatCollected = dateFilteredIncome.reduce((s, i) => s + (Number(i.vat_amount) || 0), 0);
-    const vatPaid = dateFilteredExpenses.reduce((s, e) => s + (Number(e.vat_amount) || 0), 0);
+    const vatPaid = dateFilteredExpenses.reduce((s, e) => {
+      if (isPayrollCostCategory(String(e.category || ''))) return s;
+      return s + (Number(e.vat_amount) || 0);
+    }, 0);
     const invoiceCount = dateFilteredIncome.length + dateFilteredExpenses.length;
     const productAgg = new Map<string, { name: string; qty: number; amount: number }>();
     let productLineCount = 0;
