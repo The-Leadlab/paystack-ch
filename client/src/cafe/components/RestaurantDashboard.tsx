@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'wouter';
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, CreditCard, Lock, Settings, Wallet, FilePenLine, Mail, Shield, ArrowDownCircle, PanelLeftClose, PanelLeftOpen, Package } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X, LogOut, Menu, Globe, Edit2, Trash2, LayoutDashboard, Receipt, BarChart3, FileText, ChevronRight, Download, Check, Lock, Settings, Wallet, FilePenLine, Mail, Shield, ArrowDownCircle, PanelLeftClose, PanelLeftOpen, Package } from 'lucide-react';
 import { BillingPlanPanel } from './BillingPlanPanel';
 import { useEmployee } from '../context/EmployeeContext';
 import { useFinance } from '../context/FinanceContext';
@@ -21,6 +21,9 @@ import { SharedLoginPresenceBalls } from "@/cafe/components/SharedLoginPresenceB
 import { SessionNamePrompt } from "@/cafe/components/SessionNamePrompt";
 import { BusinessKpiCard } from './BusinessKpiCard';
 import { BusinessSidebarNav, type BusinessTab } from './BusinessSidebarNav';
+import { MobileTabBar } from './MobileTabBar';
+import { MobileMoreSheet, buildMobileMoreItems } from './MobileMoreSheet';
+import { MobileMoneySegment } from './MobileMoneySegment';
 import '../businessApp.css';
 import { UpgradePromptModal } from './UpgradePromptModal';
 import { PlanTestBanner, PlanTestPickerModal } from './PlanTestPickerModal';
@@ -224,6 +227,8 @@ export function RestaurantDashboard() {
     if (tab && (allowed as string[]).includes(tab)) return tab as Tab;
     return 'dashboard';
   });
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const [moneySubTab, setMoneySubTab] = useState<'revenue' | 'expenses'>('revenue');
   const showRevenueTab = !enforcementEnabled || entitlements.basicReportsAndExports;
   /** Full stock unlock (testers). Nav tab is always visible; locked users see Coming Soon. */
   const inventoryUnlocked = useInventoryAllowed();
@@ -933,6 +938,8 @@ export function RestaurantDashboard() {
   const switchTab = (tab: Tab) => {
     setActiveTab(tab);
     setShowSidebar(false);
+    setMobileMoreOpen(false);
+    if (tab === 'revenue' || tab === 'expenses') setMoneySubTab(tab);
     try {
       const url = new URL(window.location.href);
       if (tab === 'dashboard') url.searchParams.delete('tab');
@@ -943,6 +950,22 @@ export function RestaurantDashboard() {
     } catch {
       /* ignore URL sync failures */
     }
+  };
+
+  const focusMobileCapture = () => {
+    switchTab('dashboard');
+    window.setTimeout(() => {
+      const zone = document.querySelector('[data-tour="biz-doc-upload"]');
+      zone?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const input = zone?.querySelector('input[type="file"]') as HTMLInputElement | null;
+      if (input && !input.disabled) {
+        try {
+          input.click();
+        } catch {
+          /* ignore programmatic click blocks */
+        }
+      }
+    }, 120);
   };
 
   const openBillingTab = () => {
@@ -1003,6 +1026,17 @@ export function RestaurantDashboard() {
     icon: item.icon,
     label: t(item.labelKey),
   }));
+
+  const mobileMoreItems = buildMobileMoreItems({
+    labels: {
+      invoices: t('invoiceMakerTab'),
+      inventory: t('inventoryTab'),
+      reports: t('reports'),
+      billing: t('billingTab'),
+    },
+    inventorySoonBadge: t('invNavSoonBadge') || 'Soon',
+    inventoryLocked: !inventoryUnlocked,
+  });
 
   return (
     <div className="ba-v3 min-h-[100dvh] min-h-screen bg-cdlp-dark flex flex-col touch-manipulation overscroll-y-contain">
@@ -1447,11 +1481,23 @@ export function RestaurantDashboard() {
           )}
           {activeTab === 'revenue' && showRevenueTab ? (
             <div data-tour="biz-revenue-panel">
+              <MobileMoneySegment
+                active="revenue"
+                onChange={(tab) => switchTab(tab)}
+                revenueLabel={t('revenue')}
+                expensesLabel={t('expenses')}
+              />
               <POSManager onNavigateTab={switchTab} onNavigateToDocument={handleNavigateToDocument} />
             </div>
           ) : null}
           {activeTab === 'expenses' && showRevenueTab ? (
             <div data-tour="biz-expenses-panel">
+              <MobileMoneySegment
+                active="expenses"
+                onChange={(tab) => switchTab(tab)}
+                revenueLabel={t('revenue')}
+                expensesLabel={t('expenses')}
+              />
               <ExpensesManager onNavigateTab={switchTab} onNavigateToDocument={handleNavigateToDocument} />
             </div>
           ) : null}
@@ -1498,105 +1544,33 @@ export function RestaurantDashboard() {
         </div>
       </main>
 
-      {/* Mobile: fixed bottom tab bar (app-style) */}
-      <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-[45] border-t border-cdlp-border bg-cdlp-black/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] pt-1 shadow-[0_-8px_24px_rgba(0,0,0,0.25)]"
-        aria-label={t('navMainAria')}
-      >
-        <div className="flex max-w-lg mx-auto items-stretch justify-between gap-1 px-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab('dashboard')}
-            className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
-              activeTab === 'dashboard' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
-            }`}
-          >
-            <LayoutDashboard className="w-5 h-5 shrink-0" aria-hidden />
-            <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('dashboard')}</span>
-          </button>
-          {showRevenueTab ? (
-            <button
-              type="button"
-              onClick={() => switchTab('revenue')}
-              className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
-                activeTab === 'revenue' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
-              }`}
-            >
-              <Receipt className="w-5 h-5 shrink-0" aria-hidden />
-              <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('revenue')}</span>
-            </button>
-          ) : null}
-          {showRevenueTab ? (
-            <button
-              type="button"
-              onClick={() => switchTab('expenses')}
-              className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
-                activeTab === 'expenses' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
-              }`}
-            >
-              <ArrowDownCircle className="w-5 h-5 shrink-0" aria-hidden />
-              <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('expenses')}</span>
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => switchTab('invoices')}
-            className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
-              activeTab === 'invoices' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
-            }`}
-          >
-            <FilePenLine className="w-5 h-5 shrink-0" aria-hidden />
-            <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('invoiceMakerTab')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => switchTab('inventory')}
-            className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
-              activeTab === 'inventory' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
-            }`}
-          >
-            <Package className="w-5 h-5 shrink-0" aria-hidden />
-            <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">
-              {t('inventoryTab')}
-            </span>
-            {!inventoryUnlocked ? (
-              <span className="absolute top-1 right-1 text-[7px] font-black uppercase tracking-tight text-cdlp-gold bg-cdlp-gold/15 rounded px-1 leading-tight">
-                {t('invNavSoonBadge') || 'Soon'}
-              </span>
-            ) : null}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('reports')}
-            className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
-              activeTab === 'reports' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
-            }`}
-          >
-            <BarChart3 className="w-5 h-5 shrink-0" aria-hidden />
-            <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('reports')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('documents')}
-            className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
-              activeTab === 'documents' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
-            }`}
-          >
-            <FileText className="w-5 h-5 shrink-0" aria-hidden />
-            <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('documents')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('billing')}
-            className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] active:opacity-90 ${
-              activeTab === 'billing' ? 'text-cdlp-gold bg-cdlp-gold/10' : 'text-cdlp-muted'
-            }`}
-          >
-            <CreditCard className="w-5 h-5 shrink-0" aria-hidden />
-            <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight px-0.5">{t('billingTab')}</span>
-          </button>
-        </div>
-      </nav>
+      {/* Mobile: app-style tab bar (≤5 + Capture + More) */}
+      <MobileTabBar
+        activeTab={activeTab}
+        showMoneyTab={showRevenueTab}
+        moreOpen={mobileMoreOpen}
+        ariaLabel={t('navMainAria')}
+        labels={{
+          home: t('mobileNavHome') || t('dashboard'),
+          money: t('mobileNavMoney') || t('revenue'),
+          capture: t('mobileNavCapture') || 'Capture',
+          docs: t('mobileNavDocs') || t('documents'),
+          more: t('mobileNavMore') || 'More',
+        }}
+        onHome={() => switchTab('dashboard')}
+        onMoney={() => switchTab(moneySubTab === 'expenses' ? 'expenses' : 'revenue')}
+        onCapture={focusMobileCapture}
+        onDocs={() => switchTab('documents')}
+        onMore={() => setMobileMoreOpen((v) => !v)}
+      />
+      <MobileMoreSheet
+        open={mobileMoreOpen}
+        onClose={() => setMobileMoreOpen(false)}
+        items={mobileMoreItems}
+        activeTab={activeTab}
+        onSelect={switchTab}
+        title={t('mobileMoreTitle') || t('mobileNavMore') || 'More'}
+      />
 
       {/* Modals */}
       {showAddEmployee && <AddEmployeeModal onClose={() => setShowAddEmployee(false)} onAdd={addEmployee} t={t} />}

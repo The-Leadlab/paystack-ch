@@ -247,14 +247,16 @@
   justify-content: center;
   gap: 0.125rem;
   min-height: 3.25rem;
+  min-width: 0;
   padding: 0.5rem 0.25rem;
-  border-radius: 0.5rem;
-  font-size: 0.5625rem;
+  border-radius: 0.65rem;
+  font-size: 0.625rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--pp-on-surface-variant);
   font-family: var(--font-app), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .personal-plan-shell .pp-mobile-nav-btn[data-active="true"] {

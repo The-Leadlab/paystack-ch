@@ -2166,3 +2166,258 @@
   border-radius: 0.5rem;
   letter-spacing: 0.08em;
 }
+
+/* ——— Phone app shell (≤767px) ——— */
+.ba-v3 .ba-mobile-tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 45;
+  border-top: 1px solid var(--ba-border);
+  background: color-mix(in srgb, var(--ba-surface) 92%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-top: 0.25rem;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.22);
+}
+
+.ba-v3 .ba-mobile-tabbar-inner {
+  display: flex;
+  max-width: 28rem;
+  margin: 0 auto;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0.125rem;
+  padding: 0 0.25rem;
+}
+
+.ba-v3 .ba-mobile-tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  min-height: 3.25rem;
+  min-width: 0;
+  padding: 0.375rem 0.125rem;
+  border-radius: 0.65rem;
+  color: var(--ba-muted, var(--color-cdlp-muted));
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ba-v3 .ba-mobile-tab[data-active='true'] {
+  color: var(--color-cdlp-gold);
+  background: color-mix(in srgb, var(--color-cdlp-gold) 12%, transparent);
+}
+
+.ba-v3 .ba-mobile-tab-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.ba-v3 .ba-mobile-tab-label {
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.15;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 0.125rem;
+}
+
+.ba-v3 .ba-mobile-tab--capture {
+  flex: 1.15;
+  color: var(--ba-muted, var(--color-cdlp-muted));
+}
+
+.ba-v3 .ba-mobile-capture-fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-top: -0.85rem;
+  border-radius: 0.85rem;
+  background: var(--color-cdlp-gold);
+  color: var(--ba-on-accent, #0a0a0a);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-cdlp-gold) 45%, transparent);
+}
+
+.ba-v3 .ba-mobile-tab--capture .ba-mobile-tab-label {
+  color: var(--color-cdlp-gold);
+}
+
+.ba-v3 .ba-mobile-more-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.ba-v3 .ba-mobile-more-sheet {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  padding: 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid var(--ba-border);
+  background: var(--ba-surface);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.ba-v3 .ba-mobile-more-handle {
+  width: 2.5rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: var(--ba-border);
+  margin: 0.15rem auto 0.65rem;
+}
+
+.ba-v3 .ba-mobile-more-title {
+  margin: 0 0 0.5rem;
+  padding: 0 0.35rem;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ba-muted, var(--color-cdlp-muted));
+}
+
+.ba-v3 .ba-mobile-more-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ba-v3 .ba-mobile-more-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.65rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ba-text);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ba-v3 .ba-mobile-more-item:hover,
+.ba-v3 .ba-mobile-more-item[data-active='true'] {
+  background: color-mix(in srgb, var(--color-cdlp-gold) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-cdlp-gold) 35%, transparent);
+  color: var(--color-cdlp-gold);
+}
+
+.ba-v3 .ba-mobile-more-badge {
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--color-cdlp-gold) 18%, transparent);
+  color: var(--color-cdlp-gold);
+}
+
+.ba-v3 .ba-mobile-money-segment {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0 0 0.85rem;
+  padding: 0.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--ba-border);
+  background: var(--ba-surface-elevated, var(--ba-surface));
+}
+
+.ba-v3 .ba-mobile-money-seg-btn {
+  flex: 1;
+  min-height: 2.5rem;
+  border: none;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: var(--ba-muted, var(--color-cdlp-muted));
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ba-v3 .ba-mobile-money-seg-btn[data-active='true'] {
+  background: color-mix(in srgb, var(--color-cdlp-gold) 16%, transparent);
+  color: var(--color-cdlp-gold);
+}
+
+@media (max-width: 767px) {
+  .ba-v3 .ba-kpi-grid-4 {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 0.75rem;
+    padding-bottom: 0.35rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .ba-v3 .ba-kpi-grid-4::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ba-v3 .ba-kpi-grid-4 > * {
+    flex: 0 0 42%;
+    min-width: 9.25rem;
+    scroll-snap-align: start;
+  }
+
+  .ba-v3 .ba-verify-shell {
+    border-radius: 0.85rem;
+  }
+
+  .ba-v3 .ba-verify-sticky-approve {
+    position: sticky;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    z-index: 20;
+    margin: 0.75rem -0.25rem 0;
+    padding: 0.65rem 0.75rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--ba-surface) 94%, transparent);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--ba-border);
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .ba-v3 .ba-verify-sticky-approve .ba-btn-approve {
+    flex: 1;
+    min-height: 2.75rem;
+  }
+
+  .ba-v3 .ba-verify-header-approve {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .ba-v3 .ba-verify-sticky-approve {
+    display: none;
+  }
+}

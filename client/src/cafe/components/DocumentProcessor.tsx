@@ -1637,7 +1637,7 @@ export const VerificationHub: React.FC<{
                    </p>
                  ) : null}
               </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="ba-verify-header-approve flex items-center gap-2 w-full sm:w-auto">
                  {(doc.fileUrl || doc.fileDataUrl || doc.fileRaw) && (
                    <button
                      type="button"
@@ -2907,6 +2907,25 @@ export const VerificationHub: React.FC<{
           </div>
         </div>
       )}
+      <div className="ba-verify-sticky-approve md:hidden">
+        {(doc.fileUrl || doc.fileDataUrl || doc.fileRaw) && (
+          <button
+            type="button"
+            onClick={() => openDocumentInNewTab(doc)}
+            className="h-11 px-3 border border-cdlp-border text-cdlp-muted rounded text-[10px] font-bold uppercase"
+          >
+            {openSourceLabel}
+          </button>
+        )}
+        <button
+          type="button"
+          disabled={isZeroValue}
+          onClick={() => onSave({ ...editedData, isHumanVerified: true })}
+          className="ba-btn-approve"
+        >
+          {t('dpApprove')}
+        </button>
+      </div>
     </div>
   );
 };

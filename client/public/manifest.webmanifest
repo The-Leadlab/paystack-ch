@@ -2,12 +2,12 @@
   "name": "Paystack.ch",
   "short_name": "Paystack",
   "description": "Swiss financial management — documents, payroll, reporting.",
-  "start_url": "/",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#fcfaf4",
-  "theme_color": "#E8423F",
+  "theme_color": "#C9A227",
   "icons": [
     {
       "src": "/brand/paystack-icon-192.png",

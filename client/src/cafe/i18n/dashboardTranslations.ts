@@ -1294,6 +1294,15 @@ export const dashboardEn: Record<string, string> = {
   driveStorageLocalDownloadHint:
     'Downloads the original file in your browser after AI processing completes (works alongside Drive).',
   driveStorageSaved: 'Storage preferences saved.',
+
+  /** Phone shell — bottom tab bar + More sheet */
+  mobileNavHome: 'Home',
+  mobileNavMoney: 'Money',
+  mobileNavCapture: 'Capture',
+  mobileNavDocs: 'Docs',
+  mobileNavMore: 'More',
+  mobileMoreTitle: 'More tools',
+  mobileCaptureHint: 'Photograph or upload a ticket',
 };
 
 export const dashboardFr: Record<string, string> = {
@@ -2598,4 +2607,13 @@ export const dashboardFr: Record<string, string> = {
   driveStorageLocalDownloadHint:
     'Télécharge le fichier original dans le navigateur après le traitement IA (en parallèle de Drive).',
   driveStorageSaved: 'Préférences de stockage enregistrées.',
+
+  /** Coque téléphone — barre d’onglets + feuille Plus */
+  mobileNavHome: 'Accueil',
+  mobileNavMoney: 'Argent',
+  mobileNavCapture: 'Capturer',
+  mobileNavDocs: 'Docs',
+  mobileNavMore: 'Plus',
+  mobileMoreTitle: 'Plus d’outils',
+  mobileCaptureHint: 'Photographier ou téléverser un ticket',
 };

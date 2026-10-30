@@ -83,7 +83,12 @@ export function DocumentsLibraryTab({
   const showStocksFilter = useInventoryAllowed();
   const [filter, setFilter] = useState<DocFilter>("all");
   const [browseMode, setBrowseMode] = useState<BrowseMode>("library");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      return "list";
+    }
+    return "grid";
+  });
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -107,6 +112,17 @@ export function DocumentsLibraryTab({
       setFilter("all");
     }
   }, [showStocksFilter, filter]);
+
+  /** Prefer card/list density on phone; keep user choice after first interaction. */
+  React.useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const sync = () => {
+      if (mq.matches) setViewMode((prev) => (prev === "grid" ? "list" : prev));
+    };
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   const selectedDocument = useMemo(() => {
     if (!selectedDocumentId) return null;
