@@ -1,6 +1,6 @@
 # Inventory / stock plan
 
-For Ali to send Damien ahead of the 28 Oct presentation. Tab visible to all with Coming Soon; full unlock Ali + Damien only.
+Tab visible to all with Coming Soon; full unlock for Ali, Damien, Louise, and everyone on `/admin-uk` (GBP).
 
 **Living super prompt:** [INVENTORY_SWISS_SUPER_PROMPT.md](./INVENTORY_SWISS_SUPER_PROMPT.md) — Phase 1 Swiss sync + manager controls; Phase 2 POS ticket/Z2 stock-out + recipes (shipped).
 
@@ -13,7 +13,10 @@ POS stock-out from itemized Ticket/Receipt / Z2 sheets + POS recipes is live (co
 ## Who can use it
 
 - **Nav tab:** visible to all `/app` users (Coming Soon / blurred teaser if locked).
-- **Full unlock (interactive stock):** only `ali@the-leadlab.com` and `damien@the-leadlab.com` for now.
+- **Full unlock (interactive stock):**
+  - Built-in emails: `ali@the-leadlab.com`, `damien@the-leadlab.com`, `louise@the-leadlab.com` (CHF `/app` + UK)
+  - Anyone on UK UAT (`/admin-uk`) — GBP / UK VAT / `admin-uk-uat` Firestore
+  - Optional: `VITE_INVENTORY_ENABLED=true`, `VITE_INVENTORY_EMAILS`, `inventoryBeta`, admin app-access
 
 ## Data model (Firestore)
 

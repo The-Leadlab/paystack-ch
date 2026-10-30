@@ -125,6 +125,79 @@ function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?
   );
 }
 
+/**
+ * Controlled money/qty input that allows a true empty field while typing.
+ * `Number('') === 0` was forcing a sticky zero in Invoice Maker.
+ */
+function InvoiceNumberInput({
+  value,
+  onValueChange,
+  min,
+  step,
+  className = 'ba-verify-field',
+  emptyAs = 0,
+}: {
+  value: number;
+  onValueChange: (n: number) => void;
+  min?: number;
+  step?: number | string;
+  className?: string;
+  /** Numeric value used when the field is cleared (totals need a number). */
+  emptyAs?: number;
+}) {
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState(() => (value === 0 ? '' : String(value)));
+
+  useEffect(() => {
+    if (focused) return;
+    setDraft(value === 0 ? '' : String(value));
+  }, [value, focused]);
+
+  const commit = (raw: string) => {
+    const trimmed = raw.trim();
+    if (trimmed === '' || trimmed === '-' || trimmed === '.' || trimmed === '-.') {
+      onValueChange(emptyAs);
+      return;
+    }
+    const n = Number(trimmed);
+    if (!Number.isFinite(n)) {
+      onValueChange(emptyAs);
+      return;
+    }
+    onValueChange(n);
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      className={className}
+      value={focused ? draft : value === 0 ? '' : String(value)}
+      min={min}
+      step={step}
+      onFocus={() => {
+        setFocused(true);
+        setDraft(value === 0 ? '' : String(value));
+      }}
+      onBlur={() => {
+        setFocused(false);
+        commit(draft);
+      }}
+      onChange={(e) => {
+        const raw = e.target.value;
+        if (raw !== '' && !/^-?\d*\.?\d*$/.test(raw)) return;
+        setDraft(raw);
+        if (raw.trim() === '' || raw === '-' || raw === '.' || raw === '-.') {
+          onValueChange(emptyAs);
+          return;
+        }
+        const n = Number(raw);
+        if (Number.isFinite(n)) onValueChange(n);
+      }}
+    />
+  );
+}
+
 function resizeLogoAsJpeg(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -1029,15 +1102,30 @@ export function InvoiceMakerPanel() {
                   </div>
                   <div className="col-span-3 md:col-span-1">
                     <FieldLabel>{t('invColQty')}</FieldLabel>
-                    <input type="number" min={1} className="ba-verify-field" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))} />
+                    <InvoiceNumberInput
+                      value={item.quantity}
+                      min={0}
+                      step={1}
+                      onValueChange={(n) => updateItem(item.id, 'quantity', n)}
+                    />
                   </div>
                   <div className="col-span-3 md:col-span-2">
                     <FieldLabel>{t('invColUnit')}</FieldLabel>
-                    <input type="number" min={0} step={0.01} className="ba-verify-field" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', Number(e.target.value))} />
+                    <InvoiceNumberInput
+                      value={item.unitPrice}
+                      min={0}
+                      step={0.01}
+                      onValueChange={(n) => updateItem(item.id, 'unitPrice', n)}
+                    />
                   </div>
                   <div className="col-span-3 md:col-span-2">
                     <FieldLabel>{t('invLineDiscount')}</FieldLabel>
-                    <input type="number" min={0} step={0.01} className="ba-verify-field" value={item.discountAmount ?? 0} onChange={(e) => updateItem(item.id, 'discountAmount', Number(e.target.value))} />
+                    <InvoiceNumberInput
+                      value={item.discountAmount ?? 0}
+                      min={0}
+                      step={0.01}
+                      onValueChange={(n) => updateItem(item.id, 'discountAmount', n)}
+                    />
                   </div>
                   <div className="col-span-3 md:col-span-1">
                     <FieldLabel>{t('invColVat')}</FieldLabel>
@@ -1166,7 +1254,12 @@ export function InvoiceMakerPanel() {
               </div>
               <div>
                 <FieldLabel>{t('invInvoiceDiscount')}</FieldLabel>
-                <input type="number" min={0} step={0.01} className="ba-verify-field" value={invoiceData.discountAmount} onChange={(e) => setInvoiceData((p) => ({ ...p, discountAmount: Number(e.target.value) }))} />
+                <InvoiceNumberInput
+                  value={invoiceData.discountAmount}
+                  min={0}
+                  step={0.01}
+                  onValueChange={(n) => setInvoiceData((p) => ({ ...p, discountAmount: n }))}
+                />
               </div>
               <div className="border-t border-cdlp-border pt-3 flex justify-between text-lg font-black">
                 <span>{t('invTotalTtc')}</span>
