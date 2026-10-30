@@ -14,7 +14,7 @@ POS stock-out from itemized Ticket/Receipt / Z2 sheets + POS recipes is live (co
 
 - **Nav tab:** visible to all `/app` users (Coming Soon / blurred teaser if locked).
 - **Full unlock (interactive stock):**
-  - Built-in emails: `ali@the-leadlab.com`, `damien@the-leadlab.com`, `louise@the-leadlab.com` (CHF `/app` + UK)
+  - Built-in emails: `ali@the-leadlab.com`, `damien@the-leadlab.com`, `louise@the-leadlab.com`, `info@ravinalaspices.ch`
   - Anyone on UK UAT (`/admin-uk`) — GBP / UK VAT / `admin-uk-uat` Firestore
   - Optional: `VITE_INVENTORY_ENABLED=true`, `VITE_INVENTORY_EMAILS`, `inventoryBeta`, admin app-access
 

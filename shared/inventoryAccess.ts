@@ -3,7 +3,7 @@
  *
  * The Inventory nav tab is visible to everyone with a Coming Soon / blurred
  * teaser. Full read/write unlock is granted when any of:
- *   1. Email is on the built-in allowlist (Ali, Damien, Louise)
+ *   1. Email is on the built-in allowlist (Ali, Damien, Louise, Ravinala)
  *   2. Email is on opts.extraEmails (e.g. VITE_INVENTORY_EMAILS from the client hook)
  *   3. UK UAT (`/admin-uk`) — GBP sandbox stock testing
  *   4. users/{uid}.inventoryBeta === true (opts.inventoryBeta)
@@ -18,6 +18,8 @@ export const INVENTORY_DEV_EMAILS = [
   "damien@the-leadlab.com",
   /** UK + CHF stock UAT tester */
   "louise@the-leadlab.com",
+  /** Ravinala Spices — live stock beta */
+  "info@ravinalaspices.ch",
 ] as const;
 
 export type InventoryAccessOpts = {

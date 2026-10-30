@@ -359,6 +359,7 @@ describe("inventory access gate", () => {
     expect(isInventoryAllowedForUser("ali@the-leadlab.com")).toBe(true);
     expect(isInventoryAllowedForUser("damien@the-leadlab.com")).toBe(true);
     expect(isInventoryAllowedForUser("louise@the-leadlab.com")).toBe(true);
+    expect(isInventoryAllowedForUser("info@ravinalaspices.ch")).toBe(true);
     expect(isInventoryAllowedForUser("louise@test.com", { ukUatActive: true })).toBe(true);
     expect(isInventoryAllowedForUser("damien@test.com", { adminAppAccess: true })).toBe(true);
     expect(isInventoryAllowedForUser("beta@test.com", { inventoryBeta: true })).toBe(true);

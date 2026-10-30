@@ -5,11 +5,12 @@ import {
 } from "../shared/inventoryAccess";
 
 describe("isInventoryAllowedForUser", () => {
-  it("allows Ali, Damien, and Louise on the built-in list", () => {
+  it("allows Ali, Damien, Louise, and Ravinala on the built-in list", () => {
     for (const email of INVENTORY_DEV_EMAILS) {
       expect(isInventoryAllowedForUser(email)).toBe(true);
     }
     expect(isInventoryAllowedForUser("louise@the-leadlab.com")).toBe(true);
+    expect(isInventoryAllowedForUser("info@ravinalaspices.ch")).toBe(true);
   });
 
   it("unlocks anyone on UK UAT (GBP sandbox)", () => {
