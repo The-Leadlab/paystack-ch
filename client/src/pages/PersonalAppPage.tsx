@@ -10,6 +10,7 @@ import { PersonalPlanShell } from "@/ali-lab/personal-plan/components/PersonalPl
 import { useLocation } from "wouter";
 
 const KPI_HIDDEN_FEATURES = new Set([
+  "budgeting",
   "forecasting",
   "investments",
   "goals",

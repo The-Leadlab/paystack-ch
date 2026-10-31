@@ -55,11 +55,13 @@ export function PersonalPlanKpiStrip() {
         value={formatChfDisplay(h.balance)}
         tone={h.balance >= 0 ? "neutral" : "negative"}
       />
-      <KpiCell
-        label={t("savingsRate")}
-        value={formatPct(h.savingsRatePct)}
-        tone={h.savingsRatePct >= 0 ? "positive" : "negative"}
-      />
+      <div className="col-span-2 lg:col-span-1">
+        <KpiCell
+          label={t("savingsRate")}
+          value={formatPct(h.savingsRatePct)}
+          tone={h.savingsRatePct >= 0 ? "positive" : "negative"}
+        />
+      </div>
     </section>
   );
 }

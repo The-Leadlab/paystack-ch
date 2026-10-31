@@ -2600,21 +2600,14 @@
   }
 }
 
-/* Phone/tablet: chip toolbars scroll instead of wrapping into a wall */
+/* Phone/tablet: wrap toolbars so primary actions stay reachable (chips scroll via ba-interval-bar__chips) */
 @media (max-width: 1023px) {
   .ba-v3 .ba-toolbar-scroll {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 0.5rem;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 0.25rem;
     max-width: 100%;
-  }
-
-  .ba-v3 .ba-toolbar-scroll::-webkit-scrollbar {
-    display: none;
   }
 
   .ba-v3 .ba-toolbar-scroll > * {

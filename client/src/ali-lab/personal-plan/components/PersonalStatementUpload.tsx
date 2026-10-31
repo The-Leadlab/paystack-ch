@@ -185,17 +185,17 @@ export function PersonalStatementUpload({ onImported }: Props) {
 
   return (
     <GlassCard className="p-4 space-y-3" data-tour="statement-upload">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <p className="text-sm font-semibold">{t("stmtUploadTitle")}</p>
           <p className="text-[11px] text-[var(--pp-on-surface-variant)] mt-1">
             {usedAcrossSessions}/{personalCap} uploads
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:flex-wrap">
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--pp-outline-variant)] text-[11px] font-semibold"
+            className="inline-flex items-center justify-center gap-1.5 min-h-11 px-3 py-2 rounded-lg border border-[var(--pp-outline-variant)] text-[11px] font-semibold w-full sm:w-auto"
             onClick={() => downloadTextFile("personal-statement-template.csv", personalStatementTemplateCsv())}
           >
             <FileUp className="size-3.5" />
@@ -204,7 +204,7 @@ export function PersonalStatementUpload({ onImported }: Props) {
           <button
             type="button"
             disabled={busy || personalAtCap}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] text-xs font-bold hover:opacity-90 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-1.5 min-h-11 px-4 py-2 rounded-lg bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] text-xs font-bold hover:opacity-90 disabled:opacity-50 w-full sm:w-auto"
             onClick={() => inputRef.current?.click()}
           >
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}

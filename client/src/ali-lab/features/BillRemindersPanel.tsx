@@ -230,9 +230,9 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
       </GlassCard>
 
       <GlassCard className="p-4 space-y-3">
-        <div className="pp-toolbar-scroll">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <input
-            className="pp-input px-3 py-2 flex-1 min-w-[120px] min-h-11 text-sm"
+            className="pp-input px-3 py-2 min-h-11 text-sm sm:col-span-2"
             placeholder={t("billPlaceholder")}
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -247,13 +247,13 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
             type="number"
             min="0"
             step="0.05"
-            className="pp-input px-3 py-2 w-28 min-h-11 text-sm pp-tabular"
+            className="pp-input px-3 py-2 min-h-11 text-sm pp-tabular w-full"
             placeholder={t("billAmountPlaceholder")}
             value={amountInput}
             onChange={(e) => setAmountInput(e.target.value)}
           />
           <select
-            className="pp-input px-2 py-2 text-sm min-w-[130px] min-h-11"
+            className="pp-input px-2 py-2 text-sm min-h-11 w-full"
             value={recurrence}
             onChange={(e) => setRecurrence(e.target.value as LabBill["recurrence"])}
             aria-label={t("billFrequency")}
@@ -268,17 +268,17 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
           <button
             type="button"
             disabled={saving}
-            className="bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] px-4 py-2 min-h-11 rounded-lg text-xs font-bold disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-1.5 bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] px-4 py-2 min-h-11 rounded-lg text-xs font-bold disabled:opacity-50 w-full"
             onClick={() => void submitBill()}
           >
-            {saving ? <Loader2 className="size-3.5 animate-spin inline" /> : null} {t("addBill")}
+            {saving ? <Loader2 className="size-3.5 animate-spin" /> : null} {t("addBill")}
           </button>
         </div>
 
-        <div className="pp-toolbar-scroll items-center">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-11 rounded-lg border border-[var(--pp-outline-variant)] text-[11px] font-semibold"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-11 rounded-lg border border-[var(--pp-outline-variant)] text-[11px] font-semibold w-full sm:w-auto"
             onClick={() => photoRef.current?.click()}
           >
             <Camera className="size-3.5" />
@@ -295,14 +295,14 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
           <button
             type="button"
             disabled={aiBusy || receipts.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-11 rounded-lg bg-[var(--pp-primary)]/10 text-[var(--pp-primary)] text-[11px] font-bold disabled:opacity-40"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-11 rounded-lg bg-[var(--pp-primary)]/15 text-[var(--pp-primary)] text-[11px] font-bold disabled:opacity-40 w-full sm:w-auto"
             onClick={() => void fillFromPhotoAi()}
           >
             {aiBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
             {t("billAiFromPhoto")}
           </button>
           {receipts.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 w-full">
               {receipts.map((r, idx) => (
                 <div key={`${r.fileName}-${idx}`} className="relative inline-flex items-center gap-1">
                   <img
@@ -312,7 +312,7 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
                   />
                   <button
                     type="button"
-                    className="p-1 text-[var(--pp-on-surface-variant)]"
+                    className="p-1 min-h-11 min-w-11 inline-flex items-center justify-center text-[var(--pp-on-surface-variant)]"
                     onClick={() => setReceipts((prev) => prev.filter((_, i) => i !== idx))}
                     aria-label={t("delete")}
                   >
@@ -325,7 +325,7 @@ export function BillRemindersPanel({ feature }: { feature: AliLabFeature }) {
               </span>
             </div>
           ) : (
-            <p className="text-[11px] text-[var(--pp-on-surface-variant)]">{t("billPhotoHint")}</p>
+            <p className="text-[11px] text-[var(--pp-on-surface-variant)] w-full sm:w-auto">{t("billPhotoHint")}</p>
           )}
         </div>
 

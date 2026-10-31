@@ -104,7 +104,7 @@ function PersonalPlanShellInner({
       />
       <main
         className={cn(
-          "min-h-screen pb-24 md:pb-8 transition-[margin] duration-200",
+          "min-h-screen pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-8 transition-[margin] duration-200",
           collapsed ? "md:ml-14" : "md:ml-52"
         )}
       >

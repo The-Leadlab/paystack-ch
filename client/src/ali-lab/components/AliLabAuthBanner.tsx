@@ -19,12 +19,15 @@ export function AliLabAuthBanner({
 
   if (variant === "personal") {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--pp-outline-variant)] bg-[var(--pp-surface-low)] px-4 md:px-16 py-2 text-[11px] text-[var(--pp-on-surface-variant)]">
-        <span>
+      <div className="flex flex-col gap-2.5 border-b border-[var(--pp-outline-variant)] bg-[var(--pp-surface-low)] px-4 md:px-16 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+        <p className="text-[11px] leading-relaxed text-[var(--pp-on-surface-variant)] min-w-0">
           {loading ? "…" : user ? `✓ ${t("firebaseOk")} (${user.email})` : `${t("localOnly")} — ${t("signInHint")}`}
-        </span>
+        </p>
         {!user && (
-          <Link href={signInHref} className="text-[var(--pp-primary)] font-semibold">
+          <Link
+            href={signInHref}
+            className="inline-flex items-center justify-center min-h-10 w-full sm:w-auto shrink-0 rounded-lg bg-[var(--pp-primary-container)] px-4 py-2 text-[11px] font-bold text-[var(--pp-on-primary-container)]"
+          >
             {t("signIn")}
           </Link>
         )}

@@ -54,7 +54,7 @@ export function PersonalPeriodFilter({
         <span className="sr-only">{t("month")}</span>
         <input
           type="month"
-          className="pp-input border-0 bg-transparent px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--pp-on-surface)] min-w-[7.5rem]"
+          className="pp-input border-0 bg-transparent px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--pp-on-surface)] min-w-0 w-[7rem] max-w-[40vw]"
           value={month}
           onChange={(e) => {
             if (e.target.value) setMonth(e.target.value);

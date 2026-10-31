@@ -11,6 +11,7 @@ import { labFeatureCopy } from "@/ali-lab/i18n/labRegistryI18n";
 import { PersonalPlanShell } from "@/ali-lab/personal-plan/components/PersonalPlanShell";
 
 const KPI_HIDDEN_FEATURES = new Set([
+  "budgeting",
   "forecasting",
   "investments",
   "goals",

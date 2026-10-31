@@ -12,19 +12,27 @@ export default function ThemeToggle() {
   const { theme, toggleTheme, switchable } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const [loc] = useLocation();
-  const isAppShell =
+  const isLangShell =
     loc === "/app" ||
     loc.startsWith("/app/") ||
     loc === "/personal" ||
     loc.startsWith("/personal/");
 
-  const bottomClass = isAppShell
+  const hasBottomNav =
+    isLangShell ||
+    loc === "/ali" ||
+    loc.startsWith("/ali/") ||
+    loc === "/admin-uk" ||
+    loc.startsWith("/admin-uk/");
+
+  /* Lift above mobile bottom nav / FAB row so the control is not buried. */
+  const bottomClass = hasBottomNav
     ? "bottom-[max(5.75rem,env(safe-area-inset-bottom)+4.75rem)] md:bottom-[max(1.25rem,env(safe-area-inset-bottom))]"
     : "bottom-[max(1.25rem,env(safe-area-inset-bottom))]";
 
   const fabClass = `fixed right-4 z-[100] flex items-center gap-2 rounded-full border border-border bg-card/95 px-3 py-2 sm:px-4 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-foreground shadow-lg backdrop-blur-sm hover:border-brand-red/40 touch-manipulation ${bottomClass}`;
 
-  if (isAppShell) {
+  if (isLangShell) {
     const next = language === "en" ? "fr" : "en";
     const short = language === "en" ? t("languageToggleShortEn") : t("languageToggleShortFr");
     return (

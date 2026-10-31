@@ -33,7 +33,8 @@ export function PersonalDashboardPanel({ feature: _feature }: { feature: AliLabF
         </GlassCard>
       ) : null}
 
-      <div className="pp-toolbar-scroll items-center">
+      {/* Desktop/tablet only — phone uses bottom-nav FAB (avoids duplicate + cut-off CTA). */}
+      <div className="hidden md:flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={() => openTransaction()}
@@ -44,6 +45,7 @@ export function PersonalDashboardPanel({ feature: _feature }: { feature: AliLabF
         </button>
         {budget.error ? <p className="text-xs text-[var(--pp-error)]">{budget.error}</p> : null}
       </div>
+      {budget.error ? <p className="md:hidden text-xs text-[var(--pp-error)]">{budget.error}</p> : null}
 
       <PersonalRecentLedger month={month} onChanged={() => void budget.refresh()} />
     </div>
