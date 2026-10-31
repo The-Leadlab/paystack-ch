@@ -87,10 +87,10 @@ export function PersonalRecentLedger({
                       value={editDesc}
                       onChange={(e) => setEditDesc(e.target.value)}
                     />
-                    <button type="button" className="font-bold text-[var(--pp-primary)]" onClick={() => void saveEdit(row)}>
+                    <button type="button" className="min-h-11 px-2 font-bold text-[var(--pp-primary)]" onClick={() => void saveEdit(row)}>
                       {t("save")}
                     </button>
-                    <button type="button" onClick={() => setEditId(null)}>
+                    <button type="button" className="min-h-11 px-2" onClick={() => setEditId(null)}>
                       {t("stmtCancelPreview")}
                     </button>
                   </>
@@ -109,10 +109,10 @@ export function PersonalRecentLedger({
                       {row.kind === "income" ? "+" : "−"}
                       {formatChfDisplay(row.amount)}
                     </span>
-                    <button type="button" aria-label="Edit" onClick={() => startEdit(row)}>
+                    <button type="button" className="inline-flex items-center justify-center min-h-11 min-w-11" aria-label="Edit" onClick={() => startEdit(row)}>
                       <Pencil className="size-3.5 text-[var(--pp-on-surface-variant)]" />
                     </button>
-                    <button type="button" aria-label="Delete" onClick={() => void remove(row)}>
+                    <button type="button" className="inline-flex items-center justify-center min-h-11 min-w-11" aria-label="Delete" onClick={() => void remove(row)}>
                       <Trash2 className="size-3.5 text-[var(--pp-error)]" />
                     </button>
                   </>

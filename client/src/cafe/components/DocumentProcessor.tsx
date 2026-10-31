@@ -852,8 +852,82 @@ const SwissVatBreakdownEditor: React.FC<{
 
       {lines.length > 0 && (
         <>
-          <div className="overflow-x-auto custom-scrollbar -mx-1 px-1">
-            <table className="swiss-vat-table min-w-[640px] w-full text-[10px] border rounded-sm overflow-hidden">
+          <ul className="ba-card-list mb-2" aria-label={t('dpVatPercent')}>
+            {lines.map((line, idx) => (
+              <li key={`vat-card-${idx}`}>
+                <div className="ba-card-list__item !cursor-default space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="block min-w-0">
+                      <span className="text-[10px] font-bold uppercase text-cdlp-muted">{t('dpVatPercent')}</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="swiss-vat-input w-full h-11 px-2 border rounded-sm font-mono font-bold mt-1"
+                        value={line.ratePercent}
+                        onChange={(e) =>
+                          updateLine(idx, {
+                            ...line,
+                            ratePercent: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="block min-w-0">
+                      <span className="text-[10px] font-bold uppercase text-cdlp-muted">{t('dpBaseHt')}</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="swiss-vat-input w-full h-11 px-2 border rounded-sm font-mono text-right mt-1"
+                        value={line.baseExclusive}
+                        onChange={(e) =>
+                          updateLine(idx, {
+                            ...line,
+                            baseExclusive: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="block min-w-0 col-span-2">
+                      <span className="text-[10px] font-bold uppercase text-cdlp-muted">{t('dpVatCol')}</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="swiss-vat-input w-full h-11 px-2 border rounded-sm font-mono text-right mt-1"
+                        value={line.vatAmount}
+                        onChange={(e) =>
+                          updateLine(idx, {
+                            ...line,
+                            vatAmount: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="ba-card-list__foot">
+                    <button
+                      type="button"
+                      onClick={() => calcRowVat(idx)}
+                      className="min-h-11 px-3 rounded-sm border border-cdlp-gold text-[10px] font-black uppercase text-cdlp-gold hover:bg-cdlp-gold/15"
+                      title={t('dpTvaFormula')}
+                    >
+                      {t('dpCalc')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => pushSynced({ swissVatBreakdown: lines.filter((_, i) => i !== idx) })}
+                      className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-sm text-cdlp-muted hover:text-red-400 hover:bg-red-900/20"
+                      title={t('dpRemoveRow')}
+                      disabled={lines.length <= 1}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="overflow-x-auto custom-scrollbar -mx-1 px-1 ba-table-desktop-only">
+            <table className="swiss-vat-table w-full text-[10px] border rounded-sm overflow-hidden">
               <thead className="uppercase font-black tracking-tight">
                 <tr>
                   <th className="px-2 py-2 text-left w-24 border-b border-inherit">{t('dpVatPercent')}</th>
@@ -912,7 +986,7 @@ const SwissVatBreakdownEditor: React.FC<{
                       <button
                         type="button"
                         onClick={() => calcRowVat(idx)}
-                        className="h-8 px-2 rounded-sm border border-cdlp-gold text-[8px] font-black uppercase text-cdlp-gold hover:bg-cdlp-gold/15"
+                        className="h-9 min-h-9 px-2 rounded-sm border border-cdlp-gold text-[10px] font-black uppercase text-cdlp-gold hover:bg-cdlp-gold/15"
                         title={t('dpTvaFormula')}
                       >
                         {t('dpCalc')}
@@ -922,7 +996,7 @@ const SwissVatBreakdownEditor: React.FC<{
                       <button
                         type="button"
                         onClick={() => pushSynced({ swissVatBreakdown: lines.filter((_, i) => i !== idx) })}
-                        className="p-1.5 rounded-sm text-cdlp-muted hover:text-red-400 hover:bg-red-900/20"
+                        className="p-2 min-h-9 min-w-9 inline-flex items-center justify-center rounded-sm text-cdlp-muted hover:text-red-400 hover:bg-red-900/20"
                         title={t('dpRemoveRow')}
                         disabled={lines.length <= 1}
                       >
@@ -1047,7 +1121,7 @@ const SwissVatBreakdownEditor: React.FC<{
 
           {preview && !isUk && (
             <div className="overflow-x-auto">
-              <table className="swiss-vat-table min-w-[520px] w-full text-[9px] border rounded-sm overflow-hidden">
+              <table className="swiss-vat-table w-full min-w-0 text-[10px] sm:text-[9px] border rounded-sm overflow-hidden">
                 <thead className="uppercase font-black">
                   <tr>
                     <th className="px-2 py-2 text-left border-b border-inherit">{t('dpFormCode')}</th>
@@ -1082,7 +1156,7 @@ const SwissVatBreakdownEditor: React.FC<{
           )}
           {preview && isUk && (
             <div className="overflow-x-auto">
-              <table className="swiss-vat-table min-w-[520px] w-full text-[9px] border rounded-sm overflow-hidden">
+              <table className="swiss-vat-table w-full min-w-0 text-[10px] sm:text-[9px] border rounded-sm overflow-hidden">
                 <thead className="uppercase font-black">
                   <tr>
                     <th className="px-2 py-2 text-left border-b border-inherit">{t('dpUkVatBox')}</th>
@@ -1624,7 +1698,7 @@ export const VerificationHub: React.FC<{
         <div className="ba-verify-preview w-full lg:w-[320px] xl:w-[420px] flex flex-col overflow-hidden shrink-0">
           <NeuralLog doc={doc} />
         </div>
-        <div className="ba-verify-form flex-1 min-w-0 p-4 sm:p-6 md:p-8 flex flex-col overflow-x-auto overflow-y-visible">
+        <div className="ba-verify-form flex-1 min-w-0 p-4 sm:p-6 md:p-8 flex flex-col overflow-x-hidden lg:overflow-x-auto overflow-y-visible">
            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 border-b border-cdlp-border pb-4 gap-4">
               <div>
                  <h4 className="text-xs sm:text-sm font-black uppercase tracking-widest ba-field-value">
@@ -4222,10 +4296,154 @@ export const DocumentProcessor: React.FC<{
         </div>
       </div>
 
-      {/* Documents Table */}
+      {/* Documents Table + phone/tablet cards */}
       {allDocs.length > 0 && (
         <div className="ba-doc-table-wrap">
-          <div className="overflow-x-auto custom-scrollbar max-w-[100vw] sm:max-w-none">
+          <ul className="ba-card-list" aria-label={t('dpColDocument')}>
+            {allDocs.map((doc) => {
+              const fmtDocChf = (n: number) =>
+                `${n.toLocaleString(moneyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${reportingCurrency}`;
+              const isExpanded = expandedRows.has(doc.id);
+              const flowType = doc.data
+                ? classifyDocFlowType(doc.data, doc.fileName)
+                : 'EXPENSE';
+              const isSalaryRow = flowType === 'SALARY';
+              const vatReview = evaluateVatReview(doc.data);
+              const vatNeedsAttention =
+                !isSalaryRow &&
+                (doc.status === 'needs_review' || vatReview.needsAction);
+              const isActionable =
+                doc.status === 'completed' || doc.status === 'needs_review';
+              const displayStatus = displayStatusForDocument(doc, {
+                isBatchRunning: isProcessing,
+                activeKeys: activeProcessingKeys,
+              });
+              const amountLabel = doc.data
+                ? fmtDocChf(documentTableDisplayAmount(doc.data))
+                : regionReady
+                  ? `— ${reportingCurrency}`
+                  : '—';
+              let statusPill: React.ReactNode;
+              if (doc.status === 'needs_review' || (doc.status === 'completed' && vatNeedsAttention)) {
+                statusPill = (
+                  <span className="ba-status-pill ba-status-pill--verify">{t('dpStatusNeedAction')}</span>
+                );
+              } else if (doc.status === 'completed') {
+                statusPill = (
+                  <span
+                    className={`ba-status-pill ${isExpanded ? 'ba-status-pill--verify' : 'ba-status-pill--completed'}`}
+                  >
+                    {isExpanded ? t('dpVerificationCenter') : docStatusLabel(doc.status)}
+                  </span>
+                );
+              } else if (doc.status === 'error') {
+                statusPill = (
+                  <span className="ba-status-pill ba-status-pill--error">{docStatusLabel(doc.status)}</span>
+                );
+              } else if (doc.status === 'skipped') {
+                statusPill = (
+                  <span className="ba-status-pill ba-status-pill--pending">{docStatusLabel(doc.status)}</span>
+                );
+              } else {
+                statusPill = (
+                  <span className="ba-status-pill ba-status-pill--pending inline-flex items-center gap-1">
+                    {displayStatus === 'processing' ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                    {docStatusLabel(displayStatus)}
+                  </span>
+                );
+              }
+              return (
+                <li key={`card-${doc.id}`}>
+                  <div
+                    role={isActionable ? 'button' : undefined}
+                    tabIndex={isActionable ? 0 : undefined}
+                    data-active={isExpanded ? 'true' : undefined}
+                    className={`ba-card-list__item ${isActionable ? '' : 'opacity-90'}`}
+                    onClick={() => isActionable && toggleRow(doc.id)}
+                    onKeyDown={(e) => {
+                      if (!isActionable) return;
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleRow(doc.id);
+                      }
+                    }}
+                  >
+                    <div className="ba-card-list__row">
+                      <div className="min-w-0">
+                        <p className="ba-card-list__title">{doc.fileName}</p>
+                        <p className="ba-card-list__meta">
+                          {[doc.data?.issuer, doc.data?.date].filter(Boolean).join(' · ') || '—'}
+                        </p>
+                      </div>
+                      <span className="ba-card-list__amount">{amountLabel}</span>
+                    </div>
+                    <div className="ba-card-list__foot">
+                      {statusPill}
+                      {isActionable ? (
+                        <button
+                          type="button"
+                          className="ba-doc-card__verify"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleRow(doc.id);
+                          }}
+                        >
+                          {t('dpVerify')}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                  {isExpanded && doc.data ? (
+                    <div className="mt-2 mb-1" onClick={(e) => e.stopPropagation()}>
+                      <VerificationHub
+                        doc={doc}
+                        onUpdate={(newData) => {
+                          if ((doc as any).source === 'firestore') {
+                            updateDocument(firestoreRecordId(doc), { data: newData });
+                          } else {
+                            setLocalDocs((prev) =>
+                              prev.map((d) => (d.id === doc.id ? { ...d, data: newData } : d))
+                            );
+                          }
+                        }}
+                        onSave={async (newData) => {
+                          if ((doc as any).source === 'firestore') {
+                            const recordId = firestoreRecordId(doc);
+                            const confirmed = {
+                              ...newData,
+                              vatConfirmed: true,
+                              isHumanVerified: true,
+                            };
+                            await updateDocument(recordId, {
+                              status: 'completed',
+                              data: confirmed,
+                            });
+                            if (onDocumentUpdated) {
+                              await onDocumentUpdated(recordId, confirmed);
+                            }
+                          } else {
+                            setLocalDocs((prev) =>
+                              prev.map((d) =>
+                                d.id === doc.id
+                                  ? {
+                                      ...d,
+                                      status: 'completed',
+                                      data: { ...newData, vatConfirmed: true, isHumanVerified: true },
+                                    }
+                                  : d
+                              )
+                            );
+                          }
+                          toggleRow(doc.id);
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+          <div className="overflow-x-auto custom-scrollbar max-w-[100vw] sm:max-w-none ba-table-desktop-only">
             <table className="ba-doc-table w-full text-xs">
               <thead>
                 <tr>

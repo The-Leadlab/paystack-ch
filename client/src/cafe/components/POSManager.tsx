@@ -880,17 +880,17 @@ export function POSManager({
         return (
           <div className="ba-panel !py-2.5 !px-3 flex flex-wrap items-center justify-between gap-2 text-xs">
             <span className="text-cdlp-muted tabular-nums">{stripText}</span>
-            <div className="flex flex-wrap gap-2">
+            <div className="ba-toolbar-scroll">
               <button
                 type="button"
-                className="ba-revenue-link-btn"
+                className="ba-revenue-link-btn min-h-11"
                 onClick={() => onNavigateTab?.('inventory')}
               >
                 {t('invRevOpenInventory') || 'Inventory'}
               </button>
               <button
                 type="button"
-                className="ba-revenue-link-btn"
+                className="ba-revenue-link-btn min-h-11"
                 onClick={() => onNavigateTab?.('documents')}
               >
                 {t('invRevOpenStocks') || 'Documents · Stocks'}
@@ -1283,7 +1283,84 @@ export function POSManager({
             <p className="text-sm text-cdlp-muted py-8 text-center">{t('rhDocsEmpty')}</p>
           ) : (
             <>
-              <div className="ba-revenue-docs__table-wrap">
+              <ul className="ba-card-list mb-3" aria-label={t('rhTabDocuments')}>
+                {visibleDocs.map((entry) => {
+                  const sectorId = entry.sectorId;
+                  const meta = sectorId ? getSectorMeta(sectorId) : null;
+                  return (
+                    <li key={`card-${entry.key}`}>
+                      <div
+                        className="ba-card-list__item"
+                        role={entry.doc ? 'button' : undefined}
+                        tabIndex={entry.doc ? 0 : undefined}
+                        onClick={() => {
+                          if (entry.doc) openDocument(entry.doc);
+                        }}
+                        onKeyDown={(e) => {
+                          if (!entry.doc) return;
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            openDocument(entry.doc);
+                          }
+                        }}
+                      >
+                        <div className="ba-card-list__row">
+                          <div className="min-w-0">
+                            <p className="ba-card-list__title">{entry.description || '—'}</p>
+                            <p className="ba-card-list__meta">
+                              {[
+                                fmtDate(entry.date),
+                                meta ? sectorDisplayTitle(meta, t) : null,
+                              ]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </p>
+                          </div>
+                          <span className="ba-card-list__amount ba-card-list__amount--income">
+                            {fmtChf(entry.amount)}
+                          </span>
+                        </div>
+                        <div className="ba-card-list__foot" onClick={(e) => e.stopPropagation()}>
+                          {entry.incomeId ? (
+                            <select
+                              className="ba-verify-field ba-revenue-docs__category max-w-[11rem]"
+                              value={sectorId || ''}
+                              onChange={(e) => {
+                                const next = e.target.value;
+                                if (next && entry.incomeId) void handleCategoryChange(entry.incomeId, next);
+                              }}
+                            >
+                              <option value="" disabled>
+                                {t('rhChooseCategory')}
+                              </option>
+                              {categoryOptions.map((id) => {
+                                const m = getSectorMeta(id);
+                                return (
+                                  <option key={id} value={id}>
+                                    {m.icon} {sectorDisplayTitle(m, t)}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          ) : null}
+                          {entry.doc ? (
+                            <button
+                              type="button"
+                              className="ba-doc-card__verify"
+                              onClick={() => openDocument(entry.doc!)}
+                            >
+                              {t('rhOpenDocument')}
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-cdlp-muted">{t('rhLedgerOnly')}</span>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="ba-revenue-docs__table-wrap ba-table-desktop-only">
                 <table className="ba-revenue-docs__table">
                   <thead>
                     <tr>
@@ -1859,7 +1936,7 @@ function POSModal({
         </div>
 
         {!reading && (
-          <div className="flex flex-wrap gap-2 mb-6">
+          <div className="ba-toolbar-scroll mb-6">
             {(
               [
                 ['auto', Zap, 'posAutoGenerate'],
@@ -1876,7 +1953,7 @@ function POSModal({
                   if (id === 'manual') setShowEntryForm(true);
                   if (id === 'csv') setCsvStep('pick');
                 }}
-                className={`flex items-center justify-center gap-2 py-2 px-3 ba-filter-chip ${mode === id ? 'ba-filter-chip--active' : ''}`}
+                className={`flex items-center justify-center gap-2 py-2 px-3 min-h-11 ba-filter-chip ${mode === id ? 'ba-filter-chip--active' : ''}`}
               >
                 <Icon className="w-4 h-4" /> {t(labelKey)}
               </button>
@@ -1896,7 +1973,7 @@ function POSModal({
                 <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">
                   {t('posDatePeriod')}
                 </label>
-                <div className="flex flex-wrap gap-2">
+                <div className="ba-toolbar-scroll">
                   {(
                     [
                       ['day', 'posPeriodDay'],

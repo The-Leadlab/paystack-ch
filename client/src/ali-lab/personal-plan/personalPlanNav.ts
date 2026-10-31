@@ -27,7 +27,7 @@ export const PERSONAL_PLAN_NAV: PersonalPlanNavItem[] = [
   { id: "overview", labelKey: "navOverview", icon: LayoutDashboard, featureId: "overview", mobilePrimary: true },
   { id: "budget", labelKey: "navBudget", icon: Wallet, featureId: "budgeting", mobilePrimary: true },
   { id: "reports", labelKey: "navReports", icon: BarChart3, featureId: "forecasting" },
-  { id: "savings", labelKey: "navSavings", icon: PiggyBank, featureId: "goals", mobilePrimary: true },
+  { id: "savings", labelKey: "navSavings", icon: PiggyBank, featureId: "goals" },
   { id: "investments", labelKey: "navInvestments", icon: TrendingUp, featureId: "investments" },
   { id: "bills", labelKey: "navBills", icon: Receipt, featureId: "bill-reminders", mobilePrimary: true },
   { id: "settings", labelKey: "navSettings", icon: Settings, featureId: "settings" },

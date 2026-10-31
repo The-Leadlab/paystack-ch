@@ -315,7 +315,7 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
         <section className="ba-panel space-y-4">
           <h2 className="text-sm font-black uppercase tracking-wider text-cdlp-gold">{t('planTestTitle')}</h2>
           <p className="text-xs text-cdlp-muted leading-relaxed">{t('planTestBody')}</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="ba-plans-grid grid grid-cols-1 sm:grid-cols-3 gap-2">
             {(['starter', 'business', 'unlimited'] as const).map((id) => (
               <button
                 key={id}
@@ -331,7 +331,7 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
                     setPlanTestBusy(false);
                   }
                 }}
-                className={`rounded-md border px-2 py-3 text-[10px] font-black uppercase tracking-tight transition-colors disabled:opacity-50 ${
+                className={`rounded-md border px-3 py-3 min-h-11 text-xs font-black uppercase tracking-tight transition-colors disabled:opacity-50 ${
                   effectivePlan === id
                     ? 'border-cdlp-gold/70 bg-cdlp-cream/50 text-white'
                     : 'border-cdlp-border bg-cdlp-dark/30 text-cdlp-muted hover:border-cdlp-gold/35 hover:text-white'

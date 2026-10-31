@@ -5,7 +5,11 @@ export function usePersistedSidebarCollapsed(storageKey: string) {
   const [collapsed, setCollapsedState] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
-      return window.localStorage.getItem(storageKey) === "1";
+      const stored = window.localStorage.getItem(storageKey);
+      if (stored === "1") return true;
+      if (stored === "0") return false;
+      // No preference yet: default rail on tablet (768–1023) so content isn't squeezed.
+      return window.matchMedia("(min-width: 768px) and (max-width: 1023px)").matches;
     } catch {
       return false;
     }

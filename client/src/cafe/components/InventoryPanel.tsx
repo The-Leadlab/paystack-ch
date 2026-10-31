@@ -508,7 +508,126 @@ export function InventoryPanel() {
         </div>
       ) : (
         <div className="border border-cdlp-border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
+          <ul className="ba-card-list p-3" aria-label={t('invColProduct')}>
+            {filteredProducts.map((p) => (
+              <li key={`inv-card-${p.id}`}>
+                <div className="ba-card-list__item !cursor-default space-y-2">
+                  <div className="ba-card-list__row">
+                    <div className="min-w-0 flex-1">
+                      <input
+                        type="text"
+                        className="ba-verify-field text-sm w-full font-medium min-h-11"
+                        value={inlineDrafts[p.id]?.name ?? p.name}
+                        onChange={(e) => patchInline(p.id, 'name', e.target.value)}
+                        onBlur={() => void commitNameSkuMin(p, 'name')}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                        }}
+                        aria-label={t('invColProduct') || 'Product'}
+                      />
+                      <p className="ba-card-list__meta mt-1">
+                        {[p.category, p.sku].filter(Boolean).join(' · ') || '—'}
+                        {p.minStockLevel != null && p.onHandQty <= p.minStockLevel
+                          ? ` · ${t('invColMinStock') || 'Min'} ${p.minStockLevel}`
+                          : ''}
+                      </p>
+                    </div>
+                    <span className="ba-card-list__amount">{fmtMoney(Math.round(p.valuationAmount))}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <span className="text-cdlp-muted uppercase text-[10px]">{t('invColQtyIn')}</span>
+                      <p className="font-bold text-green-400">{p.totalIn}</p>
+                    </div>
+                    <div>
+                      <span className="text-cdlp-muted uppercase text-[10px]">{t('invColQtyOut')}</span>
+                      <p className="font-bold text-red-400">{p.totalOut}</p>
+                    </div>
+                    <div>
+                      <span className="text-cdlp-muted uppercase text-[10px]">{t('invColOnHand')}</span>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <input
+                          type="number"
+                          step="any"
+                          min={0}
+                          className="ba-verify-field text-xs w-full min-h-11 text-right font-semibold"
+                          value={inlineDrafts[p.id]?.onHand ?? String(p.onHandQty)}
+                          onChange={(e) => patchInline(p.id, 'onHand', e.target.value)}
+                          onBlur={() => void commitOnHand(p)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                          }}
+                          aria-label={t('invColOnHand') || 'On hand'}
+                        />
+                        <span className="text-cdlp-muted shrink-0">{p.unit}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="ba-card-list__foot">
+                    <button
+                      type="button"
+                      className="ba-filter-chip !py-2 min-h-11"
+                      onClick={() => setExpandedProduct(expandedProduct === p.id ? null : p.id)}
+                    >
+                      {t('invMovementHistory') || 'History'}
+                    </button>
+                    <button
+                      type="button"
+                      className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md text-cdlp-muted hover:text-green-400"
+                      title={t('invAddMovement')}
+                      onClick={() => setShowAddMovement(p.id)}
+                    >
+                      <ArrowUpCircle className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md text-cdlp-muted hover:text-cdlp-white"
+                      title={t('invEditProduct')}
+                      onClick={() => {
+                        setEditProduct(p);
+                        setShowAddProduct(true);
+                      }}
+                    >
+                      <Pencil className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md text-cdlp-muted hover:text-red-400"
+                      title={t('invDeleteProduct')}
+                      onClick={() => {
+                        if (confirm(t('invDeleteProductConfirm').replace('{name}', p.name))) {
+                          void deleteProduct(p.id)
+                            .then(() => toast.success(t('invDeletedToast') || 'Product deleted'))
+                            .catch((err) => toast.error(err instanceof Error ? err.message : String(err)));
+                        }
+                      }}
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                  {expandedProduct === p.id ? (
+                    <div className="pt-2 border-t border-cdlp-border">
+                      <ProductMovementHistory
+                        productId={p.id}
+                        movements={movements}
+                        fmtMoney={fmtMoney}
+                        onDeleteMovement={async (id) => {
+                          if (!confirm(t('invDeleteMovementConfirm') || 'Delete this movement?')) return;
+                          try {
+                            await deleteMovement(id);
+                            toast.success(t('invMovementDeleted') || 'Movement deleted');
+                          } catch (err) {
+                            toast.error(err instanceof Error ? err.message : String(err));
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+          <table className="ba-doc-table ba-table-desktop-only w-full text-sm">
             <thead>
               <tr className="border-b border-cdlp-border bg-cdlp-card/50">
                 <th className="text-left px-3 py-2 text-cdlp-muted font-medium">{t('invColProduct')}</th>

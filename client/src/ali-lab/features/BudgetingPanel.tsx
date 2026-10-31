@@ -384,9 +384,9 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
 
   return (
     <div className="space-y-5" data-tour="panel-budgeting">
-      <div className="flex flex-wrap gap-2 items-center text-xs">
+      <div className="pp-toolbar-scroll items-center text-xs">
         <select
-          className="pp-input rounded px-2 py-1"
+          className="pp-input rounded px-2 py-2 min-h-11"
           value={mode}
           onChange={(e) => void persistMode(e.target.value as LabBudgetMode)}
           aria-label={t("budgetModeLabel")}
@@ -398,7 +398,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
           <button
             type="button"
             onClick={dismissSyncError}
-            className="text-[11px] text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] underline-offset-2 hover:underline"
+            className="text-[11px] min-h-11 px-2 text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)] underline-offset-2 hover:underline"
             title={syncError === "cloud-unavailable" ? "Cloud sync unavailable" : syncError || undefined}
           >
             Saved on this device
@@ -407,7 +407,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
         <button
           type="button"
           onClick={applySuggestions}
-          className="flex items-center gap-1.5 bg-[var(--pp-primary)]/10 text-[var(--pp-primary)] font-semibold px-3 py-1 rounded-full hover:bg-[var(--pp-primary)]/20 transition-colors"
+          className="flex items-center gap-1.5 min-h-11 bg-[var(--pp-primary)]/10 text-[var(--pp-primary)] font-semibold px-3 py-2 rounded-full hover:bg-[var(--pp-primary)]/20 transition-colors"
         >
           <Wand2 className="size-3.5" />
           Suggest
@@ -415,7 +415,7 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
         <button
           type="button"
           onClick={carryForwardBudgets}
-          className="flex items-center gap-1.5 bg-[var(--pp-primary)]/10 text-[var(--pp-primary)] font-semibold px-3 py-1 rounded-full hover:bg-[var(--pp-primary)]/20 transition-colors"
+          className="flex items-center gap-1.5 min-h-11 bg-[var(--pp-primary)]/10 text-[var(--pp-primary)] font-semibold px-3 py-2 rounded-full hover:bg-[var(--pp-primary)]/20 transition-colors"
         >
           <CopyPlus className="size-3.5" />
           Copy last month
@@ -425,14 +425,14 @@ export function BudgetingPanel({ feature }: { feature: AliLabFeature }) {
             <button
               type="button"
               onClick={saveSuggestions}
-              className="bg-[var(--pp-primary)] text-[var(--pp-on-primary)] font-semibold px-3 py-1 rounded-full hover:opacity-90 transition-opacity"
+              className="min-h-11 bg-[var(--pp-primary)] text-[var(--pp-on-primary)] font-semibold px-3 py-2 rounded-full hover:opacity-90 transition-opacity"
             >
               Save suggested budgets
             </button>
             <button
               type="button"
               onClick={discardSuggestions}
-              className="text-[var(--pp-on-surface-variant)] underline hover:text-[var(--pp-on-surface)]"
+              className="min-h-11 px-2 text-[var(--pp-on-surface-variant)] underline hover:text-[var(--pp-on-surface)]"
             >
               Discard
             </button>

@@ -16,6 +16,7 @@ import {
   Wallet,
   BarChart3,
   FolderOpen,
+  UserRound,
 } from "lucide-react";
 import { useLanguage } from "@/cafe/context/LanguageContext";
 
@@ -71,6 +72,15 @@ export default function PlatformTourSection() {
           screen: "documents" as LandingScreenKey,
           alt: t("landingPlatformV4Alt"),
         },
+        {
+          id: "personal",
+          label: t("landingPlatformV6Label"),
+          icon: UserRound,
+          title: t("landingPlatformV6Title"),
+          description: t("landingPlatformV6Desc"),
+          screen: "personal" as LandingScreenKey,
+          alt: t("landingPlatformV6Alt"),
+        },
       ] as const,
     [language, t]
   );
@@ -93,13 +103,13 @@ export default function PlatformTourSection() {
         </ScrollReveal>
 
         <ScrollReveal delay={0.1}>
-          <div className="flex flex-wrap items-center gap-2 mb-10">
+          <div className="flex flex-nowrap items-center gap-2 mb-10 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {views.map((view) => (
               <button
                 key={view.id}
                 type="button"
                 onClick={() => setActiveView(view.id)}
-                className={`flex items-center gap-2 font-display text-sm px-4 py-2.5 rounded-lg transition-all duration-300 ${
+                className={`flex shrink-0 items-center gap-2 font-display text-sm px-4 py-2.5 min-h-11 rounded-lg transition-all duration-300 ${
                   activeView === view.id
                     ? "bg-brand-charcoal text-white shadow-md"
                     : "bg-card text-muted-foreground hover:text-foreground border border-border hover:border-brand-red/20"

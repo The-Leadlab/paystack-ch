@@ -33,11 +33,11 @@ export function PersonalDashboardPanel({ feature: _feature }: { feature: AliLabF
         </GlassCard>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="pp-toolbar-scroll items-center">
         <button
           type="button"
           onClick={() => openTransaction()}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] text-xs font-bold hover:opacity-90"
+          className="inline-flex items-center gap-2 px-4 py-2.5 min-h-11 rounded-lg bg-[var(--pp-primary-container)] text-[var(--pp-on-primary-container)] text-xs font-bold hover:opacity-90"
         >
           <Plus className="size-4" />
           {t("stmtAddTx")}

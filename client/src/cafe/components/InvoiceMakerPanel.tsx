@@ -828,14 +828,14 @@ export function InvoiceMakerPanel() {
             </p>
           ) : null}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={startNewInvoice} className="ba-filter-chip flex items-center gap-2">
+        <div className="ba-toolbar-scroll">
+          <button type="button" onClick={startNewInvoice} className="ba-filter-chip min-h-11 flex items-center gap-2">
             <Plus className="w-4 h-4" /> {t('invNew')}
           </button>
-          <button type="button" onClick={() => saveInvoice()} className="ba-filter-chip flex items-center gap-2">
+          <button type="button" onClick={() => saveInvoice()} className="ba-filter-chip min-h-11 flex items-center gap-2">
             <Save className="w-4 h-4" /> {t('invSaveDraft')}
           </button>
-          <button type="button" onClick={() => setIsPreviewMode(true)} className="ba-btn-start flex items-center gap-2">
+          <button type="button" onClick={() => setIsPreviewMode(true)} className="ba-btn-start min-h-11 flex items-center gap-2">
             <Eye className="w-4 h-4" /> {t('invPreview')}
           </button>
         </div>
@@ -1065,10 +1065,10 @@ export function InvoiceMakerPanel() {
               {invoiceData.items.map((item) => {
                 const displayItem = displayInvoice.items.find((i) => i.id === item.id) ?? item;
                 return (
-                <div key={item.id} className="ba-subpanel grid grid-cols-12 gap-3 items-end">
-                  <div className="col-span-12 md:col-span-4">
+                <div key={item.id} className="ba-subpanel ba-invoice-line-row grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                  <div className="col-span-1 sm:col-span-12 md:col-span-4">
                     <FieldLabel>{t('invColDescription')}</FieldLabel>
-                    <input className="ba-verify-field" value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder={t('invItemDescPlaceholder')} />
+                    <input className="ba-verify-field min-h-11" value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder={t('invItemDescPlaceholder')} />
                     {showInventory && inventory && inventory.products.length > 0 ? (
                       <select
                         className="ba-verify-field mt-1 text-xs"
@@ -1148,7 +1148,7 @@ export function InvoiceMakerPanel() {
                     </div>
                   </div>
                   <div className="col-span-1 flex justify-end">
-                    <button type="button" onClick={() => removeItem(item.id)} className="p-2 text-cdlp-muted hover:text-red-500">
+                    <button type="button" onClick={() => removeItem(item.id)} className="min-h-11 min-w-11 inline-flex items-center justify-center text-cdlp-muted hover:text-red-500 rounded-md">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -1311,7 +1311,73 @@ export function InvoiceMakerPanel() {
               <span>{t('invSavedList')}</span>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <ul className="ba-card-list p-3" aria-label={t('invSavedList')}>
+            {savedInvoices.map((invoice) => {
+              const isActive = invoice.invoiceNumber === invoiceData.invoiceNumber;
+              return (
+                <li key={`card-${invoice.invoiceNumber}`}>
+                  <div
+                    className="ba-card-list__item"
+                    data-active={isActive ? 'true' : undefined}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openSavedInvoice(invoice, false)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openSavedInvoice(invoice, false);
+                      }
+                    }}
+                  >
+                    <div className="ba-card-list__row">
+                      <div className="min-w-0">
+                        <p className="ba-card-list__title">
+                          {invoice.invoiceNumber}
+                          {isActive ? (
+                            <span className="ml-2 text-[10px] uppercase text-cdlp-gold">{t('invEdit')}</span>
+                          ) : null}
+                        </p>
+                        <p className="ba-card-list__meta">
+                          {[
+                            invoice.clientName || invoice.clientCompany || '—',
+                            new Date(invoice.date).toLocaleDateString(chfLocale),
+                          ].join(' · ')}
+                        </p>
+                      </div>
+                      <span className="ba-card-list__amount">
+                        {invoice.currencySymbol} {fmtMoney(invoice.total)}
+                      </span>
+                    </div>
+                    <div className="ba-card-list__foot" onClick={(e) => e.stopPropagation()}>
+                      <InvoiceStatusBadge status={invoice.status} />
+                      <button
+                        type="button"
+                        className="ba-filter-chip !py-1 min-h-11"
+                        onClick={() => openSavedInvoice(invoice, false)}
+                      >
+                        {t('invEdit')}
+                      </button>
+                      <button
+                        type="button"
+                        className="ba-filter-chip !py-1 min-h-11"
+                        onClick={() => openSavedInvoice(invoice, true)}
+                      >
+                        {t('invView')}
+                      </button>
+                      <button
+                        type="button"
+                        className="ba-filter-chip !py-1 min-h-11 text-red-400"
+                        onClick={() => removeSavedInvoice(invoice.invoiceNumber)}
+                      >
+                        {t('invDelete') || t('delete') || 'Delete'}
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="overflow-x-auto ba-table-desktop-only">
             <table className="ba-doc-table min-w-[720px] w-full text-xs">
               <thead>
                 <tr>

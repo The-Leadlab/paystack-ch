@@ -101,7 +101,7 @@ export function RevenueLedgerTable({
   };
 
   return (
-    <div className="ba-panel overflow-x-auto">
+    <div className="ba-panel overflow-x-hidden lg:overflow-x-auto">
       <div className="ba-section-head flex-wrap gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <h2>{title}</h2>
@@ -118,7 +118,104 @@ export function RevenueLedgerTable({
         ) : null}
       </div>
       <p className="text-xs text-cdlp-muted mb-3">{desc}</p>
-      <table className="ba-doc-table w-full text-left text-xs">
+      {rows.length === 0 ? (
+        <p className="text-center text-cdlp-muted py-6 text-xs lg:hidden">{t("repNoData")}</p>
+      ) : (
+        <ul className="ba-card-list mb-3" aria-label={title}>
+          {rows.map((row) => {
+            const lines = linesForRow(row);
+            const expanded = expandedId === row.id;
+            const doc = findDoc(row.documentId);
+            return (
+              <li key={`card-${row.id}`}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  data-active={expanded ? "true" : undefined}
+                  className="ba-card-list__item"
+                  onClick={() => toggleExpand(row)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleExpand(row);
+                    }
+                  }}
+                >
+                  <div className="ba-card-list__row">
+                    <div className="min-w-0">
+                      <p className="ba-card-list__title">{row.vendor || "—"}</p>
+                      <p className="ba-card-list__meta">
+                        {[row.date, categoryLabel(row.category), localizeLedgerDescription(row.description, t)]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    </div>
+                    <span
+                      className={`ba-card-list__amount ${
+                        row.tone === "income"
+                          ? "ba-card-list__amount--income"
+                          : "ba-card-list__amount--expense"
+                      }`}
+                    >
+                      {row.amount.toLocaleString(chfLocale, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                  <div className="ba-card-list__foot">
+                    {lines.length > 0 ? (
+                      <span className="inline-flex items-center justify-center min-w-[1.5rem] px-1.5 py-0.5 rounded bg-cdlp-gold/15 text-cdlp-gold font-bold text-[10px]">
+                        {lines.length} {t("repColItems") || "Items"}
+                      </span>
+                    ) : null}
+                    {doc && onOpenDocument ? (
+                      <button
+                        type="button"
+                        className="ba-doc-card__verify"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenDocument(doc);
+                        }}
+                      >
+                        {t("repOpenVerification") || "Open"}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                {expanded ? (
+                  <div className="mt-2 p-3 ba-subpanel space-y-2 text-[11px]">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-cdlp-gold">
+                      {t("repInvoiceDetail") || "Invoice detail"}
+                    </p>
+                    {lines.length > 0 ? (
+                      <ul className="space-y-1.5">
+                        {lines.slice(0, 8).map((line, idx) => (
+                          <li key={`${row.id}-c-line-${idx}`} className="flex justify-between gap-2">
+                            <span className="ba-field-value truncate">{line.description}</span>
+                            <span className="font-bold text-cdlp-gold tabular-nums shrink-0">
+                              {line.amount.toLocaleString(chfLocale, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-cdlp-muted italic">
+                        {t("repNoLineItems") ||
+                          "No product lines stored for this invoice. Re-open it in Verification Center to capture items."}
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <table className="ba-doc-table ba-table-desktop-only w-full text-left text-xs">
         <thead>
           <tr>
             <th className="w-8" aria-hidden />

@@ -902,7 +902,77 @@ export function ExpensesManager({
             <p className="text-sm text-cdlp-muted py-8 text-center">{t('ehDocsEmpty')}</p>
           ) : (
             <>
-              <div className="ba-revenue-docs__table-wrap">
+              <ul className="ba-card-list mb-3" aria-label={t('ehTabDocuments')}>
+                {visibleDocs.map((entry) => (
+                  <li key={`card-${entry.key}`}>
+                    <div
+                      className="ba-card-list__item"
+                      role={entry.doc ? 'button' : undefined}
+                      tabIndex={entry.doc ? 0 : undefined}
+                      onClick={() => {
+                        if (entry.doc) openDocument(entry.doc);
+                      }}
+                      onKeyDown={(e) => {
+                        if (!entry.doc) return;
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          openDocument(entry.doc);
+                        }
+                      }}
+                    >
+                      <div className="ba-card-list__row">
+                        <div className="min-w-0">
+                          <p className="ba-card-list__title">
+                            {localizeLedgerDescription(entry.description, t) || '—'}
+                          </p>
+                          <p className="ba-card-list__meta">
+                            {[fmtDate(entry.date), categoryLabel(entry.category)].filter(Boolean).join(' · ')}
+                          </p>
+                        </div>
+                        <span className="ba-card-list__amount ba-card-list__amount--expense">
+                          {fmtChf(entry.amount)}
+                        </span>
+                      </div>
+                      <div className="ba-card-list__foot" onClick={(e) => e.stopPropagation()}>
+                        {entry.expenseId ? (
+                          <select
+                            className="ba-verify-field ba-revenue-docs__category max-w-[11rem]"
+                            value={entry.category}
+                            onChange={(e) => {
+                              if (entry.expenseId) {
+                                void handleCategoryChange(
+                                  entry.expenseId,
+                                  e.target.value as LedgerExpenseCategory
+                                );
+                              }
+                            }}
+                          >
+                            {(['BILLS', 'SUPPLIERS', 'PAYROLL', 'PAYROLL_TAXES', 'OTHER'] as const).map(
+                              (id) => (
+                                <option key={id} value={id}>
+                                  {t(id)}
+                                </option>
+                              )
+                            )}
+                          </select>
+                        ) : null}
+                        {entry.doc ? (
+                          <button
+                            type="button"
+                            className="ba-doc-card__verify"
+                            onClick={() => openDocument(entry.doc!)}
+                          >
+                            {t('rhOpenDocument')}
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-cdlp-muted">{t('rhLedgerOnly')}</span>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <div className="ba-revenue-docs__table-wrap ba-table-desktop-only">
                 <table className="ba-revenue-docs__table">
                   <thead>
                     <tr>

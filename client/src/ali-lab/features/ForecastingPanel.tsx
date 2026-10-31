@@ -200,7 +200,7 @@ export function ForecastingPanel({ feature: _feature }: { feature: AliLabFeature
             </div>
           </GlassCard>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <GlassCard panel className="p-4">
               <p className="text-xs text-[var(--pp-on-surface-variant)] mb-2 uppercase tracking-wider">
                 {t("reportsInflow")}

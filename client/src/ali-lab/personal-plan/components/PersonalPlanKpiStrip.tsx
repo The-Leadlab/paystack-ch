@@ -42,7 +42,7 @@ export function PersonalPlanKpiStrip() {
   const h = ledger.totals;
 
   return (
-    <section data-tour="overview-kpi" className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+    <section data-tour="overview-kpi" className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
       <KpiCell label={t("income")} value={formatChfDisplay(h.totalIncome)} tone="positive" />
       <KpiCell label={t("expenses")} value={formatChfDisplay(h.totalExpenses)} tone="neutral" />
       <KpiCell

@@ -195,7 +195,7 @@ export function GoogleDriveConnectPanel({
       ) : null}
 
       {needsReconnect ? (
-        <p className="flex items-center gap-2 text-[10px] font-bold text-red-400/90 bg-red-950/25 border border-red-900/30 rounded-md px-3 py-2">
+        <p className="flex items-center gap-2 text-[11px] font-bold text-red-400/90 bg-red-950/25 border border-red-900/30 rounded-md px-3 py-2.5">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden />
           {t('driveNeedsRenew')}
         </p>
@@ -231,7 +231,7 @@ export function GoogleDriveConnectPanel({
               type="button"
               disabled={busy}
               onClick={() => void handleSync()}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-sm border border-cdlp-border bg-cdlp-dark/40 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cdlp-muted hover:border-cdlp-gold/35 hover:bg-cdlp-cream/30 hover:text-white disabled:opacity-50 transition-colors"
+              className="inline-flex flex-1 items-center justify-center gap-2 min-h-11 rounded-sm border border-cdlp-border bg-cdlp-dark/40 px-4 py-2.5 text-[11px] font-black uppercase tracking-wider text-cdlp-muted hover:border-cdlp-gold/35 hover:bg-cdlp-cream/30 hover:text-white disabled:opacity-50 transition-colors"
             >
               {busy ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-cdlp-gold" aria-hidden />
@@ -245,7 +245,7 @@ export function GoogleDriveConnectPanel({
             type="button"
             disabled={busy}
             onClick={() => void handleDisconnect()}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-sm border border-cdlp-border bg-cdlp-dark/40 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cdlp-muted hover:border-cdlp-gold/35 hover:bg-cdlp-cream/30 hover:text-white disabled:opacity-50 transition-colors"
+            className="inline-flex flex-1 items-center justify-center gap-2 min-h-11 rounded-sm border border-cdlp-border bg-cdlp-dark/40 px-4 py-2.5 text-[11px] font-black uppercase tracking-wider text-cdlp-muted hover:border-cdlp-gold/35 hover:bg-cdlp-cream/30 hover:text-white disabled:opacity-50 transition-colors"
           >
             {busy ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-cdlp-gold" aria-hidden />
@@ -268,7 +268,11 @@ export function GoogleDriveConnectPanel({
             type="button"
             disabled={busy}
             onClick={() => void handleConnect()}
-            className="w-full h-11 rounded-sm bg-cdlp-gold text-white font-black text-xs uppercase tracking-wider hover:bg-cdlp-gold-light disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
+            className={`w-full min-h-11 rounded-sm font-black text-xs uppercase tracking-wider disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm ${
+              needsReconnect
+                ? 'bg-red-600 text-white hover:bg-red-500'
+                : 'bg-cdlp-gold text-white hover:bg-cdlp-gold-light'
+            }`}
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Cloud className="w-4 h-4" aria-hidden />}
             {needsReconnect ? t('driveReconnect') : t('driveConnect')}

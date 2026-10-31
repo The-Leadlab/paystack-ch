@@ -202,7 +202,56 @@ export function InvestmentsPanel({ feature }: { feature: AliLabFeature }) {
             />
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <ul className="pp-card-list mb-3" aria-label="Holdings">
+          {filtered.map((h) => {
+            const mv = h.quantity * h.lastPriceChf;
+            const weight = total > 0 ? (mv / total) * 100 : 0;
+            const rowPl = mv - h.quantity * h.costBasisChf;
+            return (
+              <li key={`card-${h.id}`}>
+                <div className="pp-card-list__item">
+                  <div className="pp-card-list__row">
+                    <div className="min-w-0">
+                      <p className="pp-card-list__title">{h.symbol}</p>
+                      <p className="pp-card-list__meta">
+                        {h.name} · {h.quantity} × {formatChfDisplay(h.lastPriceChf, { prefix: false })} ·{" "}
+                        {weight.toFixed(0)}%
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="pp-card-list__amount pp-tabular">{formatChfDisplay(mv)}</p>
+                      <p
+                        className={`text-xs pp-tabular ${rowPl >= 0 ? "text-[var(--pp-secondary)]" : "text-[var(--pp-error)]"}`}
+                      >
+                        {formatChfDisplay(rowPl)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="pp-card-list__foot">
+                    <button
+                      type="button"
+                      className="min-h-11 px-3 text-xs font-bold underline text-[var(--pp-on-surface-variant)]"
+                      onClick={() => {
+                        const next = prompt("New price CHF", String(h.lastPriceChf));
+                        if (next != null) void update(h.id, { lastPriceChf: Number(next) || h.lastPriceChf });
+                      }}
+                    >
+                      {t("updatePrice")}
+                    </button>
+                    <button
+                      type="button"
+                      className="min-h-11 px-3 text-xs font-bold underline text-[var(--pp-error)]"
+                      onClick={() => void remove(h.id)}
+                    >
+                      {t("delete")}
+                    </button>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="overflow-x-auto pp-table-desktop-only">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-[var(--pp-outline-variant)] text-[11px] uppercase text-[var(--pp-on-surface-variant)]">
@@ -239,7 +288,7 @@ export function InvestmentsPanel({ feature }: { feature: AliLabFeature }) {
                     <td className="py-3 px-2 text-right">
                       <button
                         type="button"
-                        className="text-[10px] underline text-[var(--pp-on-surface-variant)] mr-2"
+                        className="text-xs underline text-[var(--pp-on-surface-variant)] mr-2 min-h-11 px-1"
                         onClick={() => {
                           const next = prompt("New price CHF", String(h.lastPriceChf));
                           if (next != null) void update(h.id, { lastPriceChf: Number(next) || h.lastPriceChf });
@@ -249,7 +298,7 @@ export function InvestmentsPanel({ feature }: { feature: AliLabFeature }) {
                       </button>
                       <button
                         type="button"
-                        className="text-[10px] underline text-[var(--pp-error)]"
+                        className="text-xs underline text-[var(--pp-error)] min-h-11 px-1"
                         onClick={() => void remove(h.id)}
                       >
                         {t("delete")}

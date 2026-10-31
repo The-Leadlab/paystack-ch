@@ -129,10 +129,10 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
         id="goal-form"
       >
         <div ref={formRef}>
-          <div className="flex flex-wrap gap-2">
+          <div className="pp-toolbar-scroll">
             <input
               ref={nameRef}
-              className="pp-input px-3 py-2 flex-1 min-w-[140px] text-sm"
+              className="pp-input px-3 py-2 flex-1 min-w-[140px] min-h-11 text-sm"
               placeholder={t("goalName")}
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -143,7 +143,7 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
             <input
               type="text"
               inputMode="decimal"
-              className="pp-input px-3 py-2 w-28 text-sm pp-tabular"
+              className="pp-input px-3 py-2 w-28 min-h-11 text-sm pp-tabular"
               placeholder={t("target")}
               value={targetInput}
               onChange={(e) => setTargetInput(e.target.value)}
@@ -151,12 +151,12 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
             />
             <input
               type="date"
-              className="pp-input px-3 py-2 text-sm"
+              className="pp-input px-3 py-2 min-h-11 text-sm"
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
             />
             <select
-              className="pp-input px-3 py-2 text-sm"
+              className="pp-input px-3 py-2 min-h-11 text-sm"
               value={type}
               onChange={(e) => setType(e.target.value as LabGoal["type"])}
             >
@@ -165,7 +165,7 @@ export function GoalsPanel({ feature }: { feature: AliLabFeature }) {
             </select>
             <button
               type="button"
-              className="flex items-center gap-2 bg-[var(--pp-primary)] text-[var(--pp-on-primary)] px-4 py-2 rounded-lg text-xs font-bold hover:opacity-90"
+              className="flex items-center gap-2 min-h-11 bg-[var(--pp-primary)] text-[var(--pp-on-primary)] px-4 py-2 rounded-lg text-xs font-bold hover:opacity-90"
               onClick={() => void submitGoal()}
             >
               <Plus className="size-4" />

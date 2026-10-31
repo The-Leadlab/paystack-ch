@@ -4,6 +4,7 @@ import { SeoNoIndex } from "@/components/SeoNoIndex";
 import { checkAdminUkSession, logoutAdminUk } from "@/lib/adminUkGateClient";
 import { UkUatProvider } from "@/cafe/context/UkUatContext";
 import { DashboardLoadingShell } from "@/cafe/components/DashboardLoadingShell";
+import { useLanguage } from "@/cafe/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Flag, LogOut } from "lucide-react";
 import { retryingImport } from "@/lib/chunkLoadRecovery";
@@ -37,6 +38,7 @@ function useAdminUkGate(): { allowed: boolean; checking: boolean } {
  */
 export default function AdminUkPage() {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const { allowed, checking } = useAdminUkGate();
 
   useEffect(() => {
@@ -63,20 +65,25 @@ export default function AdminUkPage() {
             theme === "dark" ? "cafe-theme-dark" : "cafe-theme-light"
           }`}
         >
-          <div className="sticky top-0 z-[80] border-b border-amber-500/40 bg-amber-500/15 backdrop-blur-sm px-4 py-2 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Flag className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
-              <span>
-                <strong>Admin UK UAT</strong> — GBP · UK VAT 0% / 5% / 20% · UK Gemini · isolated Firestore{" "}
-                <code className="text-xs">admin-uk-uat</code>. Not on production{" "}
-                <code className="text-xs">/app</code> until you promote it.
+          <div className="sticky top-0 z-[80] border-b border-amber-500/40 bg-amber-500/15 backdrop-blur-sm px-3 py-1.5 sm:px-4 sm:py-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs sm:text-sm font-medium min-w-0">
+              <Flag className="size-3.5 sm:size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="sm:hidden truncate">
+                <strong>{t("adminUkBannerShort")}</strong>
+              </span>
+              <span className="hidden sm:inline leading-snug">
+                <strong>{t("adminUkBannerTitle")}</strong>
+                {" — "}
+                {t("adminUkBannerBody")}{" "}
+                <code className="text-xs">admin-uk-uat</code>. {t("adminUkBannerNotProd")}{" "}
+                <code className="text-xs">/app</code>.
               </span>
             </div>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="gap-1.5 shrink-0"
+              className="gap-1.5 shrink-0 h-8 min-h-8 px-2.5"
               onClick={() => {
                 void logoutAdminUk().then(() => {
                   window.location.href = "/admin-uk-gate";
@@ -84,7 +91,8 @@ export default function AdminUkPage() {
               }}
             >
               <LogOut className="size-3.5" />
-              Exit UK UAT
+              <span className="sm:hidden">{t("adminUkExitShort")}</span>
+              <span className="hidden sm:inline">{t("adminUkExit")}</span>
             </Button>
           </div>
           <Suspense fallback={<DashboardLoadingShell />}>

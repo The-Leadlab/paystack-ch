@@ -707,18 +707,18 @@ export function DocumentsLibraryTab({
           />
         </label>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="ba-toolbar-scroll">
           <button
             type="button"
             onClick={() => setFilter("all")}
-            className={`ba-filter-chip ${filter === "all" ? "ba-filter-chip--active" : ""}`}
+            className={`ba-filter-chip min-h-11 ${filter === "all" ? "ba-filter-chip--active" : ""}`}
           >
             {t("docAllDocuments")}
           </button>
           <button
             type="button"
             onClick={() => setFilter("suppliers")}
-            className={`ba-filter-chip ${filter === "suppliers" ? "ba-filter-chip--active" : ""}`}
+            className={`ba-filter-chip min-h-11 ${filter === "suppliers" ? "ba-filter-chip--active" : ""}`}
           >
             {t("docSuppliersCount").replace(
               "{n}",
@@ -728,7 +728,7 @@ export function DocumentsLibraryTab({
           <button
             type="button"
             onClick={() => setFilter("employees")}
-            className={`ba-filter-chip ${filter === "employees" ? "ba-filter-chip--active" : ""}`}
+            className={`ba-filter-chip min-h-11 ${filter === "employees" ? "ba-filter-chip--active" : ""}`}
           >
             {t("docEmployeesCount").replace(
               "{n}",
@@ -738,7 +738,7 @@ export function DocumentsLibraryTab({
           <button
             type="button"
             onClick={() => setFilter("pos")}
-            className={`ba-filter-chip ${filter === "pos" ? "ba-filter-chip--active" : ""}`}
+            className={`ba-filter-chip min-h-11 ${filter === "pos" ? "ba-filter-chip--active" : ""}`}
           >
             {t("docPosCount").replace("{n}", String(groupedDocs.posReports.length))}
           </button>
@@ -746,7 +746,7 @@ export function DocumentsLibraryTab({
             <button
               type="button"
               onClick={() => setFilter("stocks")}
-              className={`ba-filter-chip ${filter === "stocks" ? "ba-filter-chip--active" : ""}`}
+              className={`ba-filter-chip min-h-11 ${filter === "stocks" ? "ba-filter-chip--active" : ""}`}
             >
               {t("docStocksCount").replace("{n}", String(groupedDocs.stocks.length))}
             </button>

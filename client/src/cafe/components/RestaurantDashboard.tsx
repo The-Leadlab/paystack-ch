@@ -1354,19 +1354,22 @@ export function RestaurantDashboard() {
                   ) : (
                     <div className="flex items-start justify-between">
                       <p className="font-bold text-xs flex-1 min-w-0 truncate">{getSessionDisplayName(session)}</p>
-                      <div className="flex gap-1">
+                      <div className="flex gap-0.5 shrink-0">
                         <button
+                          type="button"
                           onClick={(e) => { e.stopPropagation(); startRename(session.id, session.name); }}
-                          className="text-cdlp-muted hover:text-cdlp-gold"
+                          className="min-h-11 min-w-11 inline-flex items-center justify-center text-cdlp-muted hover:text-cdlp-gold rounded-md"
+                          aria-label={t('dashActionEdit')}
                         >
-                          <Edit2 className="w-3 h-3" />
+                          <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id); }}
-                          className="text-cdlp-muted hover:text-red-400"
+                          className="min-h-11 min-w-11 inline-flex items-center justify-center text-cdlp-muted hover:text-red-400 rounded-md"
+                          aria-label={t('dashActionDelete')}
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -1694,7 +1697,8 @@ export function RestaurantDashboard() {
                 title={!canAddEmployee ? employeeLimitMessage : undefined}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-cdlp-gold text-cdlp-black text-sm font-bold uppercase rounded hover:bg-cdlp-gold-light mb-3 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {canAddEmployee ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />} Add Employee
+                {canAddEmployee ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />}{' '}
+                {t('addEmployeeTitle')}
               </button>
               {enforcementEnabled && entitlements.maxEmployeeSlots != null ? (
                 <p className={`mb-6 text-[10px] font-bold uppercase tracking-tight ${canAddEmployee ? 'text-cdlp-muted' : 'text-red-400'}`}>
@@ -1724,12 +1728,14 @@ export function RestaurantDashboard() {
                           )}
                         </div>
                         <button
+                          type="button"
                           onClick={() => {
                             if (confirm(t('alertDeleteEmployeeConfirm').replace('{name}', emp.name))) {
                               deleteEmployee(emp.id);
                             }
                           }}
-                          className="p-1.5 hover:bg-red-500/20 rounded transition-colors"
+                          className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 hover:bg-red-500/20 rounded transition-colors"
+                          aria-label="Delete"
                         >
                           <Trash2 className="w-4 h-4 text-red-500" />
                         </button>
@@ -2142,9 +2148,9 @@ function IncomeExpenseSection({
           <button
             type="button"
             onClick={onAdd}
-            className={`ba-section-add-btn ${isIncome ? 'ba-section-add-btn--income' : 'ba-section-add-btn--expense'}`}
+            className={`ba-section-add-btn min-h-11 ${isIncome ? 'ba-section-add-btn--income' : 'ba-section-add-btn--expense'}`}
           >
-            <Plus className="w-3 h-3 shrink-0" /> {t('add')}
+            <Plus className="w-4 h-4 shrink-0" /> {t('add')}
           </button>
         )}
       </div>
@@ -2166,7 +2172,7 @@ function IncomeExpenseSection({
               key={item.id}
               draggable
               onDragStart={(e) => handleDragStart(e, item)}
-              className={`p-2 md:p-3 bg-cdlp-card border border-cdlp-border rounded group hover:border-cdlp-gold transition-all cursor-move ${
+              className={`p-3 bg-cdlp-card border border-cdlp-border rounded-lg group hover:border-cdlp-gold transition-all cursor-move min-h-[3.25rem] ${
                 editingId === item.id ? 'ring-2 ring-cdlp-gold' : ''
               }`}
             >
@@ -2177,27 +2183,27 @@ function IncomeExpenseSection({
                     type="date"
                     value={editForm.date}
                     onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
-                    className="w-full px-2 py-1 bg-cdlp-dark border border-cdlp-border rounded text-xs text-white"
+                    className="ba-verify-field w-full min-h-11 px-3 text-sm"
                   />
                   <input
                     type="number"
                     step="0.01"
                     value={editForm.amount}
                     onChange={(e) => setEditForm({ ...editForm, amount: parseFloat(e.target.value) })}
-                    className="w-full px-2 py-1 bg-cdlp-dark border border-cdlp-border rounded text-xs text-white"
+                    className="ba-verify-field w-full min-h-11 px-3 text-sm"
                   />
                   <input
                     type="text"
                     value={editForm.description || ''}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                     placeholder={t('dashDescription')}
-                    className="w-full px-2 py-1 bg-cdlp-dark border border-cdlp-border rounded text-xs text-white"
+                    className="ba-verify-field w-full min-h-11 px-3 text-sm"
                   />
                   {isIncome ? (
                     <select
                       value={editForm.type}
                       onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
-                      className="w-full px-2 py-1 bg-cdlp-dark border border-cdlp-border rounded text-xs text-white"
+                      className="ba-verify-field w-full min-h-11 px-3 text-sm"
                     >
                       <option value="SALES">{t('SALES')}</option>
                       <option value="RESERVATION">{t('RESERVATION')}</option>
@@ -2219,7 +2225,7 @@ function IncomeExpenseSection({
                             }),
                         });
                       }}
-                      className="w-full px-2 py-1 bg-cdlp-dark border border-cdlp-border rounded text-xs text-white"
+                      className="ba-verify-field w-full min-h-11 px-3 text-sm"
                     >
                       <option value="BILLS">{t('BILLS')}</option>
                       <option value="SUPPLIERS">{t('SUPPLIERS')}</option>
@@ -2228,7 +2234,7 @@ function IncomeExpenseSection({
                       <option value="OTHER">{t('OTHER')}</option>
                     </select>
                   )}
-                  <label className="block text-[9px] uppercase font-bold text-cdlp-muted tracking-wider">
+                  <label className="block text-[10px] uppercase font-bold text-cdlp-muted tracking-wider">
                     {t('swissAccountCode')}
                   </label>
                   <SwissAccountCodeField
@@ -2244,15 +2250,15 @@ function IncomeExpenseSection({
                   <div className="flex gap-2">
                     <button
                       onClick={saveEdit}
-                      className="flex-1 px-2 py-1 bg-emerald-600 text-white text-[10px] font-bold uppercase rounded hover:bg-emerald-700"
+                      className="flex-1 min-h-11 px-3 bg-emerald-600 text-white text-xs font-bold uppercase rounded-lg hover:bg-emerald-700"
                     >
-                      <Check className="w-3 h-3 inline mr-1" /> {t('dashSave')}
+                      <Check className="w-4 h-4 inline mr-1" /> {t('dashSave')}
                     </button>
                     <button
                       onClick={cancelEdit}
-                      className="flex-1 px-2 py-1 bg-cdlp-card border border-cdlp-border text-white text-[10px] font-bold uppercase rounded hover:bg-cdlp-border/50"
+                      className="flex-1 min-h-11 px-3 bg-cdlp-card border border-cdlp-border text-white text-xs font-bold uppercase rounded-lg hover:bg-cdlp-border/50"
                     >
-                      <X className="w-3 h-3 inline mr-1" /> {t('cancel')}
+                      <X className="w-4 h-4 inline mr-1" /> {t('cancel')}
                     </button>
                   </div>
                 </div>
@@ -2327,20 +2333,20 @@ function IncomeExpenseSection({
                           e.stopPropagation();
                           startEdit(item);
                         }}
-                        className="p-1 hover:bg-cdlp-gold/20 rounded transition-colors"
+                        className="min-h-11 min-w-11 inline-flex items-center justify-center hover:bg-cdlp-gold/20 rounded-lg transition-colors"
                         title={t('dashActionEdit')}
                       >
-                        <Edit2 className="w-3 h-3 text-cdlp-gold" />
+                        <Edit2 className="w-4 h-4 text-cdlp-gold" />
                       </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           void onDelete(item.id);
                         }}
-                        className="p-1 hover:bg-red-500/20 rounded transition-colors"
+                        className="min-h-11 min-w-11 inline-flex items-center justify-center hover:bg-red-500/20 rounded-lg transition-colors"
                         title={t('dashActionDelete')}
                       >
-                        <Trash2 className="w-3 h-3 text-red-500" />
+                        <Trash2 className="w-4 h-4 text-red-500" />
                       </button>
                     </div>
                   </div>
@@ -3259,20 +3265,20 @@ function ReportsPlaceholder({
             </select>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 mb-3">
-          <button type="button" onClick={() => setQuickFilter('thisMonth')} className="ba-filter-chip">
+        <div className="ba-toolbar-scroll mb-3">
+          <button type="button" onClick={() => setQuickFilter('thisMonth')} className="ba-filter-chip min-h-11">
             {t('repThisMonth')}
           </button>
-          <button type="button" onClick={() => setQuickFilter('lastMonth')} className="ba-filter-chip">
+          <button type="button" onClick={() => setQuickFilter('lastMonth')} className="ba-filter-chip min-h-11">
             {t('repLastMonth')}
           </button>
-          <button type="button" onClick={() => setQuickFilter('last3Months')} className="ba-filter-chip">
+          <button type="button" onClick={() => setQuickFilter('last3Months')} className="ba-filter-chip min-h-11">
             {t('repLast3Months')}
           </button>
-          <button type="button" onClick={() => setQuickFilter('thisYear')} className="ba-filter-chip">
+          <button type="button" onClick={() => setQuickFilter('thisYear')} className="ba-filter-chip min-h-11">
             {t('repThisYear')}
           </button>
-          <button type="button" onClick={clearFilter} className="ba-filter-chip ba-filter-chip--danger">
+          <button type="button" onClick={clearFilter} className="ba-filter-chip ba-filter-chip--danger min-h-11">
             {t('repClearAll')}
           </button>
         </div>
@@ -3559,7 +3565,7 @@ function ReportsPlaceholder({
       ) : null}
 
       {/* Period insights */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:max-lg:grid-cols-2">
         <div className="ba-panel !p-4">
           <p className="text-[10px] font-bold uppercase text-cdlp-muted tracking-wider mb-1">
             {t('repSummaryInvoices')}
@@ -3774,7 +3780,7 @@ function AddEmployeeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
+              className="w-full min-h-11 px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
             />
           </div>
           <div>
@@ -3783,7 +3789,7 @@ function AddEmployeeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (
               type="text"
               value={position}
               onChange={(e) => setPosition(e.target.value)}
-              className="w-full px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
+              className="w-full min-h-11 px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
             />
           </div>
           <div>
@@ -3793,7 +3799,7 @@ function AddEmployeeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (
               step="0.01"
               value={salary}
               onChange={(e) => setSalary(e.target.value)}
-              className="w-full px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
+              className="w-full min-h-11 px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
             />
           </div>
           <div>
@@ -3803,15 +3809,15 @@ function AddEmployeeModal({ onClose, onAdd, t }: { onClose: () => void; onAdd: (
               step="0.01"
               value={contributions}
               onChange={(e) => setContributions(e.target.value)}
-              className="w-full px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
+              className="w-full min-h-11 px-3 py-2 bg-cdlp-card border border-cdlp-border rounded text-sm text-white"
             />
           </div>
           <div className="flex gap-2 pt-2">
-            <button type="submit" className="flex-1 py-2.5 md:py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light">
-              Add
+            <button type="submit" className="flex-1 min-h-11 py-2.5 md:py-2 bg-cdlp-gold text-cdlp-black text-xs font-bold uppercase rounded hover:bg-cdlp-gold-light">
+              {t('addEmployeeTitle')}
             </button>
-            <button type="button" onClick={onClose} className="px-4 py-2.5 md:py-2 border border-cdlp-border text-xs font-bold uppercase rounded hover:bg-cdlp-border/50 text-white">
-              Cancel
+            <button type="button" onClick={onClose} className="min-h-11 px-4 py-2.5 md:py-2 border border-cdlp-border text-xs font-bold uppercase rounded hover:bg-cdlp-border/50 text-white">
+              {t('cancel')}
             </button>
           </div>
         </form>

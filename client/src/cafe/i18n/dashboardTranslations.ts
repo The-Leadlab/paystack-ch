@@ -1303,6 +1303,14 @@ export const dashboardEn: Record<string, string> = {
   mobileNavMore: 'More',
   mobileMoreTitle: 'More tools',
   mobileCaptureHint: 'Photograph or upload a ticket',
+
+  /** Admin UK UAT banner */
+  adminUkBannerTitle: 'Admin UK UAT',
+  adminUkBannerShort: 'UK UAT · GBP · VAT 0/5/20%',
+  adminUkBannerBody: 'GBP · UK VAT 0% / 5% / 20% · UK Gemini · isolated Firestore',
+  adminUkBannerNotProd: 'Not on production',
+  adminUkExit: 'Exit UK UAT',
+  adminUkExitShort: 'Exit',
 };
 
 export const dashboardFr: Record<string, string> = {
@@ -2616,4 +2624,12 @@ export const dashboardFr: Record<string, string> = {
   mobileNavMore: 'Plus',
   mobileMoreTitle: 'Plus d’outils',
   mobileCaptureHint: 'Photographier ou téléverser un ticket',
+
+  /** Bannière Admin UK UAT */
+  adminUkBannerTitle: 'Admin UK UAT',
+  adminUkBannerShort: 'UK UAT · GBP · TVA 0/5/20 %',
+  adminUkBannerBody: 'GBP · TVA UK 0 % / 5 % / 20 % · Gemini UK · Firestore isolé',
+  adminUkBannerNotProd: 'Pas en production sur',
+  adminUkExit: 'Quitter UK UAT',
+  adminUkExitShort: 'Quitter',
 };

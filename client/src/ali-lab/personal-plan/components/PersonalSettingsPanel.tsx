@@ -52,13 +52,13 @@ export function PersonalSettingsPanel() {
 
       <GlassCard className="p-4 space-y-3">
         <p className="text-sm font-semibold">{labT("settingsLanguageTitle")}</p>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="pp-toolbar-scroll items-center">
           {langs.map((l) => (
             <button
               key={l}
               type="button"
               onClick={() => setLang(l)}
-              className={`text-xs font-semibold uppercase px-2.5 py-1.5 rounded-lg border transition-colors ${
+              className={`text-xs font-semibold uppercase px-2.5 py-1.5 min-h-11 rounded-lg border transition-colors ${
                 lang === l
                   ? "border-[var(--pp-primary)] text-[var(--pp-primary)] bg-[var(--pp-primary)]/5"
                   : "border-[var(--pp-outline-variant)] text-[var(--pp-on-surface-variant)] hover:text-[var(--pp-on-surface)]"
@@ -71,7 +71,7 @@ export function PersonalSettingsPanel() {
             <button
               type="button"
               onClick={toggleTheme}
-              className="inline-flex items-center gap-1.5 ml-auto px-2.5 py-1.5 rounded-lg border border-[var(--pp-outline-variant)] text-xs font-semibold text-[var(--pp-on-surface-variant)] hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)]"
+              className="inline-flex items-center gap-1.5 ml-auto px-2.5 py-1.5 min-h-11 rounded-lg border border-[var(--pp-outline-variant)] text-xs font-semibold text-[var(--pp-on-surface-variant)] hover:border-[var(--pp-primary)] hover:text-[var(--pp-primary)]"
             >
               {theme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
               {theme === "dark" ? t("themeLabelLight") : t("themeLabelDark")}

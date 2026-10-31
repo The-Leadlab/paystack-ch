@@ -269,3 +269,106 @@
   color: var(--pp-on-primary);
   border-radius: 0.5rem;
 }
+
+/* Phone/tablet action toolbars — scroll instead of wrapping into tall stacks */
+.personal-plan-shell .pp-toolbar-scroll {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+@media (max-width: 1023px) {
+  .personal-plan-shell .pp-toolbar-scroll {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.15rem;
+    max-width: 100%;
+  }
+
+  .personal-plan-shell .pp-toolbar-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .personal-plan-shell .pp-toolbar-scroll > * {
+    flex-shrink: 0;
+  }
+}
+
+/* Phone/tablet card lists (parity with business .ba-card-list) */
+.personal-plan-shell .pp-card-list {
+  display: none;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.personal-plan-shell .pp-card-list__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 3.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--pp-border);
+  border-radius: 0.75rem;
+  background: var(--pp-surface-low, var(--pp-surface));
+}
+
+.personal-plan-shell .pp-card-list__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.personal-plan-shell .pp-card-list__title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.personal-plan-shell .pp-card-list__meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.6875rem;
+  color: var(--pp-on-surface-variant);
+}
+
+.personal-plan-shell .pp-card-list__amount {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.personal-plan-shell .pp-card-list__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 1023px) {
+  .personal-plan-shell .pp-card-list {
+    display: flex;
+  }
+
+  .personal-plan-shell .pp-table-desktop-only {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .personal-plan-shell .pp-card-list {
+    display: none !important;
+  }
+
+  .personal-plan-shell .pp-table-desktop-only {
+    display: block;
+  }
+
+  .personal-plan-shell table.pp-table-desktop-only {
+    display: table;
+  }
+}
