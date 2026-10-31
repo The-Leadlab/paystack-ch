@@ -51,6 +51,7 @@ Password-gated sandbox for competitor-gap features (budgeting, goals, bills, etc
 - **Capacity (2000 VUs):** `docs/CAPACITY_2000_USERS_SUPER_PROMPT.md` — `pnpm test:capacity` / `node scripts/capacity-test-2000.mjs`
 - **Capacity results:** `docs/CAPACITY_2000_USERS_RESULTS.md` — last documented 2000-VU run
 - **i18n super prompt:** `docs/I18N_SUPER_PROMPT.md` — landing `/`, `/app`, `/ali` translation audit and fixes
+- **Manual UI audit (human screenshots):** `docs/MANUAL_UI_AUDIT_FIX_SUPER_PROMPT.md` — theme toggle, blue-dark chrome, orphan buttons, full tab matrix
 - **Registry:** `client/src/ali-lab/featureRegistry.ts`
 - **Local API:** run `pnpm dev:stripe-server` so Vite can proxy `POST /api/ali/verify`; otherwise use `VITE_ALI_LAB_PASSWORD` dev fallback after gate
 - **Production:** set `ALI_LAB_PASSWORD` in Vercel (same value for Edge middleware + `/api/ali/verify`). After login, the SPA checks `GET /api/ali/session` — do not rely on `sessionStorage` on www.paystack.ch

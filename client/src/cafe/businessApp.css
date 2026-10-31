@@ -795,7 +795,7 @@
 }
 
 .ba-v3 .ba-table-select {
-  background: var(--ba-surface);
+  background: var(--ba-surface-elevated);
   border: 1px solid var(--ba-border);
   border-radius: 0.375rem;
   color: var(--ba-text);
@@ -803,8 +803,16 @@
   font-weight: 700;
   text-transform: uppercase;
   padding: 0 0.5rem;
-  height: 2rem;
-  min-width: 7.5rem;
+  height: 2.25rem;
+  min-height: 2.25rem;
+  min-width: 4.5rem;
+  max-width: 100%;
+  cursor: pointer;
+}
+
+.cafe-shell.cafe-theme-light .ba-v3 .ba-table-select {
+  background: #ffffff;
+  color: var(--ba-text);
 }
 
 /* Verification / document analyze */

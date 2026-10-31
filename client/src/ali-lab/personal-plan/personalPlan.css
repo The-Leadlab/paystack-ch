@@ -1,10 +1,10 @@
 /* Paystack Personal — visual parity with Business /app (ba-v3 + CDLP) */
 
 .personal-plan-shell {
-  /* Map --pp-* onto Business dark palette */
+  /* Map --pp-* onto Business blue-dark palette (never pure/warm black) */
   --pp-bg: #1a1d23;
   --pp-surface: #1a1d23;
-  --pp-surface-low: #120d0f;
+  --pp-surface-low: #1a1d23;
   --pp-surface-container: #252a31;
   --pp-surface-high: #1e2126;
   --pp-surface-highest: #252b33;
@@ -234,7 +234,7 @@
 /* Mobile bottom bar — Business-like fixed tab strip */
 .personal-plan-shell .pp-mobile-nav {
   border-top: 1px solid var(--pp-border);
-  background: color-mix(in srgb, var(--pp-surface-low) 95%, transparent);
+  background: color-mix(in srgb, var(--pp-surface) 96%, #252a31);
   backdrop-filter: blur(12px);
   border-radius: 0;
 }

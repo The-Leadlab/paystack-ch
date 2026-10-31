@@ -828,15 +828,10 @@ export function InvoiceMakerPanel() {
             </p>
           ) : null}
         </div>
+        {/* Header: create only — Save / Preview / Download / Send live in Quick Actions. */}
         <div className="ba-toolbar-scroll">
-          <button type="button" onClick={startNewInvoice} className="ba-filter-chip min-h-11 flex items-center gap-2">
+          <button type="button" onClick={startNewInvoice} className="ba-btn-start min-h-11 flex items-center gap-2">
             <Plus className="w-4 h-4" /> {t('invNew')}
-          </button>
-          <button type="button" onClick={() => saveInvoice()} className="ba-filter-chip min-h-11 flex items-center gap-2">
-            <Save className="w-4 h-4" /> {t('invSaveDraft')}
-          </button>
-          <button type="button" onClick={() => setIsPreviewMode(true)} className="ba-btn-start min-h-11 flex items-center gap-2">
-            <Eye className="w-4 h-4" /> {t('invPreview')}
           </button>
         </div>
       </div>
@@ -1274,16 +1269,16 @@ export function InvoiceMakerPanel() {
             <div className="ba-section-head !mb-2">
               <span>{t('invQuickActions')}</span>
             </div>
-            <button type="button" onClick={() => setIsPreviewMode(true)} className="ba-btn-start w-full flex items-center justify-center gap-2">
+            <button type="button" onClick={() => setIsPreviewMode(true)} className="ba-btn-start min-h-11 w-full flex items-center justify-center gap-2">
               <Eye className="w-4 h-4" /> {t('invPreview')}
             </button>
-            <button type="button" onClick={() => saveInvoice()} className="ba-filter-chip w-full flex items-center justify-center gap-2">
+            <button type="button" onClick={() => saveInvoice()} className="ba-filter-chip min-h-11 w-full flex items-center justify-center gap-2">
               <Save className="w-4 h-4" /> {t('invSaveDraft')}
             </button>
-            <button type="button" onClick={generatePdf} className="ba-filter-chip w-full flex items-center justify-center gap-2">
+            <button type="button" onClick={generatePdf} className="ba-filter-chip min-h-11 w-full flex items-center justify-center gap-2">
               <Download className="w-4 h-4" /> {t('invDownloadPdf')}
             </button>
-            <button type="button" onClick={sendInvoice} disabled={!invoiceData.clientEmail} className="ba-btn-approve w-full flex items-center justify-center gap-2 !h-10 disabled:opacity-40">
+            <button type="button" onClick={sendInvoice} disabled={!invoiceData.clientEmail} className="ba-btn-approve min-h-11 w-full flex items-center justify-center gap-2 disabled:opacity-40">
               <Send className="w-4 h-4" /> {t('invSend')}
             </button>
           </div>

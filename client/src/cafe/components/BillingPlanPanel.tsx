@@ -457,7 +457,7 @@ export function BillingPlanPanel({ onDriveSync }: { onDriveSync?: () => Promise<
               planId={upgradePlan}
               variant="cdlp"
               showMostPopularBadge
-              className="border-cdlp-border/80 bg-cdlp-dark/25"
+              className="border-[var(--ba-border)] bg-[var(--ba-surface-elevated)]"
             />
           ) : null}
           {upgradeErr ? (

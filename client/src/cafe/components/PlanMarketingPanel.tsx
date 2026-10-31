@@ -143,7 +143,7 @@ export function PlanMarketingPanel({
 
   return (
     <div
-      className={`plan-marketing-panel rounded-sm border border-cdlp-border bg-[#2a2f37] px-3 py-3 text-left space-y-2 text-[#e8eaed] ${className ?? ''}`}
+      className={`plan-marketing-panel rounded-sm border border-[var(--ba-border,#3a4048)] bg-[#1e2126] px-3 py-3 text-left space-y-2 text-[#e8eaed] ${className ?? ''}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-2 gap-y-1">
         <div className="min-w-0 space-y-1">

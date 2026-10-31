@@ -134,7 +134,7 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
 
   if (isCsv) {
     return (
-      <div className="w-full h-full flex flex-col bg-slate-950 text-slate-300 font-mono text-[10px]">
+      <div className="w-full h-full flex flex-col bg-[#1a1d23] text-slate-300 font-mono text-[10px]">
         <div className="flex-1 min-h-[220px] border-b border-emerald-500/20 overflow-hidden flex flex-col">
           <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-r from-emerald-950/80 to-slate-950 flex items-start justify-between gap-3">
             <div>
@@ -225,7 +225,7 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
   }
 
   return (
-    <div className="w-full h-full flex flex-col bg-slate-900 text-slate-300 font-mono text-[10px]">
+    <div className="w-full h-full flex flex-col bg-[#1a1d23] text-slate-300 font-mono text-[10px]">
       {/* Document Preview Section - Clickable to zoom */}
       {displayUrl && (
         <div 
@@ -304,7 +304,7 @@ const NeuralLog: React.FC<{ doc: ProcessedDocument }> = ({ doc }) => {
 
         <div className="mt-4 border-t border-white/10 pt-4">
           <h6 className="text-slate-500 uppercase tracking-widest font-black mb-3 text-[8px]">{t('dpAiInterpretationLog')}:</h6>
-          <div className="bg-white/5 p-4 rounded-sm italic border-l-2 border-emerald-500/50 leading-relaxed text-slate-200">
+          <div className="bg-[#252a31] p-4 rounded-sm italic border-l-2 border-emerald-500/50 leading-relaxed text-[#e8eaed] text-[10px]">
             {doc.data?.aiInterpretation || t('dpScanningContext')}
           </div>
         </div>
@@ -437,26 +437,25 @@ const EditableLineItemsTable: React.FC<{
             <ListOrdered className="w-4 h-4 text-cdlp-gold" />
             <h5 className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-cdlp-gold">{t('dpLineItemLedger')}</h5>
          </div>
-         <div className="flex items-center gap-2 w-full sm:w-auto">
-           {/* Search Bar */}
-           <div className="relative flex-1 sm:flex-initial">
+         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+           <div className="relative flex-1 sm:flex-initial min-w-[10rem]">
              <input
                type="text"
                placeholder={t('dpSearchItems')}
                value={searchTerm}
                onChange={(e) => setSearchTerm(e.target.value)}
-               className="w-full sm:w-48 h-8 px-3 pl-8 bg-cdlp-card border border-cdlp-border rounded text-[10px] text-white placeholder-cdlp-muted outline-none focus:border-cdlp-gold transition-colors"
+               className="ba-verify-field w-full sm:w-52 !h-11 pl-8 text-[10px] placeholder-cdlp-muted"
              />
-             <SearchCode className="w-3.5 h-3.5 text-cdlp-muted absolute left-2 top-1/2 -translate-y-1/2" />
+             <SearchCode className="w-3.5 h-3.5 text-cdlp-muted absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
            </div>
-           {/* Add Button */}
            <button
+             type="button"
              onClick={addNewRow}
-             className="px-3 h-8 bg-cdlp-gold text-cdlp-black rounded text-[9px] font-black uppercase flex items-center gap-1 hover:bg-cdlp-gold-light transition-colors whitespace-nowrap"
+             className="ba-btn-start min-h-11 h-11 px-3 text-[10px] font-black uppercase inline-flex items-center gap-1.5 whitespace-nowrap"
            >
              <Plus className="w-3.5 h-3.5" /> {t('dpAddRow')}
            </button>
-           <span className="text-[8px] sm:text-[9px] font-bold text-cdlp-muted opacity-40 uppercase tracking-widest whitespace-nowrap">
+           <span className="text-[9px] font-bold text-cdlp-muted uppercase tracking-widest whitespace-nowrap">
              {filteredItems.length}/{items.length}
            </span>
          </div>
@@ -519,39 +518,37 @@ const EditableLineItemsTable: React.FC<{
                   </td>
                   <td className="px-2 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                     <select 
-                      value={item.type}
+                      value={item.type === 'INCOME' ? 'INCOME' : 'EXPENSE'}
                       onChange={e => handleItemChange(originalIdx, 'type', e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      className={`w-full text-[8px] font-black uppercase rounded px-2 py-1 outline-none cursor-pointer border ${item.type === 'INCOME' ? 'bg-emerald-600/20 text-emerald-400 border-emerald-600/30' : 'bg-red-600/20 text-red-400 border-red-600/30'}`}
+                      aria-label={t('dpColType')}
+                      className={`ba-table-select w-full min-w-[4.5rem] !min-h-9 !h-9 text-[10px] ${
+                        item.type === 'INCOME'
+                          ? 'border-emerald-600/40 text-emerald-700 dark:text-emerald-400'
+                          : 'border-red-600/40 text-red-700 dark:text-red-400'
+                      }`}
                     >
                       <option value="INCOME">INC</option>
                       <option value="EXPENSE">EXP</option>
                     </select>
                   </td>
                   <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="relative">
-                      <select 
-                        value={item.category ?? ''} 
-                        onChange={e => handleItemChange(originalIdx, 'category', e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-full bg-cdlp-black border border-cdlp-border rounded px-2 py-1 font-bold text-[9px] text-white outline-none focus:border-cdlp-gold transition-colors pr-6"
-                        title={item.category && item.category !== 'OTHER' ? t('dpAutoDetectedCategory') : t('dpSelectCategory')}
-                      >
-                        <option value="">{t('dpSelectShort')}</option>
-                        {CATEGORY_GROUPS.map(group => (
-                          <optgroup key={group.id} label={group.label}>
-                            {RESTAURANT_CATEGORIES.filter(cat => cat.group === group.id).map(cat => (
-                              <option key={cat.id} value={cat.id}>{cat.label}</option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
-                      {item.category && item.category !== 'OTHER' && item.category !== '' && (
-                        <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none">
-                          <span className="text-[8px] bg-emerald-600/20 text-emerald-400 px-1 rounded" title={t('dpAiDetected')}>🤖</span>
-                        </div>
-                      )}
-                    </div>
+                    <select 
+                      value={item.category ?? ''} 
+                      onChange={e => handleItemChange(originalIdx, 'category', e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="ba-table-select w-full min-w-[7rem] !min-h-9 !h-9 text-[10px]"
+                      title={item.category && item.category !== 'OTHER' ? t('dpAutoDetectedCategory') : t('dpSelectCategory')}
+                    >
+                      <option value="">{t('dpSelectShort')}</option>
+                      {CATEGORY_GROUPS.map(group => (
+                        <optgroup key={group.id} label={group.label}>
+                          {RESTAURANT_CATEGORIES.filter(cat => cat.group === group.id).map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.label}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
                   </td>
                   <td className="px-2 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                     <button
@@ -669,12 +666,13 @@ const EditablePaySlipTable: React.FC<{
                 </td>
                 <td className="px-2 py-3 text-center">
                   <select
-                    value={item.type}
+                    value={item.type === 'INCOME' ? 'INCOME' : 'EXPENSE'}
                     onChange={(e) => handleItemChange(idx, 'type', e.target.value)}
-                    className={`text-[7px] font-black uppercase rounded-full px-2 py-0.5 outline-none cursor-pointer ${
+                    aria-label={t('dpColType')}
+                    className={`ba-table-select w-full min-w-[5rem] !min-h-9 !h-9 text-[10px] ${
                       item.type === 'INCOME'
-                        ? 'bg-emerald-600/20 text-emerald-400'
-                        : 'bg-red-600/20 text-red-400'
+                        ? 'border-emerald-600/40 text-emerald-700 dark:text-emerald-400'
+                        : 'border-red-600/40 text-red-700 dark:text-red-400'
                     }`}
                   >
                     <option value="INCOME">{t('dpEarn')}</option>
@@ -1711,12 +1709,12 @@ export const VerificationHub: React.FC<{
                    </p>
                  ) : null}
               </div>
-              <div className="ba-verify-header-approve flex items-center gap-2 w-full sm:w-auto">
+              <div className="ba-verify-header-approve flex flex-wrap items-center gap-2 w-full sm:w-auto">
                  {(doc.fileUrl || doc.fileDataUrl || doc.fileRaw) && (
                    <button
                      type="button"
                      onClick={() => openDocumentInNewTab(doc)}
-                     className="h-9 px-3 border border-cdlp-border text-cdlp-muted rounded text-[10px] font-bold uppercase hover:text-white transition-colors whitespace-nowrap"
+                     className="ba-filter-chip min-h-11 px-3 text-[10px] font-bold uppercase whitespace-nowrap"
                    >
                      {openSourceLabel}
                    </button>
@@ -1725,7 +1723,7 @@ export const VerificationHub: React.FC<{
                    type="button"
                    disabled={isZeroValue}
                    onClick={() => onSave({ ...editedData, isHumanVerified: true })}
-                   className="ba-btn-approve h-9 px-4 whitespace-nowrap"
+                   className="ba-btn-approve min-h-11 h-11 px-4 whitespace-nowrap"
                  >
                    {t('dpApprove')}
                  </button>
@@ -2018,41 +2016,51 @@ export const VerificationHub: React.FC<{
                       className={`ba-verify-field ${hasMultipleSubs ? 'opacity-80 cursor-not-allowed' : ''}`}
                     />
                  </div>
-                 {subDocuments.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowSubInvoiceModal(true)}
-                      className="h-11 px-4 bg-cdlp-gold/15 border border-cdlp-gold/40 rounded-sm text-xs font-black text-cdlp-gold uppercase tracking-wider hover:bg-cdlp-gold/25 transition-colors"
-                    >
-                      {conjoinedInvoicesLabel(subDocuments.length, t)}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowSubInvoiceModal(true)}
-                      className="h-11 px-4 bg-cdlp-card border border-cdlp-border rounded-sm text-xs font-black text-foreground uppercase tracking-wider hover:border-cdlp-gold transition-colors"
-                    >
-                      {t('dpOpenSubTable')}
-                    </button>
-                  </div>
-                 )}
-                 {hasViewableSource ? (
-                   <button
-                     type="button"
-                     onClick={() => openDocumentInNewTab(doc)}
-                     className={`w-full h-11 px-4 rounded-sm text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-2 ${
-                       isCsv
-                         ? 'bg-emerald-600 text-white hover:bg-emerald-500'
-                         : 'bg-cdlp-gold text-cdlp-black hover:bg-cdlp-gold-light'
-                     }`}
-                   >
-                     <ExternalLink className="w-4 h-4" /> {openSourceLabel}
-                   </button>
-                 ) : (
-                   <div className="text-[10px] font-bold text-cdlp-muted bg-cdlp-card border border-cdlp-border rounded-sm px-3 py-2">
-                     {sourceUnavailableLabel}
-                   </div>
-                 )}
+                 <div
+                   className={`grid gap-2 ${
+                     subDocuments.length > 0 && hasViewableSource
+                       ? 'grid-cols-1 sm:grid-cols-3'
+                       : subDocuments.length > 0 || hasViewableSource
+                         ? 'grid-cols-1 sm:grid-cols-2'
+                         : 'grid-cols-1'
+                   }`}
+                 >
+                   {subDocuments.length > 0 ? (
+                     <>
+                       <button
+                         type="button"
+                         onClick={() => setShowSubInvoiceModal(true)}
+                         className="min-h-11 h-11 px-3 bg-cdlp-gold/15 border border-cdlp-gold/40 rounded-sm text-[10px] font-black text-cdlp-gold uppercase tracking-wider hover:bg-cdlp-gold/25 transition-colors"
+                       >
+                         {conjoinedInvoicesLabel(subDocuments.length, t)}
+                       </button>
+                       <button
+                         type="button"
+                         onClick={() => setShowSubInvoiceModal(true)}
+                         className="min-h-11 h-11 px-3 ba-filter-chip text-[10px] font-black uppercase tracking-wider"
+                       >
+                         {t('dpOpenSubTable')}
+                       </button>
+                     </>
+                   ) : null}
+                   {hasViewableSource ? (
+                     <button
+                       type="button"
+                       onClick={() => openDocumentInNewTab(doc)}
+                       className={`min-h-11 h-11 px-3 rounded-sm text-[10px] font-black uppercase tracking-wider transition-colors inline-flex items-center justify-center gap-2 ${
+                         isCsv
+                           ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                           : 'bg-cdlp-gold text-cdlp-black hover:bg-cdlp-gold-light'
+                       } ${subDocuments.length === 0 ? 'sm:col-span-2' : ''}`}
+                     >
+                       <ExternalLink className="w-4 h-4 shrink-0" /> {openSourceLabel}
+                     </button>
+                   ) : (
+                     <div className="min-h-11 flex items-center text-[10px] font-bold text-cdlp-muted bg-cdlp-card border border-cdlp-border rounded-sm px-3 py-2">
+                       {sourceUnavailableLabel}
+                     </div>
+                   )}
+                 </div>
                  <div className="grid grid-cols-2 gap-3">
                     <div>
                        <label className="text-[9px] font-black uppercase text-cdlp-muted tracking-[0.2em] block mb-2">{t('dpCurrency')}</label>
@@ -2759,27 +2767,27 @@ export const VerificationHub: React.FC<{
                  </h5>
                  <span className="text-[8px] text-cdlp-muted uppercase">{t('dpAutoUpdatesHint')}</span>
                </div>
-               <div className="grid grid-cols-3 gap-4">
-                 <div className="bg-emerald-900/20 border border-emerald-600/30 rounded p-3">
-                   <p className="text-[8px] font-black uppercase text-emerald-600 mb-1">{t('dpTotalIncome')}</p>
-                   <p className="text-lg font-black text-emerald-400">
+               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                 <div className="bg-emerald-900/20 border border-emerald-600/30 rounded p-3 min-h-[5.5rem] flex flex-col justify-between">
+                   <p className="text-[9px] font-black uppercase text-emerald-700 dark:text-emerald-500 mb-1">{t('dpTotalIncome')}</p>
+                   <p className="text-lg font-black text-emerald-700 dark:text-emerald-400 tabular-nums">
                      {lineIncomeSum.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                    </p>
-                   <p className="text-[8px] text-emerald-600/60">{editedData.originalCurrency || 'CHF'}</p>
+                   <p className="text-[9px] text-cdlp-muted mt-1">{editedData.originalCurrency || 'CHF'}</p>
                  </div>
-                 <div className="bg-red-900/20 border border-red-600/30 rounded p-3">
-                   <p className="text-[8px] font-black uppercase text-red-600 mb-1">{t('dpTotalExpenses')}</p>
-                   <p className="text-lg font-black text-red-400">
+                 <div className="bg-red-900/20 border border-red-600/30 rounded p-3 min-h-[5.5rem] flex flex-col justify-between">
+                   <p className="text-[9px] font-black uppercase text-red-700 dark:text-red-500 mb-1">{t('dpTotalExpenses')}</p>
+                   <p className="text-lg font-black text-red-700 dark:text-red-400 tabular-nums">
                      {totalExpensesDisplay.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                    </p>
-                   <p className="text-[8px] text-red-600/60">{editedData.originalCurrency || 'CHF'}</p>
+                   <p className="text-[9px] text-cdlp-muted mt-1">{editedData.originalCurrency || 'CHF'}</p>
                  </div>
-                 <div className="bg-cdlp-gold/20 border border-cdlp-gold/30 rounded p-3">
-                   <p className="text-[8px] font-black uppercase text-cdlp-gold mb-1">{t('dpDocumentTotal')}</p>
-                   <p className="text-lg font-black text-cdlp-gold">
+                 <div className="bg-cdlp-gold/15 border border-cdlp-gold/30 rounded p-3 min-h-[5.5rem] flex flex-col justify-between">
+                   <p className="text-[9px] font-black uppercase text-cdlp-gold mb-1">{t('dpDocumentTotal')}</p>
+                   <p className="text-lg font-black text-cdlp-gold tabular-nums">
                      {documentTotalDisplay.toLocaleString(chfLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                    </p>
-                   <p className="text-[8px] text-cdlp-gold/60">{editedData.originalCurrency || 'CHF'}</p>
+                   <p className="text-[9px] text-cdlp-muted mt-1">{editedData.originalCurrency || 'CHF'}</p>
                  </div>
                </div>
                <div className="mt-3 text-center">

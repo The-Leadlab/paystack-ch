@@ -1936,7 +1936,7 @@ function POSModal({
         </div>
 
         {!reading && (
-          <div className="ba-toolbar-scroll mb-6">
+          <div className="grid grid-cols-2 gap-2 mb-6 sm:grid-cols-4">
             {(
               [
                 ['auto', Zap, 'posAutoGenerate'],
@@ -1953,9 +1953,9 @@ function POSModal({
                   if (id === 'manual') setShowEntryForm(true);
                   if (id === 'csv') setCsvStep('pick');
                 }}
-                className={`flex items-center justify-center gap-2 py-2 px-3 min-h-11 ba-filter-chip ${mode === id ? 'ba-filter-chip--active' : ''}`}
+                className={`inline-flex items-center justify-center gap-2 py-2.5 px-3 min-h-11 w-full ba-filter-chip ${mode === id ? 'ba-filter-chip--active' : ''}`}
               >
-                <Icon className="w-4 h-4" /> {t(labelKey)}
+                <Icon className="w-4 h-4 shrink-0" /> {t(labelKey)}
               </button>
             ))}
           </div>
@@ -1973,7 +1973,7 @@ function POSModal({
                 <label className="block text-xs font-bold uppercase text-cdlp-muted mb-2">
                   {t('posDatePeriod')}
                 </label>
-                <div className="ba-toolbar-scroll">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                   {(
                     [
                       ['day', 'posPeriodDay'],
@@ -1987,7 +1987,7 @@ function POSModal({
                       key={id}
                       type="button"
                       onClick={() => setDatePeriod(id)}
-                      className={`ba-filter-chip ${datePeriod === id ? 'ba-filter-chip--active' : ''}`}
+                      className={`ba-filter-chip min-h-11 w-full justify-center ${datePeriod === id ? 'ba-filter-chip--active' : ''}`}
                     >
                       {t(labelKey)}
                     </button>
